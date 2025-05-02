@@ -8,9 +8,13 @@ organizers and attendees to make organizing and navigating cons easier.
 - The client is written in Vue and TypeScript and hosted on [Cloudflare
   Workers](https://developers.cloudflare.com/workers/).
 - The backend is written in Rust and hosted on Cloudflare Workers.
-- The interface for con organizers is provided by a
+- The database and interface for con organizers is provided by a
   [NocoDB](https://nocodb.com/) instance hosted on [Fly.io](https://fly.io/).
-- The Postgres database backing NocoDB is hosted on [Neon](https://neon.tech).
+- The Postgres provider for NocoDB is [Neon](https://neon.tech).
+- The Redis provider for NocoDB is [Upstash](https://upstash.com/).
+- The object storage provider for NocoDB is [Cloudflare
+  R2](https://developers.cloudflare.com/r2/).
+- The SMTP provider for NocoDB is [MailerSend](https://www.mailersend.com/).
 
 ## Setup
 
