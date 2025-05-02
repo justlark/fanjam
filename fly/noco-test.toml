@@ -11,7 +11,6 @@ image = "nocodb/nocodb:latest"
 
 [env]
 NC_PUBLIC_URL = "https://sparklefish-noco-test.fly.dev"
-NC_INVITE_ONLY_SIGNUP = "true"
 
 [http_service]
 internal_port = 8080
