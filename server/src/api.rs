@@ -1,6 +1,11 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+pub struct PostBaseRequest {
+    pub title: String,
+}
 
 #[derive(Debug, Serialize)]
 pub struct PostBaseResponse {
-    pub base_id: String,
+    pub url: String,
 }
