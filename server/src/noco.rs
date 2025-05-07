@@ -40,13 +40,26 @@ impl From<String> for ApiToken {
     }
 }
 
-#[derive(Debug)]
-struct TableIds {
-    schedule: TableId,
-    rooms: TableId,
-    people: TableId,
-    tags: TableId,
+#[derive(Debug, Default)]
+struct ByTable<T> {
+    schedule: T,
+    rooms: T,
+    people: T,
+    tags: T,
 }
+
+impl<T> ByTable<T> {
+    fn map<U>(self, f: impl Fn(T) -> U) -> ByTable<U> {
+        ByTable {
+            schedule: f(self.schedule),
+            rooms: f(self.rooms),
+            people: f(self.people),
+            tags: f(self.tags),
+        }
+    }
+}
+
+type Tables = ByTable<TableId>;
 
 async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
     #[derive(Debug, Deserialize)]
@@ -126,17 +139,14 @@ impl Client {
         Ok(BaseId(base_id))
     }
 
-    async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<TableIds> {
+    async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<Tables> {
         #[derive(Debug)]
         struct TableRequest<'a> {
             body: serde_json::Value,
             table_id: &'a mut Option<TableId>,
         }
 
-        let mut schedule_id: Option<TableId> = None;
-        let mut rooms_id: Option<TableId> = None;
-        let mut people_id: Option<TableId> = None;
-        let mut tags_id: Option<TableId> = None;
+        let mut tables = ByTable::<Option<TableId>>::default();
 
         let requests = vec![
             TableRequest {
@@ -151,7 +161,7 @@ impl Client {
                         }
                     ]
                 }),
-                table_id: &mut schedule_id,
+                table_id: &mut tables.schedule,
             },
             TableRequest {
                 body: json!({
@@ -165,7 +175,7 @@ impl Client {
                         }
                     ]
                 }),
-                table_id: &mut rooms_id,
+                table_id: &mut tables.rooms,
             },
             TableRequest {
                 body: json!({
@@ -179,7 +189,7 @@ impl Client {
                         }
                     ]
                 }),
-                table_id: &mut people_id,
+                table_id: &mut tables.people,
             },
             TableRequest {
                 body: json!({
@@ -194,7 +204,7 @@ impl Client {
                     ]
 
                 }),
-                table_id: &mut tags_id,
+                table_id: &mut tables.tags,
             },
         ];
 
@@ -231,17 +241,10 @@ impl Client {
             *request.table_id = Some(TableId(table_id));
         }
 
-        let table_ids = TableIds {
-            schedule: schedule_id.unwrap(),
-            rooms: rooms_id.unwrap(),
-            people: people_id.unwrap(),
-            tags: tags_id.unwrap(),
-        };
-
-        Ok(table_ids)
+        Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
 
-    async fn populate_tables(&self, base_id: &BaseId, table_ids: &TableIds) -> anyhow::Result<()> {
+    async fn populate_tables(&self, base_id: &BaseId, table_ids: &Tables) -> anyhow::Result<()> {
         #[derive(Debug)]
         struct FieldRequest<'a> {
             table_id: &'a TableId,
