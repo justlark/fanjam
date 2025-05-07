@@ -1,4 +1,4 @@
-name = "sparklefish"
+name = "sparklefish-server"
 main = "build/worker/shim.mjs"
 account_id = "151bc8670b862fa7d694cf7246a2c0dc"
 compatibility_date = "2025-05-06"

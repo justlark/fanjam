@@ -1,0 +1,14 @@
+name = "sparklefish-client"
+account_id = "151bc8670b862fa7d694cf7246a2c0dc"
+compatibility_date = "2025-05-07"
+
+[assets]
+directory = "./dist/client"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
+
+[env.test]
+
+[env.prod]
