@@ -16,6 +16,14 @@ organizers and attendees to make organizing and navigating cons easier.
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://www.mailersend.com/).
 
+## Setup
+
+To build and deploy the app, you'll need to install:
+
+- [Rust](https://www.rust-lang.org/tools/install)
+- [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- [flyctl](https://fly.io/docs/flyctl/install/)
+
 ## Development
 
 Run the client locally:
@@ -65,7 +73,21 @@ npm install
 npm run deploy:prod
 ```
 
-## Setup
+Deploy NocoDB to the test environment:
+
+```
+cd ./fly/
+fly -c ./noco-test.toml deploy
+```
+
+Deploy NocoDB to the prod environment:
+
+```
+cd ./fly/
+fly -c ./noco-prod.toml deploy
+```
+
+## Quirks
 
 When setting up NocoDB, there are some quirks with the Redis and Postgres
 connection strings that are not addressed in the NocoDB documentation.
