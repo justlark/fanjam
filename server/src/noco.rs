@@ -143,6 +143,13 @@ impl Client {
                 body: json!({
                     "title": "Schedule",
                     "description": "The con schedule.",
+                    "fields": [
+                        {
+                            "title": "Event Name",
+                            "type": "SingleLineText",
+                            "description": "The name of the panel, workshop, class, etc."
+                        }
+                    ]
                 }),
                 table_id: &mut schedule_id,
             },
@@ -150,13 +157,27 @@ impl Client {
                 body: json!({
                     "title": "Rooms",
                     "description": "The rooms at the con.",
+                    "fields": [
+                        {
+                            "title": "Room",
+                            "type": "SingleLineText",
+                            "description": "The room where the event is being held."
+                        }
+                    ]
                 }),
                 table_id: &mut rooms_id,
             },
             TableRequest {
                 body: json!({
                     "title": "People",
-                    "description": "The people at the con.",
+                    "description": "People hosting events at the con.",
+                    "fields": [
+                        {
+                            "title": "Name",
+                            "type": "SingleLineText",
+                            "description": "The name of the person hosting an event."
+                        }
+                    ]
                 }),
                 table_id: &mut people_id,
             },
@@ -164,6 +185,14 @@ impl Client {
                 body: json!({
                     "title": "Tags",
                     "description": "Tags for events.",
+                    "fields": [
+                        {
+                            "title": "Tag",
+                            "type": "SingleLineText",
+                            "description": "The name of the tag."
+                        }
+                    ]
+
                 }),
                 table_id: &mut tags_id,
             },
@@ -223,14 +252,6 @@ impl Client {
             FieldRequest {
                 table_id: &table_ids.schedule,
                 body: json!({
-                    "title": "Event Name",
-                    "type": "SingleLineText",
-                    "description": "The name of the panel, workshop, class, etc."
-                }),
-            },
-            FieldRequest {
-                table_id: &table_ids.schedule,
-                body: json!({
                     "title": "Description",
                     "type": "LongText",
                     "description": "A description of the event.",
@@ -268,14 +289,6 @@ impl Client {
             FieldRequest {
                 table_id: &table_ids.rooms,
                 body: json!({
-                    "title": "Room",
-                    "type": "SingleLineText",
-                    "description": "The room where the event is being held."
-                }),
-            },
-            FieldRequest {
-                table_id: &table_ids.rooms,
-                body: json!({
                     "title": "Events",
                     "type": "Links",
                     "description": "The events being held in this room.",
@@ -283,14 +296,6 @@ impl Client {
                         "relation_type": "hm",
                         "linked_table_id": &table_ids.schedule
                     }
-                }),
-            },
-            FieldRequest {
-                table_id: &table_ids.people,
-                body: json!({
-                    "title": "Name",
-                    "type": "SingleLineText",
-                    "description": "The name of the person hosting an event."
                 }),
             },
             FieldRequest {
@@ -311,14 +316,6 @@ impl Client {
                         "relation_type": "mm",
                         "linked_table_id": &table_ids.schedule
                     }
-                }),
-            },
-            FieldRequest {
-                table_id: &table_ids.tags,
-                body: json!({
-                    "title": "Tag",
-                    "type": "SingleLineText",
-                    "description": "The name of the tag."
                 }),
             },
             FieldRequest {
