@@ -3,14 +3,29 @@ use std::fmt::{self, Display};
 use reqwest::{Method, Url};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use worker::console_log;
 
 use crate::config;
 
+const DATE_FORMAT: &str = "YYYY-MM-DD";
+const TIME_FORMAT: &str = "HH:mm";
+const IS_TIME_12HR: bool = true;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BaseId(String);
+struct BaseId(String);
 
 impl Display for BaseId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+struct TableId(String);
+
+impl Display for TableId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -26,20 +41,43 @@ impl From<String> for ApiToken {
 }
 
 #[derive(Debug)]
+struct TableIds {
+    schedule: TableId,
+    rooms: TableId,
+    people: TableId,
+    tags: TableId,
+}
+
+async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
+    #[derive(Debug, Deserialize)]
+    struct ErrorResponse {
+        msg: String,
+        errors: serde_json::Value,
+    }
+
+    let status = resp.status();
+    let url = resp.url().to_string();
+
+    if status.is_client_error() || status.is_server_error() {
+        let resp = resp.json::<ErrorResponse>().await?;
+
+        return Err(anyhow::anyhow!(
+            "Error: {} for ({}) with message ({})\n{}",
+            status,
+            url,
+            resp.msg,
+            resp.errors,
+        ));
+    }
+
+    Ok(resp)
+}
+
+#[derive(Debug)]
 pub struct Client {
     client: reqwest::Client,
     api_origin: String,
     api_token: ApiToken,
-}
-
-#[derive(Debug, Serialize)]
-struct PostBaseRequest {
-    title: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct PostBaseResponse {
-    id: String,
 }
 
 impl Client {
@@ -51,21 +89,34 @@ impl Client {
         }
     }
 
-    fn build_request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
+    fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
             .request(method, format!("{}/api/v2{}", self.api_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 
+    fn build_request_v3(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
+        self.client
+            .request(method, format!("{}/api/v3{}", self.api_origin, path))
+            .header("Xc-Token", self.api_token.0.expose_secret())
+    }
+
     async fn create_base(&self, title: String) -> anyhow::Result<BaseId> {
         let resp = self
-            .build_request(Method::POST, "/meta/bases")
-            .json(&PostBaseRequest { title })
+            .build_request_v2(Method::POST, "/meta/bases")
+            .json(&json!({
+                "title": title
+            }))
             .send()
             .await?;
 
-        let base_id = resp
-            .error_for_status()?
+        #[derive(Debug, Deserialize)]
+        struct PostBaseResponse {
+            id: String,
+        }
+
+        let base_id = check_status(resp)
+            .await?
             .json::<PostBaseResponse>()
             .await?
             .id;
@@ -75,9 +126,234 @@ impl Client {
         Ok(BaseId(base_id))
     }
 
+    async fn populate_tables(&self, base_id: &BaseId, table_ids: &TableIds) -> anyhow::Result<()> {
+        #[derive(Debug)]
+        struct FieldRequest<'a> {
+            table_id: &'a TableId,
+            body: serde_json::Value,
+        }
+
+        let requests = vec![
+            FieldRequest {
+                table_id: &table_ids.schedule,
+                body: json!({
+                    "title": "Event Name",
+                    "type": "SingleLineText",
+                    "description": "The name of the panel, workshop, class, etc."
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.schedule,
+                body: json!({
+                    "title": "Description",
+                    "type": "LongText",
+                    "description": "A description of the event.",
+                    "options": {
+                        "rich_text": true
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.schedule,
+                body: json!({
+                    "title": "Start Time",
+                    "type": "DateTime",
+                    "description": "The day and time the event starts.",
+                    "options": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                        "12hr_format": IS_TIME_12HR
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.schedule,
+                body: json!({
+                    "title": "End Time",
+                    "type": "DateTime",
+                    "description": "The day and time the event ends.",
+                    "options": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                        "12hr_format": IS_TIME_12HR
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.rooms,
+                body: json!({
+                    "title": "Room",
+                    "type": "SingleLineText",
+                    "description": "The room where the event is being held."
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.rooms,
+                body: json!({
+                    "title": "Room",
+                    "type": "Links",
+                    "description": "The room where the event is being held.",
+                    "options": {
+                        "relation_type": "hm",
+                        "linked_table_id": &table_ids.schedule
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.people,
+                body: json!({
+                    "title": "Name",
+                    "type": "SingleLineText",
+                    "description": "The name of the person hosting an event."
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.people,
+                body: json!({
+                    "title": "Contact Info",
+                    "type": "SingleLineText",
+                    "description": "Contact info for this person. Attendees cannot see this."
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.people,
+                body: json!({
+                    "title": "Events",
+                    "type": "Links",
+                    "description": "The events this person is hosting.",
+                    "options": {
+                        "relation_type": "mm",
+                        "linked_table_id": &table_ids.schedule
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.tags,
+                body: json!({
+                    "title": "Tag",
+                    "type": "SingleLineText",
+                    "description": "A tag for the event."
+                }),
+            },
+            FieldRequest {
+                table_id: &table_ids.tags,
+                body: json!({
+                    "title": "Events",
+                    "type": "Links",
+                    "description": "The events to apply this tag to.",
+                    "options": {
+                        "relation_type": "mm",
+                        "linked_table_id": &table_ids.schedule
+                    }
+                }),
+            },
+        ];
+
+        for request in requests {
+            console_log!(
+                "{}",
+                &format!("/meta/bases/{}/tables/{}/fields", base_id, request.table_id),
+            );
+            console_log!("{}", &request.body);
+
+            let resp = self
+                .build_request_v3(
+                    Method::POST,
+                    &format!("/meta/bases/{}/tables/{}/fields", base_id, request.table_id),
+                )
+                .json(&request.body)
+                .send()
+                .await?;
+
+            check_status(resp).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<TableIds> {
+        #[derive(Debug)]
+        struct TableRequest<'a> {
+            body: serde_json::Value,
+            table_id: &'a mut Option<TableId>,
+        }
+
+        let mut schedule_id: Option<TableId> = None;
+        let mut rooms_id: Option<TableId> = None;
+        let mut people_id: Option<TableId> = None;
+        let mut tags_id: Option<TableId> = None;
+
+        let requests = vec![
+            TableRequest {
+                body: json!({
+                    "title": "Schedule",
+                    "description": "The con schedule.",
+                }),
+                table_id: &mut schedule_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Rooms",
+                    "description": "The rooms at the con.",
+                }),
+                table_id: &mut rooms_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "People",
+                    "description": "The people at the con.",
+                }),
+                table_id: &mut people_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Tags",
+                    "description": "Tags for events.",
+                }),
+                table_id: &mut tags_id,
+            },
+        ];
+
+        #[derive(Debug, Deserialize)]
+        struct PostTableResponse {
+            id: String,
+        }
+
+        for request in requests {
+            let resp = self
+                .build_request_v3(
+                    Method::POST,
+                    &format!("/meta/bases/{0}/bases/{0}/tables", base_id),
+                )
+                .json(&request.body)
+                .send()
+                .await?;
+
+            let table_id = check_status(resp)
+                .await?
+                .json::<PostTableResponse>()
+                .await?
+                .id;
+
+            *request.table_id = Some(TableId(table_id));
+        }
+
+        let table_ids = TableIds {
+            schedule: schedule_id.unwrap(),
+            rooms: rooms_id.unwrap(),
+            people: people_id.unwrap(),
+            tags: tags_id.unwrap(),
+        };
+
+        Ok(table_ids)
+    }
+
     #[worker::send]
-    pub async fn create_and_setup_base(&self, title: String) -> anyhow::Result<Url> {
+    pub async fn setup_base(&self, title: String) -> anyhow::Result<Url> {
         let base_id = self.create_base(title).await?;
+        let table_ids = self.create_tables(&base_id).await?;
+        self.populate_tables(&base_id, &table_ids).await?;
+
         let app_origin = config::noco_origin();
 
         Ok(Url::parse(&format!(

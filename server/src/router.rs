@@ -22,10 +22,7 @@ async fn post_base(
 ) -> Result<Json<PostBaseResponse>, ErrorResponse> {
     let client = noco::Client::new();
 
-    let base_url = client
-        .create_and_setup_base(body.title)
-        .await
-        .map_err(internal_err)?;
+    let base_url = client.setup_base(body.title).await.map_err(internal_err)?;
 
     Ok(Json(PostBaseResponse {
         url: base_url.to_string(),

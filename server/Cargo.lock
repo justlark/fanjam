@@ -1221,6 +1221,7 @@ dependencies = [
  "reqwest",
  "secrecy",
  "serde",
+ "serde_json",
  "tower-service",
  "worker",
  "worker-macros",
