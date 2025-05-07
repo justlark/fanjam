@@ -7,7 +7,7 @@ app = "sparklefish-noco-test"
 primary_region = "bos"
 
 [build]
-image = "nocodb/nocodb:latest"
+image = "ghcr.io/justlark/nocodb:latest"
 
 [env]
 NC_PUBLIC_URL = "https://sparklefish-noco-test.fly.dev"
