@@ -30,7 +30,7 @@ Run the server locally:
 
 ```
 cd ./server/
-npx wrangler dev --env test
+npx wrangler --env test dev --remote
 ```
 
 ## Deployment
