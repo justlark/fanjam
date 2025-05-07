@@ -220,10 +220,7 @@ impl Client {
 
         for request in requests {
             let resp = self
-                .build_request_v3(
-                    Method::POST,
-                    &format!("/meta/bases/{0}/bases/{0}/tables", base_id),
-                )
+                .build_request_v3(Method::POST, &format!("/meta/bases/{}/tables", base_id))
                 .json(&request.body)
                 .send()
                 .await?;
@@ -249,7 +246,7 @@ impl Client {
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
 
-    async fn populate_tables(&self, base_id: &BaseId, table_ids: &Tables) -> anyhow::Result<()> {
+    async fn populate_tables(&self, table_ids: &Tables) -> anyhow::Result<()> {
         #[derive(Debug)]
         struct FieldRequest<'a> {
             table_id: &'a TableId,
@@ -349,7 +346,7 @@ impl Client {
             let resp = self
                 .build_request_v3(
                     Method::POST,
-                    &format!("/meta/bases/{}/tables/{}/fields", base_id, request.table_id),
+                    &format!("/meta/tables/{}/fields", request.table_id),
                 )
                 .json(&request.body)
                 .send()
@@ -383,7 +380,7 @@ impl Client {
     pub async fn setup_base(&self, title: String) -> anyhow::Result<Url> {
         let base_id = self.create_base(title).await?;
         let table_ids = self.create_tables(&base_id).await?;
-        self.populate_tables(&base_id, &table_ids).await?;
+        self.populate_tables(&table_ids).await?;
 
         let app_origin = config::noco_origin();
 
