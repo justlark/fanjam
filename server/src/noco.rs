@@ -190,9 +190,9 @@ impl Client {
             FieldRequest {
                 table_id: &table_ids.rooms,
                 body: json!({
-                    "title": "Room",
+                    "title": "Events",
                     "type": "Links",
-                    "description": "The room where the event is being held.",
+                    "description": "The events being held in this room.",
                     "options": {
                         "relation_type": "hm",
                         "linked_table_id": &table_ids.schedule
@@ -232,7 +232,7 @@ impl Client {
                 body: json!({
                     "title": "Tag",
                     "type": "SingleLineText",
-                    "description": "A tag for the event."
+                    "description": "The name of the tag."
                 }),
             },
             FieldRequest {
@@ -240,7 +240,7 @@ impl Client {
                 body: json!({
                     "title": "Events",
                     "type": "Links",
-                    "description": "The events to apply this tag to.",
+                    "description": "The events with this tag.",
                     "options": {
                         "relation_type": "mm",
                         "linked_table_id": &table_ids.schedule
