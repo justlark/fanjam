@@ -121,7 +121,7 @@ impl Client {
             .await?
             .id;
 
-        console_log!("Created Noco Base with ID: {}", base_id);
+        console_log!("Created Noco base `{}` with ID `{}`", title, base_id);
 
         Ok(BaseId(base_id))
     }
@@ -249,13 +249,12 @@ impl Client {
             },
         ];
 
-        for request in requests {
-            console_log!(
-                "{}",
-                &format!("/meta/bases/{}/tables/{}/fields", base_id, request.table_id),
-            );
-            console_log!("{}", &request.body);
+        #[derive(Debug, Deserialize)]
+        struct PostFieldResponse {
+            id: String,
+        }
 
+        for request in requests {
             let resp = self
                 .build_request_v3(
                     Method::POST,
@@ -265,7 +264,25 @@ impl Client {
                 .send()
                 .await?;
 
-            check_status(resp).await?;
+            let field_id = check_status(resp)
+                .await?
+                .json::<PostFieldResponse>()
+                .await?
+                .id;
+
+            let field_name = request
+                .body
+                .as_object()
+                .and_then(|obj| obj.get("title"))
+                .and_then(|title| title.as_str())
+                .unwrap_or("Unknown");
+
+            console_log!(
+                "Created Noco field `{}` with ID `{}` on table `{}`",
+                field_name,
+                field_id,
+                request.table_id,
+            );
         }
 
         Ok(())
@@ -334,6 +351,15 @@ impl Client {
                 .json::<PostTableResponse>()
                 .await?
                 .id;
+
+            let table_name = request
+                .body
+                .as_object()
+                .and_then(|obj| obj.get("title"))
+                .and_then(|title| title.as_str())
+                .unwrap_or("Unknown");
+
+            console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
 
             *request.table_id = Some(TableId(table_id));
         }
