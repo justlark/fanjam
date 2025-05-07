@@ -126,6 +126,92 @@ impl Client {
         Ok(BaseId(base_id))
     }
 
+    async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<TableIds> {
+        #[derive(Debug)]
+        struct TableRequest<'a> {
+            body: serde_json::Value,
+            table_id: &'a mut Option<TableId>,
+        }
+
+        let mut schedule_id: Option<TableId> = None;
+        let mut rooms_id: Option<TableId> = None;
+        let mut people_id: Option<TableId> = None;
+        let mut tags_id: Option<TableId> = None;
+
+        let requests = vec![
+            TableRequest {
+                body: json!({
+                    "title": "Schedule",
+                    "description": "The con schedule.",
+                }),
+                table_id: &mut schedule_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Rooms",
+                    "description": "The rooms at the con.",
+                }),
+                table_id: &mut rooms_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "People",
+                    "description": "The people at the con.",
+                }),
+                table_id: &mut people_id,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Tags",
+                    "description": "Tags for events.",
+                }),
+                table_id: &mut tags_id,
+            },
+        ];
+
+        #[derive(Debug, Deserialize)]
+        struct PostTableResponse {
+            id: String,
+        }
+
+        for request in requests {
+            let resp = self
+                .build_request_v3(
+                    Method::POST,
+                    &format!("/meta/bases/{0}/bases/{0}/tables", base_id),
+                )
+                .json(&request.body)
+                .send()
+                .await?;
+
+            let table_id = check_status(resp)
+                .await?
+                .json::<PostTableResponse>()
+                .await?
+                .id;
+
+            let table_name = request
+                .body
+                .as_object()
+                .and_then(|obj| obj.get("title"))
+                .and_then(|title| title.as_str())
+                .unwrap_or("Unknown");
+
+            console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
+
+            *request.table_id = Some(TableId(table_id));
+        }
+
+        let table_ids = TableIds {
+            schedule: schedule_id.unwrap(),
+            rooms: rooms_id.unwrap(),
+            people: people_id.unwrap(),
+            tags: tags_id.unwrap(),
+        };
+
+        Ok(table_ids)
+    }
+
     async fn populate_tables(&self, base_id: &BaseId, table_ids: &TableIds) -> anyhow::Result<()> {
         #[derive(Debug)]
         struct FieldRequest<'a> {
@@ -286,92 +372,6 @@ impl Client {
         }
 
         Ok(())
-    }
-
-    async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<TableIds> {
-        #[derive(Debug)]
-        struct TableRequest<'a> {
-            body: serde_json::Value,
-            table_id: &'a mut Option<TableId>,
-        }
-
-        let mut schedule_id: Option<TableId> = None;
-        let mut rooms_id: Option<TableId> = None;
-        let mut people_id: Option<TableId> = None;
-        let mut tags_id: Option<TableId> = None;
-
-        let requests = vec![
-            TableRequest {
-                body: json!({
-                    "title": "Schedule",
-                    "description": "The con schedule.",
-                }),
-                table_id: &mut schedule_id,
-            },
-            TableRequest {
-                body: json!({
-                    "title": "Rooms",
-                    "description": "The rooms at the con.",
-                }),
-                table_id: &mut rooms_id,
-            },
-            TableRequest {
-                body: json!({
-                    "title": "People",
-                    "description": "The people at the con.",
-                }),
-                table_id: &mut people_id,
-            },
-            TableRequest {
-                body: json!({
-                    "title": "Tags",
-                    "description": "Tags for events.",
-                }),
-                table_id: &mut tags_id,
-            },
-        ];
-
-        #[derive(Debug, Deserialize)]
-        struct PostTableResponse {
-            id: String,
-        }
-
-        for request in requests {
-            let resp = self
-                .build_request_v3(
-                    Method::POST,
-                    &format!("/meta/bases/{0}/bases/{0}/tables", base_id),
-                )
-                .json(&request.body)
-                .send()
-                .await?;
-
-            let table_id = check_status(resp)
-                .await?
-                .json::<PostTableResponse>()
-                .await?
-                .id;
-
-            let table_name = request
-                .body
-                .as_object()
-                .and_then(|obj| obj.get("title"))
-                .and_then(|title| title.as_str())
-                .unwrap_or("Unknown");
-
-            console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
-
-            *request.table_id = Some(TableId(table_id));
-        }
-
-        let table_ids = TableIds {
-            schedule: schedule_id.unwrap(),
-            rooms: rooms_id.unwrap(),
-            people: people_id.unwrap(),
-            tags: tags_id.unwrap(),
-        };
-
-        Ok(table_ids)
     }
 
     #[worker::send]
