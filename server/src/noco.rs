@@ -102,6 +102,9 @@ impl Client {
         }
     }
 
+    // We're building this on top of the new v3 API, but we still need to fall back to the v2 API
+    // for some operations that are not yet supported in v3.
+
     fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
             .request(method, format!("{}/api/v2{}", self.api_origin, path))
@@ -148,6 +151,8 @@ impl Client {
 
         let mut tables = ByTable::<Option<TableId>>::default();
 
+        // We must specify the "display field" here when we create the table. Subsequent fields can
+        // be added later.
         let requests = vec![
             TableRequest {
                 body: json!({
