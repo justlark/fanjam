@@ -6,8 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::console_log;
 
-use crate::config;
-
 const DATE_FORMAT: &str = "YYYY-MM-DD";
 const TIME_FORMAT: &str = "HH:mm";
 const IS_TIME_12HR: bool = true;
@@ -157,16 +155,16 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
 #[derive(Debug)]
 pub struct Client {
     client: reqwest::Client,
-    api_origin: String,
+    app_origin: Url,
     api_token: ApiToken,
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(app_origin: Url, api_token: ApiToken) -> Self {
         Self {
             client: reqwest::Client::new(),
-            api_origin: config::noco_origin(),
-            api_token: config::noco_api_token(),
+            app_origin,
+            api_token,
         }
     }
 
@@ -175,13 +173,13 @@ impl Client {
 
     fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .request(method, format!("{}/api/v2{}", self.api_origin, path))
+            .request(method, format!("{}api/v2{}", self.app_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 
     fn build_request_v3(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .request(method, format!("{}/api/v3{}", self.api_origin, path))
+            .request(method, format!("{}api/v3{}", self.app_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 
@@ -677,10 +675,9 @@ impl Client {
         let fields = self.create_fields(&tables).await?;
         self.create_views(&fields, &tables).await?;
 
-        let app_origin = config::noco_origin();
-
         Ok(Url::parse(&format!(
-            "{app_origin}/dashboard/#/nc/{base_id}"
+            "{}/dashboard/#/nc/{}",
+            self.app_origin, base_id
         ))?)
     }
 }

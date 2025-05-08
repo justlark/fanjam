@@ -7,7 +7,7 @@ resource "cloudflare_dns_record" "noco_cname" {
 
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "CNAME"
-  name    = each.value.noco_domain
+  name    = each.value.app_domain
   content = "${each.value.fly_app}.fly.dev"
   ttl     = 1
   proxied = false
