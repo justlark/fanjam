@@ -8,7 +8,7 @@ resource "cloudflare_dns_record" "noco_test_cname" {
   name    = "dash-test"
   content = "sparklefish-noco-test.fly.dev"
   ttl     = 1
-  proxied = true
+  proxied = false
 }
 
 resource "cloudflare_dns_record" "apex_txt_sl_verification" {
