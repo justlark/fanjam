@@ -12,7 +12,20 @@ const DATE_FORMAT: &str = "YYYY-MM-DD";
 const TIME_FORMAT: &str = "HH:mm";
 const IS_TIME_12HR: bool = true;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
+enum NocoViewType {
+    Calendar,
+}
+
+impl NocoViewType {
+    fn code(&self) -> u32 {
+        match self {
+            NocoViewType::Calendar => 6,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 struct BaseId(String);
 
 impl Display for BaseId {
@@ -21,11 +34,31 @@ impl Display for BaseId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 struct TableId(String);
 
 impl Display for TableId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+struct FieldId(String);
+
+impl Display for FieldId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+struct ViewId(String);
+
+impl Display for ViewId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -60,6 +93,33 @@ impl<T> ByTable<T> {
 }
 
 type Tables = ByTable<TableId>;
+
+#[derive(Debug, Default)]
+struct ByField<T> {
+    start_time: T,
+}
+
+impl<T> ByField<T> {
+    fn map<U>(self, f: impl Fn(T) -> U) -> ByField<U> {
+        ByField {
+            start_time: f(self.start_time),
+        }
+    }
+}
+
+type Fields = ByField<FieldId>;
+
+type RefSetter<'a, T> = Box<dyn FnOnce(T) + 'a>;
+
+fn set_ref<'a, T>(value_ref: &'a mut Option<T>) -> Box<dyn FnOnce(T) + 'a> {
+    Box::new(move |id| {
+        *value_ref = Some(id);
+    })
+}
+
+fn set_nop<T>() -> Box<dyn FnOnce(T)> {
+    Box::new(|_| {})
+}
 
 async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
     #[derive(Debug, Deserialize)]
@@ -128,7 +188,7 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct PostBaseResponse {
-            id: String,
+            id: BaseId,
         }
 
         let base_id = check_status(resp)
@@ -139,7 +199,7 @@ impl Client {
 
         console_log!("Created Noco base `{}` with ID `{}`", title, base_id);
 
-        Ok(BaseId(base_id))
+        Ok(base_id)
     }
 
     async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<Tables> {
@@ -215,7 +275,7 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct PostTableResponse {
-            id: String,
+            id: TableId,
         }
 
         for request in requests {
@@ -240,22 +300,34 @@ impl Client {
 
             console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
 
-            *request.table_id = Some(TableId(table_id));
+            *request.table_id = Some(table_id);
         }
 
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
 
-    async fn populate_tables(&self, table_ids: &Tables) -> anyhow::Result<()> {
-        #[derive(Debug)]
+    async fn create_fields(&self, tables: &Tables) -> anyhow::Result<Fields> {
         struct FieldRequest<'a> {
             table_id: &'a TableId,
+            field_ref: RefSetter<'a, FieldId>,
             body: serde_json::Value,
         }
 
+        impl fmt::Debug for FieldRequest<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct("FieldRequest")
+                    .field("table_id", &self.table_id)
+                    .field("body", &self.body)
+                    .finish_non_exhaustive()
+            }
+        }
+
+        let mut fields = ByField::<Option<FieldId>>::default();
+
         let requests = vec![
             FieldRequest {
-                table_id: &table_ids.schedule,
+                table_id: &tables.schedule,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "Description",
                     "type": "LongText",
@@ -266,7 +338,8 @@ impl Client {
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.schedule,
+                table_id: &tables.schedule,
+                field_ref: set_ref(&mut fields.start_time),
                 body: json!({
                     "title": "Start Time",
                     "type": "DateTime",
@@ -279,7 +352,8 @@ impl Client {
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.schedule,
+                table_id: &tables.schedule,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "End Time",
                     "type": "DateTime",
@@ -292,19 +366,21 @@ impl Client {
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.rooms,
+                table_id: &tables.rooms,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "Events",
                     "type": "Links",
                     "description": "The events being held in this room.",
                     "options": {
                         "relation_type": "hm",
-                        "linked_table_id": &table_ids.schedule
+                        "linked_table_id": &tables.schedule
                     }
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.people,
+                table_id: &tables.people,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "Contact Info",
                     "type": "SingleLineText",
@@ -312,26 +388,28 @@ impl Client {
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.people,
+                table_id: &tables.people,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "Events",
                     "type": "Links",
                     "description": "The events this person is hosting.",
                     "options": {
                         "relation_type": "mm",
-                        "linked_table_id": &table_ids.schedule
+                        "linked_table_id": &tables.schedule
                     }
                 }),
             },
             FieldRequest {
-                table_id: &table_ids.tags,
+                table_id: &tables.tags,
+                field_ref: set_nop(),
                 body: json!({
                     "title": "Events",
                     "type": "Links",
                     "description": "The events with this tag.",
                     "options": {
                         "relation_type": "mm",
-                        "linked_table_id": &table_ids.schedule
+                        "linked_table_id": &tables.schedule
                     }
                 }),
             },
@@ -339,7 +417,7 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct PostFieldResponse {
-            id: String,
+            id: FieldId,
         }
 
         for request in requests {
@@ -365,6 +443,8 @@ impl Client {
                 .and_then(|title| title.as_str())
                 .unwrap_or("Unknown");
 
+            (request.field_ref)(field_id.clone());
+
             console_log!(
                 "Created Noco field `{}` with ID `{}` on table `{}`",
                 field_name,
@@ -373,14 +453,74 @@ impl Client {
             );
         }
 
+        Ok(fields.map(|id| id.expect("expected field ID, found none")))
+    }
+
+    async fn create_views(&self, fields: &Fields, tables: &Tables) -> anyhow::Result<()> {
+        #[derive(Debug, Deserialize)]
+        struct PostViewResponse {
+            id: ViewId,
+        }
+
+        let resp = self
+            .build_request_v2(
+                Method::POST,
+                &format!("/meta/tables/{}/calendars", tables.schedule),
+            )
+            .json(&json!({
+                "title": "Calendar",
+                "type": NocoViewType::Calendar.code(),
+                "calendar_range": [
+                    {
+                        // The community version of NocoDB does not currently support date ranges
+                        // in calendar views. This feature exists in the enterprise version, but it
+                        // only support dates, not datetimes. Once support for datetime ranges
+                        // lands in the enterprise edition, we might want to see if we can enable
+                        // it in on our fork.
+                        "fk_from_column_id": fields.start_time,
+                    }
+                ]
+            }))
+            .send()
+            .await?;
+
+        let calendar_view_id = check_status(resp)
+            .await?
+            .json::<PostViewResponse>()
+            .await?
+            .id;
+
+        console_log!(
+            "Created Noco calendar view with ID `{}` on table `{}`",
+            calendar_view_id,
+            tables.schedule,
+        );
+
+        let lock_requests = vec![calendar_view_id];
+
+        for view_id in lock_requests {
+            let resp = self
+                .build_request_v2(Method::PATCH, &format!("/meta/views/{}", view_id))
+                .json(&json!({
+                    "lock_type": "locked",
+                }))
+                .send()
+                .await?;
+
+            check_status(resp).await?;
+
+            console_log!("Locked Noco view with ID `{}`", view_id,);
+        }
+
         Ok(())
     }
 
     #[worker::send]
     pub async fn setup_base(&self, title: String) -> anyhow::Result<Url> {
         let base_id = self.create_base(title).await?;
-        let table_ids = self.create_tables(&base_id).await?;
-        self.populate_tables(&table_ids).await?;
+        let tables = self.create_tables(&base_id).await?;
+        let fields = self.create_fields(&tables).await?;
+        self.create_views(&fields, &tables).await?;
 
         let app_origin = config::noco_origin();
 
