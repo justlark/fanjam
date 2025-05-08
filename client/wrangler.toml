@@ -11,4 +11,12 @@ enabled = true
 
 [env.test]
 
+[env.test.route]
+pattern = "test.fanjam.live"
+custom_domain = true
+
 [env.prod]
+
+[env.prod.route]
+pattern = "fanjam.live"
+custom_domain = true

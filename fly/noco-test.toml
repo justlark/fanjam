@@ -10,7 +10,7 @@ primary_region = "bos"
 image = "ghcr.io/justlark/nocodb:latest"
 
 [env]
-NC_PUBLIC_URL = "https://sparklefish-noco-test.fly.dev"
+NC_PUBLIC_URL = "https://dash-test.fanjam.live"
 
 [http_service]
 internal_port = 8080

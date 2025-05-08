@@ -9,6 +9,17 @@ command = "cargo install -q worker-build && worker-build --release"
 [env.test]
 
 [env.test.vars]
-NOCO_ORIGIN = "https://sparklefish-noco-test.fly.dev"
+NOCO_ORIGIN = "https://dash-test.fanjam.live"
+
+[env.test.route]
+pattern = "api-test.fanjam.live"
+custom_domain = true
 
 [env.prod]
+
+[env.prod.vars]
+NOCO_ORIGIN = "https://dash.fanjam.live"
+
+[env.prod.route]
+pattern = "api.fanjam.live"
+custom_domain = true
