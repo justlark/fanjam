@@ -1,11 +1,11 @@
 # Install npm dependencies for the client
 [working-directory: "./client/"]
-install-client:
+_install-client:
   npm install
 
 # Run the client locally
 [working-directory: "./client/"]
-run-client: install-client
+run-client: _install-client
   npm run dev
 
 # Run the server locally
@@ -15,7 +15,7 @@ run-server:
 
 # Deploy the client
 [working-directory: "./client/"]
-deploy-client env: install-client
+deploy-client env: _install-client
   npm run deploy:{{ env }}
 
 # Deploy the server
