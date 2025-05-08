@@ -65,7 +65,7 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
     #[derive(Debug, Deserialize)]
     struct ErrorResponse {
         msg: String,
-        errors: serde_json::Value,
+        errors: Option<serde_json::Value>,
     }
 
     let status = resp.status();
@@ -79,7 +79,7 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
             status,
             url,
             resp.msg,
-            resp.errors,
+            resp.errors.unwrap_or_default(),
         ));
     }
 
