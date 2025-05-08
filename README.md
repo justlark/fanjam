@@ -30,10 +30,6 @@ To work in this repo, you'll need to install:
 You can use `just` to build and deploy the app. Run `just --list` to see a list
 of recipes.
 
-There are two environments this app can be deployed in: `test` and `prod`.
-You'll need to pass one of these to `just` commands that accept an `env`
-parameter.
-
 This project is referred to by the codename "sparklefish" throughout the
 codebase and infrastructure.
 

@@ -2,11 +2,13 @@
 # `ttl = 1` means "automatic".
 #
 
-resource "cloudflare_dns_record" "noco_test_cname" {
+resource "cloudflare_dns_record" "noco_cname" {
+  for_each = local.environments
+
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "CNAME"
-  name    = "dash-test"
-  content = "sparklefish-noco-test.fly.dev"
+  name    = each.value.noco_domain
+  content = "${each.value.fly_app}.fly.dev"
   ttl     = 1
   proxied = false
 }

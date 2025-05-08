@@ -15,15 +15,18 @@ run-server:
 
 # Deploy the client
 [working-directory: "./client/"]
-deploy-client env: _install-client
-  npm run deploy:{{ env }}
+deploy-client stage: _install-client
+  npm run deploy:{{ stage }}
 
 # Deploy the server
 [working-directory: "./server/"]
-deploy-server env:
-  npx wrangler deploy --env {{ env }}
+deploy-server stage:
+  npx wrangler deploy --env {{ stage }}
 
-# Deploy NocoDB
-[working-directory: "./fly/"]
+# Redeploy an existing NocoDB instance
 deploy-nocodb env:
-  fly -c ./noco-{{ env }}.toml deploy
+  fly -c ./infra/environments/{{ env }}/fly.toml deploy
+
+# Create a new NocoDB instance
+create-nocodb env:
+  fly -c ./infra/environments/{{ env }}/fly.toml launch --org sparklefish --copy-config --no-deploy --yes
