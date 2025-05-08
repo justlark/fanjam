@@ -1,7 +1,9 @@
-# sparklefish
+# FanJam
 
-Sparklefish is the codename for a yet-to-be-named app designed for con
-organizers and attendees to make organizing and navigating cons easier.
+FanJam is an app that makes organizing conventions easier. Con organizers have
+a shared dashboard where they can schedule panels, assign rooms, and make
+announcements, and that information is shared with attendees in real time via a
+web app.
 
 ## Stack
 
@@ -31,6 +33,9 @@ of recipes.
 There are two environments this app can be deployed in: `test` and `prod`.
 You'll need to pass one of these to `just` commands that accept an `env`
 parameter.
+
+This project is referred to by the codename sparklefish throughout the codebase
+and infrastructure.
 
 ## Quirks
 
