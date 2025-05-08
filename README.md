@@ -16,76 +16,21 @@ organizers and attendees to make organizing and navigating cons easier.
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://www.mailersend.com/).
 
-## Setup
+## Development
 
-To build and deploy the app, you'll need to install:
+To work in this repo, you'll need to install:
 
+- [just](https://github.com/casey/just?tab=readme-ov-file#installation)
 - [Rust](https://www.rust-lang.org/tools/install)
 - [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - [flyctl](https://fly.io/docs/flyctl/install/)
 
-## Development
+You can use `just` to build and deploy the app. Run `just --list` to see a list
+of recipes.
 
-Run the client locally:
-
-```
-cd ./client/
-npm install
-npm run dev
-```
-
-Run the server locally:
-
-```
-cd ./server/
-npx wrangler --env test dev --remote
-```
-
-## Deployment
-
-Deploy the server to the test environment:
-
-```shell
-cd ./server/
-npx wrangler deploy --env test
-```
-
-Deploy the server to the prod environment:
-
-```shell
-cd ./server/
-npx wrangler deploy --env prod
-```
-
-Deploy the client to the test environment:
-
-```
-cd ./client/
-npm install
-npm run deploy:test
-```
-
-Deploy the client to the prod environment:
-
-```
-cd ./client/
-npm install
-npm run deploy:prod
-```
-
-Deploy NocoDB to the test environment:
-
-```
-cd ./fly/
-fly -c ./noco-test.toml deploy
-```
-
-Deploy NocoDB to the prod environment:
-
-```
-cd ./fly/
-fly -c ./noco-prod.toml deploy
-```
+There are two environments this app can be deployed in: `test` and `prod`.
+You'll need to pass one of these to `just` commands that accept an `env`
+parameter.
 
 ## Quirks
 
