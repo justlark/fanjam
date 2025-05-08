@@ -79,6 +79,7 @@ struct ByTable<T> {
     rooms: T,
     people: T,
     tags: T,
+    announcements: T,
 }
 
 impl<T> ByTable<T> {
@@ -88,6 +89,7 @@ impl<T> ByTable<T> {
             rooms: f(self.rooms),
             people: f(self.people),
             tags: f(self.tags),
+            announcements: f(self.announcements),
         }
     }
 }
@@ -211,8 +213,15 @@ impl Client {
 
         let mut tables = ByTable::<Option<TableId>>::default();
 
-        // We must specify the "display field" here when we create the table. Subsequent fields can
-        // be added later.
+        // NocoDB has a concept of a "display field", which is the field that appears in the UI as
+        // the short representation of a table row. Setting the display field after we create the
+        // table is annoying and requires additional API calls, so we implicitly set it here
+        // instead. When adding fields at table creation, the first field automatically becomes the
+        // display field.
+        //
+        // We create the rest of the fields elsewhere, because they need to be created in a
+        // specific order and after all the tables have been created so that we can set up the
+        // links between them while controlling the field order within each table.
         let requests = vec![
             TableRequest {
                 body: json!({
@@ -270,6 +279,20 @@ impl Client {
 
                 }),
                 table_id: &mut tables.tags,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Announcements",
+                    "description": "Announcements that are sent to attendees.",
+                    "fields": [
+                        {
+                            "title": "Title",
+                            "type": "SingleLineText",
+                            "description": "The title of the announcement."
+                        }
+                    ]
+                }),
+                table_id: &mut tables.announcements,
             },
         ];
 
@@ -411,6 +434,45 @@ impl Client {
                         "relation_type": "mm",
                         "linked_table_id": &tables.schedule
                     }
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.announcements,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Announcement",
+                    "type": "LongText",
+                    "description": "The announcement itself.",
+                    "options": {
+                        "rich_text": true
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.announcements,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Files",
+                    "type": "Attachment",
+                    "description": "Attach images or other files with the announcement."
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.announcements,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Created",
+                    "type": "CreatedAt",
+                    "description": "When this announcement was first created.",
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.announcements,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Last Edited",
+                    "type": "LastModifiedAt",
+                    "description": "When this announcement was last edited.",
                 }),
             },
         ];
