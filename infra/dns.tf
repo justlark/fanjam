@@ -1,28 +1,22 @@
-#
-# `ttl = 1` means "automatic".
-#
-
-resource "cloudflare_dns_record" "noco_cname" {
+resource "cloudflare_record" "noco_cname" {
   for_each = local.environments
 
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "CNAME"
   name    = each.value.app_domain
   content = "${each.value.fly_app}.fly.dev"
-  ttl     = 1
   proxied = false
 }
 
-resource "cloudflare_dns_record" "apex_txt_sl_verification" {
+resource "cloudflare_record" "apex_txt_sl_verification" {
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "TXT"
   name    = "@"
   content = "sl-verification=xfmceosgvrookthuefxniybjngiice"
-  ttl     = 1
   proxied = false
 }
 
-resource "cloudflare_dns_record" "apex_mx" {
+resource "cloudflare_record" "apex_mx" {
   for_each = {
     route1 = {
       value    = "mx1.simplelogin.co."
@@ -39,20 +33,18 @@ resource "cloudflare_dns_record" "apex_mx" {
   name     = "@"
   content  = each.value.value
   priority = each.value.priority
-  ttl      = 1
   proxied  = false
 }
 
-resource "cloudflare_dns_record" "apex_txt_spf" {
+resource "cloudflare_record" "apex_txt_spf" {
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "TXT"
   name    = "@"
   content = "v=spf1 include:simplelogin.co ~all"
-  ttl     = 1
   proxied = false
 }
 
-resource "cloudflare_dns_record" "apex_cname_dkim" {
+resource "cloudflare_record" "apex_cname_dkim" {
   for_each = {
     record1 = {
       name  = "dkim._domainkey"
@@ -74,15 +66,13 @@ resource "cloudflare_dns_record" "apex_cname_dkim" {
   type    = "CNAME"
   name    = each.value.name
   content = each.value.value
-  ttl     = 1
   proxied = false
 }
 
-resource "cloudflare_dns_record" "apex_txt_dmarc" {
+resource "cloudflare_record" "apex_txt_dmarc" {
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "TXT"
   name    = "_dmarc"
   content = "v=DMARC1; p=quarantine; pct=100; adkim=s; aspf=s"
-  ttl     = 1
   proxied = false
 }
