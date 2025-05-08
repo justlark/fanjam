@@ -676,7 +676,7 @@ impl Client {
         self.create_views(&fields, &tables).await?;
 
         Ok(Url::parse(&format!(
-            "{}/dashboard/#/nc/{}",
+            "{}dashboard/#/nc/{}",
             self.app_origin, base_id
         ))?)
     }
