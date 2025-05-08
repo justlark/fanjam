@@ -34,8 +34,8 @@ There are two environments this app can be deployed in: `test` and `prod`.
 You'll need to pass one of these to `just` commands that accept an `env`
 parameter.
 
-This project is referred to by the codename sparklefish throughout the codebase
-and infrastructure.
+This project is referred to by the codename "sparklefish" throughout the
+codebase and infrastructure.
 
 ## Quirks
 
