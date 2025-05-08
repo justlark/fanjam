@@ -80,6 +80,9 @@ struct ByTable<T> {
     people: T,
     tags: T,
     announcements: T,
+    about: T,
+    links: T,
+    files: T,
 }
 
 impl<T> ByTable<T> {
@@ -90,6 +93,9 @@ impl<T> ByTable<T> {
             people: f(self.people),
             tags: f(self.tags),
             announcements: f(self.announcements),
+            about: f(self.about),
+            links: f(self.links),
+            files: f(self.files),
         }
     }
 }
@@ -294,6 +300,48 @@ impl Client {
                 }),
                 table_id: &mut tables.announcements,
             },
+            TableRequest {
+                body: json!({
+                    "title": "About",
+                    "description": "Information about the con.",
+                    "fields": [
+                        {
+                            "title": "Con Name",
+                            "type": "SingleLineText",
+                            "description": "The name of the con."
+                        }
+                    ]
+                }),
+                table_id: &mut tables.about,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Links",
+                    "description": "Links to external resources and information.",
+                    "fields": [
+                        {
+                            "title": "Link Name",
+                            "type": "SingleLineText",
+                            "description": "The text of the link."
+                        }
+                    ]
+                }),
+                table_id: &mut tables.links,
+            },
+            TableRequest {
+                body: json!({
+                    "title": "Files",
+                    "description": "Images, documents, etc. to show attendees.",
+                    "fields": [
+                        {
+                            "title": "File Name",
+                            "type": "SingleLineText",
+                            "description": "The name of the file."
+                        }
+                    ]
+                }),
+                table_id: &mut tables.files,
+            },
         ];
 
         #[derive(Debug, Deserialize)]
@@ -462,7 +510,7 @@ impl Client {
                 field_ref: set_nop(),
                 body: json!({
                     "title": "Created",
-                    "type": "CreatedAt",
+                    "type": "CreatedTime",
                     "description": "When this announcement was first created.",
                 }),
             },
@@ -471,8 +519,53 @@ impl Client {
                 field_ref: set_nop(),
                 body: json!({
                     "title": "Last Edited",
-                    "type": "LastModifiedAt",
+                    "type": "LastModifiedTime",
                     "description": "When this announcement was last edited.",
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.about,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Con Description",
+                    "type": "LongText",
+                    "description": "A brief description of the con.",
+                    "options": {
+                        "rich_text": false
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.about,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Website",
+                    "type": "URL",
+                    "description": "A link to the con's website.",
+                    "options": {
+                        "validation": true
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.links,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "URL",
+                    "type": "URL",
+                    "description": "The link URL.",
+                    "options": {
+                        "validation": true
+                    }
+                }),
+            },
+            FieldRequest {
+                table_id: &tables.files,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "File",
+                    "type": "Attachment",
+                    "description": "The image, document, etc. to upload."
                 }),
             },
         ];
