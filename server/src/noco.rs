@@ -119,13 +119,13 @@ type Fields = ByField<FieldId>;
 
 type RefSetter<'a, T> = Box<dyn FnOnce(T) + 'a>;
 
-fn set_ref<'a, T>(value_ref: &'a mut Option<T>) -> Box<dyn FnOnce(T) + 'a> {
+fn set_ref<T>(value_ref: &mut Option<T>) -> RefSetter<T> {
     Box::new(move |id| {
         *value_ref = Some(id);
     })
 }
 
-fn set_nop<T>() -> Box<dyn FnOnce(T)> {
+fn set_nop<T>() -> RefSetter<'static, T> {
     Box::new(|_| {})
 }
 
