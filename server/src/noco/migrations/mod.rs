@@ -1,5 +1,8 @@
 mod common;
-mod noco1;
+mod n1;
+
+// Each base schema migration lives in its own module with the name `nX`, where `X` is the
+// incrementing migration number.
 
 use common::Migration;
 pub use common::{ApiToken, BaseId, Client, Version, init};
@@ -10,10 +13,12 @@ pub enum Outcome {
     Migrated,
 }
 
-// Add new migrations to the list here.
+// New migrations must added to the list here to be applied.
 pub async fn run(client: &Client, base_id: BaseId, version: Version) -> anyhow::Result<Outcome> {
     match version {
-        noco1::Migration::INDEX => noco1::Migration::new(client).migrate(base_id).await?,
+        n1::Migration::INDEX => n1::Migration::new(client).migrate(base_id).await?,
+        // Example:
+        // n2::Migration::INDEX => n2::Migration::new(client).migrate(base_id).await?,
         _ => return Ok(Outcome::AlreadyUpToDate),
     }
 
