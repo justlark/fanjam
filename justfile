@@ -42,7 +42,7 @@ create-env env:
 # generate the configuration for an environment
 [group("manage infrastructure")]
 configure-env env:
-  ./tools/create-env.nu {{ env }}
+  ./tools/configure-env.nu {{ env }}
 
 # generate TLS certificates for an environment
 [group("manage infrastructure")]
