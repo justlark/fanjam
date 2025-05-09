@@ -13,6 +13,8 @@ image = "ghcr.io/justlark/nocodb:latest"
 NC_PUBLIC_URL = "https://playground.fanjam.live"
 NC_S3_BUCKET_NAME = "sparklefish-noco-playground"
 NC_S3_ENDPOINT = "https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/sparklefish-noco-playground"
+NC_INVITE_ONLY_SIGNUP = true
+NC_ADMIN_EMAIL = "system@fanjam.live"
 
 [http_service]
 internal_port = 8080

@@ -14,6 +14,11 @@ output "secrets" {
       # between environments.
       NC_S3_ACCESS_KEY    = var.cloudflare_r2_access_key_id
       NC_S3_ACCESS_SECRET = var.cloudflare_r2_secret_access_key
+
+      # Users are never given this password. We need it to generate an API
+      # token for the sparklefish backend. After that, we shouldn't need it
+      # again.
+      NC_ADMIN_PASSWORD = random_password.noco_admin_password[env].result
     }
   }
   sensitive = true

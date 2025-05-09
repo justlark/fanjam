@@ -13,6 +13,8 @@ def generate_fly_config [app: string, url: string, bucket: string] {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
       NC_S3_ENDPOINT: $"https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/($bucket)",
+      NC_INVITE_ONLY_SIGNUP: true,
+      NC_ADMIN_EMAIL: $"system@($app_base_domain)",
     },
     http_service: {
       internal_port: 8080,
