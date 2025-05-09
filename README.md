@@ -64,18 +64,17 @@ cd ./infra/
 terraform apply
 ```
 
-Get the database connection secrets from Terraform and print them.
+Dump the environment secrets from Terraform.
 
 ```
 cd ./infra/
 terraform output secrets
 ```
 
-Pass those secrets to NocoDB.
+Pass secrets for the environment into NocoDB.
 
 ```
-fly secrets set --app sparklefish-noco-foo NC_DB=pg://<REDACTED>
-fly secrets set --app sparklefish-noco-foo NC_REDIS_URL=redis://<REDACTED>
+fly secrets set --app sparklefish-noco-foo NAME=VALUE
 ```
 
 Deploy NocoDB.

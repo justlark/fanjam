@@ -6,6 +6,14 @@ output "secrets" {
 
       # The extra 's' in the `rediss://` scheme is important.
       NC_REDIS_URL = "rediss://default:${upstash_redis_database.noco[env].password}@${upstash_redis_database.noco[env].endpoint}:${upstash_redis_database.noco[env].port}"
+
+      # Ideally we generate a separate access key for each environment, scoped
+      # to that environment's bucket. However, Cloudflare does not provide an API
+      # for generating S3-compatible access keys. So instead we rely on a single
+      # account-scoped access key that's stored in the Terraform state and shared
+      # between environments.
+      NC_S3_ACCESS_KEY    = var.cloudflare_r2_access_key_id
+      NC_S3_ACCESS_SECRET = var.cloudflare_r2_secret_access_key
     }
   }
   sensitive = true

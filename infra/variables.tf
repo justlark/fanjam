@@ -9,6 +9,17 @@ variable "cloudflare_account_id" {
   description = "Cloudflare account ID"
 }
 
+variable "cloudflare_r2_access_key_id" {
+  type        = string
+  description = "R2 access key ID"
+}
+
+variable "cloudflare_r2_secret_access_key" {
+  type        = string
+  description = "R2 secret access key"
+  sensitive   = true
+}
+
 variable "neon_api_token" {
   type        = string
   description = "Neon API token"
