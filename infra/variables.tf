@@ -19,3 +19,14 @@ variable "neon_org_id" {
   type        = string
   description = "Neon organization ID"
 }
+
+variable "upstash_api_token" {
+  type        = string
+  description = "Upstash API token"
+  sensitive   = true
+}
+
+variable "upstash_account_email" {
+  type        = string
+  description = "Upstash account email"
+}
