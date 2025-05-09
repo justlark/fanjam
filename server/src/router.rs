@@ -1,10 +1,14 @@
-use axum::{Json, Router, response::ErrorResponse, routing::post};
+use std::{fmt, sync::Arc};
+
+use axum::{Json, Router, extract::State, response::ErrorResponse, routing::post};
 use reqwest::{StatusCode, Url};
-use worker::console_error;
+use worker::{console_error, kv::KvStore};
 
 use crate::{
     api::{PostBaseRequest, PostBaseResponse},
     config,
+    env::new_env_id,
+    kv,
     noco::{self, ApiToken},
 };
 
@@ -15,26 +19,52 @@ fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> Erro
     }
 }
 
-pub fn new() -> Router {
-    Router::new().route("/bases", post(post_base))
+pub struct AppState {
+    pub kv: KvStore,
+}
+
+impl fmt::Debug for AppState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppState").finish_non_exhaustive()
+    }
+}
+
+pub fn new(state: AppState) -> Router {
+    Router::new()
+        .route("/bases", post(post_base))
+        .with_state(Arc::new(state))
 }
 
 #[axum::debug_handler]
 async fn post_base(
+    State(state): State<Arc<AppState>>,
     Json(body): Json<PostBaseRequest>,
 ) -> Result<Json<PostBaseResponse>, ErrorResponse> {
+    let env_id = new_env_id();
+    let api_token = ApiToken::from(body.api_token);
+
+    kv::put_api_token(&state.kv, &env_id, api_token.clone())
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
     let base_domain = config::base_domain();
-    let app_origin = Url::parse(&format!("https://{}.{}", body.app_domain, base_domain))
+    let client_domain = config::client_domain();
+
+    let dash_origin = Url::parse(&format!("https://{}.{}", body.dash_domain, base_domain))
         .map_err(to_status(StatusCode::BAD_REQUEST))?;
 
-    let client = noco::Client::new(app_origin, ApiToken::from(body.api_token));
+    let client = noco::Client::new(dash_origin, api_token);
 
-    let base_url = client
+    let dash_url = client
         .setup_base(body.title)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
+    let app_url = Url::parse(&format!("https://{}/app/?id={}", client_domain, env_id))
+        .map_err(to_status(StatusCode::BAD_REQUEST))?;
+
     Ok(Json(PostBaseResponse {
-        url: base_url.to_string(),
+        dash_url: dash_url.to_string(),
+        app_url: app_url.to_string(),
     }))
 }

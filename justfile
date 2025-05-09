@@ -13,7 +13,7 @@ run-client: _install-client
 [group("test locally")]
 [working-directory: "./server/"]
 run-server:
-  npx wrangler --env test dev --remote
+  npx wrangler --env test dev
 
 # deploy the client
 [working-directory: "./client/"]

@@ -10,16 +10,28 @@ command = "cargo install -q worker-build && worker-build --release"
 
 [env.test.vars]
 BASE_DOMAIN = "fanjam.live"
+CLIENT_DOMAIN = "preview.fanjam.live"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
 custom_domain = true
 
+[[env.test.kv_namespaces]]
+binding = "KV"
+id = "0afa0089d1f14e0c907f68b5dba8db90"
+preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
 [env.prod]
 
 [env.prod.vars]
 BASE_DOMAIN = "fanjam.live"
+CLIENT_DOMAIN = "fanjam.live"
 
 [env.prod.route]
 pattern = "api.fanjam.live"
 custom_domain = true
+
+[[env.prod.kv_namespaces]]
+binding = "KV"
+id = "c36821103a5045fc9de6baad28623928"
+preview_id = "0afa0089d1f14e0c907f68b5dba8db90"

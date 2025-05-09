@@ -1,8 +1,11 @@
 mod api;
 mod config;
+mod env;
+mod kv;
 mod noco;
 mod router;
 
+use router::AppState;
 use tower_service::Service;
 use worker::*;
 
@@ -16,5 +19,7 @@ async fn fetch(
 
     config::init(&env).expect("failed to initialize config");
 
-    Ok(router::new().call(req).await?)
+    let state = AppState { kv: env.kv("KV")? };
+
+    Ok(router::new(state).call(req).await?)
 }

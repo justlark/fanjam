@@ -71,6 +71,12 @@ impl From<String> for ApiToken {
     }
 }
 
+impl ExposeSecret<str> for ApiToken {
+    fn expose_secret(&self) -> &str {
+        self.0.expose_secret()
+    }
+}
+
 #[derive(Debug, Default)]
 struct ByTable<T> {
     schedule: T,
@@ -155,15 +161,15 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
 #[derive(Debug)]
 pub struct Client {
     client: reqwest::Client,
-    app_origin: Url,
+    dash_origin: Url,
     api_token: ApiToken,
 }
 
 impl Client {
-    pub fn new(app_origin: Url, api_token: ApiToken) -> Self {
+    pub fn new(dash_origin: Url, api_token: ApiToken) -> Self {
         Self {
             client: reqwest::Client::new(),
-            app_origin,
+            dash_origin,
             api_token,
         }
     }
@@ -173,13 +179,13 @@ impl Client {
 
     fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .request(method, format!("{}api/v2{}", self.app_origin, path))
+            .request(method, format!("{}api/v2{}", self.dash_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 
     fn build_request_v3(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .request(method, format!("{}api/v3{}", self.app_origin, path))
+            .request(method, format!("{}api/v3{}", self.dash_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 
@@ -677,7 +683,7 @@ impl Client {
 
         Ok(Url::parse(&format!(
             "{}dashboard/#/nc/{}",
-            self.app_origin, base_id
+            self.dash_origin, base_id
         ))?)
     }
 }
