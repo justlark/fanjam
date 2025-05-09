@@ -46,7 +46,7 @@ These are the instructions for deploying a new instance of FanJam at
 Start by generating the necessary configuration for the environment.
 
 ```
-just generate-env-config foo
+just configure-env foo
 ```
 
 This will generate some files. Check them into the repo.
@@ -54,7 +54,7 @@ This will generate some files. Check them into the repo.
 Create a new app in Fly.io for the NocoDB instance.
 
 ```
-just create-nocodb foo
+just create-env foo
 ```
 
 Deploy the supporting infrastructure using Terraform.
@@ -80,11 +80,11 @@ fly secrets set --app sparklefish-noco-foo NAME=VALUE
 Deploy NocoDB.
 
 ```
-just deploy-nocodb foo
+just deploy-env foo
 ```
 
 Configure TLS certificates for NocoDB.
 
 ```
-fly certs add --app sparklefish-noco-foo foo.fanjam.live
+just configure-certs foo
 ```

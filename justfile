@@ -29,17 +29,22 @@ deploy-client stage: _install-client
 deploy-server stage:
   npx wrangler deploy --env {{ stage }}
 
-# redeploy an existing NocoDB instance
+# deploy an existing NocoDB instance
 [group("manage infrastructure")]
-deploy-nocodb env:
+deploy-env env:
   fly -c ./infra/environments/{{ env }}/fly.toml deploy
 
 # create a new NocoDB instance
 [group("manage infrastructure")]
-create-nocodb env:
+create-env env:
   fly -c ./infra/environments/{{ env }}/fly.toml launch --org sparklefish --copy-config --no-deploy --yes
 
-# generate the configuration for a new environment
+# generate the configuration for an environment
 [group("manage infrastructure")]
-generate-env-config env:
+configure-env env:
   ./tools/create-env.nu {{ env }}
+
+# generate TLS certificates for an environment
+[group("manage infrastructure")]
+configure-certs env:
+  fly certs add --app sparklefish-noco-{{ env }} {{ env }}.fanjam.live

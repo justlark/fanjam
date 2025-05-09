@@ -7,6 +7,6 @@ locals {
 resource "random_password" "noco_admin_password" {
   for_each = local.environments
 
-  length  = 24
+  length  = 20
   special = false
 }
