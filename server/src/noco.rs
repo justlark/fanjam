@@ -489,6 +489,15 @@ impl Client {
                 }),
             },
             FieldRequest {
+                table_id: &tables.schedule,
+                field_ref: set_nop(),
+                body: json!({
+                    "title": "Hidden",
+                    "type": "Checkbox",
+                    "description": "Hide this event from attendees. When checked, this event won't appear on the schedule."
+                }),
+            },
+            FieldRequest {
                 table_id: &tables.announcements,
                 field_ref: set_nop(),
                 body: json!({
