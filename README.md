@@ -63,7 +63,8 @@ Start by generating the necessary configuration for the environment.
 just configure-env foo
 ```
 
-This will generate some files. Check them into the repo.
+This will generate some files, which can be edited as necessary. Check them
+into the repo.
 
 Create a new app in Fly.io for the NocoDB instance.
 
@@ -75,20 +76,14 @@ Deploy the supporting infrastructure using Terraform.
 
 ```
 cd ./infra/
+terraform plan
 terraform apply
-```
-
-Dump the environment secrets from Terraform.
-
-```
-cd ./infra/
-terraform output secrets
 ```
 
 Pass secrets for the environment into NocoDB.
 
 ```
-fly secrets set --app sparklefish-noco-foo NAME=VALUE
+just configure-secrets foo
 ```
 
 Deploy NocoDB.

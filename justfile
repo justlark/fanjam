@@ -29,20 +29,25 @@ deploy-client stage: _install-client
 deploy-server stage:
   npx wrangler deploy --env {{ stage }}
 
-# deploy an existing NocoDB instance
+# generate the configuration for an environment
 [group("manage infrastructure")]
-deploy-env env:
-  fly -c ./infra/environments/{{ env }}/fly.toml deploy
+configure-env env:
+  ./tools/configure-env.nu {{ env }}
 
 # create a new NocoDB instance
 [group("manage infrastructure")]
 create-env env:
   fly -c ./infra/environments/{{ env }}/fly.toml launch --org sparklefish --copy-config --no-deploy --yes
 
-# generate the configuration for an environment
+# pass secrets to the NocoDB instance
 [group("manage infrastructure")]
-configure-env env:
-  ./tools/configure-env.nu {{ env }}
+configure-secrets env:
+  ./tools/configure-secrets.nu {{ env }}
+
+# deploy an existing NocoDB instance
+[group("manage infrastructure")]
+deploy-env env:
+  fly -c ./infra/environments/{{ env }}/fly.toml deploy
 
 # generate TLS certificates for an environment
 [group("manage infrastructure")]
