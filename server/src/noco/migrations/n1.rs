@@ -342,7 +342,10 @@ impl Migration<'_> {
                 body: json!({
                     "title": "Hidden",
                     "type": "Checkbox",
-                    "description": "Hide this event from attendees. When checked, this event won't appear on the schedule."
+                    "description": "Hide this event from attendees. When checked, this event won't appear on the schedule.",
+                    "options": {
+                        "icon": "square"
+                    }
                 }),
             },
             FieldRequest {
