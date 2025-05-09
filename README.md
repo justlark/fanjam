@@ -20,12 +20,17 @@ web app.
 
 ## Development
 
-To work in this repo, you'll need to install:
+To build and run the app, you'll need to install:
 
 - [just](https://github.com/casey/just?tab=readme-ov-file#installation)
 - [Rust](https://www.rust-lang.org/tools/install)
 - [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+
+To deploy the app, you'll additionally need to install:
+
+- [Nu](https://www.nushell.sh/book/installation.html)
 - [flyctl](https://fly.io/docs/flyctl/install/)
+- [Terraform](https://developer.hashicorp.com/terraform/install)
 
 You can use `just` to build and deploy the app. Run `just --list` to see a list
 of recipes.
@@ -33,21 +38,54 @@ of recipes.
 This project is referred to by the codename "sparklefish" throughout the
 codebase and infrastructure.
 
-## Quirks
+## Deployment
 
-When setting up NocoDB, there are some quirks with the Redis and Postgres
-connection strings that are not addressed in the NocoDB documentation.
+These are the instructions for deploying a new instance of FanJam at
+`https://foo.fanjam.live`.
 
-The Postgres connection string should look like this. The `ssl=true` is
-necessary for NocoDB to talk to Neon.
-
-```
-pg://DOMAIN:PORT?u=USER&p=PASSWORD&d=DATABASE&ssl=true
-```
-
-The Redis connection string should look like this. The `family=6` is necessary
-for NocoDB to talk to Upstash.
+Start by generating the necessary configuration for the environment.
 
 ```
-redis://USER:PASSWORD@DOMAIN:PORT/?family=6
+just generate-env-config foo
+```
+
+This will generate some files. Check them into the repo.
+
+Create a new app in Fly.io for the NocoDB instance.
+
+```
+just create-nocodb foo
+```
+
+Deploy the supporting infrastructure using Terraform.
+
+```
+cd ./infra/
+terraform apply
+```
+
+Get the database connection secrets from Terraform and print them.
+
+```
+cd ./infra/
+terraform output secrets
+```
+
+Pass those secrets to NocoDB.
+
+```
+fly secrets set --app sparklefish-noco-foo NC_DB=pg://<REDACTED>
+fly secrets set --app sparklefish-noco-foo NC_REDIS_URL=redis://<REDACTED>
+```
+
+Deploy NocoDB.
+
+```
+just deploy-nocodb foo
+```
+
+Configure TLS certificates for NocoDB.
+
+```
+fly certs add --app sparklefish-noco-foo foo.fanjam.live
 ```

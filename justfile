@@ -30,3 +30,7 @@ deploy-nocodb env:
 # Create a new NocoDB instance
 create-nocodb env:
   fly -c ./infra/environments/{{ env }}/fly.toml launch --org sparklefish --copy-config --no-deploy --yes
+
+# Generate the configuration for a new environment
+generate-env-config env:
+  ./tools/create-env.nu {{ env }}
