@@ -5,6 +5,7 @@ pub struct PostBaseRequest {
     pub title: String,
     pub dash_domain: String,
     pub api_token: String,
+    pub email: String,
 }
 
 #[derive(Debug, Serialize)]

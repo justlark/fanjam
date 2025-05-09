@@ -674,12 +674,38 @@ impl Client {
         Ok(())
     }
 
+    async fn add_user(&self, base_id: &BaseId, initial_user_email: String) -> anyhow::Result<()> {
+        let resp = self
+            .build_request_v3(Method::POST, &format!("/meta/bases/{}/users", base_id))
+            .json(&json!({
+                "email": initial_user_email,
+                "base_role": "editor",
+            }))
+            .send()
+            .await?;
+
+        check_status(resp).await?;
+
+        console_log!(
+            "Added user `{}` to Noco base `{}`",
+            initial_user_email,
+            base_id
+        );
+
+        Ok(())
+    }
+
     #[worker::send]
-    pub async fn setup_base(&self, title: String) -> anyhow::Result<Url> {
+    pub async fn setup_base(
+        &self,
+        title: String,
+        initial_user_email: String,
+    ) -> anyhow::Result<Url> {
         let base_id = self.create_base(title).await?;
         let tables = self.create_tables(&base_id).await?;
         let fields = self.create_fields(&tables).await?;
         self.create_views(&fields, &tables).await?;
+        self.add_user(&base_id, initial_user_email).await?;
 
         Ok(Url::parse(&format!(
             "{}dashboard/#/nc/{}",

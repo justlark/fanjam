@@ -10,10 +10,9 @@ def main [stage_name: string, env_name: string] {
     }
   }
 
-  let title = input "Enter the human-readable name of the environment: "
-  let api_token = input --suppress-output "Enter the NocoDB API token: "
-
-  print
+  let title = input "Enter the user-facing name of the environment: "
+  let email = input "Enter the email address of the initial user: "
+  let api_token = input "Enter the NocoDB API token: "
 
   let repo_path = $env.FILE_PWD | path dirname
   let env_file = $repo_path | path join "infra" "environments" $env_name "env.yaml"
@@ -23,6 +22,7 @@ def main [stage_name: string, env_name: string] {
     title: $title,
     dash_domain: $app_domain,
     api_token: $api_token,
+    email: $email,
   }
 
   let api_endpoint = $"($api_base)/bases"

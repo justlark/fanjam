@@ -56,7 +56,7 @@ async fn post_base(
     let client = noco::Client::new(dash_origin, api_token);
 
     let dash_url = client
-        .setup_base(body.title)
+        .setup_base(body.title, body.email)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
