@@ -58,3 +58,8 @@ configure-certs env:
 [group("manage infrastructure")]
 get-creds env:
   ./tools/get-creds.nu {{ env }}
+
+# initialize a NocoDB instance with a new base
+[group("manage infrastructure")]
+setup-env stage env:
+  ./tools/setup-env.nu {{ stage }} {{ env }}
