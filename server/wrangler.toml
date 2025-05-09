@@ -6,6 +6,9 @@ compatibility_date = "2025-05-06"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
+[observability]
+enabled = true
+
 [env.test]
 
 [env.test.vars]
