@@ -1,81 +1,16 @@
-use std::fmt::{self, Display};
+use std::fmt;
 
-use reqwest::{Method, Url};
-use secrecy::{ExposeSecret, SecretString};
-use serde::{Deserialize, Serialize};
+use reqwest::Method;
+use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
-const DATE_FORMAT: &str = "YYYY-MM-DD";
-const TIME_FORMAT: &str = "HH:mm";
-const IS_TIME_12HR: bool = true;
+use super::common::{
+    DATE_FORMAT, IS_TIME_12HR, NocoViewType, RefSetter, TIME_FORMAT, ViewId, check_status, set_nop,
+    set_ref,
+};
 
-#[derive(Debug, Clone, Copy)]
-enum NocoViewType {
-    Calendar,
-}
-
-impl NocoViewType {
-    fn code(&self) -> u32 {
-        match self {
-            NocoViewType::Calendar => 6,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-struct BaseId(String);
-
-impl Display for BaseId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-struct TableId(String);
-
-impl Display for TableId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-struct FieldId(String);
-
-impl Display for FieldId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-struct ViewId(String);
-
-impl Display for ViewId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ApiToken(SecretString);
-
-impl From<String> for ApiToken {
-    fn from(api_token: String) -> Self {
-        Self(SecretString::from(api_token))
-    }
-}
-
-impl ExposeSecret<str> for ApiToken {
-    fn expose_secret(&self) -> &str {
-        self.0.expose_secret()
-    }
-}
+use super::common::{self, BaseId, Client, FieldId, TableId, Version};
 
 #[derive(Debug, Default)]
 struct ByTable<T> {
@@ -121,99 +56,11 @@ impl<T> ByField<T> {
 
 type Fields = ByField<FieldId>;
 
-type RefSetter<'a, T> = Box<dyn FnOnce(T) + 'a>;
-
-fn set_ref<T>(value_ref: &mut Option<T>) -> RefSetter<T> {
-    Box::new(move |id| {
-        *value_ref = Some(id);
-    })
+pub struct Migration<'a> {
+    client: &'a Client,
 }
 
-fn set_nop<T>() -> RefSetter<'static, T> {
-    Box::new(|_| {})
-}
-
-async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
-    #[derive(Debug, Deserialize)]
-    struct ErrorResponse {
-        msg: String,
-        errors: Option<serde_json::Value>,
-    }
-
-    let status = resp.status();
-    let url = resp.url().to_string();
-
-    if status.is_client_error() || status.is_server_error() {
-        let resp = resp.json::<ErrorResponse>().await?;
-
-        return Err(anyhow::anyhow!(
-            "Error: {} for ({}) with message ({})\n{}",
-            status,
-            url,
-            resp.msg,
-            resp.errors.unwrap_or_default(),
-        ));
-    }
-
-    Ok(resp)
-}
-
-#[derive(Debug)]
-pub struct Client {
-    client: reqwest::Client,
-    dash_origin: Url,
-    api_token: ApiToken,
-}
-
-impl Client {
-    pub fn new(dash_origin: Url, api_token: ApiToken) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            dash_origin,
-            api_token,
-        }
-    }
-
-    // We're building this on top of the new v3 API, but we still need to fall back to the v2 API
-    // for some operations that are not yet supported in v3.
-
-    fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .request(method, format!("{}api/v2{}", self.dash_origin, path))
-            .header("Xc-Token", self.api_token.0.expose_secret())
-    }
-
-    fn build_request_v3(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .request(method, format!("{}api/v3{}", self.dash_origin, path))
-            .header("Xc-Token", self.api_token.0.expose_secret())
-    }
-
-    async fn create_base(&self, title: String) -> anyhow::Result<BaseId> {
-        let resp = self
-            .build_request_v2(Method::POST, "/meta/bases")
-            .json(&json!({
-                "title": title
-            }))
-            .send()
-            .await?;
-
-        #[derive(Debug, Deserialize)]
-        struct PostBaseResponse {
-            id: BaseId,
-        }
-
-        let base_id = check_status(resp)
-            .await?
-            .json::<PostBaseResponse>()
-            .await?
-            .id;
-
-        console_log!("Created Noco base `{}` with ID `{}`", title, base_id);
-
-        Ok(base_id)
-    }
-
+impl Migration<'_> {
     async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<Tables> {
         #[derive(Debug)]
         struct TableRequest<'a> {
@@ -355,6 +202,7 @@ impl Client {
 
         for request in requests {
             let resp = self
+                .client
                 .build_request_v3(Method::POST, &format!("/meta/bases/{}/tables", base_id))
                 .json(&request.body)
                 .send()
@@ -590,6 +438,7 @@ impl Client {
 
         for request in requests {
             let resp = self
+                .client
                 .build_request_v3(
                     Method::POST,
                     &format!("/meta/tables/{}/fields", request.table_id),
@@ -631,6 +480,7 @@ impl Client {
         }
 
         let resp = self
+            .client
             .build_request_v2(
                 Method::POST,
                 &format!("/meta/tables/{}/calendars", tables.schedule),
@@ -668,6 +518,7 @@ impl Client {
 
         for view_id in lock_requests {
             let resp = self
+                .client
                 .build_request_v2(Method::PATCH, &format!("/meta/views/{}", view_id))
                 .json(&json!({
                     "lock_type": "locked",
@@ -682,43 +533,20 @@ impl Client {
 
         Ok(())
     }
+}
 
-    async fn add_user(&self, base_id: &BaseId, initial_user_email: String) -> anyhow::Result<()> {
-        let resp = self
-            .build_request_v3(Method::POST, &format!("/meta/bases/{}/users", base_id))
-            .json(&json!({
-                "email": initial_user_email,
-                "base_role": "editor",
-            }))
-            .send()
-            .await?;
+impl<'a> common::Migration<'a> for Migration<'a> {
+    const INDEX: Version = Version::INITIAL.next();
 
-        check_status(resp).await?;
-
-        console_log!(
-            "Added user `{}` to Noco base `{}`",
-            initial_user_email,
-            base_id
-        );
-
-        Ok(())
+    fn new(client: &'a Client) -> Self {
+        Self { client }
     }
 
-    #[worker::send]
-    pub async fn setup_base(
-        &self,
-        title: String,
-        initial_user_email: String,
-    ) -> anyhow::Result<Url> {
-        let base_id = self.create_base(title).await?;
+    async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {
         let tables = self.create_tables(&base_id).await?;
         let fields = self.create_fields(&tables).await?;
         self.create_views(&fields, &tables).await?;
-        self.add_user(&base_id, initial_user_email).await?;
 
-        Ok(Url::parse(&format!(
-            "{}dashboard/#/nc/{}",
-            self.dash_origin, base_id
-        ))?)
+        Ok(())
     }
 }

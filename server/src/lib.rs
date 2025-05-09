@@ -4,6 +4,7 @@ mod env;
 mod kv;
 mod noco;
 mod router;
+mod url;
 
 use router::AppState;
 use tower_service::Service;

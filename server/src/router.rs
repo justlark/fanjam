@@ -1,15 +1,15 @@
 use std::{fmt, sync::Arc};
 
 use axum::{Json, Router, extract::State, response::ErrorResponse, routing::post};
-use reqwest::{StatusCode, Url};
+use reqwest::StatusCode;
 use worker::{console_error, kv::KvStore};
 
 use crate::{
     api::{PostBaseRequest, PostBaseResponse},
-    config,
     env::new_env_id,
     kv,
-    noco::{self, ApiToken},
+    noco::{self, ApiToken, ExistingMigrationState, MigrationState},
+    url,
 };
 
 fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> ErrorResponse {
@@ -47,21 +47,20 @@ async fn post_base(
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let base_domain = config::base_domain();
-    let client_domain = config::client_domain();
+    let dash_origin =
+        url::dash_origin(&body.dash_domain).map_err(to_status(StatusCode::BAD_REQUEST))?;
 
-    let dash_origin = Url::parse(&format!("https://{}.{}", body.dash_domain, base_domain))
-        .map_err(to_status(StatusCode::BAD_REQUEST))?;
+    let client = noco::Client::new(dash_origin.clone(), api_token);
+    let migration_state = MigrationState::new(body.title, body.email);
 
-    let client = noco::Client::new(dash_origin, api_token);
-
-    let dash_url = client
-        .setup_base(body.title, body.email)
+    let ExistingMigrationState { base_id, .. } = noco::migrate(&client, migration_state)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let app_url = Url::parse(&format!("https://{}/app/?id={}", client_domain, env_id))
-        .map_err(to_status(StatusCode::BAD_REQUEST))?;
+    let dash_url = url::dash_url(dash_origin, base_id)
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    let app_url = url::app_url(env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(Json(PostBaseResponse {
         dash_url: dash_url.to_string(),
