@@ -5,11 +5,14 @@ a shared dashboard where they can schedule panels, assign rooms, and make
 announcements, and that information is shared with attendees in real time via a
 web app.
 
-## Stack
+## Architecture
 
 - The client is written in Vue and TypeScript and hosted on [Cloudflare
   Workers](https://developers.cloudflare.com/workers/).
-- The backend is written in Rust and hosted on Cloudflare Workers.
+- The backend is a serverless function written in Rust and hosted on Cloudflare
+  Workers.
+- The storage provider for the backend is [Cloudflare Workers
+  KV](https://developers.cloudflare.com/kv/).
 - The database and interface for con organizers is provided by a
   [NocoDB](https://nocodb.com/) instance hosted on [Fly.io](https://fly.io/).
 - The Postgres provider for NocoDB is [Neon](https://neon.tech).
@@ -17,6 +20,13 @@ web app.
 - The object storage provider for NocoDB is [Cloudflare
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://www.mailersend.com/).
+
+FanJam is single-tenant, meaning we have a separate NocoDB instance, Postgres
+cluster, Redis database, and R2 bucket per tenant environment.
+
+We have a single deployment of the frontend and a single deployment of the
+backend which are shared across tenant environments. We have separate `prod`
+and `test` deployments of each.
 
 ## Development
 
@@ -34,6 +44,10 @@ To deploy the app, you'll additionally need to install:
 
 You can use `just` to build and deploy the app. Run `just --list` to see a list
 of recipes.
+
+`just` commands that accept a `stage` accept either `prod` or `test`. This is
+for infrastructure that is shared between tenant environments. `just` commands
+that accept an `env` accept the name of a tenant environment.
 
 This project is referred to by the codename "sparklefish" throughout the
 codebase and infrastructure.
