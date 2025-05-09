@@ -236,7 +236,7 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Schedule",
-                    "description": "The con schedule.",
+                    "description": "The con schedule. Events here will appear on the schedule for attendees.",
                     "fields": [
                         {
                             "title": "Event Name",
@@ -250,12 +250,12 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Rooms",
-                    "description": "The rooms at the con.",
+                    "description": "The rooms at the venue. Assign each event to a room, and see which events are being held in each room.",
                     "fields": [
                         {
                             "title": "Room",
                             "type": "SingleLineText",
-                            "description": "The room where the event is being held."
+                            "description": "The name of the room where the event is being held."
                         }
                     ]
                 }),
@@ -264,12 +264,12 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "People",
-                    "description": "People hosting events at the con.",
+                    "description": "People hosting events at the con. Panelists, presenters, etc. Assign people to events, and see which events are being hosted by whom.",
                     "fields": [
                         {
                             "title": "Name",
                             "type": "SingleLineText",
-                            "description": "The name of the person hosting an event."
+                            "description": "The person's name."
                         }
                     ]
                 }),
@@ -278,12 +278,12 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Tags",
-                    "description": "Tags for events.",
+                    "description": "Tags for events. Label events with tags to help attendees find what they're looking for. You could group events into categories, tag some events as 18+, flag events that cost extra, etc.",
                     "fields": [
                         {
                             "title": "Tag",
                             "type": "SingleLineText",
-                            "description": "The name of the tag."
+                            "description": "The label to apply to the event."
                         }
                     ]
 
@@ -293,7 +293,7 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Announcements",
-                    "description": "Announcements that are sent to attendees.",
+                    "description": "Announcements to send to attendees. Make an announcement, and attendees can see them in the app.",
                     "fields": [
                         {
                             "title": "Title",
@@ -307,12 +307,12 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "About",
-                    "description": "Information about the con.",
+                    "description": "General information about the con. If you have multiple rows in this table, the most recent one is what will be shown in the app.",
                     "fields": [
                         {
                             "title": "Con Name",
                             "type": "SingleLineText",
-                            "description": "The name of the con."
+                            "description": "The name of the con, which appears in the app."
                         }
                     ]
                 }),
@@ -321,12 +321,12 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Links",
-                    "description": "Links to external resources and information.",
+                    "description": "Links to external resources and information which attendees can view the app.",
                     "fields": [
                         {
                             "title": "Link Name",
                             "type": "SingleLineText",
-                            "description": "The text of the link."
+                            "description": "The link text."
                         }
                     ]
                 }),
@@ -335,7 +335,7 @@ impl Client {
             TableRequest {
                 body: json!({
                     "title": "Files",
-                    "description": "Images, documents, etc. to show attendees.",
+                    "description": "Images, documents, etc. which attendees can view the app.",
                     "fields": [
                         {
                             "title": "File Name",
@@ -446,7 +446,7 @@ impl Client {
                 body: json!({
                     "title": "Events",
                     "type": "Links",
-                    "description": "The events being held in this room.",
+                    "description": "The list of events being held in this room.",
                     "options": {
                         "relation_type": "hm",
                         "linked_table_id": &tables.schedule
@@ -468,7 +468,7 @@ impl Client {
                 body: json!({
                     "title": "Events",
                     "type": "Links",
-                    "description": "The events this person is hosting.",
+                    "description": "The list of events this person is hosting.",
                     "options": {
                         "relation_type": "mm",
                         "linked_table_id": &tables.schedule
@@ -481,7 +481,7 @@ impl Client {
                 body: json!({
                     "title": "Events",
                     "type": "Links",
-                    "description": "The events with this tag.",
+                    "description": "The list of events with this tag.",
                     "options": {
                         "relation_type": "mm",
                         "linked_table_id": &tables.schedule
@@ -503,7 +503,7 @@ impl Client {
                 body: json!({
                     "title": "Announcement",
                     "type": "LongText",
-                    "description": "The announcement itself.",
+                    "description": "The text of the announcement itself.",
                     "options": {
                         "rich_text": true
                     }
@@ -515,7 +515,7 @@ impl Client {
                 body: json!({
                     "title": "Files",
                     "type": "Attachment",
-                    "description": "Attach images or other files with the announcement."
+                    "description": "Attach images or other files to be shown alongside the announcement."
                 }),
             },
             FieldRequest {
@@ -542,7 +542,7 @@ impl Client {
                 body: json!({
                     "title": "Con Description",
                     "type": "LongText",
-                    "description": "A brief description of the con.",
+                    "description": "A brief description of the con, which appears in the app.",
                     "options": {
                         "rich_text": false
                     }
@@ -554,7 +554,7 @@ impl Client {
                 body: json!({
                     "title": "Website",
                     "type": "URL",
-                    "description": "A link to the con's website.",
+                    "description": "A link to the con's website, which appears in the app.",
                     "options": {
                         "validation": true
                     }
