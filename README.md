@@ -97,3 +97,9 @@ Configure TLS certificates for NocoDB.
 ```
 just configure-certs foo
 ```
+
+View the NocoDB system user login credentials for the new environment:
+
+```
+just get-creds foo
+```

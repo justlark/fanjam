@@ -53,3 +53,8 @@ deploy-env env:
 [group("manage infrastructure")]
 configure-certs env:
   fly -c ./infra/environments/{{ env }}/fly.yaml certs add {{ env }}.fanjam.live
+
+# get the system user login credentials for an environment
+[group("manage infrastructure")]
+get-creds env:
+  ./tools/get-creds.nu {{ env }}
