@@ -37,7 +37,7 @@ configure-env env:
 # create a new NocoDB instance
 [group("manage infrastructure")]
 create-env env:
-  fly -c ./infra/environments/{{ env }}/fly.toml launch --org sparklefish --copy-config --no-deploy --yes
+  fly -c ./infra/environments/{{ env }}/fly.yaml launch --org sparklefish --copy-config --yaml --no-deploy --yes
 
 # pass secrets to the NocoDB instance
 [group("manage infrastructure")]
@@ -47,9 +47,9 @@ configure-secrets env:
 # deploy an existing NocoDB instance
 [group("manage infrastructure")]
 deploy-env env:
-  fly -c ./infra/environments/{{ env }}/fly.toml deploy
+  fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # generate TLS certificates for an environment
 [group("manage infrastructure")]
 configure-certs env:
-  fly certs add --app sparklefish-noco-{{ env }} {{ env }}.fanjam.live
+  fly -c ./infra/environments/{{ env }}/fly.yaml certs add {{ env }}.fanjam.live

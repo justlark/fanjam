@@ -2,7 +2,7 @@
 
 const app_base_domain = "fanjam.live"
 
-def generate_fly_config [app: string, url: string, bucket: string] {
+def generate-fly-config [app: string, url: string, bucket: string] {
   {
     app: $app,
     primary_region: "bos",
@@ -13,7 +13,7 @@ def generate_fly_config [app: string, url: string, bucket: string] {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
       NC_S3_ENDPOINT: $"https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/($bucket)",
-      NC_INVITE_ONLY_SIGNUP: true,
+      NC_INVITE_ONLY_SIGNUP: "true",
       NC_ADMIN_EMAIL: $"system@($app_base_domain)",
     },
     http_service: {
@@ -34,14 +34,28 @@ def generate_fly_config [app: string, url: string, bucket: string] {
   }
 }
 
+def generate-app-name [env_name: string] {
+  # Fly.io app names must be all lowercase.
+  let chars = "abcdefghijklmnopqrstuvwxyz"
+  let random_len = 6
+  let random_str = seq 1 $random_len | each { $chars | split chars | shuffle | get 0 } | str join
+
+  $"sparklefish-noco-($env_name)-($random_str)"
+}
+
 def main [env_name: string] {
   let repo_path = $env.FILE_PWD | path dirname
   let env_path = $repo_path | path join "infra" "environments" $env_name
 
   let env_file = $env_path | path join "env.yaml"
-  let fly_file = $env_path | path join "fly.toml"
+  let fly_file = $env_path | path join "fly.yaml"
 
-  let fly_app_name = $"sparklefish-noco-($env_name)"
+  let fly_app_name = if ($env_file | path exists) {
+    open $env_file | get fly_app
+  } else {
+    generate-app-name $env_name
+  }
+
   let app_url = $"https://($env_name).($app_base_domain)"
   let bucket_name = $"sparklefish-noco-($env_name)"
 
@@ -53,5 +67,5 @@ def main [env_name: string] {
   mkdir $env_path
 
   $env_config | to yaml | save --force $env_file
-  generate_fly_config $fly_app_name $app_url $bucket_name | to toml | save --force $fly_file
+  generate-fly-config $fly_app_name $app_url $bucket_name | to yaml | save --force $fly_file
 }
