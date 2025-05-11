@@ -11,18 +11,15 @@ pub fn dash_origin(dash_domain: &str) -> anyhow::Result<Url> {
     ))?)
 }
 
-pub fn dash_url(dash_origin: Url, base_id: BaseId) -> anyhow::Result<Url> {
-    Ok(Url::parse(&format!(
-        "{}dashboard/#/nc/{}",
-        dash_origin, base_id
-    ))?)
+pub fn dash_url(dash_origin: Url) -> anyhow::Result<Url> {
+    Ok(Url::parse(&format!("{}dashboard/", dash_origin))?)
 }
 
 pub fn app_url(env_id: EnvId) -> anyhow::Result<Url> {
     let client_domain = config::client_domain();
 
     Ok(Url::parse(&format!(
-        "https://{}/app/?id={}",
+        "https://{}/app/{}",
         client_domain, env_id
     ))?)
 }

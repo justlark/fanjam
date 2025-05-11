@@ -9,7 +9,7 @@ use crate::{
     auth::admin_auth_layer,
     env::new_env_id,
     kv,
-    noco::{self, ApiToken, ExistingMigrationState, MigrationState},
+    noco::{self, ApiToken, MigrationState},
     url,
 };
 
@@ -57,12 +57,12 @@ async fn post_base(
     let client = noco::Client::new(dash_origin.clone(), api_token);
     let migration_state = MigrationState::new(body.title, body.email);
 
-    let ExistingMigrationState { base_id, .. } = noco::migrate(&client, migration_state)
+    noco::migrate(&client, migration_state)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let dash_url = url::dash_url(dash_origin, base_id)
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let dash_url =
+        url::dash_url(dash_origin).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     let app_url = url::app_url(env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
