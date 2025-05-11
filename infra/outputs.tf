@@ -1,4 +1,4 @@
-output "secrets" {
+output "noco_secrets" {
   value = {
     for env in keys(local.environments) : env => {
       # The `ssl=true` param is important.
