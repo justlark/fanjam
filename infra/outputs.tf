@@ -23,3 +23,10 @@ output "noco_secrets" {
   }
   sensitive = true
 }
+
+output "worker_admin_api_tokens" {
+  value = {
+    for stage in local.stages : stage => random_bytes.worker_admin_api_token[stage].base64
+  }
+  sensitive = true
+}
