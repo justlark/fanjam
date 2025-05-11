@@ -10,6 +10,9 @@ def main [stage_name: string, env_name: string] {
     }
   }
 
+  let admin_api_tokens = terraform -chdir=./infra/ output -json worker_admin_api_tokens | from json
+  let admin_api_token = $admin_api_tokens | get $stage_name
+
   let title = input "Enter the user-facing name of the environment: "
   let email = input "Enter the email address of the initial user: "
   let api_token = input "Enter the NocoDB API token: "
@@ -25,7 +28,9 @@ def main [stage_name: string, env_name: string] {
     email: $email,
   }
 
+  let headers = ["Authorization", $"Bearer ($admin_api_token)"]
+
   let api_endpoint = $"($api_base)/bases"
 
-  http post --content-type "application/json" $api_endpoint $request_body
+  http post --content-type "application/json" --headers $headers $api_endpoint $request_body
 }

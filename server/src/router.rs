@@ -6,6 +6,7 @@ use worker::{console_error, kv::KvStore};
 
 use crate::{
     api::{PostBaseRequest, PostBaseResponse},
+    auth::admin_auth_layer,
     env::new_env_id,
     kv,
     noco::{self, ApiToken, ExistingMigrationState, MigrationState},
@@ -31,7 +32,10 @@ impl fmt::Debug for AppState {
 
 pub fn new(state: AppState) -> Router {
     Router::new()
+        // AUTHENTICATED ENDPOINTS
         .route("/bases", post(post_base))
+        .route_layer(admin_auth_layer())
+        // UNAUTHENTICATED ENDPOINTS
         .with_state(Arc::new(state))
 }
 
