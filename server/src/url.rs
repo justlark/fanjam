@@ -1,6 +1,6 @@
 use reqwest::Url;
 
-use crate::{config, env::EnvId, noco::BaseId};
+use crate::{config, env::EnvId};
 
 pub fn dash_origin(dash_domain: &str) -> anyhow::Result<Url> {
     let base_domain = config::base_domain();

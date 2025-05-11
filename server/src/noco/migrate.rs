@@ -1,4 +1,7 @@
-use super::migrations::{self, BaseId, Client, Version};
+use super::{
+    create_base,
+    migrations::{self, BaseId, Client, Version},
+};
 
 #[derive(Debug)]
 pub struct ExistingMigrationState {
@@ -41,7 +44,7 @@ pub async fn migrate(
             title,
             initial_user_email,
         }) => {
-            let base_id = migrations::init(client, title, initial_user_email).await?;
+            let base_id = create_base(client, title, initial_user_email).await?;
             (migrations::Version::INITIAL, base_id)
         }
         MigrationState::Existing(ExistingMigrationState { version, base_id }) => (version, base_id),

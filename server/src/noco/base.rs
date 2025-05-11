@@ -3,9 +3,11 @@ use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
-use super::{BaseId, Client, check_status};
+use crate::noco::client::check_status;
 
-async fn create_base(client: &Client, title: String) -> anyhow::Result<BaseId> {
+use super::{Client, migrations::BaseId};
+
+async fn create_empty_base(client: &Client, title: String) -> anyhow::Result<BaseId> {
     let resp = client
         .build_request_v2(Method::POST, "/meta/bases")
         .json(&json!({
@@ -55,12 +57,12 @@ async fn add_user(
     Ok(())
 }
 
-pub async fn init(
+pub async fn create_base(
     client: &Client,
     title: String,
     initial_user_email: String,
 ) -> anyhow::Result<BaseId> {
-    let base_id = create_base(client, title).await?;
+    let base_id = create_empty_base(client, title).await?;
     add_user(client, &base_id, initial_user_email).await?;
 
     Ok(base_id)

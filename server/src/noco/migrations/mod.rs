@@ -4,8 +4,8 @@ mod n1;
 // Each base schema migration lives in its own module with the name `nX`, where `X` is the
 // incrementing migration number.
 
-use common::Migration;
-pub use common::{ApiToken, BaseId, Client, Version, init};
+pub use super::client::Client;
+pub use common::{BaseId, Migration, Version};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {

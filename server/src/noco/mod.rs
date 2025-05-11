@@ -1,5 +1,8 @@
+mod base;
+mod client;
 mod migrate;
 mod migrations;
 
-pub use migrate::{ExistingMigrationState, MigrationState, migrate};
-pub use migrations::{ApiToken, BaseId, Client};
+pub use base::create_base;
+pub use client::{ApiToken, Client};
+pub use migrate::{MigrationState, migrate};
