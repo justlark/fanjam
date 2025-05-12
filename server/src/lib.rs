@@ -2,6 +2,7 @@ mod api;
 mod auth;
 mod config;
 mod env;
+mod error;
 mod kv;
 mod noco;
 mod router;

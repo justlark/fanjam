@@ -4,18 +4,16 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     response::{ErrorResponse, NoContent},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use reqwest::StatusCode;
 use worker::{console_error, kv::KvStore};
 
 use crate::{
-    api::{
-        ErrorResponse as ApiErrorResponse, GetLinkResponse, PostBaseRequest, PostLinkResponse,
-        PutTokenRequest,
-    },
+    api::{GetLinkResponse, PostBaseRequest, PostLinkResponse, PutTokenRequest},
     auth::admin_auth_layer,
     env::{EnvId, EnvName},
+    error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
     kv,
     noco::{self, ApiToken, ExistingMigrationState, MigrationState},
     url,
@@ -26,16 +24,6 @@ fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> Erro
         console_error!("Error: {}", err.into());
         code.into()
     }
-}
-
-fn error_response(code: StatusCode, message: &str) -> ErrorResponse {
-    console_error!("Error: {}", message);
-    ErrorResponse::from((
-        code,
-        Json(ApiErrorResponse {
-            error: message.to_string(),
-        }),
-    ))
 }
 
 pub struct AppState {
@@ -55,6 +43,7 @@ pub fn new(state: AppState) -> Router {
         .route("/links/{env_name}", get(get_link))
         .route("/tokens/{env_name}", put(put_token))
         .route("/bases/{env_name}", post(post_base))
+        .route("/bases/{env_name}", delete(delete_base))
         .route("/migrations/{env_name}", post(post_migration))
         .route_layer(admin_auth_layer())
         // UNAUTHENTICATED ENDPOINTS
@@ -96,12 +85,7 @@ async fn get_link(
     let env_id = kv::get_env_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(|| {
-            error_response(
-                StatusCode::NOT_FOUND,
-                "You have not generated an app link for this environment.",
-            )
-        })?;
+        .ok_or_else(err_no_env_id)?;
 
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -139,12 +123,7 @@ async fn post_base(
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(|| {
-            error_response(
-                StatusCode::CONFLICT,
-                "There is no NocoDB API token configured for this environment.",
-            )
-        })?;
+        .ok_or_else(err_no_api_token)?;
 
     let existing_base_id = kv::get_base_id(&state.kv, &env_name)
         .await
@@ -153,10 +132,7 @@ async fn post_base(
     // There is a race condition here. NocoDB probably does not provide a way to perform this check
     // atomically. However, in practice this is probably Good Enough.
     if existing_base_id.is_some() {
-        return Err(error_response(
-            StatusCode::CONFLICT,
-            "A NocoDB base already exists for this environment.",
-        ));
+        return Err(err_base_already_exists());
     }
 
     let dash_origin =
@@ -174,6 +150,38 @@ async fn post_base(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(StatusCode::CREATED)
+}
+
+// TODO: Branch the Neon database before deleting the base.
+#[axum::debug_handler]
+async fn delete_base(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    let api_token = kv::get_api_token(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(err_no_api_token)?;
+
+    let base_id = kv::get_base_id(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(err_no_base_id)?;
+
+    let dash_origin =
+        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    let client = noco::Client::new(dash_origin.clone(), api_token);
+
+    noco::delete_base(&client, &base_id)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    kv::delete_base_id(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    Ok(NoContent)
 }
 
 #[axum::debug_handler]

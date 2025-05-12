@@ -67,3 +67,16 @@ pub async fn create_base(
 
     Ok(base_id)
 }
+
+pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()> {
+    let resp = client
+        .build_request_v3(Method::POST, &format!("/meta/bases/{}", base_id))
+        .send()
+        .await?;
+
+    check_status(resp).await?;
+
+    console_log!("Deleted Noco base with ID `{}`", base_id);
+
+    Ok(())
+}

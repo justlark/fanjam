@@ -70,6 +70,12 @@ set-noco-token stage env:
 generate-app-link stage env:
   ./tools/generate-app-link.nu {{ stage }} {{ env }}
 
+# delete an environment's NocoDB base and all its data
+[group("manage environments")]
+[confirm("Are you sure? This will delete all data in the environment.")]
+delete-base stage env:
+  ./tools/delete-base.nu {{ stage }} {{ env }}
+
 # get the app link for an environment
 [group("manage environments")]
 get-app-link stage env:

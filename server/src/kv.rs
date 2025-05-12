@@ -103,3 +103,12 @@ pub async fn get_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Opt
         .map_err(wrap_kv_err)?
         .map(BaseId::from))
 }
+
+#[worker::send]
+pub async fn delete_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    kv.delete(&base_id_key(env_name))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}

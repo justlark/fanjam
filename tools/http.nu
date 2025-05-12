@@ -36,3 +36,10 @@ def "admin-api put" [stage_name: string, endpoint: string, body: any = ""] {
 
   http put --content-type "application/json" --headers $headers $api_endpoint $body
 }
+
+def "admin-api delete" [stage_name: string, endpoint: string] {
+  let api_endpoint = $"(get-api-base $stage_name)($endpoint)"
+  let headers = get-api-headers $stage_name
+
+  http delete --headers $headers $api_endpoint
+}

@@ -30,7 +30,7 @@ impl MigrationState {
     }
 }
 
-// TODO: After each migration, fork the Neon database. Automatically roll back if the next
+// TODO: After each migration, branch the Neon database. Automatically roll back if the next
 // migration fails.
 //
 // TODO: After each migration, store the new migration version number in KV.
