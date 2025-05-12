@@ -55,6 +55,7 @@ pub fn new(state: AppState) -> Router {
         .route("/links/{env_name}", get(get_link))
         .route("/tokens/{env_name}", put(put_token))
         .route("/bases/{env_name}", post(post_base))
+        .route("/migrations/{env_name}", post(post_migration))
         .route_layer(admin_auth_layer())
         // UNAUTHENTICATED ENDPOINTS
         .with_state(Arc::new(state))
@@ -173,4 +174,12 @@ async fn post_base(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(StatusCode::CREATED)
+}
+
+#[axum::debug_handler]
+async fn post_migration(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<StatusCode, ErrorResponse> {
+    todo!()
 }
