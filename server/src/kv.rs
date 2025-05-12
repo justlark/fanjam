@@ -11,15 +11,15 @@ fn wrap_kv_err(err: KvError) -> anyhow::Error {
 }
 
 fn env_id_key(env_name: &str) -> String {
-    format!("env-id:{}", env_name)
+    format!("env:{}:id", env_name)
 }
 
 fn api_token_key(env_name: &str) -> String {
-    format!("noco-api-token:{}", env_name)
+    format!("env:{}:api-token", env_name)
 }
 
 fn base_id_key(env_name: &str) -> String {
-    format!("noco-base-id:{}", env_name)
+    format!("env:{}:base-id", env_name)
 }
 
 #[worker::send]
