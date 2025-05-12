@@ -1,10 +1,13 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
+
+use serde::Serialize;
 
 use crate::noco::Client;
 
 use super::BaseId;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(transparent)]
 pub struct Version(u32);
 
 impl Version {
@@ -12,6 +15,16 @@ impl Version {
 
     pub const fn next(self) -> Self {
         Self(self.0 + 1)
+    }
+}
+
+impl FromStr for Version {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>()
+            .map(Version)
+            .map_err(|_| anyhow::anyhow!("Invalid migration version number string: {}", s))
     }
 }
 

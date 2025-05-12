@@ -68,9 +68,10 @@ pub async fn create_base(
     Ok(base_id)
 }
 
+#[worker::send]
 pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()> {
     let resp = client
-        .build_request_v3(Method::POST, &format!("/meta/bases/{}", base_id))
+        .build_request_v3(Method::DELETE, &format!("/meta/bases/{}", base_id))
         .send()
         .await?;
 

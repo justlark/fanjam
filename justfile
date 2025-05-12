@@ -81,6 +81,16 @@ delete-base stage env:
 get-app-link stage env:
   ./tools/get-app-link.nu {{ stage }} {{ env }}
 
+# apply any pending schema migrations to an environment
+[group("manage environments")]
+migrate-env stage env:
+  ./tools/migrate-env.nu {{ stage }} {{ env }}
+
+# get the current schema version of an environment
+[group("manage environments")]
+get-schema-version stage env:
+  ./tools/get-schema-version.nu {{ stage }} {{ env }}
+
 # initialize a new environment
 [group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::noco;
+
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub error: String,
@@ -26,4 +28,15 @@ pub struct PutTokenRequest {
 pub struct PostBaseRequest {
     pub title: String,
     pub email: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostMigrationResponse {
+    pub old_version: noco::Version,
+    pub new_version: noco::Version,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetMigrationResponse {
+    pub version: noco::Version,
 }

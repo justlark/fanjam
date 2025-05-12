@@ -3,7 +3,7 @@ use worker::kv::{KvError, KvStore};
 
 use crate::{
     env::{EnvId, EnvName},
-    noco::{ApiToken, BaseId},
+    noco::{self, ApiToken, BaseId},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -24,6 +24,10 @@ fn api_token_key(env_name: &EnvName) -> String {
 
 fn base_id_key(env_name: &EnvName) -> String {
     format!("env:{}:base-id", env_name)
+}
+
+fn migration_version_key(env_name: &EnvName) -> String {
+    format!("env:{}:migration", env_name)
 }
 
 #[worker::send]
@@ -107,6 +111,43 @@ pub async fn get_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Opt
 #[worker::send]
 pub async fn delete_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     kv.delete(&base_id_key(env_name))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn put_migration_version(
+    kv: &KvStore,
+    env_name: &EnvName,
+    version: noco::Version,
+) -> anyhow::Result<()> {
+    kv.put(&migration_version_key(env_name), version.to_string())
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_migration_version(
+    kv: &KvStore,
+    env_name: &EnvName,
+) -> anyhow::Result<Option<noco::Version>> {
+    kv.get(&migration_version_key(env_name))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?
+        .map(|s| s.parse())
+        .transpose()
+}
+
+#[worker::send]
+pub async fn delete_migration_version(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    kv.delete(&migration_version_key(env_name))
         .await
         .map_err(wrap_kv_err)?;
 
