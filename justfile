@@ -59,7 +59,7 @@ configure-certs env:
 get-creds env:
   ./tools/get-creds.nu {{ env }}
 
-# configure an environment with the NocoDB API token
+# configure an environment with a NocoDB API token
 [group("manage environments")]
 set-noco-token stage env:
   ./tools/set-noco-token.nu {{ stage }} {{ env }}
