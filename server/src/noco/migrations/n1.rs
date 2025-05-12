@@ -1,14 +1,14 @@
-use std::fmt;
-
 use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
+use crate::noco::migrations::common::lock_views;
 use crate::noco::{Client, client::check_status};
 
 use super::common::{
-    DATE_FORMAT, IS_TIME_12HR, NocoViewType, RefSetter, TIME_FORMAT, ViewId, set_nop, set_ref,
+    DATE_FORMAT, FieldRequest, IS_TIME_12HR, NocoViewType, TIME_FORMAT, TableRequest, ViewId,
+    create_fields, create_tables, set_nop, set_ref,
 };
 
 use super::common::{self, BaseId, FieldId, TableId, Version};
@@ -25,6 +25,8 @@ struct ByTable<T> {
     files: T,
 }
 
+type Tables = ByTable<TableId>;
+
 impl<T> ByTable<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByTable<U> {
         ByTable {
@@ -40,12 +42,12 @@ impl<T> ByTable<T> {
     }
 }
 
-type Tables = ByTable<TableId>;
-
 #[derive(Debug, Default)]
 struct ByField<T> {
     start_time: T,
 }
+
+type Fields = ByField<FieldId>;
 
 impl<T> ByField<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByField<U> {
@@ -55,20 +57,12 @@ impl<T> ByField<T> {
     }
 }
 
-type Fields = ByField<FieldId>;
-
 pub struct Migration<'a> {
     client: &'a Client,
 }
 
 impl Migration<'_> {
     async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<Tables> {
-        #[derive(Debug)]
-        struct TableRequest<'a> {
-            body: serde_json::Value,
-            table_id: &'a mut Option<TableId>,
-        }
-
         let mut tables = ByTable::<Option<TableId>>::default();
 
         // NocoDB has a concept of a "display field", which is the field that appears in the UI as
@@ -93,7 +87,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.schedule,
+                table_ref: set_ref(&mut tables.schedule),
             },
             TableRequest {
                 body: json!({
@@ -107,7 +101,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.rooms,
+                table_ref: set_ref(&mut tables.rooms),
             },
             TableRequest {
                 body: json!({
@@ -121,7 +115,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.people,
+                table_ref: set_ref(&mut tables.people),
             },
             TableRequest {
                 body: json!({
@@ -136,7 +130,7 @@ impl Migration<'_> {
                     ]
 
                 }),
-                table_id: &mut tables.tags,
+                table_ref: set_ref(&mut tables.tags),
             },
             TableRequest {
                 body: json!({
@@ -150,7 +144,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.announcements,
+                table_ref: set_ref(&mut tables.announcements),
             },
             TableRequest {
                 body: json!({
@@ -164,7 +158,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.about,
+                table_ref: set_ref(&mut tables.about),
             },
             TableRequest {
                 body: json!({
@@ -178,7 +172,7 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.links,
+                table_ref: set_ref(&mut tables.links),
             },
             TableRequest {
                 body: json!({
@@ -192,60 +186,16 @@ impl Migration<'_> {
                         }
                     ]
                 }),
-                table_id: &mut tables.files,
+                table_ref: set_ref(&mut tables.files),
             },
         ];
 
-        #[derive(Debug, Deserialize)]
-        struct PostTableResponse {
-            id: TableId,
-        }
-
-        for request in requests {
-            let resp = self
-                .client
-                .build_request_v3(Method::POST, &format!("/meta/bases/{}/tables", base_id))
-                .json(&request.body)
-                .send()
-                .await?;
-
-            let table_id = check_status(resp)
-                .await?
-                .json::<PostTableResponse>()
-                .await?
-                .id;
-
-            let table_name = request
-                .body
-                .as_object()
-                .and_then(|obj| obj.get("title"))
-                .and_then(|title| title.as_str())
-                .unwrap_or("Unknown");
-
-            console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
-
-            *request.table_id = Some(table_id);
-        }
+        create_tables(self.client, base_id, requests).await?;
 
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
 
     async fn create_fields(&self, tables: &Tables) -> anyhow::Result<Fields> {
-        struct FieldRequest<'a> {
-            table_id: &'a TableId,
-            field_ref: RefSetter<'a, FieldId>,
-            body: serde_json::Value,
-        }
-
-        impl fmt::Debug for FieldRequest<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct("FieldRequest")
-                    .field("table_id", &self.table_id)
-                    .field("body", &self.body)
-                    .finish_non_exhaustive()
-            }
-        }
-
         let mut fields = ByField::<Option<FieldId>>::default();
 
         let requests = vec![
@@ -435,44 +385,7 @@ impl Migration<'_> {
             },
         ];
 
-        #[derive(Debug, Deserialize)]
-        struct PostFieldResponse {
-            id: FieldId,
-        }
-
-        for request in requests {
-            let resp = self
-                .client
-                .build_request_v3(
-                    Method::POST,
-                    &format!("/meta/tables/{}/fields", request.table_id),
-                )
-                .json(&request.body)
-                .send()
-                .await?;
-
-            let field_id = check_status(resp)
-                .await?
-                .json::<PostFieldResponse>()
-                .await?
-                .id;
-
-            let field_name = request
-                .body
-                .as_object()
-                .and_then(|obj| obj.get("title"))
-                .and_then(|title| title.as_str())
-                .unwrap_or("Unknown");
-
-            (request.field_ref)(field_id.clone());
-
-            console_log!(
-                "Created Noco field `{}` with ID `{}` on table `{}`",
-                field_name,
-                field_id,
-                request.table_id,
-            );
-        }
+        create_fields(self.client, requests).await?;
 
         Ok(fields.map(|id| id.expect("expected field ID, found none")))
     }
@@ -518,22 +431,9 @@ impl Migration<'_> {
             tables.schedule,
         );
 
-        let lock_requests = vec![calendar_view_id];
+        let views_to_lock = vec![calendar_view_id];
 
-        for view_id in lock_requests {
-            let resp = self
-                .client
-                .build_request_v2(Method::PATCH, &format!("/meta/views/{}", view_id))
-                .json(&json!({
-                    "lock_type": "locked",
-                }))
-                .send()
-                .await?;
-
-            check_status(resp).await?;
-
-            console_log!("Locked Noco view with ID `{}`", view_id,);
-        }
+        lock_views(self.client, views_to_lock).await?;
 
         Ok(())
     }
