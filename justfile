@@ -70,6 +70,11 @@ set-noco-token stage env:
 generate-app-link stage env:
   ./tools/generate-app-link.nu {{ stage }} {{ env }}
 
+# get the app link for an environment
+[group("manage environments")]
+get-app-link stage env:
+  ./tools/get-app-link.nu {{ stage }} {{ env }}
+
 # initialize a new environment
 [group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]

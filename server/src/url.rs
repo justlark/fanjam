@@ -1,13 +1,16 @@
 use reqwest::Url;
 
-use crate::{config, env::EnvId};
+use crate::{
+    config,
+    env::{EnvId, EnvName},
+};
 
-pub fn dash_origin(dash_domain: &str) -> anyhow::Result<Url> {
+pub fn dash_origin(env_name: &EnvName) -> anyhow::Result<Url> {
     let base_domain = config::base_domain();
 
     Ok(Url::parse(&format!(
         "https://{}.{}",
-        dash_domain, base_domain
+        env_name, base_domain
     ))?)
 }
 

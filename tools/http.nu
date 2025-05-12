@@ -16,6 +16,13 @@ def get-api-headers [stage_name: string] {
   ["Authorization", $"Bearer ($admin_api_token)"]
 }
 
+def "admin-api get" [stage_name: string, endpoint: string] {
+  let api_endpoint = $"(get-api-base $stage_name)($endpoint)"
+  let headers = get-api-headers $stage_name
+
+  http get --headers $headers $api_endpoint
+}
+
 def "admin-api post" [stage_name: string, endpoint: string, body: any = ""] {
   let api_endpoint = $"(get-api-base $stage_name)($endpoint)"
   let headers = get-api-headers $stage_name

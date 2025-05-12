@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct PostLinkResponse {
     pub dash_url: String,
     pub app_url: String,
