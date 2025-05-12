@@ -18,14 +18,14 @@ run-server:
 # deploy the client
 [working-directory: "./client/"]
 [group("deploy changes")]
-[confirm]
+[confirm("Deploy the client now?")]
 deploy-client stage: _install-client
   npm run deploy:{{ stage }}
 
 # deploy the server
 [working-directory: "./server/"]
 [group("deploy changes")]
-[confirm]
+[confirm("Deploy the server now?")]
 deploy-server stage:
   npx wrangler deploy --env {{ stage }}
 
@@ -64,16 +64,16 @@ get-creds env:
 set-noco-token stage env:
   ./tools/set-noco-token.nu {{ stage }} {{ env }}
 
-# create a new empty NocoDB base in an environment
-[group("manage environments")]
-create-noco-base stage env:
-  ./tools/create-noco-base.nu {{ stage }} {{ env }}
-
 # generate a new app link for an environment
 [group("manage environments")]
+[confirm("Are you sure? The old link will stop working for attendees.")]
 generate-app-link stage env:
   ./tools/generate-app-link.nu {{ stage }} {{ env }}
 
 # initialize a new environment
 [group("manage environments")]
-init-env stage env: (set-noco-token stage env) (create-noco-base stage env) (generate-app-link stage env)
+[confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
+init-env stage env:
+  ./tools/set-noco-token.nu {{ stage }} {{ env }}
+  ./tools/create-noco-base.nu {{ stage }} {{ env }}
+  ./tools/generate-app-link.nu {{ stage }} {{ env }}
