@@ -112,5 +112,5 @@ which deployment of the backend you want to use. It will prompt you for the API
 token interactively. Once you've done this, you can lose the token.
 
 ```
-just setup-env prod foo
+just init-env prod foo
 ```

@@ -1,18 +1,8 @@
 #!/usr/bin/env nu
 
+source ./api.nu
+
 def main [stage_name: string, env_name: string] {
-  let api_base = match $stage_name {
-    "test" => "https://api-test.fanjam.live",
-    "prod" => "https://api.fanjam.live",
-    _ => {
-      print --stderr $"Invalid stage name: ($stage_name)"
-      exit 1
-    }
-  }
-
-  let admin_api_tokens = terraform -chdir=./infra/ output -json worker_admin_api_tokens | from json
-  let admin_api_token = $admin_api_tokens | get $stage_name
-
   let title = input "Enter the user-facing name of the environment: "
   let email = input "Enter the email address of the initial user: "
   let api_token = input "Enter the NocoDB API token: "
@@ -28,9 +18,9 @@ def main [stage_name: string, env_name: string] {
     email: $email,
   }
 
-  let headers = ["Authorization", $"Bearer ($admin_api_token)"]
+  call_admin_api $stage_name $"/links/($env_name)"
 
-  let api_endpoint = $"($api_base)/bases"
+  call_admin_api $stage_name "/" $request_body
 
-  http post --content-type "application/json" --headers $headers $api_endpoint $request_body
+  call_admin_api $stage_name "/" $request_body
 }

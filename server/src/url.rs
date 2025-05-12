@@ -15,7 +15,7 @@ pub fn dash_url(dash_origin: Url) -> anyhow::Result<Url> {
     Ok(Url::parse(&format!("{}dashboard/", dash_origin))?)
 }
 
-pub fn app_url(env_id: EnvId) -> anyhow::Result<Url> {
+pub fn app_url(env_id: &EnvId) -> anyhow::Result<Url> {
     let client_domain = config::client_domain();
 
     Ok(Url::parse(&format!(

@@ -22,6 +22,12 @@ impl NocoViewType {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct BaseId(String);
 
+impl From<String> for BaseId {
+    fn from(value: String) -> Self {
+        BaseId(value)
+    }
+}
+
 impl fmt::Display for BaseId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)

@@ -1,13 +1,19 @@
 use std::{fmt, iter};
 
 use rand::Rng;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 const ENV_ID_LENGTH: usize = 8;
 const ASCII_LOWERCASE: &str = "abcdefghijklmnopqrstuvwxyz";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvId(String);
+
+impl From<String> for EnvId {
+    fn from(value: String) -> Self {
+        EnvId(value)
+    }
+}
 
 impl fmt::Display for EnvId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

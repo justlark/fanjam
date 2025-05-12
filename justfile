@@ -59,7 +59,21 @@ configure-certs env:
 get-creds env:
   ./tools/get-creds.nu {{ env }}
 
-# initialize a NocoDB instance with a new base
-[group("manage infrastructure")]
-setup-env stage env:
-  ./tools/setup-env.nu {{ stage }} {{ env }}
+# configure an environment with the NocoDB API token
+[group("manage environments")]
+set-noco-token stage env:
+  ./tools/set-noco-token.nu {{ stage }} {{ env }}
+
+# create a new empty NocoDB base in an environment
+[group("manage environments")]
+create-noco-base stage env:
+  ./tools/create-noco-base.nu {{ stage }} {{ env }}
+
+# generate a new app link for an environment
+[group("manage environments")]
+generate-app-link stage env:
+  ./tools/generate-app-link.nu {{ stage }} {{ env }}
+
+# initialize a new environment
+[group("manage environments")]
+init-env stage env: (set-noco-token stage env) (create-noco-base stage env) (generate-app-link stage env)
