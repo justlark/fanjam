@@ -17,7 +17,7 @@ use crate::{
     auth::admin_auth_layer,
     env::{EnvId, EnvName},
     error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
-    kv,
+    kv, neon,
     noco::{self, ApiToken, ExistingMigrationState, MigrationState},
     url,
 };
@@ -154,10 +154,15 @@ async fn post_base(
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let client = noco::Client::new(dash_origin.clone(), api_token);
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+    let neon_client = neon::Client::new();
+
     let migration_state = MigrationState::new(body.title, body.email);
 
-    noco::migrate(&client, &state.kv, &env_name, migration_state)
+    let migrator = noco::Migrator::new(&noco_client, &neon_client, &state.kv);
+
+    migrator
+        .migrate(&env_name, migration_state)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
@@ -223,13 +228,18 @@ async fn post_migration(
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let client = noco::Client::new(dash_origin.clone(), api_token);
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+    let neon_client = neon::Client::new();
+
     let migration_state = MigrationState::existing(old_version, base_id);
+
+    let migrator = noco::Migrator::new(&noco_client, &neon_client, &state.kv);
 
     let ExistingMigrationState {
         version: new_version,
         ..
-    } = noco::migrate(&client, &state.kv, &env_name, migration_state)
+    } = migrator
+        .migrate(&env_name, migration_state)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 

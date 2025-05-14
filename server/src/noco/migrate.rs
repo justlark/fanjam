@@ -1,11 +1,14 @@
+use std::fmt;
+
 use worker::kv::KvStore;
 
 use crate::{env::EnvName, kv};
 
 use super::{
     create_base,
-    migrations::{self, BaseId, Client, Version},
+    migrations::{self, BaseId, Client as NocoClient, Version},
 };
+use crate::neon::Client as NeonClient;
 
 #[derive(Debug)]
 pub struct ExistingMigrationState {
@@ -38,40 +41,79 @@ impl MigrationState {
     }
 }
 
-// TODO: After each migration, branch the Neon database. Automatically roll back if the next
-// migration fails.
-#[worker::send]
-pub async fn migrate(
-    client: &Client,
-    kv: &KvStore,
-    env_name: &EnvName,
-    state: MigrationState,
-) -> anyhow::Result<ExistingMigrationState> {
-    let (mut version, base_id) = match state {
-        MigrationState::New(NewMigrationState {
-            title,
-            initial_user_email,
-        }) => {
-            let base_id = create_base(client, title, initial_user_email).await?;
+fn migration_backup_branch_name(version: Version) -> String {
+    format!("noco-migration-{}", version)
+}
 
-            kv::put_base_id(kv, env_name, &base_id).await?;
+pub struct Migrator<'a> {
+    noco_client: &'a NocoClient,
+    neon_client: &'a NeonClient,
+    kv: &'a KvStore,
+}
 
-            (migrations::Version::INITIAL, base_id)
+impl fmt::Debug for Migrator<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Migrator")
+            .field("noco_client", self.noco_client)
+            .field("neon_client", self.neon_client)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<'a> Migrator<'a> {
+    pub fn new(noco_client: &'a NocoClient, neon_client: &'a NeonClient, kv: &'a KvStore) -> Self {
+        Self {
+            noco_client,
+            neon_client,
+            kv,
         }
-        MigrationState::Existing(ExistingMigrationState { version, base_id }) => (version, base_id),
-    };
-
-    loop {
-        if migrations::run(client, base_id.clone(), version.next()).await?
-            == migrations::Outcome::AlreadyUpToDate
-        {
-            break;
-        }
-
-        version = version.next();
-
-        kv::put_migration_version(kv, env_name, version).await?;
     }
 
-    Ok(ExistingMigrationState { base_id, version })
+    #[worker::send]
+    pub async fn migrate(
+        &self,
+        env_name: &EnvName,
+        state: MigrationState,
+    ) -> anyhow::Result<ExistingMigrationState> {
+        let (mut version, base_id) = match state {
+            MigrationState::New(NewMigrationState {
+                title,
+                initial_user_email,
+            }) => {
+                let version = migrations::Version::INITIAL;
+
+                let base_id = create_base(self.noco_client, title, initial_user_email).await?;
+
+                kv::put_base_id(self.kv, env_name, &base_id).await?;
+
+                (version, base_id)
+            }
+            MigrationState::Existing(ExistingMigrationState { version, base_id }) => {
+                (version, base_id)
+            }
+        };
+
+        loop {
+            let outcome = self
+                .neon_client
+                .with_rollback(
+                    env_name,
+                    migration_backup_branch_name(version),
+                    async || {
+                        migrations::run(self.noco_client, base_id.clone(), version.next()).await
+                    },
+                )
+                .await?;
+
+            if outcome == migrations::Outcome::AlreadyUpToDate {
+                break;
+            }
+
+            version = version.next();
+
+            kv::put_migration_version(self.kv, env_name, version).await?;
+        }
+
+        Ok(ExistingMigrationState { base_id, version })
+    }
 }

@@ -1,5 +1,3 @@
-use std::error;
-
 use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
@@ -53,6 +51,7 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BranchType {
     ReadOnly,
+    #[allow(unused)]
     ReadWrite,
 }
 
@@ -253,15 +252,14 @@ impl Client {
         Ok(())
     }
 
-    pub async fn with_rollback<T, Err, Fut, Func>(
+    pub async fn with_rollback<T, Fut, Func>(
         &self,
         env_name: &EnvName,
         branch_name: String,
         f: Func,
     ) -> anyhow::Result<T>
     where
-        Err: error::Error + Send + Sync + 'static,
-        Fut: Future<Output = Result<T, Err>>,
+        Fut: Future<Output = Result<T, anyhow::Error>>,
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(env_name).await?;
