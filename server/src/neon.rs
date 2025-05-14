@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{config, env::EnvName};
 
 const API_BASE: &str = "https://console.neon.tech/api/v2";
+const DEFAULT_BRANCH_NAME: &str = "prod";
 
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
@@ -48,6 +49,21 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
     }
 
     Ok(resp)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BranchType {
+    ReadOnly,
+    ReadWrite,
+}
+
+impl BranchType {
+    fn as_api(&self) -> &str {
+        match self {
+            BranchType::ReadOnly => "read_only",
+            BranchType::ReadWrite => "read_write",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -110,6 +126,7 @@ impl Client {
         &self,
         project: &ProjectId,
         branch_name: String,
+        branch_type: BranchType,
     ) -> anyhow::Result<BranchId> {
         #[derive(Debug, Serialize)]
         struct BranchRequestObj {
@@ -145,7 +162,7 @@ impl Client {
             .json(&PostBranchRequest {
                 branch: BranchRequestObj { name: branch_name },
                 endpoints: vec![EndpointRequestObj {
-                    r#type: "read_only".to_string(),
+                    r#type: branch_type.as_api().to_string(),
                 }],
             })
             .send()
@@ -159,5 +176,78 @@ impl Client {
             .id;
 
         Ok(BranchId(branch_id))
+    }
+
+    async fn lookup_branch(
+        &self,
+        project_id: &ProjectId,
+        branch_name: String,
+    ) -> anyhow::Result<BranchId> {
+        #[derive(Debug, Deserialize)]
+        struct GetBranchResponse {
+            id: String,
+        }
+
+        let endpoint = Url::parse_with_params(
+            &format!("/projects/{}/branches", &project_id.0),
+            &[("limit", "1".to_string()), ("search", branch_name.clone())],
+        )?;
+
+        let resp = self
+            .build_request(reqwest::Method::GET, endpoint.as_str())
+            .send()
+            .await?;
+
+        let branch_id = check_status(resp)
+            .await?
+            .json::<Vec<GetBranchResponse>>()
+            .await?
+            .first()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No Neon branch found with name {} in project {}",
+                    &branch_name,
+                    &project_id.0
+                )
+            })?
+            .id
+            .clone();
+
+        Ok(BranchId(branch_id))
+    }
+
+    pub async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
+        self.lookup_branch(project_id, DEFAULT_BRANCH_NAME.to_string())
+            .await
+    }
+
+    pub async fn restore_branch(
+        &self,
+        project_id: &ProjectId,
+        branch_id: &BranchId,
+        source_branch: &BranchId,
+    ) -> anyhow::Result<()> {
+        #[derive(Debug, Serialize)]
+        struct PostRestoreRequest {
+            source_branch_id: String,
+        }
+
+        let resp = self
+            .build_request(
+                reqwest::Method::GET,
+                &format!(
+                    "/projects/{}/branches/{}/restore",
+                    &project_id.0, &branch_id.0
+                ),
+            )
+            .json(&PostRestoreRequest {
+                source_branch_id: source_branch.0.clone(),
+            })
+            .send()
+            .await?;
+
+        check_status(resp).await?;
+
+        Ok(())
     }
 }
