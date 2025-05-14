@@ -23,6 +23,16 @@ resource "cloudflare_workers_secret" "neon_org_id" {
   secret_text = var.neon_org_id
 }
 
+# This isn't really a secret, but it's convenient to pass it here.
+resource "cloudflare_workers_secret" "neon_default_branch_name" {
+  for_each = local.stages
+
+  account_id  = var.cloudflare_account_id
+  name        = "NEON_DEFAULT_BRANCH_NAME"
+  script_name = "sparklefish-server-${each.key}"
+  secret_text = local.neon_default_branch_name
+}
+
 resource "cloudflare_workers_secret" "admin_api_token" {
   for_each = local.stages
 

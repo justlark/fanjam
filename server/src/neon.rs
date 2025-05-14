@@ -4,9 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config, env::EnvName};
 
-const API_BASE: &str = "https://console.neon.tech/api/v2";
-const DEFAULT_BRANCH_NAME: &str = "prod";
-
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
 
@@ -73,6 +70,8 @@ pub struct Client {
 }
 
 impl Client {
+    const API_BASE: &str = "https://console.neon.tech/api/v2";
+
     pub fn new() -> Self {
         let api_token = config::neon_api_token();
         let client = reqwest::Client::new();
@@ -82,7 +81,7 @@ impl Client {
 
     fn build_request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .request(method, format!("{}{}", API_BASE, path))
+            .request(method, format!("{}{}", Self::API_BASE, path))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .bearer_auth(self.api_token.expose_secret())
@@ -217,7 +216,8 @@ impl Client {
     }
 
     pub async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
-        self.lookup_branch(project_id, DEFAULT_BRANCH_NAME.to_string())
+        let default_branch_name = config::neon_default_branch_name();
+        self.lookup_branch(project_id, default_branch_name.to_string())
             .await
     }
 

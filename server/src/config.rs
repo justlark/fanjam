@@ -12,6 +12,7 @@ struct Config {
     admin_api_token: auth::ApiToken,
     neon_api_token: neon::ApiToken,
     neon_org_id: String,
+    neon_default_branch_name: String,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -26,6 +27,7 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
             )?,
             neon_api_token: neon::ApiToken::from(env.secret("NEON_API_TOKEN")?.to_string()),
             neon_org_id: env.secret("NEON_ORG_ID")?.to_string(),
+            neon_default_branch_name: env.secret("NEON_DEFAULT_BRANCH_NAME")?.to_string(),
         })
         .ok();
 
@@ -54,4 +56,8 @@ pub fn neon_api_token() -> neon::ApiToken {
 
 pub fn neon_org_id() -> String {
     get_config().neon_org_id.clone()
+}
+
+pub fn neon_default_branch_name() -> String {
+    get_config().neon_default_branch_name.clone()
 }
