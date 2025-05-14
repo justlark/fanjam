@@ -1,3 +1,5 @@
+use std::error;
+
 use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
@@ -87,7 +89,7 @@ impl Client {
             .bearer_auth(self.api_token.expose_secret())
     }
 
-    pub async fn lookup_project(&self, env_name: &EnvName) -> anyhow::Result<ProjectId> {
+    async fn lookup_project(&self, env_name: &EnvName) -> anyhow::Result<ProjectId> {
         #[derive(Debug, Deserialize)]
         struct GetProjectResponse {
             id: String,
@@ -121,7 +123,7 @@ impl Client {
         Ok(ProjectId(project_id))
     }
 
-    pub async fn create_branch(
+    async fn create_branch(
         &self,
         project: &ProjectId,
         branch_name: String,
@@ -215,13 +217,13 @@ impl Client {
         Ok(BranchId(branch_id))
     }
 
-    pub async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
+    async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
         let default_branch_name = config::neon_default_branch_name();
         self.lookup_branch(project_id, default_branch_name.to_string())
             .await
     }
 
-    pub async fn restore_branch(
+    async fn restore_branch(
         &self,
         project_id: &ProjectId,
         branch_id: &BranchId,
@@ -249,5 +251,33 @@ impl Client {
         check_status(resp).await?;
 
         Ok(())
+    }
+
+    pub async fn with_rollback<T, Err, Fut, Func>(
+        &self,
+        env_name: &EnvName,
+        branch_name: String,
+        f: Func,
+    ) -> anyhow::Result<T>
+    where
+        Err: error::Error + Send + Sync + 'static,
+        Fut: Future<Output = Result<T, Err>>,
+        Func: FnOnce() -> Fut,
+    {
+        let project_id = self.lookup_project(env_name).await?;
+        let default_branch_id = self.lookup_default_branch(&project_id).await?;
+        let backup_branch_id = self
+            .create_branch(&project_id, branch_name, BranchType::ReadOnly)
+            .await?;
+
+        match f().await {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                self.restore_branch(&project_id, &default_branch_id, &backup_branch_id)
+                    .await?;
+
+                Err(anyhow::anyhow!(err))
+            }
+        }
     }
 }
