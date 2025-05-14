@@ -2,13 +2,16 @@ use std::sync::OnceLock;
 
 use worker::Env;
 
-use crate::auth::ApiToken;
+use crate::auth;
+use crate::neon;
 
 #[derive(Debug)]
 struct Config {
     base_domain: String,
     client_domain: String,
-    admin_api_token: ApiToken,
+    admin_api_token: auth::ApiToken,
+    neon_api_token: neon::ApiToken,
+    neon_org_id: String,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -18,9 +21,11 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
         .set(Config {
             base_domain: env.var("BASE_DOMAIN")?.to_string(),
             client_domain: env.var("CLIENT_DOMAIN")?.to_string(),
-            admin_api_token: ApiToken::try_from(
+            admin_api_token: auth::ApiToken::try_from(
                 env.secret("ADMIN_API_TOKEN")?.to_string().as_str(),
             )?,
+            neon_api_token: neon::ApiToken::from(env.secret("NEON_API_TOKEN")?.to_string()),
+            neon_org_id: env.secret("NEON_ORG_ID")?.to_string(),
         })
         .ok();
 
@@ -39,6 +44,14 @@ pub fn client_domain() -> &'static str {
     get_config().client_domain.as_str()
 }
 
-pub fn admin_api_token() -> ApiToken {
+pub fn admin_api_token() -> auth::ApiToken {
     get_config().admin_api_token.clone()
+}
+
+pub fn neon_api_token() -> neon::ApiToken {
+    get_config().neon_api_token.clone()
+}
+
+pub fn neon_org_id() -> String {
+    get_config().neon_org_id.clone()
 }

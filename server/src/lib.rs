@@ -4,6 +4,7 @@ mod config;
 mod env;
 mod error;
 mod kv;
+mod neon;
 mod noco;
 mod router;
 mod url;
