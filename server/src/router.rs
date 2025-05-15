@@ -7,7 +7,7 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use reqwest::StatusCode;
-use worker::{console_error, kv::KvStore};
+use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
@@ -18,7 +18,7 @@ use crate::{
     env::{EnvId, EnvName},
     error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
     kv, neon,
-    noco::{self, ApiToken, ExistingMigrationState, MigrationState},
+    noco::{self, ApiToken, ExistingMigrationState, MigrationState, check_base_exists},
     url,
 };
 
@@ -145,19 +145,36 @@ async fn post_base(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or_else(err_no_api_token)?;
 
-    let existing_base_id = kv::get_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    if existing_base_id.is_some() {
-        return Err(err_base_already_exists());
-    }
-
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
     let neon_client = neon::Client::new();
+
+    let existing_base_id = kv::get_base_id(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    if let Some(base_id) = existing_base_id {
+        let base_exists_in_noco = check_base_exists(&noco_client, &base_id)
+            .await
+            .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+        if base_exists_in_noco {
+            return Err(err_base_already_exists());
+        } else {
+            // The NocoDB base ID was stored in KV, but the base no longer exists in NocoDB. This
+            // could happen if the base is deleted manually by the system user (as opposed to via
+            // this admin API), or if the environment was completely destroyed and recreated.
+            console_log!(
+                "The NocoDB base was deleted externally. Updating the backend state to match."
+            );
+
+            kv::delete_base_id(&state.kv, &env_name)
+                .await
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        }
+    }
 
     let migration_state = MigrationState::new(body.title, body.email);
 
@@ -171,7 +188,6 @@ async fn post_base(
     Ok(StatusCode::CREATED)
 }
 
-// TODO: Branch the Neon database before deleting the base.
 #[axum::debug_handler]
 async fn delete_base(
     State(state): State<Arc<AppState>>,

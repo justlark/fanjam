@@ -326,6 +326,7 @@ impl Client {
         }
     }
 
+    #[worker::send]
     pub async fn create_backup(
         &self,
         env_name: &EnvName,

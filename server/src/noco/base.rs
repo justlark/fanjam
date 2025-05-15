@@ -81,3 +81,20 @@ pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()
 
     Ok(())
 }
+
+#[worker::send]
+pub async fn check_base_exists(client: &Client, base_id: &BaseId) -> anyhow::Result<bool> {
+    let resp = client
+        .build_request_v3(Method::GET, &format!("/meta/bases/{}", base_id))
+        .send()
+        .await?;
+
+    match resp.status() {
+        reqwest::StatusCode::OK => Ok(true),
+        reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::UNPROCESSABLE_ENTITY => Ok(false),
+        _ => {
+            check_status(resp).await?;
+            Ok(false)
+        }
+    }
+}
