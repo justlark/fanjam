@@ -43,6 +43,8 @@ fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> Erro
     }
 }
 
+const NOCO_DELETION_BACKUP_NAME: &str = "noco-deletion-backup";
+
 pub struct AppState {
     pub kv: KvStore,
 }
@@ -188,9 +190,16 @@ async fn delete_base(
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let client = noco::Client::new(dash_origin.clone(), api_token);
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+    let neon_client = neon::Client::new();
 
-    noco::delete_base(&client, &base_id)
+    // Back up the database in case we delete the NocoDB base accidentally.
+    neon_client
+        .create_backup(&env_name, NOCO_DELETION_BACKUP_NAME.to_string())
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    noco::delete_base(&noco_client, &base_id)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 

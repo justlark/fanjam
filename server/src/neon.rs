@@ -300,7 +300,6 @@ impl Client {
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(env_name).await?;
-        let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
         // Neon does not allow duplicate branch names and will fail if you try to create a branch
         // that already exists.
@@ -317,11 +316,33 @@ impl Client {
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
+                let default_branch_id = self.lookup_default_branch(&project_id).await?;
+
                 self.restore_branch(&project_id, &default_branch_id, &backup_branch_id)
                     .await?;
 
                 Err(anyhow::anyhow!(err))
             }
         }
+    }
+
+    pub async fn create_backup(
+        &self,
+        env_name: &EnvName,
+        backup_name: String,
+    ) -> anyhow::Result<BranchId> {
+        let project_id = self.lookup_project(env_name).await?;
+
+        let existing_backup_branch_id =
+            self.lookup_branch(&project_id, backup_name.clone()).await?;
+        if let Some(backup_branch_id) = existing_backup_branch_id {
+            self.delete_branch(&project_id, backup_branch_id).await?;
+        }
+
+        let backup_branch_id = self
+            .create_branch(&project_id, backup_name, BranchType::ReadOnly)
+            .await?;
+
+        Ok(backup_branch_id)
     }
 }
