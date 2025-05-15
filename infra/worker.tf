@@ -1,5 +1,14 @@
+locals {
+  # Increment this to roll the worker admin API token.
+  admin_api_token_counter = 1
+}
+
 resource "random_bytes" "worker_admin_api_token" {
   for_each = local.stages
+
+  keepers = {
+    counter = local.admin_api_token_counter
+  }
 
   length = 32
 }
