@@ -1,6 +1,7 @@
 use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use worker::console_log;
 
 use crate::{config, env::EnvName};
 
@@ -86,18 +87,24 @@ impl Client {
         path: &str,
         params: &[(&str, &str)],
     ) -> anyhow::Result<reqwest::RequestBuilder> {
+        let endpoint = Url::parse_with_params(&format!("{}{}", Self::API_BASE, path), params)?;
+
+        console_log!("{} {}", method, &endpoint);
+
         Ok(self
             .client
-            .request(
-                method,
-                Url::parse_with_params(&format!("{}{}", Self::API_BASE, path), params)?,
-            )
+            .request(method, endpoint)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .bearer_auth(self.api_token.expose_secret()))
     }
 
     async fn lookup_project(&self, env_name: &EnvName) -> anyhow::Result<ProjectId> {
+        #[derive(Debug, Deserialize)]
+        struct GetProjectListResponse {
+            projects: Vec<GetProjectResponse>,
+        }
+
         #[derive(Debug, Deserialize)]
         struct GetProjectResponse {
             id: String,
@@ -120,8 +127,9 @@ impl Client {
 
         let project_id = check_status(resp)
             .await?
-            .json::<Vec<GetProjectResponse>>()
+            .json::<GetProjectListResponse>()
             .await?
+            .projects
             .first()
             .ok_or_else(|| anyhow::anyhow!("No Neon project found with name {}", &env_name))?
             .id
@@ -193,6 +201,11 @@ impl Client {
         branch_name: String,
     ) -> anyhow::Result<BranchId> {
         #[derive(Debug, Deserialize)]
+        struct GetBranchListResponse {
+            branches: Vec<GetBranchResponse>,
+        }
+
+        #[derive(Debug, Deserialize)]
         struct GetBranchResponse {
             id: String,
         }
@@ -208,8 +221,9 @@ impl Client {
 
         let branch_id = check_status(resp)
             .await?
-            .json::<Vec<GetBranchResponse>>()
+            .json::<GetBranchListResponse>()
             .await?
+            .branches
             .first()
             .ok_or_else(|| {
                 anyhow::anyhow!(
