@@ -35,8 +35,7 @@ def generate-fly-config [app: string, url: string, bucket: string] {
 }
 
 def generate-app-name [env_name: string] {
-  # Fly.io app names must be all lowercase.
-  let chars = "abcdefghijklmnopqrstuvwxyz"
+  let chars = "0123456789"
   let random_len = 6
   let random_str = seq 1 $random_len | each { $chars | split chars | shuffle | get 0 } | str join
 

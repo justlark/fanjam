@@ -1,5 +1,5 @@
 locals {
-  neon_default_branch_name = "prod"
+  neon_default_branch_name = "main"
 }
 
 resource "neon_project" "env" {
