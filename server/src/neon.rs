@@ -140,7 +140,7 @@ impl Client {
 
     async fn create_branch(
         &self,
-        project: &ProjectId,
+        project_id: &ProjectId,
         branch_name: String,
         branch_type: BranchType,
     ) -> anyhow::Result<BranchId> {
@@ -173,7 +173,7 @@ impl Client {
         let resp = self
             .build_request(
                 reqwest::Method::POST,
-                &format!("/projects/{}/branches", project.0),
+                &format!("/projects/{}/branches", project_id.0),
                 &[],
             )?
             .json(&PostBranchRequest {
@@ -195,11 +195,30 @@ impl Client {
         Ok(BranchId(branch_id))
     }
 
+    async fn delete_branch(
+        &self,
+        project_id: &ProjectId,
+        branch_id: BranchId,
+    ) -> anyhow::Result<()> {
+        let resp = self
+            .build_request(
+                reqwest::Method::DELETE,
+                &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0),
+                &[],
+            )?
+            .send()
+            .await?;
+
+        check_status(resp).await?;
+
+        Ok(())
+    }
+
     async fn lookup_branch(
         &self,
         project_id: &ProjectId,
         branch_name: String,
-    ) -> anyhow::Result<BranchId> {
+    ) -> anyhow::Result<Option<BranchId>> {
         #[derive(Debug, Deserialize)]
         struct GetBranchListResponse {
             branches: Vec<GetBranchResponse>,
@@ -225,23 +244,18 @@ impl Client {
             .await?
             .branches
             .first()
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "No Neon branch found with name {} in project {}",
-                    &branch_name,
-                    &project_id.0
-                )
-            })?
-            .id
-            .clone();
+            .map(|branch| BranchId(branch.id.clone()));
 
-        Ok(BranchId(branch_id))
+        Ok(branch_id)
     }
 
     async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
         let default_branch_name = config::neon_default_branch_name();
         self.lookup_branch(project_id, default_branch_name.to_string())
-            .await
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!("No Neon branch found with name {}", &default_branch_name,)
+            })
     }
 
     async fn restore_branch(
@@ -287,6 +301,15 @@ impl Client {
     {
         let project_id = self.lookup_project(env_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
+
+        // Neon does not allow duplicate branch names and will fail if you try to create a branch
+        // that already exists.
+        let existing_backup_branch_id =
+            self.lookup_branch(&project_id, branch_name.clone()).await?;
+        if let Some(backup_branch_id) = existing_backup_branch_id {
+            self.delete_branch(&project_id, backup_branch_id).await?;
+        }
+
         let backup_branch_id = self
             .create_branch(&project_id, branch_name, BranchType::ReadOnly)
             .await?;
