@@ -62,6 +62,7 @@ def main [env_name: string] {
   let env_config = {
     fly_app: $fly_app_name
     app_domain: $env_name
+    system_password_counter: 1
   }
 
   mkdir $env_path
