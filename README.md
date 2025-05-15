@@ -1,9 +1,8 @@
 # FanJam
 
-FanJam is an app that makes organizing conventions easier. Con organizers have
-a shared dashboard where they can schedule panels, assign rooms, and make
-announcements, and that information is shared with attendees in real time via a
-web app.
+FanJam is a free event planning app for conventions. Con organizers have a
+dashboard where they can schedule panels, assign rooms, and make announcements,
+and that information is shared with attendees in real time via a web app.
 
 ## Architecture
 
