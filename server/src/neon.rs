@@ -80,12 +80,21 @@ impl Client {
         Self { client, api_token }
     }
 
-    fn build_request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .request(method, format!("{}{}", Self::API_BASE, path))
+    fn build_request(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        params: &[(&str, &str)],
+    ) -> anyhow::Result<reqwest::RequestBuilder> {
+        Ok(self
+            .client
+            .request(
+                method,
+                Url::parse_with_params(&format!("{}{}", Self::API_BASE, path), params)?,
+            )
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .bearer_auth(self.api_token.expose_secret())
+            .bearer_auth(self.api_token.expose_secret()))
     }
 
     async fn lookup_project(&self, env_name: &EnvName) -> anyhow::Result<ProjectId> {
@@ -96,17 +105,16 @@ impl Client {
 
         let org_id = config::neon_org_id();
 
-        let endpoint = Url::parse_with_params(
-            "/projects",
-            &[
-                ("org_id", org_id),
-                ("limit", "1".to_string()),
-                ("search", env_name.to_string()),
-            ],
-        )?;
-
         let resp = self
-            .build_request(reqwest::Method::GET, endpoint.as_str())
+            .build_request(
+                reqwest::Method::GET,
+                "/projects",
+                &[
+                    ("org_id", &org_id),
+                    ("limit", "1"),
+                    ("search", &env_name.to_string()),
+                ],
+            )?
             .send()
             .await?;
 
@@ -158,7 +166,8 @@ impl Client {
             .build_request(
                 reqwest::Method::POST,
                 &format!("/projects/{}/branches", project.0),
-            )
+                &[],
+            )?
             .json(&PostBranchRequest {
                 branch: BranchRequestObj { name: branch_name },
                 endpoints: vec![EndpointRequestObj {
@@ -188,13 +197,12 @@ impl Client {
             id: String,
         }
 
-        let endpoint = Url::parse_with_params(
-            &format!("/projects/{}/branches", &project_id.0),
-            &[("limit", "1".to_string()), ("search", branch_name.clone())],
-        )?;
-
         let resp = self
-            .build_request(reqwest::Method::GET, endpoint.as_str())
+            .build_request(
+                reqwest::Method::GET,
+                &format!("/projects/{}/branches", &project_id.0),
+                &[("limit", "1"), ("search", &branch_name)],
+            )?
             .send()
             .await?;
 
@@ -238,9 +246,10 @@ impl Client {
                 reqwest::Method::GET,
                 &format!(
                     "/projects/{}/branches/{}/restore",
-                    &project_id.0, &branch_id.0
+                    &project_id.0, &branch_id.0,
                 ),
-            )
+                &[],
+            )?
             .json(&PostRestoreRequest {
                 source_branch_id: source_branch.0.clone(),
             })
