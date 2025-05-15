@@ -94,24 +94,32 @@ impl<'a> Migrator<'a> {
         };
 
         loop {
-            let outcome = self
+            let is_up_to_date = self
                 .neon_client
                 .with_rollback(
                     env_name,
                     migration_backup_branch_name(version),
                     async || {
-                        migrations::run(self.noco_client, base_id.clone(), version.next()).await
+                        let outcome =
+                            migrations::run(self.noco_client, base_id.clone(), version.next())
+                                .await?;
+
+                        if outcome == migrations::Outcome::AlreadyUpToDate {
+                            return Ok(true);
+                        }
+
+                        version = version.next();
+
+                        kv::put_migration_version(self.kv, env_name, version).await?;
+
+                        Ok(false)
                     },
                 )
                 .await?;
 
-            if outcome == migrations::Outcome::AlreadyUpToDate {
+            if is_up_to_date {
                 break;
             }
-
-            version = version.next();
-
-            kv::put_migration_version(self.kv, env_name, version).await?;
         }
 
         Ok(ExistingMigrationState { base_id, version })
