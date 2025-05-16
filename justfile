@@ -93,6 +93,7 @@ get-app-link env stage="prod":
 
 # apply any pending schema migrations to an environment
 [group("manage environments")]
+[confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
 migrate-env env stage="prod":
   ./tools/migrate-env.nu {{ stage }} {{ env }}
 
