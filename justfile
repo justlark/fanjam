@@ -1,3 +1,7 @@
+# list recipes
+default:
+  @just --list
+
 # install npm dependencies for the client
 [working-directory: "./client/"]
 _install-client:

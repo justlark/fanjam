@@ -41,8 +41,8 @@ To deploy the app, you'll additionally need to install:
 - [flyctl](https://fly.io/docs/flyctl/install/)
 - [Terraform](https://developer.hashicorp.com/terraform/install)
 
-You can use `just` to build and deploy the app. Run `just --list` to see a list
-of recipes.
+You can use `just` to build and deploy the app. Run `just` to see a list of
+recipes.
 
 `just` commands that accept a `stage` accept either `prod` or `test`. This is
 for infrastructure that is shared between tenant environments. `just` commands
