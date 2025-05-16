@@ -13,6 +13,10 @@ use crate::neon::Client as NeonClient;
 pub const NOCO_MIGRATE_BACKUP_BRANCH_NAME: &str = "noco-migration-backup";
 pub const NOCO_DELETE_BACKUP_BRANCH_NAME: &str = "noco-deletion-backup";
 
+fn noco_migration_branch_name(version: &Version) -> String {
+    format!("noco-migration-{}", version)
+}
+
 #[derive(Debug)]
 pub struct ExistingMigrationState {
     pub version: Version,
@@ -125,6 +129,10 @@ impl<'a> Migrator<'a> {
             if is_up_to_date {
                 break;
             }
+
+            self.neon_client
+                .create_backup(&env_name.to_string(), noco_migration_branch_name(&version))
+                .await?;
         }
 
         Ok(ExistingMigrationState { base_id, version })
