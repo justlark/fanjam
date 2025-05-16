@@ -13,7 +13,7 @@ enabled = true
 
 [env.test.vars]
 BASE_DOMAIN = "fanjam.live"
-CLIENT_DOMAIN = "preview.fanjam.live"
+CLIENT_DOMAIN = "test.fanjam.live"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
