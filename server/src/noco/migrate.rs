@@ -1,6 +1,7 @@
-use std::fmt;
+use std::{fmt, iter};
 
-use worker::kv::KvStore;
+use rand::Rng;
+use worker::{console_error, kv::KvStore};
 
 use crate::{env::EnvName, kv};
 
@@ -9,6 +10,51 @@ use super::{
     migrations::{self, BaseId, Client as NocoClient, Version},
 };
 use crate::neon::Client as NeonClient;
+
+#[derive(Debug, Clone)]
+pub struct OperationId(String);
+
+impl OperationId {
+    const DIGITS: &str = "0123456789";
+    const LEN: usize = 6;
+
+    pub fn new() -> Self {
+        let mut rng = rand::rng();
+
+        Self(
+            iter::repeat_with(|| {
+                let idx = rng.random_range(0..Self::DIGITS.len());
+                Self::DIGITS.chars().nth(idx).unwrap()
+            })
+            .take(Self::LEN)
+            .collect(),
+        )
+    }
+}
+
+impl fmt::Display for OperationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub fn noco_rollback_branch_name(operation_id: &OperationId) -> String {
+    format!("noco-{}-rollback-backup", operation_id)
+}
+
+pub fn noco_backup_branch_name(operation_id: &OperationId) -> String {
+    format!("noco-{}-delete-backup", operation_id)
+}
+
+pub fn noco_migration_branch_name(operation_id: &OperationId, version: &Version) -> String {
+    format!("noco-{}-migration-{}", operation_id, version)
+}
+
+pub const NOCO_BRANCH_DELETE_PATTERN: &str = "noco-";
+
+pub fn noco_branch_keep_pattern(operation_id: &OperationId) -> String {
+    format!("noco-{}-", operation_id)
+}
 
 #[derive(Debug)]
 pub struct ExistingMigrationState {
@@ -41,10 +87,6 @@ impl MigrationState {
     }
 }
 
-fn migration_backup_branch_name(version: Version) -> String {
-    format!("noco-migration-{}", version)
-}
-
 pub struct Migrator<'a> {
     noco_client: &'a NocoClient,
     neon_client: &'a NeonClient,
@@ -75,6 +117,8 @@ impl<'a> Migrator<'a> {
         env_name: &EnvName,
         state: MigrationState,
     ) -> anyhow::Result<ExistingMigrationState> {
+        let operation_id = OperationId::new();
+
         let (mut version, base_id) = match state {
             MigrationState::New(NewMigrationState {
                 title,
@@ -97,15 +141,22 @@ impl<'a> Migrator<'a> {
             let is_up_to_date = self
                 .neon_client
                 .with_rollback(
-                    env_name,
-                    migration_backup_branch_name(version),
+                    &env_name.to_string(),
+                    noco_migration_branch_name(&operation_id, &version),
+                    noco_rollback_branch_name(&operation_id),
                     async || {
-                        let outcome =
-                            migrations::run(self.noco_client, base_id.clone(), version.next())
-                                .await?;
-
-                        if outcome == migrations::Outcome::AlreadyUpToDate {
-                            return Ok(true);
+                        match migrations::run(self.noco_client, base_id.clone(), version.next())
+                            .await
+                        {
+                            Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
+                            Err(error) => {
+                                console_error!(
+                                    "Migration {} failed. Rolling back.",
+                                    version.next()
+                                );
+                                return Err(error);
+                            }
+                            _ => {}
                         }
 
                         version = version.next();
@@ -121,6 +172,14 @@ impl<'a> Migrator<'a> {
                 break;
             }
         }
+
+        self.neon_client
+            .clean_up_branches(
+                &env_name.to_string(),
+                NOCO_BRANCH_DELETE_PATTERN,
+                &noco_branch_keep_pattern(&operation_id),
+            )
+            .await?;
 
         Ok(ExistingMigrationState { base_id, version })
     }

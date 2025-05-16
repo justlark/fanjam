@@ -29,6 +29,12 @@ deploy-client stage: _install-client
 deploy-server stage:
   npx wrangler deploy --env {{ stage }}
 
+# tail the server logs
+[working-directory: "./server/"]
+[group("deploy changes")]
+tail-server-logs stage:
+  npx wrangler tail --env {{ stage }}
+
 # generate the configuration for an environment
 [group("manage infrastructure")]
 configure-env env:

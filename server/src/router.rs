@@ -18,7 +18,10 @@ use crate::{
     env::{EnvId, EnvName},
     error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
     kv, neon,
-    noco::{self, ApiToken, ExistingMigrationState, MigrationState, check_base_exists},
+    noco::{
+        self, ApiToken, ExistingMigrationState, MigrationState, NOCO_BRANCH_DELETE_PATTERN,
+        OperationId, check_base_exists, noco_backup_branch_name, noco_branch_keep_pattern,
+    },
     url,
 };
 
@@ -42,8 +45,6 @@ fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> Erro
         code.into()
     }
 }
-
-const NOCO_DELETION_BACKUP_NAME: &str = "noco-deletion-backup";
 
 pub struct AppState {
     pub kv: KvStore,
@@ -210,8 +211,12 @@ async fn delete_base(
     let neon_client = neon::Client::new();
 
     // Back up the database in case we delete the NocoDB base accidentally.
+    let operation_id = OperationId::new();
     neon_client
-        .create_backup(&env_name, NOCO_DELETION_BACKUP_NAME.to_string())
+        .create_backup(
+            &env_name.to_string(),
+            noco_backup_branch_name(&operation_id),
+        )
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
@@ -224,6 +229,15 @@ async fn delete_base(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     kv::delete_migration_version(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    neon_client
+        .clean_up_branches(
+            &env_name.to_string(),
+            NOCO_BRANCH_DELETE_PATTERN,
+            &noco_branch_keep_pattern(&operation_id),
+        )
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 

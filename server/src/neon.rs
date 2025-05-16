@@ -3,7 +3,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::console_log;
 
-use crate::{config, env::EnvName};
+use crate::config;
 
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
@@ -99,7 +99,7 @@ impl Client {
             .bearer_auth(self.api_token.expose_secret()))
     }
 
-    async fn lookup_project(&self, env_name: &EnvName) -> anyhow::Result<ProjectId> {
+    async fn lookup_project(&self, project_name: &str) -> anyhow::Result<ProjectId> {
         #[derive(Debug, Deserialize)]
         struct GetProjectListResponse {
             projects: Vec<GetProjectResponse>,
@@ -119,7 +119,7 @@ impl Client {
                 &[
                     ("org_id", &org_id),
                     ("limit", "1"),
-                    ("search", &env_name.to_string()),
+                    ("search", &project_name.to_string()),
                 ],
             )?
             .send()
@@ -131,7 +131,7 @@ impl Client {
             .await?
             .projects
             .first()
-            .ok_or_else(|| anyhow::anyhow!("No Neon project found with name {}", &env_name))?
+            .ok_or_else(|| anyhow::anyhow!("No Neon project found with name {}", &project_name))?
             .id
             .clone();
 
@@ -209,6 +209,11 @@ impl Client {
             .send()
             .await?;
 
+        if resp.status() == reqwest::StatusCode::UNPROCESSABLE_ENTITY {
+            // Don't fail if the branch has child branches, making it unable to be deleted.
+            return Ok(());
+        }
+
         check_status(resp).await?;
 
         Ok(())
@@ -263,15 +268,17 @@ impl Client {
         project_id: &ProjectId,
         branch_id: &BranchId,
         source_branch: &BranchId,
+        preserve_branch_name: String,
     ) -> anyhow::Result<()> {
         #[derive(Debug, Serialize)]
         struct PostRestoreRequest {
             source_branch_id: String,
+            preserve_under_name: String,
         }
 
         let resp = self
             .build_request(
-                reqwest::Method::GET,
+                reqwest::Method::POST,
                 &format!(
                     "/projects/{}/branches/{}/restore",
                     &project_id.0, &branch_id.0,
@@ -280,6 +287,7 @@ impl Client {
             )?
             .json(&PostRestoreRequest {
                 source_branch_id: source_branch.0.clone(),
+                preserve_under_name: preserve_branch_name,
             })
             .send()
             .await?;
@@ -291,23 +299,16 @@ impl Client {
 
     pub async fn with_rollback<T, Fut, Func>(
         &self,
-        env_name: &EnvName,
+        project_name: &str,
         branch_name: String,
+        preserve_name: String,
         f: Func,
     ) -> anyhow::Result<T>
     where
         Fut: Future<Output = Result<T, anyhow::Error>>,
         Func: FnOnce() -> Fut,
     {
-        let project_id = self.lookup_project(env_name).await?;
-
-        // Neon does not allow duplicate branch names and will fail if you try to create a branch
-        // that already exists.
-        let existing_backup_branch_id =
-            self.lookup_branch(&project_id, branch_name.clone()).await?;
-        if let Some(backup_branch_id) = existing_backup_branch_id {
-            self.delete_branch(&project_id, backup_branch_id).await?;
-        }
+        let project_id = self.lookup_project(project_name).await?;
 
         let backup_branch_id = self
             .create_branch(&project_id, branch_name, BranchType::ReadOnly)
@@ -318,7 +319,7 @@ impl Client {
             Err(err) => {
                 let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
-                self.restore_branch(&project_id, &default_branch_id, &backup_branch_id)
+                self.restore_branch(&project_id, &default_branch_id, &backup_branch_id, preserve_name)
                     .await?;
 
                 Err(anyhow::anyhow!(err))
@@ -329,21 +330,67 @@ impl Client {
     #[worker::send]
     pub async fn create_backup(
         &self,
-        env_name: &EnvName,
-        backup_name: String,
+        project_name: &str,
+        branch_name: String,
     ) -> anyhow::Result<BranchId> {
-        let project_id = self.lookup_project(env_name).await?;
-
-        let existing_backup_branch_id =
-            self.lookup_branch(&project_id, backup_name.clone()).await?;
-        if let Some(backup_branch_id) = existing_backup_branch_id {
-            self.delete_branch(&project_id, backup_branch_id).await?;
-        }
+        let project_id = self.lookup_project(project_name).await?;
 
         let backup_branch_id = self
-            .create_branch(&project_id, backup_name, BranchType::ReadOnly)
+            .create_branch(&project_id, branch_name, BranchType::ReadOnly)
             .await?;
 
         Ok(backup_branch_id)
+    }
+
+    #[worker::send]
+    pub async fn clean_up_branches(
+        &self,
+        project_name: &str,
+        delete_pattern: &str,
+        keep_prefix: &str,
+    ) -> anyhow::Result<u32> {
+        #[derive(Debug, Deserialize)]
+        struct GetBranchListResponse {
+            branches: Vec<GetBranchResponse>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GetBranchResponse {
+            id: String,
+            name: String,
+        }
+
+        let project_id = self
+            .lookup_project(project_name)
+            .await?;
+
+        let resp = self
+            .build_request(
+                reqwest::Method::GET,
+                &format!("/projects/{}/branches", &project_id.0),
+                &[("search", delete_pattern)],
+            )?
+            .send()
+            .await?;
+
+        let delete_branch_ids = check_status(resp)
+            .await?
+            .json::<GetBranchListResponse>()
+            .await?
+            .branches
+            .into_iter()
+            .filter(|branch| !branch.name.starts_with(keep_prefix))
+            .map(|branch| BranchId(branch.id.clone()))
+            .collect::<Vec<_>>();
+
+        let count = delete_branch_ids.len() as u32;
+
+        for branch_id in delete_branch_ids {
+            self.delete_branch(&project_id, branch_id).await?;
+        }
+
+        console_log!("Cleaned up {} branches.", count);
+
+        Ok(count)
     }
 }
