@@ -1,4 +1,5 @@
 mod api;
+mod cors;
 mod auth;
 mod config;
 mod env;

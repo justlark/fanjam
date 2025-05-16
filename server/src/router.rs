@@ -15,6 +15,7 @@ use crate::{
         PostMigrationResponse, PutTokenRequest,
     },
     auth::admin_auth_layer,
+    cors::cors_layer,
     env::{EnvId, EnvName},
     error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
     kv, neon,
@@ -68,6 +69,7 @@ pub fn new(state: AppState) -> Router {
         .route("/migrations/{env_name}", get(get_migration))
         .route_layer(admin_auth_layer())
         // UNAUTHENTICATED ENDPOINTS
+        .layer(cors_layer())
         .with_state(Arc::new(state))
 }
 
