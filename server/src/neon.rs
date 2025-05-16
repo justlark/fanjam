@@ -5,6 +5,11 @@ use worker::console_log;
 
 use crate::config;
 
+const TEMP_ROLLBACK_CHILD_BRANCH_NAME: &str = "temp-rollback";
+
+#[derive(Debug, Clone, Serialize)]
+struct Lsn(String);
+
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
 
@@ -27,22 +32,15 @@ pub struct ProjectId(String);
 pub struct BranchId(String);
 
 async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
-    #[derive(Debug, Deserialize)]
-    struct ErrorResponse {
-        message: Option<String>,
-    }
-
     let status = resp.status();
     let url = resp.url().to_string();
 
     if status.is_client_error() || status.is_server_error() {
-        let resp = resp.json::<ErrorResponse>().await?;
-
         return Err(anyhow::anyhow!(
-            "Error: {} for ({}) with message ({})",
+            "{} for ({}) with response body:\n{}",
             status,
             url,
-            resp.message.unwrap_or_default(),
+            resp.text().await.unwrap_or("Could not decode response body".to_string()),
         ));
     }
 
@@ -119,7 +117,7 @@ impl Client {
                 &[
                     ("org_id", &org_id),
                     ("limit", "1"),
-                    ("search", &project_name.to_string()),
+                    ("search", project_name),
                 ],
             )?
             .send()
@@ -141,12 +139,14 @@ impl Client {
     async fn create_branch(
         &self,
         project_id: &ProjectId,
+        parent_id: &BranchId,
         branch_name: String,
         branch_type: BranchType,
     ) -> anyhow::Result<BranchId> {
         #[derive(Debug, Serialize)]
         struct BranchRequestObj {
             name: String,
+            parent_id: String,
         }
 
         #[derive(Debug, Serialize)]
@@ -177,7 +177,10 @@ impl Client {
                 &[],
             )?
             .json(&PostBranchRequest {
-                branch: BranchRequestObj { name: branch_name },
+                branch: BranchRequestObj {
+                    name: branch_name,
+                    parent_id: parent_id.0.clone()
+                },
                 endpoints: vec![EndpointRequestObj {
                     r#type: branch_type.as_api().to_string(),
                 }],
@@ -198,8 +201,8 @@ impl Client {
     async fn delete_branch(
         &self,
         project_id: &ProjectId,
-        branch_id: BranchId,
-    ) -> anyhow::Result<()> {
+        branch_id: &BranchId,
+    ) -> anyhow::Result<bool> {
         let resp = self
             .build_request(
                 reqwest::Method::DELETE,
@@ -209,14 +212,9 @@ impl Client {
             .send()
             .await?;
 
-        if resp.status() == reqwest::StatusCode::UNPROCESSABLE_ENTITY {
-            // Don't fail if the branch has child branches, making it unable to be deleted.
-            return Ok(());
-        }
-
         check_status(resp).await?;
 
-        Ok(())
+        Ok(true)
     }
 
     async fn lookup_branch(
@@ -254,6 +252,20 @@ impl Client {
         Ok(branch_id)
     }
 
+    async fn delete_branch_with_name(
+        &self,
+        project_id: &ProjectId,
+        branch_name: String,
+    ) -> anyhow::Result<()> {
+        let branch_id = self.lookup_branch(project_id, branch_name).await?;
+
+        if let Some(branch_id) = branch_id {
+            self.delete_branch(project_id, &branch_id).await?;
+        }
+
+        Ok(())
+    }
+
     async fn lookup_default_branch(&self, project_id: &ProjectId) -> anyhow::Result<BranchId> {
         let default_branch_name = config::neon_default_branch_name();
         self.lookup_branch(project_id, default_branch_name.to_string())
@@ -263,16 +275,17 @@ impl Client {
             })
     }
 
-    async fn restore_branch(
+    async fn restore_to_lsn(
         &self,
         project_id: &ProjectId,
         branch_id: &BranchId,
-        source_branch: &BranchId,
+        source_lsn: &Lsn,
         preserve_branch_name: String,
     ) -> anyhow::Result<()> {
         #[derive(Debug, Serialize)]
         struct PostRestoreRequest {
             source_branch_id: String,
+            source_lsn: String,
             preserve_under_name: String,
         }
 
@@ -286,7 +299,8 @@ impl Client {
                 &[],
             )?
             .json(&PostRestoreRequest {
-                source_branch_id: source_branch.0.clone(),
+                source_branch_id: branch_id.0.clone(),
+                source_lsn: source_lsn.0.clone(),
                 preserve_under_name: preserve_branch_name,
             })
             .send()
@@ -297,10 +311,46 @@ impl Client {
         Ok(())
     }
 
+    async fn get_lsn(
+        &self,
+        project_id: &ProjectId,
+        branch_id: &BranchId,
+    ) -> anyhow::Result<Lsn> {
+        #[derive(Debug, Deserialize)]
+        struct BranchResponseObj {
+            parent_lsn: String,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GetBranchResponse {
+            branch: BranchResponseObj,
+        }
+
+        let resp = self
+            .build_request(
+                reqwest::Method::GET,
+                &format!(
+                    "/projects/{}/branches/{}",
+                    &project_id.0, &branch_id.0,
+                ),
+                &[],
+            )?
+            .send()
+            .await?;
+
+        let lsn = check_status(resp)
+            .await?
+            .json::<GetBranchResponse>()
+            .await?
+            .branch
+            .parent_lsn;
+
+        Ok(Lsn(lsn))
+    }
+
     pub async fn with_rollback<T, Fut, Func>(
         &self,
         project_name: &str,
-        branch_name: String,
         preserve_name: String,
         f: Func,
     ) -> anyhow::Result<T>
@@ -309,17 +359,31 @@ impl Client {
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(project_name).await?;
+        let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
-        let backup_branch_id = self
-            .create_branch(&project_id, branch_name, BranchType::ReadOnly)
+        // Just in case deleting the branch failed at any point in the past.
+        self.delete_branch_with_name(
+            &project_id,
+            TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string(),
+        ).await?;
+
+        // There doesn't seem to be an API to get the LSN of the head of the *current* branch--only
+        // the LSN of the parent branch. So we create a temporary child branch, get the LSN of its
+        // parent, and then delete it.
+        let temp_child_branch_id = self
+            .create_branch(&project_id, &default_branch_id, TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string(), BranchType::ReadOnly)
             .await?;
+
+        let source_lsn = self.get_lsn(&project_id, &temp_child_branch_id).await?;
+
+        self.delete_branch(&project_id, &temp_child_branch_id).await?;
 
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                let default_branch_id = self.lookup_default_branch(&project_id).await?;
+                self.delete_branch_with_name(&project_id, preserve_name.clone()).await?;
 
-                self.restore_branch(&project_id, &default_branch_id, &backup_branch_id, preserve_name)
+                self.restore_to_lsn(&project_id, &default_branch_id, &source_lsn, preserve_name)
                     .await?;
 
                 Err(anyhow::anyhow!(err))
@@ -334,75 +398,17 @@ impl Client {
         branch_name: String,
     ) -> anyhow::Result<BranchId> {
         let project_id = self.lookup_project(project_name).await?;
+        let default_branch_id = self.lookup_default_branch(&project_id).await?;
+
+        self.delete_branch_with_name(
+            &project_id,
+            branch_name.clone(),
+        ).await?;
 
         let backup_branch_id = self
-            .create_branch(&project_id, branch_name, BranchType::ReadOnly)
+            .create_branch(&project_id, &default_branch_id, branch_name, BranchType::ReadOnly)
             .await?;
 
         Ok(backup_branch_id)
-    }
-
-    #[worker::send]
-    pub async fn clean_up_branches(
-        &self,
-        project_name: &str,
-        delete_pattern: &str,
-        keep_prefix: &str,
-        preserve_branch_name: String,
-    ) -> anyhow::Result<u32> {
-        #[derive(Debug, Deserialize)]
-        struct GetBranchListResponse {
-            branches: Vec<GetBranchResponse>,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct GetBranchResponse {
-            id: String,
-            name: String,
-        }
-
-        let project_id = self
-            .lookup_project(project_name)
-            .await?;
-
-        let default_branch_id = self
-            .lookup_default_branch(&project_id)
-            .await?;
-
-        self.restore_branch(
-            &project_id,
-            &default_branch_id,
-            &default_branch_id,
-            preserve_branch_name,
-        ).await?;
-
-        let resp = self
-            .build_request(
-                reqwest::Method::GET,
-                &format!("/projects/{}/branches", &project_id.0),
-                &[("search", delete_pattern)],
-            )?
-            .send()
-            .await?;
-
-        let delete_branch_ids = check_status(resp)
-            .await?
-            .json::<GetBranchListResponse>()
-            .await?
-            .branches
-            .into_iter()
-            .filter(|branch| !branch.name.starts_with(keep_prefix))
-            .map(|branch| BranchId(branch.id.clone()))
-            .collect::<Vec<_>>();
-
-        let count = delete_branch_ids.len() as u32;
-
-        for branch_id in delete_branch_ids {
-            self.delete_branch(&project_id, branch_id).await?;
-        }
-
-        console_log!("Cleaned up {} branches.", count);
-
-        Ok(count)
     }
 }

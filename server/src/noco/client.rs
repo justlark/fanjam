@@ -1,6 +1,5 @@
 use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
 use worker::console_log;
 
 #[derive(Debug, Clone)]
@@ -19,24 +18,17 @@ impl ExposeSecret<str> for ApiToken {
 }
 
 pub async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
-    #[derive(Debug, Deserialize)]
-    struct ErrorResponse {
-        msg: Option<String>,
-        errors: Option<serde_json::Value>,
-    }
-
     let status = resp.status();
     let url = resp.url().to_string();
 
     if status.is_client_error() || status.is_server_error() {
-        let resp = resp.json::<ErrorResponse>().await?;
-
         return Err(anyhow::anyhow!(
-            "Error: {} for ({}) with message ({})\n{}",
+            "{} for ({}) with response body:\n{}",
             status,
             url,
-            resp.msg.unwrap_or_default(),
-            resp.errors.unwrap_or_default(),
+            resp.text()
+                .await
+                .unwrap_or("Could not decode response body".to_string()),
         ));
     }
 

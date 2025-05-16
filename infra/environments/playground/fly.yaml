@@ -1,9 +1,9 @@
-# fly.yaml app configuration file generated for sparklefish-noco-playground-685012 on 2025-05-16T04:54:49-04:00
+# fly.yaml app configuration file generated for sparklefish-noco-playground-955871 on 2025-05-16T06:18:31-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app: sparklefish-noco-playground-685012
+app: sparklefish-noco-playground-955871
 primary_region: bos
 
 build:
