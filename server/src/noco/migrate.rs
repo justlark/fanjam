@@ -42,6 +42,10 @@ pub fn noco_rollback_branch_name(operation_id: &OperationId) -> String {
     format!("noco-{}-rollback-backup", operation_id)
 }
 
+pub fn noco_rebase_branch_name(operation_id: &OperationId) -> String {
+    format!("noco-{}-rebase-backup", operation_id)
+}
+
 pub fn noco_backup_branch_name(operation_id: &OperationId) -> String {
     format!("noco-{}-delete-backup", operation_id)
 }
@@ -178,6 +182,7 @@ impl<'a> Migrator<'a> {
                 &env_name.to_string(),
                 NOCO_BRANCH_DELETE_PATTERN,
                 &noco_branch_keep_pattern(&operation_id),
+                noco_rebase_branch_name(&operation_id),
             )
             .await?;
 

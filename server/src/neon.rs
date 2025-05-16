@@ -348,6 +348,7 @@ impl Client {
         project_name: &str,
         delete_pattern: &str,
         keep_prefix: &str,
+        preserve_branch_name: String,
     ) -> anyhow::Result<u32> {
         #[derive(Debug, Deserialize)]
         struct GetBranchListResponse {
@@ -363,6 +364,17 @@ impl Client {
         let project_id = self
             .lookup_project(project_name)
             .await?;
+
+        let default_branch_id = self
+            .lookup_default_branch(&project_id)
+            .await?;
+
+        self.restore_branch(
+            &project_id,
+            &default_branch_id,
+            &default_branch_id,
+            preserve_branch_name,
+        ).await?;
 
         let resp = self
             .build_request(

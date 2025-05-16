@@ -21,6 +21,7 @@ use crate::{
     noco::{
         self, ApiToken, ExistingMigrationState, MigrationState, NOCO_BRANCH_DELETE_PATTERN,
         OperationId, check_base_exists, noco_backup_branch_name, noco_branch_keep_pattern,
+        noco_rebase_branch_name,
     },
     url,
 };
@@ -237,6 +238,7 @@ async fn delete_base(
             &env_name.to_string(),
             NOCO_BRANCH_DELETE_PATTERN,
             &noco_branch_keep_pattern(&operation_id),
+            noco_rebase_branch_name(&operation_id),
         )
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
