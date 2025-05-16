@@ -32,7 +32,7 @@ deploy-server stage:
 # tail the server logs
 [working-directory: "./server/"]
 [group("deploy changes")]
-tail-server-logs stage:
+tail-logs stage:
   npx wrangler tail --env {{ stage }}
 
 # generate the configuration for an environment
