@@ -44,8 +44,8 @@ To deploy the app, you'll additionally need to install:
 You can use `just` to build and deploy the app. Run `just` to see a list of
 recipes.
 
-`just` commands that accept a `stage` accept either `prod` or `test`. This is
-for infrastructure that is shared between tenant environments. `just` commands
+`just` recipes that accept a `stage` accept either `prod` or `test`. This is
+for infrastructure that is shared between tenant environments. `just` recipes
 that accept an `env` accept the name of a tenant environment.
 
 This project is referred to by the codename "sparklefish" throughout the
@@ -111,5 +111,5 @@ which deployment of the backend you want to use. It will prompt you for the API
 token interactively. Once you've done this, you can lose the token.
 
 ```
-just init-env prod foo
+just init-env foo
 ```
