@@ -82,7 +82,7 @@ terraform apply
 Pass secrets for the environment into NocoDB.
 
 ```
-just configure-secrets foo
+just deploy-secrets foo
 ```
 
 Deploy NocoDB.
@@ -94,7 +94,7 @@ just deploy-env foo
 Configure TLS certificates for NocoDB.
 
 ```
-just configure-certs foo
+just deploy-certs foo
 ```
 
 View the NocoDB system user login credentials for the new environment.
