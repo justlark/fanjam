@@ -3,12 +3,12 @@ use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
-use crate::noco::migrations::common::lock_views;
 use crate::noco::{Client, client::check_status};
 
 use super::common::{
     DATE_FORMAT, FieldRequest, IS_TIME_12HR, NocoViewType, TIME_FORMAT, TableRequest, ViewId,
-    create_fields, create_tables, set_nop, set_ref,
+    ViewRequest, ViewType, create_fields, create_tables, create_views, lock_views, set_nop,
+    set_ref,
 };
 
 use super::common::{self, BaseId, FieldId, TableId, Version};
@@ -53,6 +53,21 @@ impl<T> ByField<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByField<U> {
         ByField {
             start_time: f(self.start_time),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct ByView<T> {
+    calendar: T,
+}
+
+type Views = ByView<ViewId>;
+
+impl<T> ByView<T> {
+    fn map<U>(self, f: impl Fn(T) -> U) -> ByView<U> {
+        ByView {
+            calendar: f(self.calendar),
         }
     }
 }
@@ -396,15 +411,12 @@ impl Migration<'_> {
             id: ViewId,
         }
 
-        let resp = self
-            .client
-            .build_request_v2(
-                Method::POST,
-                &format!("/meta/tables/{}/calendars", tables.schedule),
-            )
-            .json(&json!({
+        let mut views = ByView::<Option<ViewId>>::default();
+
+        let requests = vec![ViewRequest {
+            body: json!({
                 "title": "Calendar",
-                "type": NocoViewType::Calendar.code(),
+                "type": ViewType::Calendar.code(),
                 "calendar_range": [
                     {
                         // The community version of NocoDB does not currently support date ranges
@@ -415,23 +427,17 @@ impl Migration<'_> {
                         "fk_from_column_id": fields.start_time,
                     }
                 ]
-            }))
-            .send()
-            .await?;
+            }),
+            kind: ViewType::Calendar,
+            table_id: tables.schedule.clone(),
+            table_ref: set_ref(&mut views.calendar),
+        }];
 
-        let calendar_view_id = check_status(resp)
-            .await?
-            .json::<PostViewResponse>()
-            .await?
-            .id;
+        create_views(self.client, requests).await?;
 
-        console_log!(
-            "Created Noco calendar view with ID `{}` on table `{}`",
-            calendar_view_id,
-            tables.schedule,
-        );
+        let views = views.map(|id| id.expect("expected view ID, found none"));
 
-        let views_to_lock = vec![calendar_view_id];
+        let views_to_lock = vec![views.calendar.clone()];
 
         lock_views(self.client, views_to_lock).await?;
 

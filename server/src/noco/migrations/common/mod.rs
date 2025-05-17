@@ -13,3 +13,4 @@ pub use models::{
 pub use tables::{TableRequest, create_tables};
 pub use utils::{RefSetter, set_nop, set_ref};
 pub use views::lock_views;
+pub use views::{ViewRequest, ViewType, create_views};
