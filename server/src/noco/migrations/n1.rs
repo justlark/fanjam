@@ -59,6 +59,7 @@ impl<T> ByField<T> {
 struct ByView<T> {
     calendar: T,
     add_event: T,
+    make_announcement: T,
 }
 
 type Views = ByView<ViewId>;
@@ -68,6 +69,7 @@ impl<T> ByView<T> {
         ByView {
             calendar: f(self.calendar),
             add_event: f(self.add_event),
+            make_announcement: f(self.make_announcement),
         }
     }
 }
@@ -437,6 +439,15 @@ impl Migration<'_> {
                 table_id: tables.schedule.clone(),
                 table_ref: set_ref(&mut views.add_event),
             },
+            ViewRequest {
+                body: json!({
+                    "title": "Make Announcement",
+                    "type": ViewType::Form.code()
+                }),
+                kind: ViewType::Form,
+                table_id: tables.announcements.clone(),
+                table_ref: set_ref(&mut views.make_announcement),
+            },
         ];
 
         create_views(self.client, requests).await?;
@@ -445,7 +456,7 @@ impl Migration<'_> {
 
         let resp = self
             .client
-            .build_request_v2(Method::PATCH, &format!("/meta/forms/{}", &views.add_event,))
+            .build_request_v2(Method::PATCH, &format!("/meta/forms/{}", &views.add_event))
             .json(&json!({
                 "heading": "Add Event",
                 "subheading": "Add an event to the schedule",
@@ -459,6 +470,29 @@ impl Migration<'_> {
         check_status(resp).await?;
 
         console_log!("Updated Noco form view with ID `{}`", views.add_event);
+
+        let resp = self
+            .client
+            .build_request_v2(
+                Method::PATCH,
+                &format!("/meta/forms/{}", &views.make_announcement),
+            )
+            .json(&json!({
+                "heading": "Make Announcement",
+                "subheading": "Make an announcement which is sent to attendees",
+                "submit_another_form": true,
+                "show_blank_form": true,
+                "success_msg": "Announcement sent!"
+            }))
+            .send()
+            .await?;
+
+        check_status(resp).await?;
+
+        console_log!(
+            "Updated Noco form view with ID `{}`",
+            views.make_announcement
+        );
 
         let views_to_lock = vec![views.calendar.clone()];
 
