@@ -6,19 +6,6 @@ pub const DATE_FORMAT: &str = "YYYY-MM-DD";
 pub const TIME_FORMAT: &str = "HH:mm";
 pub const IS_TIME_12HR: bool = true;
 
-#[derive(Debug, Clone, Copy)]
-pub enum NocoViewType {
-    Calendar,
-}
-
-impl NocoViewType {
-    pub fn code(&self) -> u32 {
-        match self {
-            NocoViewType::Calendar => 6,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct BaseId(String);
 

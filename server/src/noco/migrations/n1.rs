@@ -1,14 +1,12 @@
 use reqwest::Method;
-use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
 use crate::noco::{Client, client::check_status};
 
 use super::common::{
-    DATE_FORMAT, FieldRequest, IS_TIME_12HR, NocoViewType, TIME_FORMAT, TableRequest, ViewId,
-    ViewRequest, ViewType, create_fields, create_tables, create_views, lock_views, set_nop,
-    set_ref,
+    DATE_FORMAT, FieldRequest, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
+    ViewType, create_fields, create_tables, create_views, lock_views, set_nop, set_ref,
 };
 
 use super::common::{self, BaseId, FieldId, TableId, Version};
@@ -60,6 +58,7 @@ impl<T> ByField<T> {
 #[derive(Debug, Default)]
 struct ByView<T> {
     calendar: T,
+    add_event: T,
 }
 
 type Views = ByView<ViewId>;
@@ -68,6 +67,7 @@ impl<T> ByView<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByView<U> {
         ByView {
             calendar: f(self.calendar),
+            add_event: f(self.add_event),
         }
     }
 }
@@ -405,43 +405,66 @@ impl Migration<'_> {
         Ok(fields.map(|id| id.expect("expected field ID, found none")))
     }
 
-    async fn create_views(&self, fields: &Fields, tables: &Tables) -> anyhow::Result<()> {
-        #[derive(Debug, Deserialize)]
-        struct PostViewResponse {
-            id: ViewId,
-        }
-
+    async fn create_views(&self, fields: &Fields, tables: &Tables) -> anyhow::Result<Views> {
         let mut views = ByView::<Option<ViewId>>::default();
 
-        let requests = vec![ViewRequest {
-            body: json!({
-                "title": "Calendar",
-                "type": ViewType::Calendar.code(),
-                "calendar_range": [
-                    {
-                        // The community version of NocoDB does not currently support date ranges
-                        // in calendar views. This feature exists in the enterprise version, but it
-                        // only support dates, not datetimes. Once support for datetime ranges
-                        // lands in the enterprise edition, we might want to see if we can enable
-                        // it in on our fork.
-                        "fk_from_column_id": fields.start_time,
-                    }
-                ]
-            }),
-            kind: ViewType::Calendar,
-            table_id: tables.schedule.clone(),
-            table_ref: set_ref(&mut views.calendar),
-        }];
+        let requests = vec![
+            ViewRequest {
+                body: json!({
+                    "title": "Calendar",
+                    "type": ViewType::Calendar.code(),
+                    "calendar_range": [
+                        {
+                            // The community version of NocoDB does not currently support date ranges
+                            // in calendar views. This feature exists in the enterprise version, but it
+                            // only support dates, not datetimes. Once support for datetime ranges
+                            // lands in the enterprise edition, we might want to see if we can enable
+                            // it in on our fork.
+                            "fk_from_column_id": fields.start_time,
+                        }
+                    ]
+                }),
+                kind: ViewType::Calendar,
+                table_id: tables.schedule.clone(),
+                table_ref: set_ref(&mut views.calendar),
+            },
+            ViewRequest {
+                body: json!({
+                    "title": "Add Event",
+                    "type": ViewType::Form.code()
+                }),
+                kind: ViewType::Form,
+                table_id: tables.schedule.clone(),
+                table_ref: set_ref(&mut views.add_event),
+            },
+        ];
 
         create_views(self.client, requests).await?;
 
         let views = views.map(|id| id.expect("expected view ID, found none"));
 
+        let resp = self
+            .client
+            .build_request_v2(Method::PATCH, &format!("/meta/forms/{}", &views.add_event,))
+            .json(&json!({
+                "heading": "Add Event",
+                "subheading": "Add an event to the schedule",
+                "submit_another_form": true,
+                "show_blank_form": true,
+                "success_msg": "Event added!"
+            }))
+            .send()
+            .await?;
+
+        check_status(resp).await?;
+
+        console_log!("Updated Noco form view with ID `{}`", views.add_event);
+
         let views_to_lock = vec![views.calendar.clone()];
 
         lock_views(self.client, views_to_lock).await?;
 
-        Ok(())
+        Ok(views)
     }
 }
 
