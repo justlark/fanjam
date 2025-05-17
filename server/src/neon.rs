@@ -40,7 +40,9 @@ async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Respon
             "{} for ({}) with response body:\n{}",
             status,
             url,
-            resp.text().await.unwrap_or("Could not decode response body".to_string()),
+            resp.text()
+                .await
+                .unwrap_or("Could not decode response body".to_string()),
         ));
     }
 
@@ -179,7 +181,7 @@ impl Client {
             .json(&PostBranchRequest {
                 branch: BranchRequestObj {
                     name: branch_name,
-                    parent_id: parent_id.0.clone()
+                    parent_id: parent_id.0.clone(),
                 },
                 endpoints: vec![EndpointRequestObj {
                     r#type: branch_type.as_api().to_string(),
@@ -311,11 +313,7 @@ impl Client {
         Ok(())
     }
 
-    async fn get_lsn(
-        &self,
-        project_id: &ProjectId,
-        branch_id: &BranchId,
-    ) -> anyhow::Result<Lsn> {
+    async fn get_lsn(&self, project_id: &ProjectId, branch_id: &BranchId) -> anyhow::Result<Lsn> {
         #[derive(Debug, Deserialize)]
         struct BranchResponseObj {
             parent_lsn: String,
@@ -329,10 +327,7 @@ impl Client {
         let resp = self
             .build_request(
                 reqwest::Method::GET,
-                &format!(
-                    "/projects/{}/branches/{}",
-                    &project_id.0, &branch_id.0,
-                ),
+                &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0,),
                 &[],
             )?
             .send()
@@ -362,26 +357,31 @@ impl Client {
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
         // Just in case deleting the branch failed at any point in the past.
-        self.delete_branch_with_name(
-            &project_id,
-            TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string(),
-        ).await?;
+        self.delete_branch_with_name(&project_id, TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string())
+            .await?;
 
         // There doesn't seem to be an API to get the LSN of the head of the *current* branch--only
         // the LSN of the parent branch. So we create a temporary child branch, get the LSN of its
         // parent, and then delete it.
         let temp_child_branch_id = self
-            .create_branch(&project_id, &default_branch_id, TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string(), BranchType::ReadOnly)
+            .create_branch(
+                &project_id,
+                &default_branch_id,
+                TEMP_ROLLBACK_CHILD_BRANCH_NAME.to_string(),
+                BranchType::ReadOnly,
+            )
             .await?;
 
         let source_lsn = self.get_lsn(&project_id, &temp_child_branch_id).await?;
 
-        self.delete_branch(&project_id, &temp_child_branch_id).await?;
+        self.delete_branch(&project_id, &temp_child_branch_id)
+            .await?;
 
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                self.delete_branch_with_name(&project_id, preserve_name.clone()).await?;
+                self.delete_branch_with_name(&project_id, preserve_name.clone())
+                    .await?;
 
                 self.restore_to_lsn(&project_id, &default_branch_id, &source_lsn, preserve_name)
                     .await?;
@@ -400,13 +400,16 @@ impl Client {
         let project_id = self.lookup_project(project_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
-        self.delete_branch_with_name(
-            &project_id,
-            branch_name.clone(),
-        ).await?;
+        self.delete_branch_with_name(&project_id, branch_name.clone())
+            .await?;
 
         let backup_branch_id = self
-            .create_branch(&project_id, &default_branch_id, branch_name, BranchType::ReadOnly)
+            .create_branch(
+                &project_id,
+                &default_branch_id,
+                branch_name,
+                BranchType::ReadOnly,
+            )
             .await?;
 
         Ok(backup_branch_id)
