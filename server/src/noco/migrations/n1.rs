@@ -494,7 +494,11 @@ impl Migration<'_> {
             views.make_announcement
         );
 
-        let views_to_lock = vec![views.calendar.clone()];
+        let views_to_lock = vec![
+            views.calendar.clone(),
+            views.add_event.clone(),
+            views.make_announcement.clone(),
+        ];
 
         lock_views(self.client, views_to_lock).await?;
 
