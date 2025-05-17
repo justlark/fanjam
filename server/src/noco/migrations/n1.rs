@@ -14,7 +14,7 @@ use super::common::{self, BaseId, FieldId, TableId, Version};
 #[derive(Debug, Default)]
 struct ByTable<T> {
     schedule: T,
-    rooms: T,
+    locations: T,
     people: T,
     tags: T,
     announcements: T,
@@ -29,7 +29,7 @@ impl<T> ByTable<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByTable<U> {
         ByTable {
             schedule: f(self.schedule),
-            rooms: f(self.rooms),
+            locations: f(self.locations),
             people: f(self.people),
             tags: f(self.tags),
             announcements: f(self.announcements),
@@ -108,17 +108,17 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
-                    "title": "Rooms",
-                    "description": "The rooms at the venue. Assign each event to a room, and see which events are being held in each room.",
+                    "title": "Locations",
+                    "description": "The rooms, buildings, stages, etc. at the venue. Assign each event to a location, and see which events are being held where.",
                     "fields": [
                         {
-                            "title": "Room",
+                            "title": "Location",
                             "type": "SingleLineText",
-                            "description": "The name of the room where the event is being held."
+                            "description": "The name of the location where the event is being held."
                         }
                     ]
                 }),
-                table_ref: set_ref(&mut tables.rooms),
+                table_ref: set_ref(&mut tables.locations),
             },
             TableRequest {
                 body: json!({
@@ -257,12 +257,12 @@ impl Migration<'_> {
                 }),
             },
             FieldRequest {
-                table_id: &tables.rooms,
+                table_id: &tables.locations,
                 field_ref: set_nop(),
                 body: json!({
                     "title": "Events",
                     "type": "Links",
-                    "description": "The list of events being held in this room.",
+                    "description": "The list of events being held at this location.",
                     "options": {
                         "relation_type": "hm",
                         "linked_table_id": &tables.schedule
