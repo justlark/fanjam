@@ -459,7 +459,7 @@ impl Migration<'_> {
             .build_request_v2(Method::PATCH, &format!("/meta/forms/{}", &views.add_event))
             .json(&json!({
                 "heading": "Add Event",
-                "subheading": "Add an event to the schedule",
+                "subheading": "Add an event to the schedule.",
                 "submit_another_form": true,
                 "show_blank_form": true,
                 "success_msg": "Event added!"
@@ -479,7 +479,7 @@ impl Migration<'_> {
             )
             .json(&json!({
                 "heading": "Make Announcement",
-                "subheading": "Make an announcement which is sent to attendees",
+                "subheading": "Make an announcement which is sent to attendees.",
                 "submit_another_form": true,
                 "show_blank_form": true,
                 "success_msg": "Announcement sent!"
