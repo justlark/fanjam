@@ -94,7 +94,7 @@ impl Migration<'_> {
         let requests = vec![
             TableRequest {
                 body: json!({
-                    "title": "Schedule",
+                    "title": "Events",
                     "description": "The con schedule. Events here will appear on the schedule for attendees.",
                     "fields": [
                         {
