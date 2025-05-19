@@ -58,8 +58,11 @@ impl fmt::Debug for AppState {
 }
 
 pub fn new(state: AppState) -> Router {
+    // This service exposes two APIs: an unauthenticated "user" API for querying data that is used
+    // by the client app, and an authenticated "admin" API that is used to provision and manage
+    // environments.
     Router::new()
-        // AUTHENTICATED ENDPOINTS
+        // ADMIN API (AUTHENTICATED)
         .route("/links/{env_name}", post(post_link))
         .route("/links/{env_name}", get(get_link))
         .route("/tokens/{env_name}", put(put_token))
@@ -68,7 +71,7 @@ pub fn new(state: AppState) -> Router {
         .route("/migrations/{env_name}", post(post_migration))
         .route("/migrations/{env_name}", get(get_migration))
         .route_layer(admin_auth_layer())
-        // UNAUTHENTICATED ENDPOINTS
+        // USER API (UNAUTHENTICATED)
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }
@@ -88,10 +91,8 @@ async fn post_link(
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
     let dash_url =
-        url::dash_url(dash_origin).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
     let app_url = url::app_url(&env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(Json(PostLinkResponse {
@@ -110,12 +111,8 @@ async fn get_link(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or_else(err_no_env_id)?;
 
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
     let dash_url =
-        url::dash_url(dash_origin).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
+        url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
     let app_url = url::app_url(&env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(Json(GetLinkResponse {

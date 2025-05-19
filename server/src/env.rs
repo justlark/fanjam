@@ -3,22 +3,23 @@ use std::{fmt, iter};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-const ENV_ID_LENGTH: usize = 8;
-const ASCII_LOWERCASE: &str = "abcdefghijklmnopqrstuvwxyz";
-
+// A random ID that forms part of the app URL gives to attendees.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvId(String);
 
 impl EnvId {
+    const LEN: usize = 8;
+    const POOL: &str = "abcdefghijklmnopqrstuvwxyz";
+
     pub fn new() -> Self {
         let mut rng = rand::rng();
 
         Self(
             iter::repeat_with(|| {
-                let idx = rng.random_range(0..ASCII_LOWERCASE.len());
-                ASCII_LOWERCASE.chars().nth(idx).unwrap()
+                let idx = rng.random_range(0..Self::POOL.len());
+                Self::POOL.chars().nth(idx).unwrap()
             })
-            .take(ENV_ID_LENGTH)
+            .take(Self::LEN)
             .collect(),
         )
     }
@@ -36,6 +37,7 @@ impl fmt::Display for EnvId {
     }
 }
 
+// The internal name for the environment, used to identify resources in the infrastructure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvName(String);
 

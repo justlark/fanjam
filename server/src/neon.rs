@@ -7,6 +7,10 @@ use crate::config;
 
 const TEMP_ROLLBACK_CHILD_BRANCH_NAME: &str = "temp-rollback";
 
+// An LSN (Log Sequence Number) is sort of an index into the history of a branch. It's a point we
+// can roll back to. This is a concept specific to our Postgres provider.
+//
+// https://neon.tech/docs/reference/glossary#lsn
 #[derive(Debug, Clone, Serialize)]
 struct Lsn(String);
 
@@ -25,9 +29,16 @@ impl ExposeSecret<str> for ApiToken {
     }
 }
 
+// Each tenant instance gets its own Neon project.
+//
+// https://neon.tech/docs/reference/glossary#project
 #[derive(Debug, Clone)]
 pub struct ProjectId(String);
 
+// Like a git branch, but for the data in Postgres. This is a concept specific to our Postgres
+// provider.
+//
+// https://neon.tech/docs/reference/glossary#branch
 #[derive(Debug, Clone)]
 pub struct BranchId(String);
 
@@ -372,6 +383,10 @@ impl Client {
             )
             .await?;
 
+        // The alternative to rolling back to an LSN would be to roll back to a timestamp.
+        // Timestamps have limited precision and require everyone agree on the exact time, which
+        // leaves open the possibility of accidentally rolling back too far or not far enough, even
+        // though in practice it would probably be Good Enough.
         let source_lsn = self.get_lsn(&project_id, &temp_child_branch_id).await?;
 
         self.delete_branch(&project_id, &temp_child_branch_id)

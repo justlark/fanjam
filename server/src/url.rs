@@ -5,6 +5,7 @@ use crate::{
     env::{EnvId, EnvName},
 };
 
+// The origin of the NocoDB instance.
 pub fn dash_origin(env_name: &EnvName) -> anyhow::Result<Url> {
     let base_domain = config::base_domain();
 
@@ -14,10 +15,15 @@ pub fn dash_origin(env_name: &EnvName) -> anyhow::Result<Url> {
     ))?)
 }
 
-pub fn dash_url(dash_origin: Url) -> anyhow::Result<Url> {
-    Ok(Url::parse(&format!("{}dashboard/", dash_origin))?)
+// The URL of the dashboard for organizers.
+pub fn dash_url(env_name: &EnvName) -> anyhow::Result<Url> {
+    Ok(Url::parse(&format!(
+        "{}dashboard/",
+        dash_origin(env_name)?
+    ))?)
 }
 
+// The URL of the client app for attendees.
 pub fn app_url(env_id: &EnvId) -> anyhow::Result<Url> {
     let client_domain = config::client_domain();
 
