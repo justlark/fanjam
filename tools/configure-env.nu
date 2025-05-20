@@ -5,7 +5,7 @@ const app_base_domain = "fanjam.live"
 def generate-fly-config [app: string, url: string, bucket: string] {
   {
     app: $app,
-    primary_region: "bos",
+    primary_region: "iad",
     build: {
       image: "ghcr.io/justlark/nocodb:latest",
     },

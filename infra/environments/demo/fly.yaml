@@ -4,7 +4,7 @@
 #
 
 app: sparklefish-noco-demo-070211
-primary_region: bos
+primary_region: iad
 
 build:
   image: ghcr.io/justlark/nocodb:latest
