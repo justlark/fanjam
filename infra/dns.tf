@@ -5,7 +5,7 @@ resource "cloudflare_record" "noco_cname" {
   type    = "CNAME"
   name    = each.value.app_domain
   content = "${each.value.fly_app}.fly.dev"
-  proxied = false
+  proxied = true
 }
 
 resource "cloudflare_record" "apex_txt_sl_verification" {
