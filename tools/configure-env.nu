@@ -5,6 +5,9 @@ const app_base_domain = "fanjam.live"
 def generate-fly-config [app: string, url: string, bucket: string] {
   {
     app: $app,
+    # The Fly Machine must be located as physically near the Postgres database
+    # as possible to have acceptable performance. Currently, all Neon databases
+    # are located in AWS `us-east-1`. This is the Fly.io region that's closest.
     primary_region: "iad",
     build: {
       image: "ghcr.io/justlark/nocodb:latest",
