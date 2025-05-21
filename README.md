@@ -158,5 +158,5 @@ Redeploy a test environment (like `playground`) for testing using `just
 deploy-env playground`. Once you're confident in the release, update the
 `fly.yaml` of all the environments you want to upgrade, then redeploy them.
 
-Finally, update [configure-env.nu](./tools/configure-env.nu) with the latest
-version tag (**not** `latest`).
+Finally, update [config.yaml](./config.yaml) with the latest version tag
+(**not** `latest`).

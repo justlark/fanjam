@@ -1,9 +1,20 @@
 def get-api-base [stage_name: string] {
-  match $stage_name {
-    "test" => "https://api-test.fanjam.live",
-    "prod" => "https://api.fanjam.live",
+  let repo_path = $env.FILE_PWD | path dirname
+  let config_path = $repo_path | path join "config.yaml"
+  let config = open $config_path
+  let api_urls = $config | get "stages" | where "name" == $stage_name | get "api_url"
+
+  match ($api_urls | length) {
+    0 => {
+      print --stderr $"No such stage: ($stage_name)"
+      exit 1
+    }
+    1 => {
+      let api_url = $api_urls | first
+      return $api_url
+    }
     _ => {
-      print --stderr $"Invalid stage name: ($stage_name)"
+      print --stderr $"Multiple stages match: ($stage_name)"
       exit 1
     }
   }

@@ -1,8 +1,10 @@
 #!/usr/bin/env nu
 
-const app_base_domain = "fanjam.live"
-
 def generate-fly-config [app: string, url: string, bucket: string] {
+  let repo_path = $env.FILE_PWD | path dirname
+  let config_path = $repo_path | path join "config.yaml"
+  let config = open $config_path
+
   {
     app: $app,
     # The Fly Machine must be located as physically near the Postgres database
@@ -10,14 +12,14 @@ def generate-fly-config [app: string, url: string, bucket: string] {
     # are located in AWS `us-east-1`. This is the Fly.io region that's closest.
     primary_region: "iad",
     build: {
-      image: "ghcr.io/justlark/nocodb:v0.263.4",
+      image: $"ghcr.io/justlark/nocodb:v($config | get 'nocodb_version')",
     },
     env: {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
       NC_S3_ENDPOINT: $"https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/($bucket)",
       NC_INVITE_ONLY_SIGNUP: "true",
-      NC_ADMIN_EMAIL: $"system@($app_base_domain)",
+      NC_ADMIN_EMAIL: ($config | get "admin_email"),
     },
     http_service: {
       internal_port: 8080,
@@ -47,6 +49,10 @@ def generate-app-name [env_name: string] {
 
 def main [env_name: string] {
   let repo_path = $env.FILE_PWD | path dirname
+  let config_path = $repo_path | path join "config.yaml"
+  let config = open $config_path
+
+  let repo_path = $env.FILE_PWD | path dirname
   let env_path = $repo_path | path join "infra" "environments" $env_name
 
   let env_file = $env_path | path join "env.yaml"
@@ -58,7 +64,7 @@ def main [env_name: string] {
     generate-app-name $env_name
   }
 
-  let app_url = $"https://($env_name).($app_base_domain)"
+  let app_url = $"https://($env_name).($config | get 'app_base_domain')"
   let bucket_name = $"sparklefish-noco-($env_name)"
 
   let env_config = {

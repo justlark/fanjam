@@ -1,0 +1,8 @@
+nocodb_version: "0.263.4"
+app_base_domain: "fanjam.live"
+admin_email: "system@fanjam.live"
+stages:
+  - name: prod
+    api_url: "https://api.fanjam.live"
+  - name: test
+    api_url: "https://api-test.fanjam.live"
