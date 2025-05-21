@@ -113,3 +113,50 @@ token interactively. Once you've done this, you can lose the token.
 ```
 just init-env foo
 ```
+
+## NocoDB
+
+We maintain a fork of NocoDB for FanJam at
+[justlark/nocodb](https://github.com/justlark/nocodb).
+
+We'll want to periodically pull in changes from upstream. Once you've cloned
+the repo, rebased `master` onto the latest upstream release, and resolved any
+merge conflicts, you'll need to deploy the images. These are the instructions
+for doing that.
+
+First, build the image.
+
+```
+./build-local-docker-image.sh
+```
+
+This may generate some files, which should be committed to the repo. This will
+generate a local image named `nocodb-local`.
+
+Tag the image with both `latest` _and_ the version number of the upstream
+release. Test environments (like [playground](https://playground.fanjam.live))
+should be tagged with `latest`. Production environments should be pinned to a
+release.
+
+```
+docker tag nocodb-local ghcr.io/justlark/nocodb:latest
+
+# Use the actual version number!
+docker tag nocodb-local ghcr.io/justlark/nocodb:v0.263.4
+```
+
+Then push to the container registry.
+
+```
+docker push ghcr.io/justlark/nocodb:latest
+
+# Use the actual version number!
+docker push ghcr.io/justlark/nocodb:v0.263.4
+```
+
+Redeploy a test environment (like `playground`) for testing using `just
+deploy-env playground`. Once you're confident in the release, update the
+`fly.yaml` of all the environments you want to upgrade, then redeploy them.
+
+Finally, update [configure-env.nu](./tools/configure-env.nu) with the latest
+version tag (**not** `latest`).

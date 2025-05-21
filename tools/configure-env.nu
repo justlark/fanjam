@@ -10,7 +10,7 @@ def generate-fly-config [app: string, url: string, bucket: string] {
     # are located in AWS `us-east-1`. This is the Fly.io region that's closest.
     primary_region: "iad",
     build: {
-      image: "ghcr.io/justlark/nocodb:latest",
+      image: "ghcr.io/justlark/nocodb:v0.263.4",
     },
     env: {
       NC_PUBLIC_URL: $url,
