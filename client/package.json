@@ -1,36 +1,38 @@
 {
-	"name": "sparklefish",
-	"version": "0.0.0",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "vite",
-		"preview": "npm run build && wrangler dev",
-		"type-check": "vue-tsc --build",
-		"cf-typegen": "wrangler types",
-		"build-only:test": "vite build --mode test",
-		"build-only:prod": "vite build --mode prod",
-		"build:test": "run-p type-check \"build-only:test {@}\" --",
-		"build:prod": "run-p type-check \"build-only:prod {@}\" --",
-		"deploy:test": "npm run build:test && wrangler deploy",
-		"deploy:prod": "npm run build:prod && wrangler deploy"
-	},
-	"dependencies": {
-		"vue": "^3.5.13",
-		"vue-router": "^4.5.0"
-	},
-	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.1.1",
-		"@cloudflare/workers-types": "^4.20250507.0",
-		"@tsconfig/node22": "^22.0.1",
-		"@types/node": "^22.14.0",
-		"@vitejs/plugin-vue": "^5.2.3",
-		"@vue/tsconfig": "^0.7.0",
-		"npm-run-all2": "^7.0.2",
-		"typescript": "~5.8.0",
-		"vite": "^6.2.4",
-		"vite-plugin-vue-devtools": "^7.7.2",
-		"vue-tsc": "^2.2.8",
-		"wrangler": "^4.14.3"
-	}
+  "name": "sparklefish",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "preview": "npm run build && wrangler dev",
+    "type-check": "vue-tsc --build",
+    "cf-typegen": "wrangler types",
+    "build-only:test": "vite build --mode test",
+    "build-only:prod": "vite build --mode prod",
+    "build:test": "run-p type-check \"build-only:test {@}\" --",
+    "build:prod": "run-p type-check \"build-only:prod {@}\" --",
+    "deploy:test": "npm run build:test && wrangler deploy",
+    "deploy:prod": "npm run build:prod && wrangler deploy"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.7",
+    "tailwindcss": "^4.1.7",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.1.1",
+    "@cloudflare/workers-types": "^4.20250507.0",
+    "@tsconfig/node22": "^22.0.1",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vue/tsconfig": "^0.7.0",
+    "npm-run-all2": "^7.0.2",
+    "typescript": "~5.8.0",
+    "vite": "^6.2.4",
+    "vite-plugin-vue-devtools": "^7.7.2",
+    "vue-tsc": "^2.2.8",
+    "wrangler": "^4.14.3"
+  }
 }
