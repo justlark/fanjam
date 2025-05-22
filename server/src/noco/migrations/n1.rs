@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use reqwest::Method;
 use serde_json::json;
 use worker::console_log;
@@ -40,24 +42,24 @@ impl<T> ByTable<T> {
     }
 }
 
+// Placeholder in case we ever want to return generated column IDs.
 #[derive(Debug, Default)]
 struct ByColumn<T> {
-    start_time: T,
+    _phantom: PhantomData<T>,
 }
 
 type Columns = ByColumn<ColumnId>;
 
 impl<T> ByColumn<T> {
-    fn map<U>(self, f: impl Fn(T) -> U) -> ByColumn<U> {
+    fn map<U>(self, _f: impl Fn(T) -> U) -> ByColumn<U> {
         ByColumn {
-            start_time: f(self.start_time),
+            _phantom: PhantomData,
         }
     }
 }
 
 #[derive(Debug, Default)]
 struct ByView<T> {
-    calendar: T,
     add_event: T,
     make_announcement: T,
 }
@@ -67,7 +69,6 @@ type Views = ByView<ViewId>;
 impl<T> ByView<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByView<U> {
         ByView {
-            calendar: f(self.calendar),
             add_event: f(self.add_event),
             make_announcement: f(self.make_announcement),
         }
@@ -284,7 +285,7 @@ impl Migration<'_> {
     }
 
     async fn create_columns(&self, tables: &Tables) -> anyhow::Result<Columns> {
-        let mut columns = ByColumn::<Option<ColumnId>>::default();
+        let columns = ByColumn::<Option<ColumnId>>::default();
 
         let requests = vec![
             ColumnRequest {
@@ -302,7 +303,7 @@ impl Migration<'_> {
             },
             ColumnRequest {
                 table_id: &tables.events,
-                column_ref: set_ref(&mut columns.start_time),
+                column_ref: set_nop(),
                 body: json!({
                     "column_name": "start_time",
                     "title": "Start Time",
@@ -491,29 +492,10 @@ impl Migration<'_> {
         Ok(columns.map(|id| id.expect("expected column ID, found none")))
     }
 
-    async fn create_views(&self, columns: &Columns, tables: &Tables) -> anyhow::Result<Views> {
+    async fn create_views(&self, tables: &Tables) -> anyhow::Result<Views> {
         let mut views = ByView::<Option<ViewId>>::default();
 
         let requests = vec![
-            ViewRequest {
-                body: json!({
-                    "title": "Calendar",
-                    "type": ViewType::Calendar.code(),
-                    "calendar_range": [
-                        {
-                            // The community version of NocoDB does not currently support date ranges
-                            // in calendar views. This feature exists in the enterprise version, but it
-                            // only support dates, not datetimes. Once support for datetime ranges
-                            // lands in the enterprise edition, we might want to see if we can enable
-                            // it in on our fork.
-                            "fk_from_column_id": columns.start_time,
-                        }
-                    ]
-                }),
-                kind: ViewType::Calendar,
-                table_id: tables.events.clone(),
-                table_ref: set_ref(&mut views.calendar),
-            },
             ViewRequest {
                 body: json!({
                     "title": "Add Event",
@@ -578,11 +560,7 @@ impl Migration<'_> {
             views.make_announcement
         );
 
-        let views_to_lock = vec![
-            views.calendar.clone(),
-            views.add_event.clone(),
-            views.make_announcement.clone(),
-        ];
+        let views_to_lock = vec![views.add_event.clone(), views.make_announcement.clone()];
 
         lock_views(self.client, views_to_lock).await?;
 
@@ -599,8 +577,8 @@ impl<'a> common::Migration<'a> for Migration<'a> {
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {
         let tables = self.create_tables(&base_id).await?;
-        let columns = self.create_columns(&tables).await?;
-        self.create_views(&columns, &tables).await?;
+        self.create_columns(&tables).await?;
+        self.create_views(&tables).await?;
 
         Ok(())
     }

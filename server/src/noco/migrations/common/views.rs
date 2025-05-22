@@ -12,21 +12,18 @@ use super::{RefSetter, TableId, ViewId};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewType {
     Form,
-    Calendar,
 }
 
 impl ViewType {
     fn endpoint(self) -> &'static str {
         match self {
             ViewType::Form => "forms",
-            ViewType::Calendar => "calendars",
         }
     }
 
     pub fn code(self) -> u32 {
         match self {
             ViewType::Form => 1,
-            ViewType::Calendar => 6,
         }
     }
 }
