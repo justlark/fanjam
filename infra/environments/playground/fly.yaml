@@ -7,7 +7,7 @@ app: sparklefish-noco-playground-955871
 primary_region: iad
 
 build:
-  image: ghcr.io/justlark/nocodb:latest
+  image: nocodb/nocodb:latest
 
 env:
   NC_ADMIN_EMAIL: system@fanjam.live

@@ -10,7 +10,7 @@ def main [env_name: string] {
   let admin_password = $env_secrets | get "NC_ADMIN_PASSWORD"
 
   let creds = {
-    username: ($config | get "admin_email"),
+    username: ($config.admin_email),
     password: $admin_password,
   }
 

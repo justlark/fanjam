@@ -12,14 +12,14 @@ def generate-fly-config [app: string, url: string, bucket: string] {
     # are located in AWS `us-east-1`. This is the Fly.io region that's closest.
     primary_region: "iad",
     build: {
-      image: $"ghcr.io/justlark/nocodb:v($config | get 'nocodb_version')",
+      image: $"nocodb/nocodb:($config.nocodb_version)",
     },
     env: {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
       NC_S3_ENDPOINT: $"https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/($bucket)",
       NC_INVITE_ONLY_SIGNUP: "true",
-      NC_ADMIN_EMAIL: ($config | get "admin_email"),
+      NC_ADMIN_EMAIL: ($config.admin_email),
     },
     http_service: {
       internal_port: 8080,
@@ -64,7 +64,7 @@ def main [env_name: string] {
     generate-app-name $env_name
   }
 
-  let app_url = $"https://($env_name).($config | get 'app_base_domain')"
+  let app_url = $"https://($env_name).($config.app_base_domain)"
   let bucket_name = $"sparklefish-noco-($env_name)"
 
   let env_config = {
