@@ -89,6 +89,10 @@ impl<'a> Migrator<'a> {
 
                 kv::put_base_id(self.kv, env_name, &base_id).await?;
 
+                self.neon_client
+                    .create_backup(&env_name.to_string(), noco_migration_branch_name(&version))
+                    .await?;
+
                 (version, base_id)
             }
             MigrationState::Existing(ExistingMigrationState { version, base_id }) => {
