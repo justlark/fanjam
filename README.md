@@ -104,7 +104,7 @@ just get-creds foo
 ```
 
 At this point, you'll need to log into the NocoDB instance manually to generate
-an API token.
+an API token. Call it "Worker".
 
 Finally, initialize the NocoDB instance with a new base. You'll need to specify
 which deployment of the backend you want to use. It will prompt you for the API
@@ -114,49 +114,15 @@ token interactively. Once you've done this, you can lose the token.
 just init-env foo
 ```
 
-## NocoDB
+## Upgrade NocoDB
 
-We maintain a fork of NocoDB for FanJam at
-[justlark/nocodb](https://github.com/justlark/nocodb).
+These are instructions for upgrading NocoDB in deployed environments.
 
-We'll want to periodically pull in changes from upstream. Once you've cloned
-the repo, rebased `master` onto the latest upstream release, and resolved any
-merge conflicts, you'll need to deploy the images. These are the instructions
-for doing that.
+Redeploy the `playground` environment using `just deploy-env playground`. This
+environment always uses the latest version of NocoDB. Once you've tested the
+new version and are confident it's stable, update the `fly.yaml` of all the
+environments you want to upgrade, then redeploy them. Production environments
+should always be pinned to a specific version, not `latest`.
 
-First, build the image.
-
-```
-./build-local-docker-image.sh
-```
-
-This may generate some files, which should be committed to the repo. This will
-generate a local image named `nocodb-local`.
-
-Tag the image with both `latest` _and_ the version number of the upstream
-release. Test environments (like [playground](https://playground.fanjam.live))
-should be tagged with `latest`. Production environments should be pinned to a
-release.
-
-```
-docker tag nocodb-local ghcr.io/justlark/nocodb:latest
-
-# Use the actual version number!
-docker tag nocodb-local ghcr.io/justlark/nocodb:v0.263.4
-```
-
-Then push to the container registry.
-
-```
-docker push ghcr.io/justlark/nocodb:latest
-
-# Use the actual version number!
-docker push ghcr.io/justlark/nocodb:v0.263.4
-```
-
-Redeploy a test environment (like `playground`) for testing using `just
-deploy-env playground`. Once you're confident in the release, update the
-`fly.yaml` of all the environments you want to upgrade, then redeploy them.
-
-Finally, update [config.yaml](./config.yaml) with the latest version tag
-(**not** `latest`).
+Finally, update the [config.yaml](./config.yaml) with the latest version tag
+(not `latest`).
