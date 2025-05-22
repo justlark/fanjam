@@ -17,8 +17,7 @@ use crate::{
     auth::admin_auth_layer,
     cors::cors_layer,
     env::{EnvId, EnvName},
-    error::{err_base_already_exists, err_no_api_token, err_no_base_id, err_no_env_id},
-    kv, neon,
+    error, kv, neon,
     noco::{
         self, ApiToken, ExistingMigrationState, MigrationState, NOCO_DELETE_BACKUP_BRANCH_NAME,
         check_base_exists,
@@ -109,7 +108,7 @@ async fn get_link(
     let env_id = kv::get_env_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_env_id)?;
+        .ok_or_else(error::no_env_id)?;
 
     let dash_url =
         url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -143,7 +142,7 @@ async fn post_base(
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_api_token)?;
+        .ok_or_else(error::no_api_token)?;
 
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -161,7 +160,7 @@ async fn post_base(
             .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
         if base_exists_in_noco {
-            return Err(err_base_already_exists());
+            return Err(error::base_already_exists());
         } else {
             // The NocoDB base ID was stored in KV, but the base no longer exists in NocoDB. This
             // could happen if the base is deleted manually by the system user (as opposed to via
@@ -196,12 +195,12 @@ async fn delete_base(
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_api_token)?;
+        .ok_or_else(error::no_api_token)?;
 
     let base_id = kv::get_base_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_base_id)?;
+        .ok_or_else(error::no_base_id)?;
 
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -241,12 +240,12 @@ async fn post_migration(
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_api_token)?;
+        .ok_or_else(error::no_api_token)?;
 
     let base_id = kv::get_base_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(err_no_base_id)?;
+        .ok_or_else(error::no_base_id)?;
 
     let old_version = kv::get_migration_version(&state.kv, &env_name)
         .await
