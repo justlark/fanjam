@@ -11,7 +11,8 @@ const TEMP_ROLLBACK_CHILD_BRANCH_NAME: &str = "temp-rollback";
 // can roll back to. This is a concept specific to our Postgres provider.
 //
 // https://neon.tech/docs/reference/glossary#lsn
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 struct Lsn(String);
 
 #[derive(Debug, Clone)]
@@ -32,14 +33,16 @@ impl ExposeSecret<str> for ApiToken {
 // Each tenant instance gets its own Neon project.
 //
 // https://neon.tech/docs/reference/glossary#project
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ProjectId(String);
 
 // Like a git branch, but for the data in Postgres. This is a concept specific to our Postgres
 // provider.
 //
 // https://neon.tech/docs/reference/glossary#branch
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct BranchId(String);
 
 async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
@@ -118,7 +121,7 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct GetProjectResponse {
-            id: String,
+            id: ProjectId,
         }
 
         let org_id = config::neon_org_id();
@@ -146,7 +149,7 @@ impl Client {
             .id
             .clone();
 
-        Ok(ProjectId(project_id))
+        Ok(project_id)
     }
 
     async fn create_branch(
@@ -159,7 +162,7 @@ impl Client {
         #[derive(Debug, Serialize)]
         struct BranchRequestObj {
             name: String,
-            parent_id: String,
+            parent_id: BranchId,
         }
 
         #[derive(Debug, Serialize)]
@@ -175,7 +178,7 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct BranchResponseObj {
-            id: String,
+            id: BranchId,
         }
 
         #[derive(Debug, Deserialize)]
@@ -192,7 +195,7 @@ impl Client {
             .json(&PostBranchRequest {
                 branch: BranchRequestObj {
                     name: branch_name,
-                    parent_id: parent_id.0.clone(),
+                    parent_id: parent_id.clone(),
                 },
                 endpoints: vec![EndpointRequestObj {
                     r#type: branch_type.as_api().to_string(),
@@ -208,7 +211,7 @@ impl Client {
             .branch
             .id;
 
-        Ok(BranchId(branch_id))
+        Ok(branch_id)
     }
 
     async fn delete_branch(
@@ -242,7 +245,8 @@ impl Client {
 
         #[derive(Debug, Deserialize)]
         struct GetBranchResponse {
-            id: String,
+            id: BranchId,
+            name: String,
         }
 
         let resp = self
@@ -259,8 +263,9 @@ impl Client {
             .json::<GetBranchListResponse>()
             .await?
             .branches
-            .first()
-            .map(|branch| BranchId(branch.id.clone()));
+            .into_iter()
+            .find(|branch| branch_name == branch.name)
+            .map(|branch| branch.id);
 
         Ok(branch_id)
     }
@@ -327,7 +332,7 @@ impl Client {
     async fn get_lsn(&self, project_id: &ProjectId, branch_id: &BranchId) -> anyhow::Result<Lsn> {
         #[derive(Debug, Deserialize)]
         struct BranchResponseObj {
-            parent_lsn: String,
+            parent_lsn: Lsn,
         }
 
         #[derive(Debug, Deserialize)]
@@ -351,7 +356,7 @@ impl Client {
             .branch
             .parent_lsn;
 
-        Ok(Lsn(lsn))
+        Ok(lsn)
     }
 
     pub async fn with_rollback<T, Fut, Func>(
