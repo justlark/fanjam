@@ -5,15 +5,15 @@ use worker::console_log;
 use crate::noco::{Client, client::check_status};
 
 use super::common::{
-    DATE_FORMAT, FieldRequest, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
-    ViewType, create_fields, create_tables, create_views, lock_views, set_nop, set_ref,
+    ColumnRequest, DATE_FORMAT, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
+    ViewType, create_columns, create_tables, create_views, lock_views, set_nop, set_ref,
 };
 
-use super::common::{self, BaseId, FieldId, TableId, Version};
+use super::common::{self, BaseId, ColumnId, TableId, Version};
 
 #[derive(Debug, Default)]
 struct ByTable<T> {
-    schedule: T,
+    events: T,
     locations: T,
     people: T,
     tags: T,
@@ -28,7 +28,7 @@ type Tables = ByTable<TableId>;
 impl<T> ByTable<T> {
     fn map<U>(self, f: impl Fn(T) -> U) -> ByTable<U> {
         ByTable {
-            schedule: f(self.schedule),
+            events: f(self.events),
             locations: f(self.locations),
             people: f(self.people),
             tags: f(self.tags),
@@ -41,15 +41,15 @@ impl<T> ByTable<T> {
 }
 
 #[derive(Debug, Default)]
-struct ByField<T> {
+struct ByColumn<T> {
     start_time: T,
 }
 
-type Fields = ByField<FieldId>;
+type Columns = ByColumn<ColumnId>;
 
-impl<T> ByField<T> {
-    fn map<U>(self, f: impl Fn(T) -> U) -> ByField<U> {
-        ByField {
+impl<T> ByColumn<T> {
+    fn map<U>(self, f: impl Fn(T) -> U) -> ByColumn<U> {
+        ByColumn {
             start_time: f(self.start_time),
         }
     }
@@ -82,39 +82,56 @@ impl Migration<'_> {
     async fn create_tables(&self, base_id: &BaseId) -> anyhow::Result<Tables> {
         let mut tables = ByTable::<Option<TableId>>::default();
 
-        // NocoDB has a concept of a "display field", which is the field that appears in the UI as
-        // the short representation of a table row. Setting the display field after we create the
-        // table is annoying and requires additional API calls, so we implicitly set it here
-        // instead. When adding fields at table creation, the first field automatically becomes the
-        // display field.
+        // NocoDB has a concept of a "primary value" (different from a primary key), which is the
+        // column that appears in the UI as the short representation of a table row. We must set
+        // the primary value here, otherwise the `ID` column (the primary key) will be designated
+        // the primary value, which we don't want, because we want it to be hidden.
         //
-        // We create the rest of the fields elsewhere, because they need to be created in a
+        // We create the rest of the columns elsewhere, because they need to be created in a
         // specific order and after all the tables have been created so that we can set up the
-        // links between them while controlling the field order within each table.
+        // links between them while controlling the column order within each table.
         let requests = vec![
             TableRequest {
                 body: json!({
+                    "table_name": "events",
                     "title": "Events",
                     "description": "The con schedule. Events here will appear on the schedule for attendees.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "Event Name",
-                            "type": "SingleLineText",
-                            "description": "The name of the panel, workshop, class, etc."
+                            "uidt": "SingleLineText",
+                            "description": "The name of the panel, workshop, class, etc.",
+                            "pv": true,
+                            "rqd": true,
                         }
                     ]
                 }),
-                table_ref: set_ref(&mut tables.schedule),
+                table_ref: set_ref(&mut tables.events),
             },
             TableRequest {
                 body: json!({
+                    "table_name": "locations",
                     "title": "Locations",
                     "description": "The rooms, buildings, stages, etc. at the venue. Assign each event to a location, and see which events are being held where.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "Location",
-                            "type": "SingleLineText",
-                            "description": "The name of the location where the event is being held."
+                            "uidt": "SingleLineText",
+                            "description": "The name of the location where the event is being held.",
+                            "rqd": true,
+                            "pv": true
                         }
                     ]
                 }),
@@ -122,13 +139,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "people",
                     "title": "People",
                     "description": "People hosting events at the con. Panelists, presenters, etc. Assign people to events, and see which events are being hosted by whom.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "Name",
-                            "type": "SingleLineText",
-                            "description": "The person's name."
+                            "uidt": "SingleLineText",
+                            "description": "The person's name.",
+                            "rqd": true,
+                            "pv": true,
                         }
                     ]
                 }),
@@ -136,13 +162,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "tags",
                     "title": "Tags",
                     "description": "Tags for events. Label events with tags to help attendees find what they're looking for. You could group events into categories, tag some events as 18+, flag events that cost extra, etc.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "Tag",
-                            "type": "SingleLineText",
-                            "description": "The label to apply to the event."
+                            "uidt": "SingleLineText",
+                            "description": "The label to apply to the event.",
+                            "rqd": true,
+                            "pv": true,
                         }
                     ]
 
@@ -151,13 +186,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "announcements",
                     "title": "Announcements",
                     "description": "Announcements to send to attendees. Make an announcement, and attendees can see them in the app.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "title",
                             "title": "Title",
-                            "type": "SingleLineText",
-                            "description": "The title of the announcement."
+                            "uidt": "SingleLineText",
+                            "description": "The title of the announcement.",
+                            "rqd": true,
+                            "pv": true
                         }
                     ]
                 }),
@@ -165,13 +209,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "about",
                     "title": "About",
                     "description": "General information about the con. If you have multiple rows in this table, the most recent one is what will be shown in the app.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "con_name",
                             "title": "Con Name",
-                            "type": "SingleLineText",
-                            "description": "The name of the con, which appears in the app."
+                            "uidt": "SingleLineText",
+                            "description": "The name of the con, which appears in the app.",
+                            "rqd": true,
+                            "pv": true
                         }
                     ]
                 }),
@@ -179,13 +232,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "links",
                     "title": "Links",
                     "description": "Links to external resources and information which attendees can view the app.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "Link Name",
-                            "type": "SingleLineText",
-                            "description": "The link text."
+                            "uidt": "SingleLineText",
+                            "description": "The link text.",
+                            "rqd": true,
+                            "pv": true
                         }
                     ]
                 }),
@@ -193,13 +255,22 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "files",
                     "title": "Files",
                     "description": "Images, documents, etc. which attendees can view the app.",
-                    "fields": [
+                    "columns": [
                         {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
                             "title": "File Name",
-                            "type": "SingleLineText",
-                            "description": "The name of the file."
+                            "uidt": "SingleLineText",
+                            "description": "The name of the file.",
+                            "rqd": true,
+                            "pv": true
                         }
                     ]
                 }),
@@ -212,202 +283,215 @@ impl Migration<'_> {
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
 
-    async fn create_fields(&self, tables: &Tables) -> anyhow::Result<Fields> {
-        let mut fields = ByField::<Option<FieldId>>::default();
+    async fn create_columns(&self, tables: &Tables) -> anyhow::Result<Columns> {
+        let mut columns = ByColumn::<Option<ColumnId>>::default();
 
         let requests = vec![
-            FieldRequest {
-                table_id: &tables.schedule,
-                field_ref: set_nop(),
+            ColumnRequest {
+                table_id: &tables.events,
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "description",
                     "title": "Description",
-                    "type": "LongText",
+                    "uidt": "LongText",
                     "description": "A description of the event.",
-                    "options": {
-                        "rich_text": true
+                    "meta": {
+                        "richText": true
                     }
                 }),
             },
-            FieldRequest {
-                table_id: &tables.schedule,
-                field_ref: set_ref(&mut fields.start_time),
+            ColumnRequest {
+                table_id: &tables.events,
+                column_ref: set_ref(&mut columns.start_time),
                 body: json!({
+                    "column_name": "start_time",
                     "title": "Start Time",
-                    "type": "DateTime",
+                    "uidt": "DateTime",
                     "description": "The day and time the event starts.",
-                    "options": {
+                    "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "12hr_format": IS_TIME_12HR
+                        "is12hrFormat": IS_TIME_12HR
                     }
                 }),
             },
-            FieldRequest {
-                table_id: &tables.schedule,
-                field_ref: set_nop(),
+            ColumnRequest {
+                table_id: &tables.events,
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "end_time",
                     "title": "End Time",
-                    "type": "DateTime",
+                    "uidt": "DateTime",
                     "description": "The day and time the event ends.",
-                    "options": {
+                    "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "12hr_format": IS_TIME_12HR
+                        "is12hrFormat": IS_TIME_12HR
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.locations,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "colunn_name": "events",
                     "title": "Events",
-                    "type": "Links",
+                    "uidt": "Links",
                     "description": "The list of events being held at this location.",
-                    "options": {
-                        "relation_type": "hm",
-                        "linked_table_id": &tables.schedule
-                    }
+                    "type": "hm",
+                    "parentId": &tables.locations,
+                    "childId": &tables.events
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.people,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "contact_info",
                     "title": "Contact Info",
-                    "type": "SingleLineText",
+                    "uidt": "SingleLineText",
                     "description": "Contact info for this person. Attendees cannot see this."
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.people,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "events",
                     "title": "Events",
-                    "type": "Links",
+                    "uidt": "Links",
                     "description": "The list of events this person is hosting.",
-                    "options": {
-                        "relation_type": "mm",
-                        "linked_table_id": &tables.schedule
-                    }
+                    "type": "mm",
+                    "parentId": &tables.people,
+                    "childId": &tables.events
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.tags,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "events",
                     "title": "Events",
-                    "type": "Links",
+                    "uidt": "Links",
                     "description": "The list of events with this tag.",
-                    "options": {
-                        "relation_type": "mm",
-                        "linked_table_id": &tables.schedule
-                    }
+                    "type": "mm",
+                    "parentId": &tables.tags,
+                    "childId": &tables.events
                 }),
             },
-            FieldRequest {
-                table_id: &tables.schedule,
-                field_ref: set_nop(),
+            ColumnRequest {
+                table_id: &tables.events,
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "hidden",
                     "title": "Hidden",
-                    "type": "Checkbox",
+                    "uidt": "Checkbox",
                     "description": "Hide this event from attendees. When checked, this event won't appear on the schedule.",
-                    "options": {
-                        "icon": "square"
+                    "meta": {
+                        "iconIdx": 0
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.announcements,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "description",
                     "title": "Announcement",
-                    "type": "LongText",
+                    "uidt": "LongText",
                     "description": "The text of the announcement itself.",
-                    "options": {
-                        "rich_text": true
+                    "meta": {
+                        "richText": true
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.announcements,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "attachment",
                     "title": "Files",
-                    "type": "Attachment",
+                    "uidt": "Attachment",
                     "description": "Attach images or other files to be shown alongside the announcement."
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.announcements,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "created",
                     "title": "Created",
-                    "type": "CreatedTime",
+                    "uidt": "CreatedTime",
                     "description": "When this announcement was first created.",
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.announcements,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column": "last_edited",
                     "title": "Last Edited",
-                    "type": "LastModifiedTime",
+                    "uidt": "LastModifiedTime",
                     "description": "When this announcement was last edited.",
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.about,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "con_description",
                     "title": "Con Description",
-                    "type": "LongText",
+                    "uidt": "LongText",
                     "description": "A brief description of the con, which appears in the app.",
-                    "options": {
-                        "rich_text": false
+                    "meta": {
+                        "richText": false
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.about,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "website",
                     "title": "Website",
-                    "type": "URL",
+                    "uidt": "URL",
                     "description": "A link to the con's website, which appears in the app.",
-                    "options": {
+                    "meta": {
                         "validation": true
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.links,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "url",
                     "title": "URL",
-                    "type": "URL",
+                    "uidt": "URL",
                     "description": "The link URL.",
-                    "options": {
+                    "meta": {
                         "validation": true
                     }
                 }),
             },
-            FieldRequest {
+            ColumnRequest {
                 table_id: &tables.files,
-                field_ref: set_nop(),
+                column_ref: set_nop(),
                 body: json!({
+                    "column_name": "file",
                     "title": "File",
-                    "type": "Attachment",
+                    "uidt": "Attachment",
                     "description": "The image, document, etc. to upload."
                 }),
             },
         ];
 
-        create_fields(self.client, requests).await?;
+        create_columns(self.client, requests).await?;
 
-        Ok(fields.map(|id| id.expect("expected field ID, found none")))
+        Ok(columns.map(|id| id.expect("expected column ID, found none")))
     }
 
-    async fn create_views(&self, fields: &Fields, tables: &Tables) -> anyhow::Result<Views> {
+    async fn create_views(&self, columns: &Columns, tables: &Tables) -> anyhow::Result<Views> {
         let mut views = ByView::<Option<ViewId>>::default();
 
         let requests = vec![
@@ -422,12 +506,12 @@ impl Migration<'_> {
                             // only support dates, not datetimes. Once support for datetime ranges
                             // lands in the enterprise edition, we might want to see if we can enable
                             // it in on our fork.
-                            "fk_from_column_id": fields.start_time,
+                            "fk_from_column_id": columns.start_time,
                         }
                     ]
                 }),
                 kind: ViewType::Calendar,
-                table_id: tables.schedule.clone(),
+                table_id: tables.events.clone(),
                 table_ref: set_ref(&mut views.calendar),
             },
             ViewRequest {
@@ -436,7 +520,7 @@ impl Migration<'_> {
                     "type": ViewType::Form.code()
                 }),
                 kind: ViewType::Form,
-                table_id: tables.schedule.clone(),
+                table_id: tables.events.clone(),
                 table_ref: set_ref(&mut views.add_event),
             },
             ViewRequest {
@@ -515,8 +599,8 @@ impl<'a> common::Migration<'a> for Migration<'a> {
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {
         let tables = self.create_tables(&base_id).await?;
-        let fields = self.create_fields(&tables).await?;
-        self.create_views(&fields, &tables).await?;
+        let columns = self.create_columns(&tables).await?;
+        self.create_views(&columns, &tables).await?;
 
         Ok(())
     }

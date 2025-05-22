@@ -33,9 +33,9 @@ impl fmt::Display for TableId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct FieldId(String);
+pub struct ColumnId(String);
 
-impl fmt::Display for FieldId {
+impl fmt::Display for ColumnId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }

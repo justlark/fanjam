@@ -33,7 +33,7 @@ pub async fn create_tables(
 
     for request in requests {
         let resp = client
-            .build_request_v3(Method::POST, &format!("/meta/bases/{}/tables", base_id))
+            .build_request_v2(Method::POST, &format!("/meta/bases/{}/tables", base_id))
             .json(&request.body)
             .send()
             .await?;

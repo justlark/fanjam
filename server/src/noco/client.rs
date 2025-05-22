@@ -51,22 +51,12 @@ impl Client {
         }
     }
 
-    // We're building this on top of the new v3 API, but we still need to fall back to the v2 API
-    // for some operations that are not yet supported in v3.
-
+    // Once it's stable, we can migrate to v3 of the NocoDB API.
     pub fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         console_log!("{} {}", method, path);
 
         self.client
             .request(method, format!("{}api/v2{}", self.dash_origin, path))
-            .header("Xc-Token", self.api_token.0.expose_secret())
-    }
-
-    pub fn build_request_v3(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        console_log!("{} {}", method, path);
-
-        self.client
-            .request(method, format!("{}api/v3{}", self.dash_origin, path))
             .header("Xc-Token", self.api_token.0.expose_secret())
     }
 }

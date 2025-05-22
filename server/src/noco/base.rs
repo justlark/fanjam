@@ -38,10 +38,10 @@ async fn add_user(
     initial_user_email: String,
 ) -> anyhow::Result<()> {
     let resp = client
-        .build_request_v3(Method::POST, &format!("/meta/bases/{}/users", base_id))
+        .build_request_v2(Method::POST, &format!("/meta/bases/{}/users", base_id))
         .json(&json!({
             "email": initial_user_email,
-            "base_role": "editor",
+            "roles": "editor",
         }))
         .send()
         .await?;
@@ -71,7 +71,7 @@ pub async fn create_base(
 #[worker::send]
 pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()> {
     let resp = client
-        .build_request_v3(Method::DELETE, &format!("/meta/bases/{}", base_id))
+        .build_request_v2(Method::DELETE, &format!("/meta/bases/{}", base_id))
         .send()
         .await?;
 
@@ -85,7 +85,7 @@ pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()
 #[worker::send]
 pub async fn check_base_exists(client: &Client, base_id: &BaseId) -> anyhow::Result<bool> {
     let resp = client
-        .build_request_v3(Method::GET, &format!("/meta/bases/{}", base_id))
+        .build_request_v2(Method::GET, &format!("/meta/bases/{}", base_id))
         .send()
         .await?;
 
