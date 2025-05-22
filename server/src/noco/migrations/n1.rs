@@ -472,7 +472,8 @@ impl Migration<'_> {
                     "description": "The link URL.",
                     "meta": {
                         "validation": true
-                    }
+                    },
+                    "rqd": true,
                 }),
             },
             ColumnRequest {
@@ -482,7 +483,8 @@ impl Migration<'_> {
                     "column_name": "file",
                     "title": "File",
                     "uidt": "Attachment",
-                    "description": "The image, document, etc. to upload."
+                    "description": "The image, document, etc. to upload.",
+                    "rqd": true,
                 }),
             },
         ];
