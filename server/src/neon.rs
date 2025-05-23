@@ -122,6 +122,7 @@ impl Client {
         #[derive(Debug, Deserialize)]
         struct GetProjectResponse {
             id: ProjectId,
+            name: String,
         }
 
         let org_id = config::neon_org_id();
@@ -144,7 +145,8 @@ impl Client {
             .json::<GetProjectListResponse>()
             .await?
             .projects
-            .first()
+            .into_iter()
+            .find(|project| project_name == project.name)
             .ok_or_else(|| anyhow::anyhow!("No Neon project found with name {}", &project_name))?
             .id
             .clone();
