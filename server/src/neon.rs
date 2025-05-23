@@ -131,11 +131,7 @@ impl Client {
             .build_request(
                 reqwest::Method::GET,
                 "/projects",
-                &[
-                    ("org_id", &org_id),
-                    ("limit", "1"),
-                    ("search", project_name),
-                ],
+                &[("org_id", &org_id), ("search", project_name)],
             )?
             .send()
             .await?;
@@ -255,7 +251,7 @@ impl Client {
             .build_request(
                 reqwest::Method::GET,
                 &format!("/projects/{}/branches", &project_id.0),
-                &[("limit", "1"), ("search", &branch_name)],
+                &[("search", &branch_name)],
             )?
             .send()
             .await?;
@@ -368,7 +364,7 @@ impl Client {
         f: Func,
     ) -> anyhow::Result<T>
     where
-        Fut: Future<Output = Result<T, anyhow::Error>>,
+        Fut: Future<Output = anyhow::Result<T>>,
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(project_name).await?;
