@@ -4,7 +4,7 @@ use reqwest::Method;
 use serde_json::json;
 use worker::console_log;
 
-use crate::noco::{Client, client::check_status};
+use crate::{http::check_status, noco::Client};
 
 use super::common::{
     ColumnRequest, DATE_FORMAT, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,

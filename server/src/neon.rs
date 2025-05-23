@@ -3,7 +3,10 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::console_log;
 
-use crate::config;
+use crate::{
+    config,
+    http::{self, check_status},
+};
 
 const TEMP_ROLLBACK_CHILD_BRANCH_NAME: &str = "temp-rollback";
 
@@ -45,24 +48,6 @@ pub struct ProjectId(String);
 #[serde(transparent)]
 pub struct BranchId(String);
 
-async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
-    let status = resp.status();
-    let url = resp.url().to_string();
-
-    if status.is_client_error() || status.is_server_error() {
-        return Err(anyhow::anyhow!(
-            "{} for ({}) with response body:\n{}",
-            status,
-            url,
-            resp.text()
-                .await
-                .unwrap_or("Could not decode response body".to_string()),
-        ));
-    }
-
-    Ok(resp)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BranchType {
     ReadOnly,
@@ -90,7 +75,7 @@ impl Client {
 
     pub fn new() -> Self {
         let api_token = config::neon_api_token();
-        let client = reqwest::Client::new();
+        let client = http::get_client();
 
         Self { client, api_token }
     }

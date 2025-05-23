@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
-use crate::noco::{Client, client::check_status};
+use crate::{http::check_status, noco::Client};
 
 use super::{RefSetter, TableId, ViewId};
 

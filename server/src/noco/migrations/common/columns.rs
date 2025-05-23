@@ -4,7 +4,7 @@ use reqwest::Method;
 use serde::Deserialize;
 use worker::console_log;
 
-use crate::noco::{Client, client::check_status};
+use crate::{http::check_status, noco::Client};
 
 use super::{ColumnId, RefSetter, TableId};
 

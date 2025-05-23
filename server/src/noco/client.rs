@@ -2,6 +2,8 @@ use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
 use worker::console_log;
 
+use crate::http;
+
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
 
@@ -17,24 +19,6 @@ impl ExposeSecret<str> for ApiToken {
     }
 }
 
-pub async fn check_status(resp: reqwest::Response) -> anyhow::Result<reqwest::Response> {
-    let status = resp.status();
-    let url = resp.url().to_string();
-
-    if status.is_client_error() || status.is_server_error() {
-        return Err(anyhow::anyhow!(
-            "{} for ({}) with response body:\n{}",
-            status,
-            url,
-            resp.text()
-                .await
-                .unwrap_or("Could not decode response body".to_string()),
-        ));
-    }
-
-    Ok(resp)
-}
-
 #[derive(Debug)]
 pub struct Client {
     client: reqwest::Client,
@@ -45,7 +29,7 @@ pub struct Client {
 impl Client {
     pub fn new(dash_origin: Url, api_token: ApiToken) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: http::get_client(),
             dash_origin,
             api_token,
         }

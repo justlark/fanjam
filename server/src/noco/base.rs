@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde_json::json;
 use worker::console_log;
 
-use crate::noco::client::check_status;
+use crate::http::check_status;
 
 use super::{Client, migrations::BaseId};
 
