@@ -423,6 +423,11 @@ impl Migration<'_> {
                     "title": "Created",
                     "uidt": "CreatedTime",
                     "description": "When this announcement was first created.",
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                        "is12hrFormat": IS_TIME_12HR
+                    }
                 }),
             },
             ColumnRequest {
@@ -433,6 +438,11 @@ impl Migration<'_> {
                     "title": "Last Edited",
                     "uidt": "LastModifiedTime",
                     "description": "When this announcement was last edited.",
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                        "is12hrFormat": IS_TIME_12HR
+                    }
                 }),
             },
             ColumnRequest {
