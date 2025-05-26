@@ -1,5 +1,4 @@
-use axum::{Json, response::ErrorResponse};
-use reqwest::StatusCode;
+use axum::{Json, http::StatusCode, response::ErrorResponse};
 use worker::console_error;
 
 use crate::api::ErrorResponse as ApiErrorResponse;

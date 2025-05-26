@@ -1,10 +1,9 @@
 use std::marker::PhantomData;
 
-use reqwest::Method;
 use serde_json::json;
-use worker::console_log;
+use worker::{Method, console_log};
 
-use crate::{http::check_status, noco::Client};
+use crate::noco::Client;
 
 use super::common::{
     ColumnRequest, DATE_FORMAT, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
@@ -522,40 +521,34 @@ impl Migration<'_> {
 
         let views = views.map(|id| id.expect("expected view ID, found none"));
 
-        let resp = self
-            .client
-            .build_request_v2(Method::PATCH, &format!("/meta/forms/{}", &views.add_event))
-            .json(&json!({
+        self.client
+            .build_request(Method::Patch, &format!("/meta/forms/{}", &views.add_event))
+            .with_body(&json!({
                 "heading": "Add Event",
                 "subheading": "Add an event to the schedule.",
                 "submit_another_form": true,
                 "show_blank_form": true,
                 "success_msg": "Event added!"
-            }))
-            .send()
+            }))?
+            .exec()
             .await?;
-
-        check_status(resp).await?;
 
         console_log!("Updated Noco form view with ID `{}`", views.add_event);
 
-        let resp = self
-            .client
-            .build_request_v2(
-                Method::PATCH,
+        self.client
+            .build_request(
+                Method::Patch,
                 &format!("/meta/forms/{}", &views.make_announcement),
             )
-            .json(&json!({
+            .with_body(&json!({
                 "heading": "Make Announcement",
                 "subheading": "Make an announcement which is sent to attendees.",
                 "submit_another_form": true,
                 "show_blank_form": true,
                 "success_msg": "Announcement sent!"
-            }))
-            .send()
+            }))?
+            .exec()
             .await?;
-
-        check_status(resp).await?;
 
         console_log!(
             "Updated Noco form view with ID `{}`",

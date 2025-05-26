@@ -1,29 +1,22 @@
-use reqwest::Method;
+use axum::http::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
-use worker::console_log;
-
-use crate::http::check_status;
+use worker::{Method, console_log};
 
 use super::{Client, migrations::BaseId};
 
 async fn create_empty_base(client: &Client, title: String) -> anyhow::Result<BaseId> {
-    let resp = client
-        .build_request_v2(Method::POST, "/meta/bases")
-        .json(&json!({
-            "title": title
-        }))
-        .send()
-        .await?;
-
     #[derive(Debug, Deserialize)]
     struct PostBaseResponse {
         id: BaseId,
     }
 
-    let base_id = check_status(resp)
-        .await?
-        .json::<PostBaseResponse>()
+    let base_id = client
+        .build_request(Method::Post, "/meta/bases")
+        .with_body(&json!({
+            "title": title
+        }))?
+        .fetch::<PostBaseResponse>()
         .await?
         .id;
 
@@ -37,16 +30,14 @@ async fn add_user(
     base_id: &BaseId,
     initial_user_email: String,
 ) -> anyhow::Result<()> {
-    let resp = client
-        .build_request_v2(Method::POST, &format!("/meta/bases/{}/users", base_id))
-        .json(&json!({
+    client
+        .build_request(Method::Post, &format!("/meta/bases/{}/users", base_id))
+        .with_body(&json!({
             "email": initial_user_email,
             "roles": "editor",
-        }))
-        .send()
+        }))?
+        .exec()
         .await?;
-
-    check_status(resp).await?;
 
     console_log!(
         "Added user `{}` to Noco base `{}`",
@@ -70,12 +61,10 @@ pub async fn create_base(
 
 #[worker::send]
 pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()> {
-    let resp = client
-        .build_request_v2(Method::DELETE, &format!("/meta/bases/{}", base_id))
-        .send()
+    client
+        .build_request(Method::Delete, &format!("/meta/bases/{}", base_id))
+        .exec()
         .await?;
-
-    check_status(resp).await?;
 
     console_log!("Deleted Noco base with ID `{}`", base_id);
 
@@ -84,17 +73,15 @@ pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()
 
 #[worker::send]
 pub async fn check_base_exists(client: &Client, base_id: &BaseId) -> anyhow::Result<bool> {
-    let resp = client
-        .build_request_v2(Method::GET, &format!("/meta/bases/{}", base_id))
-        .send()
+    let status_code = client
+        .build_request(Method::Get, &format!("/meta/bases/{}", base_id))
+        .allow_status(StatusCode::NOT_FOUND)
+        .allow_status(StatusCode::UNPROCESSABLE_ENTITY)
+        .exec()
         .await?;
 
-    match resp.status() {
-        reqwest::StatusCode::OK => Ok(true),
-        reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::UNPROCESSABLE_ENTITY => Ok(false),
-        _ => {
-            check_status(resp).await?;
-            Ok(false)
-        }
+    match status_code {
+        StatusCode::NOT_FOUND | StatusCode::UNPROCESSABLE_ENTITY => Ok(false),
+        _ => Ok(true),
     }
 }

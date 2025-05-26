@@ -1,12 +1,8 @@
-use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use worker::console_log;
+use worker::Method;
 
-use crate::{
-    config,
-    http::{self, check_status},
-};
+use crate::{config, http::RequestBuilder};
 
 const TEMP_ROLLBACK_CHILD_BRANCH_NAME: &str = "temp-rollback";
 
@@ -66,7 +62,6 @@ impl BranchType {
 
 #[derive(Debug)]
 pub struct Client {
-    client: reqwest::Client,
     api_token: ApiToken,
 }
 
@@ -75,27 +70,20 @@ impl Client {
 
     pub fn new() -> Self {
         let api_token = config::neon_api_token();
-        let client = http::get_client();
 
-        Self { client, api_token }
+        Self { api_token }
     }
 
-    fn build_request(
-        &self,
-        method: reqwest::Method,
-        path: &str,
-        params: &[(&str, &str)],
-    ) -> anyhow::Result<reqwest::RequestBuilder> {
-        let endpoint = Url::parse_with_params(&format!("{}{}", Self::API_BASE, path), params)?;
+    fn build_request(&self, method: worker::Method, path: &str) -> anyhow::Result<RequestBuilder> {
+        let endpoint = format!("{}{}", Self::API_BASE, path);
 
-        console_log!("{} {}", method, &endpoint);
-
-        Ok(self
-            .client
-            .request(method, endpoint)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .bearer_auth(self.api_token.expose_secret()))
+        Ok(RequestBuilder::new(method, &endpoint)
+            .with_header("Content-Type", "application/json")
+            .with_header("Accept", "application/json")
+            .with_header(
+                "Authorization",
+                &format!("Bearer {}", self.api_token.expose_secret()),
+            ))
     }
 
     async fn lookup_project(&self, project_name: &str) -> anyhow::Result<ProjectId> {
@@ -112,18 +100,11 @@ impl Client {
 
         let org_id = config::neon_org_id();
 
-        let resp = self
-            .build_request(
-                reqwest::Method::GET,
-                "/projects",
-                &[("org_id", &org_id), ("search", project_name)],
-            )?
-            .send()
-            .await?;
-
-        let project_id = check_status(resp)
-            .await?
-            .json::<GetProjectListResponse>()
+        let project_id = self
+            .build_request(Method::Get, "/projects")?
+            .with_param("org_id", &org_id)
+            .with_param("search", project_name)
+            .fetch::<GetProjectListResponse>()
             .await?
             .projects
             .into_iter()
@@ -169,13 +150,12 @@ impl Client {
             branch: BranchResponseObj,
         }
 
-        let resp = self
+        let branch_id = self
             .build_request(
-                reqwest::Method::POST,
+                Method::Post,
                 &format!("/projects/{}/branches", project_id.0),
-                &[],
             )?
-            .json(&PostBranchRequest {
+            .with_body(&PostBranchRequest {
                 branch: BranchRequestObj {
                     name: branch_name,
                     parent_id: parent_id.clone(),
@@ -183,13 +163,8 @@ impl Client {
                 endpoints: vec![EndpointRequestObj {
                     r#type: branch_type.as_api().to_string(),
                 }],
-            })
-            .send()
-            .await?;
-
-        let branch_id = check_status(resp)
-            .await?
-            .json::<PostBranchResponse>()
+            })?
+            .fetch::<PostBranchResponse>()
             .await?
             .branch
             .id;
@@ -201,19 +176,15 @@ impl Client {
         &self,
         project_id: &ProjectId,
         branch_id: &BranchId,
-    ) -> anyhow::Result<bool> {
-        let resp = self
-            .build_request(
-                reqwest::Method::DELETE,
-                &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0),
-                &[],
-            )?
-            .send()
-            .await?;
+    ) -> anyhow::Result<()> {
+        self.build_request(
+            Method::Delete,
+            &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0),
+        )?
+        .exec()
+        .await?;
 
-        check_status(resp).await?;
-
-        Ok(true)
+        Ok(())
     }
 
     async fn lookup_branch(
@@ -232,18 +203,13 @@ impl Client {
             name: String,
         }
 
-        let resp = self
+        let branch_id = self
             .build_request(
-                reqwest::Method::GET,
+                Method::Get,
                 &format!("/projects/{}/branches", &project_id.0),
-                &[("search", &branch_name)],
             )?
-            .send()
-            .await?;
-
-        let branch_id = check_status(resp)
-            .await?
-            .json::<GetBranchListResponse>()
+            .with_param("search", &branch_name)
+            .fetch::<GetBranchListResponse>()
             .await?
             .branches
             .into_iter()
@@ -290,24 +256,20 @@ impl Client {
             preserve_under_name: String,
         }
 
-        let resp = self
-            .build_request(
-                reqwest::Method::POST,
-                &format!(
-                    "/projects/{}/branches/{}/restore",
-                    &project_id.0, &branch_id.0,
-                ),
-                &[],
-            )?
-            .json(&PostRestoreRequest {
-                source_branch_id: branch_id.0.clone(),
-                source_lsn: source_lsn.0.clone(),
-                preserve_under_name: preserve_branch_name,
-            })
-            .send()
-            .await?;
-
-        check_status(resp).await?;
+        self.build_request(
+            Method::Post,
+            &format!(
+                "/projects/{}/branches/{}/restore",
+                &project_id.0, &branch_id.0,
+            ),
+        )?
+        .with_body(&PostRestoreRequest {
+            source_branch_id: branch_id.0.clone(),
+            source_lsn: source_lsn.0.clone(),
+            preserve_under_name: preserve_branch_name,
+        })?
+        .exec()
+        .await?;
 
         Ok(())
     }
@@ -323,18 +285,12 @@ impl Client {
             branch: BranchResponseObj,
         }
 
-        let resp = self
+        let lsn = self
             .build_request(
-                reqwest::Method::GET,
+                Method::Get,
                 &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0,),
-                &[],
             )?
-            .send()
-            .await?;
-
-        let lsn = check_status(resp)
-            .await?
-            .json::<GetBranchResponse>()
+            .fetch::<GetBranchResponse>()
             .await?
             .branch
             .parent_lsn;

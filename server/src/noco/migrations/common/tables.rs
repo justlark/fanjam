@@ -1,10 +1,9 @@
 use std::fmt;
 
-use reqwest::Method;
 use serde::Deserialize;
-use worker::console_log;
+use worker::{Method, console_log};
 
-use crate::{http::check_status, noco::Client};
+use crate::noco::Client;
 
 use super::{BaseId, RefSetter, TableId};
 
@@ -32,15 +31,10 @@ pub async fn create_tables(
     }
 
     for request in requests {
-        let resp = client
-            .build_request_v2(Method::POST, &format!("/meta/bases/{}/tables", base_id))
-            .json(&request.body)
-            .send()
-            .await?;
-
-        let table_id = check_status(resp)
-            .await?
-            .json::<PostTableResponse>()
+        let table_id = client
+            .build_request(Method::Post, &format!("/meta/bases/{}/tables", base_id))
+            .with_body(&request.body)?
+            .fetch::<PostTableResponse>()
             .await?
             .id;
 

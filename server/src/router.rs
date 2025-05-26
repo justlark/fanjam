@@ -3,10 +3,10 @@ use std::{fmt, sync::Arc};
 use axum::{
     Json, Router,
     extract::{Path, State},
+    http::StatusCode,
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use reqwest::StatusCode;
 use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{

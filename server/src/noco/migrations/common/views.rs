@@ -1,11 +1,10 @@
 use std::fmt;
 
-use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
-use worker::console_log;
+use worker::{Method, console_log};
 
-use crate::{http::check_status, noco::Client};
+use crate::noco::Client;
 
 use super::{RefSetter, TableId, ViewId};
 
@@ -50,22 +49,17 @@ pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> an
     }
 
     for request in requests {
-        let resp = client
-            .build_request_v2(
-                Method::POST,
+        let view_id = client
+            .build_request(
+                Method::Post,
                 &format!(
                     "/meta/tables/{}/{}",
                     request.table_id,
                     request.kind.endpoint()
                 ),
             )
-            .json(&request.body)
-            .send()
-            .await?;
-
-        let view_id = check_status(resp)
-            .await?
-            .json::<PostViewResponse>()
+            .with_body(&request.body)?
+            .fetch::<PostViewResponse>()
             .await?
             .id;
 
@@ -91,15 +85,13 @@ pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> an
 
 pub async fn lock_views(client: &Client, views: Vec<ViewId>) -> anyhow::Result<()> {
     for view_id in views {
-        let resp = client
-            .build_request_v2(Method::PATCH, &format!("/meta/views/{}", view_id))
-            .json(&json!({
+        client
+            .build_request(Method::Patch, &format!("/meta/views/{}", view_id))
+            .with_body(&json!({
                 "lock_type": "locked",
-            }))
-            .send()
+            }))?
+            .exec()
             .await?;
-
-        check_status(resp).await?;
 
         console_log!("Locked Noco view with ID `{}`", view_id,);
     }

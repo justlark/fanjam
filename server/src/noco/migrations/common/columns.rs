@@ -1,10 +1,9 @@
 use std::fmt;
 
-use reqwest::Method;
 use serde::Deserialize;
-use worker::console_log;
+use worker::{Method, console_log};
 
-use crate::{http::check_status, noco::Client};
+use crate::noco::Client;
 
 use super::{ColumnId, RefSetter, TableId};
 
@@ -33,18 +32,13 @@ pub async fn create_columns(
     }
 
     for request in requests {
-        let resp = client
-            .build_request_v2(
-                Method::POST,
+        let column_id = client
+            .build_request(
+                Method::Post,
                 &format!("/meta/tables/{}/columns", request.table_id),
             )
-            .json(&request.body)
-            .send()
-            .await?;
-
-        let column_id = check_status(resp)
-            .await?
-            .json::<PostColumnResponse>()
+            .with_body(&request.body)?
+            .fetch::<PostColumnResponse>()
             .await?
             .id;
 

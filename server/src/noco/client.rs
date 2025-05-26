@@ -1,8 +1,7 @@
-use reqwest::Url;
 use secrecy::{ExposeSecret, SecretString};
-use worker::console_log;
+use worker::{Method, Url};
 
-use crate::http;
+use crate::http::RequestBuilder;
 
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
@@ -21,7 +20,6 @@ impl ExposeSecret<str> for ApiToken {
 
 #[derive(Debug)]
 pub struct Client {
-    client: reqwest::Client,
     dash_origin: Url,
     api_token: ApiToken,
 }
@@ -29,18 +27,16 @@ pub struct Client {
 impl Client {
     pub fn new(dash_origin: Url, api_token: ApiToken) -> Self {
         Self {
-            client: http::get_client(),
             dash_origin,
             api_token,
         }
     }
 
     // Once it's stable, we can migrate to v3 of the NocoDB API.
-    pub fn build_request_v2(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        console_log!("{} {}", method, path);
+    pub fn build_request(&self, method: Method, path: &str) -> RequestBuilder {
+        let endpoint = format!("{}api/v2{}", self.dash_origin, path);
 
-        self.client
-            .request(method, format!("{}api/v2{}", self.dash_origin, path))
-            .header("Xc-Token", self.api_token.0.expose_secret())
+        RequestBuilder::new(method, &endpoint)
+            .with_header("Xc-Token", self.api_token.0.expose_secret())
     }
 }
