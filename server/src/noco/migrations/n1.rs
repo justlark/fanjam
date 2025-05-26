@@ -296,7 +296,7 @@ impl Migration<'_> {
                     "uidt": "LongText",
                     "description": "A description of the event.",
                     "meta": {
-                        "richText": true
+                        "richMode": true
                     }
                 }),
             },
@@ -401,7 +401,7 @@ impl Migration<'_> {
                     "uidt": "LongText",
                     "description": "The text of the announcement itself.",
                     "meta": {
-                        "richText": true
+                        "richMode": true
                     }
                 }),
             },
@@ -444,7 +444,7 @@ impl Migration<'_> {
                     "uidt": "LongText",
                     "description": "A brief description of the con, which appears in the app.",
                     "meta": {
-                        "richText": false
+                        "richMode": false
                     }
                 }),
             },
