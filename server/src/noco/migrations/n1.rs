@@ -533,7 +533,7 @@ impl Migration<'_> {
 
         self.client
             .build_request(Method::Patch, &format!("/meta/forms/{}", &views.add_event))
-            .with_body(&json!({
+            .with_json(&json!({
                 "heading": "Add Event",
                 "subheading": "Add an event to the schedule.",
                 "submit_another_form": true,
@@ -550,7 +550,7 @@ impl Migration<'_> {
                 Method::Patch,
                 &format!("/meta/forms/{}", &views.make_announcement),
             )
-            .with_body(&json!({
+            .with_json(&json!({
                 "heading": "Make Announcement",
                 "subheading": "Make an announcement which is sent to attendees.",
                 "submit_another_form": true,

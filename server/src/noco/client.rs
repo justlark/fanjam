@@ -38,5 +38,6 @@ impl Client {
 
         RequestBuilder::new(method, &endpoint)
             .with_header("Xc-Token", self.api_token.0.expose_secret())
+            .with_header("Accept", "application/json")
     }
 }

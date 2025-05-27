@@ -13,7 +13,7 @@ async fn create_empty_base(client: &Client, title: String) -> anyhow::Result<Bas
 
     let base_id = client
         .build_request(Method::Post, "/meta/bases")
-        .with_body(&json!({
+        .with_json(&json!({
             "title": title
         }))?
         .fetch::<PostBaseResponse>()
@@ -32,7 +32,7 @@ async fn add_user(
 ) -> anyhow::Result<()> {
     client
         .build_request(Method::Post, &format!("/meta/bases/{}/users", base_id))
-        .with_body(&json!({
+        .with_json(&json!({
             "email": initial_user_email,
             "roles": "editor",
         }))?

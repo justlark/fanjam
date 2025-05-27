@@ -37,7 +37,7 @@ pub async fn create_columns(
                 Method::Post,
                 &format!("/meta/tables/{}/columns", request.table_id),
             )
-            .with_body(&request.body)?
+            .with_json(&request.body)?
             .fetch::<PostColumnResponse>()
             .await?
             .id;

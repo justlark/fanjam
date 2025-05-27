@@ -78,7 +78,6 @@ impl Client {
         let endpoint = format!("{}{}", Self::API_BASE, path);
 
         Ok(RequestBuilder::new(method, &endpoint)
-            .with_header("Content-Type", "application/json")
             .with_header("Accept", "application/json")
             .with_header(
                 "Authorization",
@@ -155,7 +154,7 @@ impl Client {
                 Method::Post,
                 &format!("/projects/{}/branches", project_id.0),
             )?
-            .with_body(&PostBranchRequest {
+            .with_json(&PostBranchRequest {
                 branch: BranchRequestObj {
                     name: branch_name,
                     parent_id: parent_id.clone(),
@@ -263,7 +262,7 @@ impl Client {
                 &project_id.0, &branch_id.0,
             ),
         )?
-        .with_body(&PostRestoreRequest {
+        .with_json(&PostRestoreRequest {
             source_branch_id: branch_id.0.clone(),
             source_lsn: source_lsn.0.clone(),
             preserve_under_name: preserve_branch_name,

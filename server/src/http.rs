@@ -37,7 +37,7 @@ impl RequestBuilder {
         self
     }
 
-    pub fn with_body<T>(mut self, body: &T) -> anyhow::Result<Self>
+    pub fn with_json<T>(mut self, body: &T) -> anyhow::Result<Self>
     where
         T: ?Sized + Serialize,
     {
