@@ -96,6 +96,9 @@ impl Migration<'_> {
                     "table_name": "events",
                     "title": "Events",
                     "description": "The con schedule. Events here will appear on the schedule for attendees.",
+                    "meta": {
+                        "icon": "🗓️"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -119,6 +122,9 @@ impl Migration<'_> {
                     "table_name": "locations",
                     "title": "Locations",
                     "description": "The rooms, buildings, stages, etc. at the venue. Assign each event to a location, and see which events are being held where.",
+                    "meta": {
+                        "icon": "📍"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -142,6 +148,9 @@ impl Migration<'_> {
                     "table_name": "people",
                     "title": "People",
                     "description": "People hosting events at the con. Panelists, presenters, etc. Assign people to events, and see which events are being hosted by whom.",
+                    "meta": {
+                        "icon": "🧒"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -165,6 +174,9 @@ impl Migration<'_> {
                     "table_name": "tags",
                     "title": "Tags",
                     "description": "Tags for events. Label events with tags to help attendees find what they're looking for. You could group events into categories, tag some events as 18+, flag events that cost extra, etc.",
+                    "meta": {
+                        "icon": "🏷️"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -189,6 +201,9 @@ impl Migration<'_> {
                     "table_name": "announcements",
                     "title": "Announcements",
                     "description": "Announcements to send to attendees. Make an announcement, and attendees can see them in the app.",
+                    "meta": {
+                        "icon": "📣"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -212,6 +227,9 @@ impl Migration<'_> {
                     "table_name": "about",
                     "title": "About",
                     "description": "General information about the con. If you have multiple rows in this table, the most recent one is what will be shown in the app.",
+                    "meta": {
+                        "icon": "ℹ️"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -235,6 +253,9 @@ impl Migration<'_> {
                     "table_name": "links",
                     "title": "Links",
                     "description": "Links to external resources and information which attendees can view the app.",
+                    "meta": {
+                        "icon": "🔗"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
@@ -258,6 +279,9 @@ impl Migration<'_> {
                     "table_name": "files",
                     "title": "Files",
                     "description": "Images, documents, etc. which attendees can view the app.",
+                    "meta": {
+                        "icon": "🗃️"
+                    },
                     "columns": [
                         {
                             "column_name": "id",
