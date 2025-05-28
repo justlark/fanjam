@@ -8,9 +8,10 @@ locals {
 // https://github.com/kislerdm/terraform-provider-neon/issues/153
 
 resource "neon_project" "env" {
-  for_each = local.environments
-  name     = each.key
-  org_id   = var.neon_org_id
+  for_each  = local.environments
+  name      = each.key
+  org_id    = var.neon_org_id
+  region_id = each.value.neon_region
 
   branch {
     name          = local.neon_default_branch_name

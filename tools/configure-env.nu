@@ -7,17 +7,14 @@ def generate-fly-config [app: string, url: string, bucket: string] {
 
   {
     app: $app,
-    # The Fly Machine must be located as physically near the Postgres database
-    # as possible to have acceptable performance. Currently, all Neon databases
-    # are located in AWS `us-east-1`. This is the Fly.io region that's closest.
-    primary_region: "iad",
+    primary_region: $config.default_fly_region,
     build: {
       image: $"nocodb/nocodb:($config.nocodb_version)",
     },
     env: {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
-      NC_S3_ENDPOINT: $"https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/($bucket)",
+      NC_S3_ENDPOINT: $"https://($config.cloudflare_account_id).r2.cloudflarestorage.com/($bucket)",
       NC_INVITE_ONLY_SIGNUP: "true",
       NC_ADMIN_EMAIL: ($config.admin_email),
     },
@@ -70,6 +67,7 @@ def main [env_name: string] {
   let env_config = {
     fly_app: $fly_app_name
     app_domain: $env_name
+    neon_region: $config.default_neon_region
     system_password_counter: 1
   }
 

@@ -1,6 +1,20 @@
+# The NocoDB version to use for new environments.
 nocodb_version: "0.263.4"
+
+# The Fly Machine must be located as physically near the Postgres database as
+# possible to have acceptable performance. Note that Fly.io regions and Neon
+# regions are not 1:1. These are the defaults to use for new environments.
+default_fly_region: "iad"
+default_neon_region: "aws-us-east-1"
+
+# These shouldn't ever need to change.
 app_base_domain: "fanjam.live"
 admin_email: "system@fanjam.live"
+cloudflare_account_id: "151bc8670b862fa7d694cf7246a2c0dc"
+
+# We run multiple deployments of the sparklefish server and client, for
+# testing. If we decide we want to add more stages in the future, note that
+# there is more involved than just appending to this array.
 stages:
   - name: prod
     api_url: "https://api.fanjam.live"
