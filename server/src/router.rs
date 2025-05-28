@@ -11,16 +11,17 @@ use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
-        GetLinkResponse, GetMigrationResponse, PostBaseRequest, PostLinkResponse,
-        PostMigrationResponse, PutTokenRequest,
+        GetCurrentMigrationResponse, GetLinkResponse, PostApplyMigrationResponse, PostBackupKind,
+        PostBackupRequest, PostBaseRequest, PostLinkResponse, PostRestoreBackupKind,
+        PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
     env::{EnvId, EnvName},
     error, kv, neon,
     noco::{
-        self, ApiToken, ExistingMigrationState, MigrationState, NOCO_DELETE_BACKUP_BRANCH_NAME,
-        check_base_exists,
+        self, ApiToken, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
+        NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, check_base_exists,
     },
     url,
 };
@@ -67,8 +68,10 @@ pub fn new(state: AppState) -> Router {
         .route("/tokens/{env_name}", put(put_token))
         .route("/bases/{env_name}", post(post_base))
         .route("/bases/{env_name}", delete(delete_base))
-        .route("/migrations/{env_name}", post(post_migration))
-        .route("/migrations/{env_name}", get(get_migration))
+        .route("/migrations/{env_name}/apply", post(post_apply_migration))
+        .route("/migrations/{env_name}/current", get(get_current_migration))
+        .route("/backups/{env_name}", post(post_backup))
+        .route("/backups/{env_name}/restore", post(post_restore_backup))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
         .layer(cors_layer())
@@ -211,8 +214,8 @@ async fn delete_base(
     // Back up the database in case we delete the NocoDB base accidentally.
     neon_client
         .create_backup(
-            &env_name.to_string(),
-            NOCO_DELETE_BACKUP_BRANCH_NAME.to_string(),
+            &env_name.clone().into(),
+            &NOCO_PRE_BASE_DELETION_BRANCH_NAME,
         )
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -233,10 +236,10 @@ async fn delete_base(
 }
 
 #[axum::debug_handler]
-async fn post_migration(
+async fn post_apply_migration(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
-) -> Result<Json<PostMigrationResponse>, ErrorResponse> {
+) -> Result<Json<PostApplyMigrationResponse>, ErrorResponse> {
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
@@ -270,21 +273,64 @@ async fn post_migration(
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    Ok(Json(PostMigrationResponse {
+    Ok(Json(PostApplyMigrationResponse {
         old_version,
         new_version,
     }))
 }
 
 #[axum::debug_handler]
-async fn get_migration(
+async fn get_current_migration(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
-) -> Result<Json<GetMigrationResponse>, ErrorResponse> {
+) -> Result<Json<GetCurrentMigrationResponse>, ErrorResponse> {
     let version = kv::get_migration_version(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .unwrap_or(noco::Version::INITIAL);
 
-    Ok(Json(GetMigrationResponse { version }))
+    Ok(Json(GetCurrentMigrationResponse { version }))
+}
+
+#[axum::debug_handler]
+async fn post_backup(
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PostBackupRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let neon_client = neon::Client::new();
+
+    let dest_branch_name = match body.kind {
+        PostBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
+    };
+
+    neon_client
+        .create_backup(&env_name.clone().into(), &dest_branch_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn post_restore_backup(
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PostRestoreBackupRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let neon_client = neon::Client::new();
+
+    let source_branch_name = match body.kind {
+        PostRestoreBackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
+        PostRestoreBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
+    };
+
+    neon_client
+        .restore_backup(
+            &env_name.clone().into(),
+            &source_branch_name,
+            &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
+        )
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    Ok(NoContent)
 }

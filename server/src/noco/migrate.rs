@@ -2,7 +2,7 @@ use std::fmt;
 
 use worker::{console_error, kv::KvStore};
 
-use crate::{env::EnvName, kv};
+use crate::{env::EnvName, kv, neon::BranchName};
 
 use super::{
     create_base,
@@ -10,11 +10,16 @@ use super::{
 };
 use crate::neon::Client as NeonClient;
 
-pub const NOCO_MIGRATE_BACKUP_BRANCH_NAME: &str = "noco-migration-backup";
-pub const NOCO_DELETE_BACKUP_BRANCH_NAME: &str = "noco-deletion-backup";
+pub const NOCO_PRE_BASE_DELETION_BRANCH_NAME: BranchName =
+    BranchName::new("noco-pre-base-deletion");
+pub const NOCO_PRE_DEPLOYMENT_BRANCH_NAME: BranchName = BranchName::new("noco-pre-deployment");
+pub const NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME: BranchName =
+    BranchName::new("noco-pre-migration-rollback");
+pub const NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME: BranchName =
+    BranchName::new("noco-pre-manual-restore");
 
-fn noco_migration_branch_name(version: &Version) -> String {
-    format!("noco-migration-{}", version)
+fn noco_migration_branch_name(version: &Version) -> BranchName {
+    format!("noco-migration-{}", version).into()
 }
 
 #[derive(Debug)]
@@ -90,7 +95,10 @@ impl<'a> Migrator<'a> {
                 kv::put_base_id(self.kv, env_name, &base_id).await?;
 
                 self.neon_client
-                    .create_backup(&env_name.to_string(), noco_migration_branch_name(&version))
+                    .create_backup(
+                        &env_name.clone().into(),
+                        &noco_migration_branch_name(&version),
+                    )
                     .await?;
 
                 (version, base_id)
@@ -104,8 +112,8 @@ impl<'a> Migrator<'a> {
             let is_up_to_date = self
                 .neon_client
                 .with_rollback(
-                    &env_name.to_string(),
-                    NOCO_MIGRATE_BACKUP_BRANCH_NAME.to_string(),
+                    &env_name.clone().into(),
+                    &NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME,
                     async || {
                         match migrations::run(self.noco_client, base_id.clone(), version.next())
                             .await
@@ -135,7 +143,10 @@ impl<'a> Migrator<'a> {
             }
 
             self.neon_client
-                .create_backup(&env_name.to_string(), noco_migration_branch_name(&version))
+                .create_backup(
+                    &env_name.clone().into(),
+                    &noco_migration_branch_name(&version),
+                )
                 .await?;
         }
 

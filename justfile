@@ -56,7 +56,8 @@ deploy-secrets env:
 
 # deploy an existing NocoDB instance
 [group("manage infrastructure")]
-deploy-env env:
+deploy-env env stage="prod":
+  ./tools/create-deploy-backup.nu {{ stage }} {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # set up TLS certificates for an environment

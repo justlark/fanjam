@@ -31,12 +31,37 @@ pub struct PostBaseRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PostMigrationResponse {
+pub struct PostApplyMigrationResponse {
     pub old_version: noco::Version,
     pub new_version: noco::Version,
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetMigrationResponse {
+pub struct GetCurrentMigrationResponse {
     pub version: noco::Version,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostBackupKind {
+    Deployment,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostBackupRequest {
+    #[serde(rename = "type")]
+    pub kind: PostBackupKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostRestoreBackupKind {
+    Deletion,
+    Deployment,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostRestoreBackupRequest {
+    #[serde(rename = "type")]
+    pub kind: PostRestoreBackupKind,
 }

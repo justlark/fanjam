@@ -3,5 +3,5 @@
 source ./http.nu
 
 def main [stage_name: string, env_name: string] {
-  admin-api get $stage_name $"/migrations/($env_name)"
+  admin-api get $stage_name $"/migrations/($env_name)/current"
 }

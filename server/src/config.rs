@@ -58,6 +58,6 @@ pub fn neon_org_id() -> String {
     get_config().neon_org_id.clone()
 }
 
-pub fn neon_default_branch_name() -> String {
-    get_config().neon_default_branch_name.clone()
+pub fn neon_default_branch_name() -> neon::BranchName {
+    get_config().neon_default_branch_name.clone().into()
 }
