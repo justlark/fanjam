@@ -48,14 +48,14 @@ configure-env env:
 [group("manage infrastructure")]
 create-env env:
   ./tools/create-fly-app.nu {{ env }}
-  ./tools/deploy-secrets.nu {{ env }}
+  ./tools/update-secrets.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
   ./tools/deploy-certs.nu {{ env }}
 
 # update environment secrets passed to the NocoDB instance
 [group("manage infrastructure")]
-deploy-secrets env:
-  ./tools/deploy-secrets.nu {{ env }}
+update-secrets env:
+  ./tools/update-secrets.nu {{ env }}
 
 # get the system user login credentials for an environment
 [group("manage infrastructure")]
