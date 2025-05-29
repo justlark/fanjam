@@ -1,7 +1,7 @@
+source ./config.nu
+
 def get-api-base [stage_name: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+  let config = get-global-config
   let api_urls = $config.stages | where "name" == $stage_name | get "api_url"
 
   match ($api_urls | length) {

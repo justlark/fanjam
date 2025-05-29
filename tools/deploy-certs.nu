@@ -1,13 +1,11 @@
 #!/usr/bin/env nu
 
-def main [env_name: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+source ./config.nu
 
-  let repo_path = $env.FILE_PWD | path dirname
-  let env_file = $repo_path | path join "infra" "environments" $env_name "env.yaml"
-  let app_subdomain = open $env_file | get app_domain
+def main [env_name: string] {
+  let config = get-global-config
+  let env_config = get-env-config $env_name
+  let app_subdomain = $env_config | get app_domain
 
   let existing_certs = fly --config $"./infra/environments/($env_name)/fly.yaml" certs list --json | from json
 

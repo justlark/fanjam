@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 
+source ./config.nu
+
 def main [env_name: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+  let config = get-global-config
 
   let all_secrets = terraform -chdir=./infra/ output -json noco_secrets | from json
   let env_secrets = $all_secrets | get $env_name

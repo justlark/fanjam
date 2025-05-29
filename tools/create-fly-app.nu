@@ -1,13 +1,11 @@
 #!/usr/bin/env nu
 
-def main [env_name: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+source ./config.nu
 
-  let repo_path = $env.FILE_PWD | path dirname
-  let env_file = $repo_path | path join "infra" "environments" $env_name "env.yaml"
-  let fly_app = open $env_file | get fly_app
+def main [env_name: string] {
+  let config = get-global-config
+  let env_config = get-env-config $env_name
+  let fly_app = $env_config | get fly_app
 
   let existing_apps = fly apps list --org $config.fly_org --json | from json
 

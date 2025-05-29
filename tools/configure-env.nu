@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 
+source ./config.nu
+
 def generate-fly-config [app: string, url: string, bucket: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+  let config = get-global-config
 
   {
     app: $app,
@@ -45,9 +45,7 @@ def generate-app-name [env_name: string] {
 }
 
 def main [env_name: string] {
-  let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
-  let config = open $config_path
+  let config = get-global-config
 
   let repo_path = $env.FILE_PWD | path dirname
   let env_path = $repo_path | path join "infra" "environments" $env_name
