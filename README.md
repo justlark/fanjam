@@ -65,12 +65,6 @@ just configure-env foo
 This will generate some files, which can be edited as necessary. Check them
 into the repo.
 
-Create a new app in Fly.io for the NocoDB instance.
-
-```
-just create-env foo
-```
-
 Deploy the supporting infrastructure using Terraform.
 
 ```
@@ -79,22 +73,10 @@ terraform plan
 terraform apply
 ```
 
-Pass secrets for the environment into NocoDB.
+Create a new NocoDB instance.
 
 ```
-just deploy-secrets foo
-```
-
-Deploy NocoDB.
-
-```
-just deploy-env foo
-```
-
-Configure TLS certificates for NocoDB.
-
-```
-just deploy-certs foo
+just create-env foo
 ```
 
 View the NocoDB system user login credentials for the new environment.

@@ -44,31 +44,29 @@ tail-server stage:
 configure-env env:
   ./tools/configure-env.nu {{ env }}
 
-# create a new NocoDB instance without deploying
+# create a new NocoDB instance
 [group("manage infrastructure")]
 create-env env:
-  fly -c ./infra/environments/{{ env }}/fly.yaml launch --org sparklefish --copy-config --yaml --no-deploy --yes
+  ./tools/create-fly-app.nu {{ env }}
+  ./tools/deploy-secrets.nu {{ env }}
+  fly -c ./infra/environments/{{ env }}/fly.yaml deploy
+  ./tools/deploy-certs.nu {{ env }}
 
-# pass environment secrets to the NocoDB instance
+# update environment secrets passed to the NocoDB instance
 [group("manage infrastructure")]
 deploy-secrets env:
-  ./tools/configure-secrets.nu {{ env }}
-
-# deploy an existing NocoDB instance
-[group("manage infrastructure")]
-deploy-env env stage="prod":
-  ./tools/create-deploy-backup.nu {{ stage }} {{ env }}
-  fly -c ./infra/environments/{{ env }}/fly.yaml deploy
-
-# set up TLS certificates for an environment
-[group("manage infrastructure")]
-deploy-certs env:
-  fly -c ./infra/environments/{{ env }}/fly.yaml certs add {{ env }}.fanjam.live
+  ./tools/deploy-secrets.nu {{ env }}
 
 # get the system user login credentials for an environment
 [group("manage infrastructure")]
 get-creds env:
   ./tools/get-creds.nu {{ env }}
+
+# redeploy an existing NocoDB instance
+[group("manage environments")]
+deploy-env env stage="prod":
+  ./tools/create-deploy-backup.nu {{ stage }} {{ env }}
+  fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # configure an environment with a NocoDB API token
 [group("manage environments")]

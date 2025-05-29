@@ -11,6 +11,7 @@ default_neon_region: "aws-us-east-1"
 app_base_domain: "fanjam.live"
 admin_email: "system@fanjam.live"
 cloudflare_account_id: "151bc8670b862fa7d694cf7246a2c0dc"
+fly_org: "sparklefish"
 
 # We run multiple deployments of the sparklefish server and client, for
 # testing. If we decide we want to add more stages in the future, note that
