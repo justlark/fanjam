@@ -496,21 +496,6 @@ impl Migration<'_> {
                 }),
             },
             ColumnRequest {
-                table_id: &tables.about,
-                column_ref: set_nop(),
-                body: json!({
-                    "column_name": "published",
-                    "title": "Published",
-                    "uidt": "Formula",
-                    "description": "The checked row is the only one which will be shown in the app.",
-                    "formula_raw": "({ID} == 1)",
-                    "meta": {
-                        "display_type": "Checkbox",
-                        "iconIdx": 0,
-                    }
-                }),
-            },
-            ColumnRequest {
                 table_id: &tables.links,
                 column_ref: set_nop(),
                 body: json!({
