@@ -88,9 +88,8 @@ just get-creds foo
 At this point, you'll need to log into the NocoDB instance manually to generate
 an API token. Call it "Worker".
 
-Finally, initialize the NocoDB instance with a new base. You'll need to specify
-which deployment of the backend you want to use. It will prompt you for the API
-token interactively. Once you've done this, you can lose the token.
+Finally, initialize the NocoDB instance with a new base. It will prompt you for
+the API token interactively. Once you've done this, you can lose the token.
 
 ```
 just init-env foo
