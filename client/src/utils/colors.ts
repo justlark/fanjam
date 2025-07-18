@@ -11,40 +11,46 @@ const djb2Hash = (str: string) => {
   return hash >>> 0;
 };
 
-// TODO: Rotate colors so that we don't use similar colors unless we have to.
-
 const allPaletteColors = [
-  "emerald",
-  "green",
-  "lime",
   "red",
-  "orange",
-  "amber",
-  "yellow",
-  "teal",
-  "cyan",
-  "sky",
   "blue",
-  "indigo",
-  "violet",
+  "green",
+  "orange",
   "purple",
-  "fuchsia",
+  "yellow",
   "pink",
   "rose",
+  "cyan",
+  "lime",
+  "amber",
+  "indigo",
+  "fuchsia",
+  "teal",
+  "emerald",
+  "sky",
+  "violet",
 ];
 
-const deterministicRandomColor = (str: string) => {
-  const hash = djb2Hash(str);
-  const index = hash % allPaletteColors.length;
-  return allPaletteColors[index];
+// To avoid accidentally choosing similar colors, the palette above is sorted,
+// and we choose random colors by popping them off the palette in order,
+// cycling through if we run out.
+
+const deterministicRandomColor = (seed: string, bank: Array<string>) => {
+  const allHashes = bank.map(djb2Hash);
+  allHashes.sort();
+
+  const thisHash = djb2Hash(seed);
+  const index = allHashes.indexOf(thisHash);
+
+  return allPaletteColors[index % allPaletteColors.length];
 };
 
-export const fgColorForString = (str: string, value: number) => {
-  const color = deterministicRandomColor(str);
-  return `text-${color}-${value}`;
+export const newFgColor = (seed: string, bank: Array<string>, colorValue: number) => {
+  const color = deterministicRandomColor(seed, bank);
+  return `text-${color}-${colorValue}`;
 };
 
-export const bgColorForString = (str: string, value: number) => {
-  const color = deterministicRandomColor(str);
-  return `bg-${color}-${value}`;
+export const newBgColor = (seed: string, bank: Array<string>, colorValue: number) => {
+  const color = deterministicRandomColor(seed, bank);
+  return `bg-${color}-${colorValue}`;
 };

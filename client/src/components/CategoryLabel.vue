@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Tag from "primevue/tag";
-import { bgColorForString, fgColorForString } from "@/utils/colors";
+import { newBgColor, newFgColor } from "@/utils/colors";
 
 const props = defineProps<{
   title: string;
   category: string;
+  allCategories: number;
 }>();
 
-const bgColor = computed(() => bgColorForString(props.category, 100));
-const fgColor = computed(() => fgColorForString(props.category, 500));
+const bgColor = computed(() => newBgColor(props.category, props.allCategories, 100));
+const fgColor = computed(() => newFgColor(props.category, props.allCategories, 500));
 </script>
 
 <template>

@@ -10,6 +10,7 @@ export interface EventSummary {
 const props = defineProps<{
   time: string;
   events: Array<EventSummary>;
+  allCategories: Array<string>;
 }>();
 </script>
 
@@ -23,6 +24,7 @@ const props = defineProps<{
         :key="index"
         :title="event.title"
         :category="event.category"
+        :all-categories="props.allCategories"
       />
     </div>
   </div>
