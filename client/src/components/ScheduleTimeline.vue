@@ -22,7 +22,7 @@ const allCategories = computed(() =>
     });
 
     return set;
-  }, []),
+  }, [] as Array<string>),
 );
 </script>
 

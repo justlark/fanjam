@@ -6,7 +6,7 @@ import { newBgColor, newFgColor } from "@/utils/colors";
 const props = defineProps<{
   title: string;
   category: string;
-  allCategories: number;
+  allCategories: Array<string>;
 }>();
 
 const bgColor = computed(() => newBgColor(props.category, props.allCategories, 100));
