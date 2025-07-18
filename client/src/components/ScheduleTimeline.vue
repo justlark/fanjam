@@ -1,39 +1,51 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 
+import DayPicker from "@/components/DayPicker.vue";
 import ScheduleTimeSlot, { type EventSummary } from "@/components/ScheduleTimeSlot.vue";
 import ScheduleHeader from "@/components/ScheduleHeader.vue";
 
 export interface TimeSlot {
-  time: string;
+  localizedTime: string;
   events: Array<EventSummary>;
 }
 
+export interface Day {
+  dayName: string;
+  timeSlots: Array<TimeSlot>;
+}
+
 const props = defineProps<{
-  events: Array<TimeSlot>;
+  days: Array<Day>;
 }>();
 
-const allCategories = computed(() =>
-  props.events.reduce((set, slot) => {
-    slot.events.forEach((event) => {
-      if (!set.includes(event.category)) {
-        set.push(event.category);
-      }
-    });
+const currentDayIndex = ref(0);
 
+const allCategories = computed(() =>
+  props.days.reduce((set, day) => {
+    day.timeSlots.forEach((timeSlot) => {
+      timeSlot.events.forEach((event) => {
+        if (!set.includes(event.category)) {
+          set.push(event.category);
+        }
+      });
+    });
     return set;
   }, [] as Array<string>),
 );
+
+const dayNames = computed(() => props.days.map((day) => day.dayName));
 </script>
 
 <template>
-  <div class="flex flex-col gap-8">
+  <div class="flex flex-col gap-4">
     <ScheduleHeader />
+    <DayPicker v-model="currentDayIndex" :day-names="dayNames" />
     <div class="flex flex-col gap-8">
-      <section v-for="(event, index) in props.events" :key="index">
+      <section v-for="(timeSlot, index) in props.days[currentDayIndex].timeSlots" :key="index">
         <ScheduleTimeSlot
-          :time="event.time"
-          :events="event.events"
+          :localized-time="timeSlot.localizedTime"
+          :events="timeSlot.events"
           :all-categories="allCategories"
         />
       </section>

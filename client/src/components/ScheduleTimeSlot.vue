@@ -8,7 +8,7 @@ export interface EventSummary {
 }
 
 const props = defineProps<{
-  time: string;
+  localizedTime: string;
   events: Array<EventSummary>;
   allCategories: Array<string>;
 }>();
@@ -16,7 +16,7 @@ const props = defineProps<{
 
 <template>
   <div>
-    <h2 class="text-xl">{{ props.time }}</h2>
+    <h2 class="text-xl">{{ props.localizedTime }}</h2>
     <Divider pt:root="!mt-1" />
     <div class="flex flex-wrap gap-3">
       <CategoryLabel

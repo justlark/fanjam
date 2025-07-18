@@ -4,34 +4,57 @@ import { ref } from "vue";
 import SiteNav from "@/components/SiteNav.vue";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 
-const events = ref([
+const days = ref([
   {
-    time: "10:00 am",
-    events: [
+    dayName: "Friday",
+    timeSlots: [
       {
-        title: "An event",
-        category: "Competition",
-      },
-      {
-        title: "An event with a longer title",
-        category: "Social",
-      },
-      {
-        title: "Another event for you to join",
-        category: "Entertainment",
+        localizedTime: "9:00 pm",
+        events: [
+          {
+            title: "An event which has a quite a long title indeed",
+            category: "Games",
+          },
+          {
+            title: "An event",
+            category: "Social",
+          },
+        ],
       },
     ],
   },
   {
-    time: "11:30 am",
-    events: [
+    dayName: "Saturday",
+    timeSlots: [
       {
-        title: "An event which has a quite a long title indeed",
-        category: "Entertainment",
+        localizedTime: "10:00 am",
+        events: [
+          {
+            title: "An event",
+            category: "Competition",
+          },
+          {
+            title: "An event with a longer title",
+            category: "Social",
+          },
+          {
+            title: "Another event for you to join",
+            category: "Entertainment",
+          },
+        ],
       },
       {
-        title: "An event",
-        category: "Social",
+        localizedTime: "11:30 am",
+        events: [
+          {
+            title: "An event which has a quite a long title indeed",
+            category: "Entertainment",
+          },
+          {
+            title: "An event",
+            category: "Games",
+          },
+        ],
       },
     ],
   },
@@ -40,6 +63,6 @@ const events = ref([
 
 <template>
   <SiteNav title="My Con">
-    <ScheduleTimeline class="p-6" :events="events" />
+    <ScheduleTimeline class="p-6" :days="days" />
   </SiteNav>
 </template>
