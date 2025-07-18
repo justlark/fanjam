@@ -42,13 +42,13 @@ const dayNames = computed(() => props.days.map((day) => day.dayName));
     <ScheduleHeader />
     <DayPicker v-model="currentDayIndex" :day-names="dayNames" />
     <div class="flex flex-col gap-8">
-      <section v-for="(timeSlot, index) in props.days[currentDayIndex].timeSlots" :key="index">
-        <ScheduleTimeSlot
-          :localized-time="timeSlot.localizedTime"
-          :events="timeSlot.events"
-          :all-categories="allCategories"
-        />
-      </section>
+      <ScheduleTimeSlot
+        v-for="(timeSlot, index) in props.days[currentDayIndex].timeSlots"
+        :key="index"
+        :localized-time="timeSlot.localizedTime"
+        :events="timeSlot.events"
+        :all-categories="allCategories"
+      />
     </div>
   </div>
 </template>

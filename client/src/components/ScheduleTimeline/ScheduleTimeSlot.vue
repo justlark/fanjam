@@ -17,7 +17,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div>
+  <section>
     <h2 class="text-xl">{{ props.localizedTime }}</h2>
     <Divider pt:root="!mt-1" />
     <div class="flex flex-wrap gap-3">
@@ -33,5 +33,5 @@ const props = defineProps<{
         />
       </RouterLink>
     </div>
-  </div>
+  </section>
 </template>
