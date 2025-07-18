@@ -3,7 +3,7 @@ import Button from "primevue/button";
 import { RouterLink } from "vue-router";
 
 const props = defineProps<{
-  to: string;
+  to: InstanceType<typeof RouterLink>["$props"]["to"];
   label: string;
   icon: string;
 }>();
