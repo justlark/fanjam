@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
-import Button from "primevue/button";
+import IconButton from "@/components/system/IconButton.vue";
 
 export interface Event {
   title: string;
@@ -22,15 +22,7 @@ const props = defineProps<{
 
 <template>
   <div class="flex justify-start items-center gap-2 p-4">
-    <Button
-      icon="bi bi-chevron-left"
-      pt:icon="!text-2xl"
-      variant="text"
-      size="large"
-      aria-label="Back"
-      rounded
-      @click="router.back()"
-    />
+    <IconButton icon="chevron-left" label="Back" @click="router.back()" />
     <h1 class="text-2xl">{{ props.event.title }}</h1>
   </div>
 </template>

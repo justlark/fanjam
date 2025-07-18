@@ -2,7 +2,7 @@
 import InputText from "primevue/inputtext";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
-import Button from "primevue/button";
+import IconButton from "@/components/system/IconButton.vue";
 </script>
 
 <template>
@@ -13,13 +13,6 @@ import Button from "primevue/button";
         <InputText class="w-full" placeholder="Search…" />
       </IconField>
     </div>
-    <Button
-      icon="bi bi-filter"
-      pt:icon="!text-4xl"
-      variant="text"
-      size="large"
-      aria-label="Menu"
-      rounded
-    />
+    <IconButton icon="filter" label="Menu" />
   </div>
 </template>

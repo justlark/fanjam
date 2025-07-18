@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Button from "primevue/button";
+import IconButton from "@/components/system/IconButton.vue";
 
 const currentDayIndex = defineModel({ type: Number, default: 0 });
 
@@ -22,24 +22,8 @@ const selectPrevDay = () => {
 
 <template>
   <nav class="flex items-center justify-center gap-4">
-    <Button
-      icon="bi bi-chevron-left"
-      pt:icon="!text-2xl"
-      variant="text"
-      size="large"
-      aria-label="Previous Day"
-      rounded
-      @click="selectPrevDay"
-    />
+    <IconButton icon="chevron-left" label="Previous Day" @click="selectPrevDay" />
     <span class="text-xl">{{ props.dayNames[currentDayIndex] }}</span>
-    <Button
-      icon="bi bi-chevron-right"
-      pt:icon="!text-2xl"
-      variant="text"
-      size="large"
-      aria-label="Next Day"
-      rounded
-      @click="selectNextDay"
-    />
+    <IconButton icon="chevron-right" label="Next Day" @click="selectNextDay" />
   </nav>
 </template>

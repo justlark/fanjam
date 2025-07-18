@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Divider from "primevue/divider";
-import CategoryLabel from "@/components/CategoryLabel.vue";
+import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import { RouterLink } from "vue-router";
 
 export interface EventSummary {
