@@ -28,11 +28,7 @@ const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 
 // TODO: What if the start and end days are more than a week apart? Unlikely,
 // but in that case, we ought to show the full date.
-const formatTime = (start: Date | undefined, end: Date | undefined) => {
-  if (!start) {
-    return undefined;
-  }
-
+const formatTime = (start: Date, end: Date | undefined) => {
   const startDay = start ? weekdayFormat.format(start) : undefined;
   const endDay = end ? weekdayFormat.format(end) : undefined;
 
@@ -56,7 +52,7 @@ const formatTime = (start: Date | undefined, end: Date | undefined) => {
       <h1 class="text-2xl">{{ event.title }}</h1>
     </div>
     <div class="flex flex-col gap-2 px-8">
-      <EventDetail v-if="event.startTime || event.endTime" icon="clock" icon-label="Time">
+      <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
         {{ formatTime(event.startTime, event.endTime) }}
       </EventDetail>
       <EventDetail v-if="event.people.length > 0" icon="person-circle">
