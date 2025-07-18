@@ -36,6 +36,7 @@ const toggleMenuDrawer = () => {
     </Drawer>
     <Divider pt:root="!my-0" />
   </header>
+  <slot class="lg:hidden" />
   <div class="hidden lg:flex items-stretch min-h-[100vh] max-w-60">
     <aside class="p-4 grow">
       <MainMenu />
