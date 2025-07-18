@@ -4,6 +4,7 @@ import Button from "primevue/button";
 const props = defineProps<{
   icon: string;
   label: string;
+  disabled: boolean;
 }>();
 
 defineEmits(["click"]);
@@ -17,6 +18,7 @@ defineEmits(["click"]);
     size="large"
     :aria-label="props.label"
     rounded
+    :disabled="props.disabled"
     @click="$emit('click')"
   />
 </template>
