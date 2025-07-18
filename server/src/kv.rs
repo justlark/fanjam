@@ -19,29 +19,29 @@ fn wrap_kv_err(err: KvError) -> anyhow::Error {
 // 2. Some cons (e.g. adult-only cons) might not want their app URL to be guessable; they might not
 //    want non-attendees to be able to easily access the schedule.
 fn env_id_key(env_name: &EnvName) -> String {
-    format!("env:{}:id", env_name)
+    format!("env:{env_name}:id")
 }
 
 // We need to map environment ID to environment name because the client app will be making requests
 // to this service by the environment ID.
 fn id_env_key(env_id: &EnvId) -> String {
-    format!("id:{}:env", env_id)
+    format!("id:{env_id}:env")
 }
 
 // The NocoDB API token for the environment. This is used to authenticate with the NocoDB API.
 fn api_token_key(env_name: &EnvName) -> String {
-    format!("env:{}:api-token", env_name)
+    format!("env:{env_name}:api-token")
 }
 
 // The NocoDB base ID for the environment. Each NocoDB instance contains a single base.
 fn base_id_key(env_name: &EnvName) -> String {
-    format!("env:{}:base-id", env_name)
+    format!("env:{env_name}:base-id")
 }
 
 // The current schema migration number of an environment. This is how we know where to start when
 // applying migrations, so we don't accidentally apply the same migration twice.
 fn migration_version_key(env_name: &EnvName) -> String {
-    format!("env:{}:migration", env_name)
+    format!("env:{env_name}:migration")
 }
 
 #[worker::send]

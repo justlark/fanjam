@@ -9,10 +9,7 @@ use crate::{
 pub fn dash_origin(env_name: &EnvName) -> anyhow::Result<Url> {
     let base_domain = config::base_domain();
 
-    Ok(Url::parse(&format!(
-        "https://{}.{}",
-        env_name, base_domain
-    ))?)
+    Ok(Url::parse(&format!("https://{env_name}.{base_domain}"))?)
 }
 
 // The URL of the dashboard for organizers.
@@ -28,7 +25,6 @@ pub fn app_url(env_id: &EnvId) -> anyhow::Result<Url> {
     let client_domain = config::client_domain();
 
     Ok(Url::parse(&format!(
-        "https://{}/app/{}",
-        client_domain, env_id
+        "https://{client_domain}/app/{env_id}"
     ))?)
 }

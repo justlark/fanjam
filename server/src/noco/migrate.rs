@@ -19,7 +19,7 @@ pub const NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME: BranchName =
     BranchName::new("noco-pre-manual-restore");
 
 fn noco_migration_branch_name(version: &Version) -> BranchName {
-    format!("noco-migration-{}", version).into()
+    format!("noco-migration-{version}").into()
 }
 
 #[derive(Debug)]

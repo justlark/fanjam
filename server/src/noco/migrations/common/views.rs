@@ -86,7 +86,7 @@ pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> an
 pub async fn lock_views(client: &Client, views: Vec<ViewId>) -> anyhow::Result<()> {
     for view_id in views {
         client
-            .build_request(Method::Patch, &format!("/meta/views/{}", view_id))
+            .build_request(Method::Patch, &format!("/meta/views/{view_id}"))
             .with_json(&json!({
                 "lock_type": "locked",
             }))?
