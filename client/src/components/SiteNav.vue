@@ -17,31 +17,36 @@ const toggleMenuDrawer = () => {
 </script>
 
 <template>
-  <header class="flex flex-col">
-    <div class="flex items-center p-2 lg:p-4 gap-2">
-      <Button
-        class="lg:!hidden text-5xl"
-        icon="bi bi-list"
-        pt:icon="!text-2xl"
-        variant="text"
-        size="large"
-        aria-label="Menu"
-        rounded
-        @click="toggleMenuDrawer"
-      />
-      <h1 class="text-2xl">{{ props.title }}</h1>
+  <div class="flex flex-col">
+    <header class="flex flex-col">
+      <div class="flex items-center p-2 lg:p-4 gap-2">
+        <Button
+          class="lg:!hidden text-5xl"
+          icon="bi bi-list"
+          pt:icon="!text-2xl"
+          variant="text"
+          size="large"
+          aria-label="Menu"
+          rounded
+          @click="toggleMenuDrawer"
+        />
+        <h1 class="text-2xl">{{ props.title }}</h1>
+      </div>
+      <Drawer v-model:visible="visible" :header="props.title">
+        <MainMenu />
+      </Drawer>
+      <Divider pt:root="!my-0" />
+    </header>
+    <div class="flex">
+      <div class="hidden lg:flex grow items-stretch min-h-[100vh] max-w-60">
+        <aside class="p-4 grow">
+          <MainMenu />
+        </aside>
+        <Divider pt:root="!ms-0" layout="vertical" />
+      </div>
+      <div class="grow">
+        <slot />
+      </div>
     </div>
-    <Drawer v-model:visible="visible" :header="props.title">
-      <MainMenu />
-    </Drawer>
-    <Divider pt:root="!my-0" />
-  </header>
-  <slot class="lg:hidden" />
-  <div class="hidden lg:flex items-stretch min-h-[100vh] max-w-60">
-    <aside class="p-4 grow">
-      <MainMenu />
-    </aside>
-    <Divider pt:root="!ms-0" layout="vertical" />
-    <slot />
   </div>
 </template>
