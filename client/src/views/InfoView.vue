@@ -1,3 +1,7 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import HeaderBar from "@/components/HeaderBar.vue";
+</script>
 
-<template></template>
+<template>
+  <HeaderBar title="My Con" />
+</template>
