@@ -18,7 +18,7 @@ const toggleMenuDrawer = () => {
 
 <template>
   <header class="flex flex-col">
-    <div class="flex items-center p-2 lg:p-4 gap-3">
+    <div class="flex items-center p-2 lg:p-4 gap-2">
       <Button
         class="lg:!hidden text-5xl"
         icon="bi bi-list"
