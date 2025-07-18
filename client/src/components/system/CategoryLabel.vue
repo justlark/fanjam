@@ -5,12 +5,12 @@ import { newBgColor, newFgColor } from "@/utils/colors";
 
 const props = defineProps<{
   title: string;
-  category: string;
+  category?: string;
   allCategories: Array<string>;
 }>();
 
-const bgColor = computed(() => newBgColor(props.category, props.allCategories, 100));
-const fgColor = computed(() => newFgColor(props.category, props.allCategories, 500));
+const bgColor = computed(() => newBgColor(props.category ?? props.title, props.allCategories, 100));
+const fgColor = computed(() => newFgColor(props.category ?? props.title, props.allCategories, 500));
 </script>
 
 <template>
