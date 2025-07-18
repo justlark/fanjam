@@ -12,7 +12,7 @@ const router = createRouter({
     {
       path: "/app/:id",
       name: "app",
-      component: () => import("../views/AppView.vue"),
+      redirect: { name: "schedule" },
     },
     {
       path: "/app/:id/schedule",
