@@ -4,7 +4,7 @@ import MainMenuItem from "@/components/MainMenuItem.vue";
 
 <template>
   <nav class="flex flex-col gap-3">
-    <MainMenuItem icon="bi bi-calendar-event" label="Schedule" :to="{ name: 'schedule' }" />
-    <MainMenuItem icon="bi bi-info-circle" label="Info" :to="{ name: 'info' }" />
+    <MainMenuItem icon="bi bi-calendar-event" label="Schedule" to="schedule" />
+    <MainMenuItem icon="bi bi-info-circle" label="Info" to="info" />
   </nav>
 </template>

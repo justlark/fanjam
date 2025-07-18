@@ -1,22 +1,26 @@
 <script setup lang="ts">
+import { useRoute } from "vue-router";
+
 import Button from "primevue/button";
 import { RouterLink } from "vue-router";
 
 const props = defineProps<{
-  to: InstanceType<typeof RouterLink>["$props"]["to"];
+  to: string;
   label: string;
   icon: string;
 }>();
+
+const route = useRoute();
 </script>
 
 <template>
   <Button
     pt:root="!justify-start"
     :as="RouterLink"
-    :to="props.to"
+    :to="{ name: props.to }"
     :icon="props.icon"
     :label="props.label"
-    variant="outlined"
+    :variant="route.name === props.to ? 'undefined' : 'outlined'"
     size="large"
   />
 </template>
