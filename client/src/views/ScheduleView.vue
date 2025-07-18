@@ -10,15 +10,15 @@ const events = ref([
     events: [
       {
         title: "An event",
-        category: "Category 1",
+        category: "Competition",
       },
       {
         title: "An event with a longer title",
-        category: "Category 2",
+        category: "Social",
       },
       {
         title: "Another event for you to join",
-        category: "Category 3",
+        category: "Entertainment",
       },
     ],
   },
@@ -27,11 +27,11 @@ const events = ref([
     events: [
       {
         title: "An event which has a quite a long title indeed",
-        category: "Category 3",
+        category: "Entertainment",
       },
       {
         title: "An event",
-        category: "Category 2",
+        category: "Social",
       },
     ],
   },

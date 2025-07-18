@@ -11,6 +11,8 @@ const djb2Hash = (str: string) => {
   return hash >>> 0;
 };
 
+// TODO: Rotate colors so that we don't use similar colors unless we have to.
+
 const allPaletteColors = [
   "emerald",
   "green",
