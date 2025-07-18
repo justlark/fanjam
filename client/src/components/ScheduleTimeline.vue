@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ScheduleTimeSlot, { type EventSummary } from "@/components/ScheduleTimeSlot.vue";
+import ScheduleHeader from "@/components/ScheduleHeader.vue";
 
 export interface TimeSlot {
   time: string;
@@ -13,8 +14,11 @@ const props = defineProps<{
 
 <template>
   <div class="flex flex-col gap-8">
-    <section v-for="(event, index) in props.events" :key="index">
-      <ScheduleTimeSlot :time="event.time" :events="event.events" />
-    </section>
+    <ScheduleHeader />
+    <div class="flex flex-col gap-8">
+      <section v-for="(event, index) in props.events" :key="index">
+        <ScheduleTimeSlot :time="event.time" :events="event.events" />
+      </section>
+    </div>
   </div>
 </template>

@@ -6,7 +6,7 @@ import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 
 const events = ref([
   {
-    time: "10:00am",
+    time: "10:00 am",
     events: [
       {
         title: "An event",
@@ -23,7 +23,7 @@ const events = ref([
     ],
   },
   {
-    time: "11:30am",
+    time: "11:30 am",
     events: [
       {
         title: "An event which has a quite a long title indeed",
