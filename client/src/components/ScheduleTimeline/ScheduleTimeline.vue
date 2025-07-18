@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-import DayPicker from "@/components/DayPicker.vue";
-import ScheduleTimeSlot, { type EventSummary } from "@/components/ScheduleTimeSlot.vue";
-import ScheduleHeader from "@/components/ScheduleHeader.vue";
+import DayPicker from "./DayPicker.vue";
+import ScheduleTimeSlot, { type EventSummary } from "./ScheduleTimeSlot.vue";
+import ScheduleHeader from "./ScheduleHeader.vue";
 
 export interface TimeSlot {
   localizedTime: string;

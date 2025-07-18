@@ -3,7 +3,7 @@ import { ref } from "vue";
 import Button from "primevue/button";
 import Divider from "primevue/divider";
 import Drawer from "primevue/drawer";
-import MainMenu from "@/components/MainMenu.vue";
+import MainMenu from "./MainMenu.vue";
 
 const props = defineProps<{
   title: string;

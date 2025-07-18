@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SiteNav from "@/components/SiteNav.vue";
+import SiteNav from "@/components/SiteNav";
 </script>
 
 <template>
