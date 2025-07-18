@@ -12,4 +12,9 @@ keep them from being tree-shaken out.
   body {
     font-family: "Fira Sans", sans-serif;
   }
+
+  body,
+  #app {
+    min-height: 100vh;
+  }
 }

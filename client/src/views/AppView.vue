@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import HeaderBar from "@/components/HeaderBar.vue";
+import SiteNav from "@/components/SiteNav.vue";
 </script>
 
 <template>
-  <HeaderBar title="My Con" />
+  <SiteNav title="My Con" />
 </template>
