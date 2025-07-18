@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ScheduleTimeSlot, { EventSummary } from "@/components/ScheduleTimeSlot.vue";
+import ScheduleTimeSlot, { type EventSummary } from "@/components/ScheduleTimeSlot.vue";
 
 export interface TimeSlot {
   time: string;
