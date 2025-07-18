@@ -20,7 +20,9 @@ const toggleMenuDrawer = () => {
   <div class="flex flex-col">
     <header class="flex flex-col">
       <div class="flex items-center p-2 lg:p-4 gap-2">
-        <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
+        <span class="lg:hidden">
+          <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
+        </span>
         <h1 class="text-2xl">{{ props.title }}</h1>
       </div>
       <Drawer v-model:visible="visible" :header="props.title">
