@@ -12,10 +12,12 @@ const days = ref([
         localizedTime: "9:00 pm",
         events: [
           {
+            id: "1",
             title: "An event which has a quite a long title indeed",
             category: "Games",
           },
           {
+            id: "2",
             title: "An event",
             category: "Social",
           },
@@ -30,14 +32,17 @@ const days = ref([
         localizedTime: "10:00 am",
         events: [
           {
+            id: "3",
             title: "An event",
             category: "Competition",
           },
           {
+            id: "4",
             title: "An event with a longer title",
             category: "Social",
           },
           {
+            id: "5",
             title: "Another event for you to join",
             category: "Entertainment",
           },
@@ -47,10 +52,12 @@ const days = ref([
         localizedTime: "11:30 am",
         events: [
           {
+            id: "6",
             title: "An event which has a quite a long title indeed",
             category: "Entertainment",
           },
           {
+            id: "7",
             title: "An event",
             category: "Games",
           },

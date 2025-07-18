@@ -44,9 +44,9 @@ const toggleMenuDrawer = () => {
         </aside>
         <Divider pt:root="!ms-0" layout="vertical" />
       </div>
-      <div class="grow">
+      <main class="grow">
         <slot />
-      </div>
+      </main>
     </div>
   </div>
 </template>

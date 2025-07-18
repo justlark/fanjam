@@ -10,17 +10,22 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: "/app/:id",
+      path: "/app/:appId",
       name: "app",
       redirect: { name: "schedule" },
     },
     {
-      path: "/app/:id/schedule",
+      path: "/app/:appId/schedule",
       name: "schedule",
       component: () => import("../views/ScheduleView.vue"),
     },
     {
-      path: "/app/:id/info",
+      path: "/app/:appId/events/:eventId",
+      name: "event",
+      component: () => import("../views/EventView.vue"),
+    },
+    {
+      path: "/app/:appId/info",
       name: "info",
       component: () => import("../views/InfoView.vue"),
     },
