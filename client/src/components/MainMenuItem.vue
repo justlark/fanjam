@@ -11,6 +11,7 @@ const props = defineProps<{
 
 <template>
   <Button
+    pt:root="!justify-start"
     :as="RouterLink"
     :to="props.to"
     :icon="props.icon"
