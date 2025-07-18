@@ -8,7 +8,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="flex gap-3 items-center">
+  <div class="flex gap-3 items-start">
     <SimpleIcon class="text-xl" :icon="props.icon" :label="props.iconLabel" />
     <span class="text-lg">
       <slot />
