@@ -17,6 +17,7 @@ struct ByTable<T> {
     events: T,
     locations: T,
     people: T,
+    categories: T,
     tags: T,
     announcements: T,
     about: T,
@@ -32,6 +33,7 @@ impl<T> ByTable<T> {
             events: f(self.events),
             locations: f(self.locations),
             people: f(self.people),
+            categories: f(self.categories),
             tags: f(self.tags),
             announcements: f(self.announcements),
             about: f(self.about),
@@ -171,9 +173,36 @@ impl Migration<'_> {
             },
             TableRequest {
                 body: json!({
+                    "table_name": "categories",
+                    "title": "Categories",
+                    "description": "Event categories. Group events into categories to help attendees find what they're looking for. Events can only belong to a single category. Use tags to add more.",
+                    "meta": {
+                        "icon": "📁"
+                    },
+                    "columns": [
+                        {
+                            "column_name": "id",
+                            "title": "ID",
+                            "uidt": "ID"
+                        },
+                        {
+                            "column_name": "name",
+                            "title": "Category",
+                            "uidt": "SingleLineText",
+                            "description": "The name of the category.",
+                            "rqd": true,
+                            "pv": true,
+                        }
+                    ]
+
+                }),
+                table_ref: set_ref(&mut tables.categories),
+            },
+            TableRequest {
+                body: json!({
                     "table_name": "tags",
                     "title": "Tags",
-                    "description": "Tags for events. Label events with tags to help attendees find what they're looking for. You could group events into categories, tag some events as 18+, flag events that cost extra, etc.",
+                    "description": "Tags for events. Label events with tags to help attendees find what they're looking for. You could tag some events as 18+, flag events that cost extra, etc.",
                     "meta": {
                         "icon": "🏷️"
                     },
@@ -387,6 +416,19 @@ impl Migration<'_> {
                     "description": "The list of events this person is hosting.",
                     "type": "mm",
                     "parentId": &tables.people,
+                    "childId": &tables.events
+                }),
+            },
+            ColumnRequest {
+                table_id: &tables.categories,
+                column_ref: set_nop(),
+                body: json!({
+                    "column_name": "events",
+                    "title": "Events",
+                    "uidt": "Links",
+                    "description": "The list of events in this category.",
+                    "type": "hm",
+                    "parentId": &tables.categories,
                     "childId": &tables.events
                 }),
             },
