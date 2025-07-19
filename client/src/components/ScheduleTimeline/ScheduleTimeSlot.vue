@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import Divider from "primevue/divider";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import { RouterLink } from "vue-router";
@@ -9,11 +10,23 @@ export interface EventSummary {
   category: string;
 }
 
+const eventIdAllowList = defineModel("ids", {
+  type: Array<string>,
+});
+
 const props = defineProps<{
   localizedTime: string;
   events: Array<EventSummary>;
   allCategories: Array<string>;
 }>();
+
+const eventIdAllowSet = computed(() =>
+  eventIdAllowList.value !== undefined ? new Set(eventIdAllowList.value) : undefined,
+);
+
+const filteredEvents = computed(() => {
+  return props.events.filter((event) => eventIdAllowSet.value?.has(event.id) ?? true);
+});
 </script>
 
 <template>
@@ -22,7 +35,7 @@ const props = defineProps<{
     <Divider pt:root="!mt-1" />
     <div class="flex flex-wrap gap-3">
       <RouterLink
-        v-for="event in props.events"
+        v-for="event in filteredEvents"
         :key="event.id"
         :to="{ name: 'event', params: { eventId: event.id } }"
       >

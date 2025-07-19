@@ -31,6 +31,7 @@ const currentDayIndex = defineModel("day", {
 
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref(new Map<string, number>());
+const searchResultEventIds = ref<Array<string>>();
 
 const allCategories = computed(() =>
   days.value.reduce((set, day) => {
@@ -115,11 +116,12 @@ watchEffect(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <ScheduleHeader />
+    <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
     <div v-if="days.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in days[currentDayIndex].timeSlots"
+        v-model:ids="searchResultEventIds"
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
