@@ -17,7 +17,7 @@ const toggleMenuDrawer = () => {
 </script>
 
 <template>
-  <div class="flex flex-col">
+  <div class="flex flex-col min-h-[100vh]">
     <header class="flex flex-col">
       <div class="flex items-center p-2 lg:p-4 gap-2">
         <span class="lg:hidden">
@@ -30,8 +30,8 @@ const toggleMenuDrawer = () => {
       </Drawer>
       <Divider pt:root="!my-0" />
     </header>
-    <div class="flex">
-      <div class="hidden lg:flex grow-0 shrink-0 items-stretch min-h-[100vh]">
+    <div class="flex grow">
+      <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
         <aside class="p-4 grow">
           <MainMenu />
         </aside>
