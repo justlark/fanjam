@@ -65,3 +65,20 @@ pub struct PostRestoreBackupRequest {
     #[serde(rename = "type")]
     pub kind: PostRestoreBackupKind,
 }
+
+#[derive(Debug, Serialize)]
+pub struct Event {
+    pub name: String,
+    pub description: String,
+    pub start_time: String,
+    pub end_time: String,
+    pub location: String,
+    pub people: Vec<String>,
+    pub category: String,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetEventsResponse {
+    pub events: Vec<Event>,
+}

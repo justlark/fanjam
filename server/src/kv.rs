@@ -56,6 +56,16 @@ pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> any
 }
 
 #[worker::send]
+pub async fn get_id_env(kv: &KvStore, env_id: &EnvId) -> anyhow::Result<Option<EnvName>> {
+    Ok(kv
+        .get(&id_env_key(env_id))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?
+        .map(EnvName::from))
+}
+
+#[worker::send]
 pub async fn put_env_id(kv: &KvStore, env_name: &EnvName, env_id: &EnvId) -> anyhow::Result<()> {
     kv.put(&env_id_key(env_name), env_id)
         .map_err(wrap_kv_err)?

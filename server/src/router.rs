@@ -11,9 +11,9 @@ use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
-        GetCurrentMigrationResponse, GetLinkResponse, PostApplyMigrationResponse, PostBackupKind,
-        PostBackupRequest, PostBaseRequest, PostLinkResponse, PostRestoreBackupKind,
-        PostRestoreBackupRequest, PutTokenRequest,
+        Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse,
+        PostApplyMigrationResponse, PostBackupKind, PostBackupRequest, PostBaseRequest,
+        PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
@@ -74,6 +74,7 @@ pub fn new(state: AppState) -> Router {
         .route("/backups/{env_name}/restore", post(post_restore_backup))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
+        .route("/events/{env_id}", get(get_events))
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }
@@ -333,4 +334,54 @@ async fn post_restore_backup(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_events(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<Json<GetEventsResponse>, ErrorResponse> {
+    let _env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    //
+    // TODO: Replace this dummy data with real calls to NocoDB.
+    //
+
+    let events = vec![
+        Event {
+            name: "Sonic the Hedgehog Cosplay Competition".to_string(),
+            description: "Show off your best Sonic the Hedgehog cosplay!".to_string(),
+            start_time: "2025-07-18T23:00:00Z".to_string(),
+            end_time: "2025-07-19T01:00:00Z".to_string(),
+            location: "Emerson Stage".to_string(),
+            people: vec!["Kai".to_string(), "Alex".to_string()],
+            category: "Competition".to_string(),
+            tags: vec![],
+        },
+        Event {
+            name: "The Unexpected Comforts of Living in the Woods".to_string(),
+            description: "Living in the woods is hard. You're far away from everything, you have critters living in your walls, and the housework keeps piling up. I love it. Let me share with you the unexpected comforts I found living in the woods.".to_string(),
+            start_time: "2025-07-19T06:00:00Z".to_string(),
+            end_time: "2025-07-19T07:30:00Z".to_string(),
+            location: "Thoreau Room".to_string(),
+            people: vec!["Ash".to_string()],
+            category: "Educational".to_string(),
+            tags: vec!["Q&A".to_string()],
+        },
+        Event {
+            name: "Chainmaille 101".to_string(),
+            description: "In this class, you'll make a simple pair of chainmaille earrings. There is a small fee to cover the cost of supplies.".to_string(),
+            start_time: "2025-07-19T07:30:00Z".to_string(),
+            end_time: "2025-07-19T09:00:00Z".to_string(),
+            location: "Alcott Room".to_string(),
+            people: vec!["Blue".to_string()],
+            category: "Class".to_string(),
+            tags: vec!["$$$".to_string()],
+        },
+    ];
+
+    Ok(Json(GetEventsResponse { events }))
 }
