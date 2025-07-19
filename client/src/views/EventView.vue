@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { ref } from "vue";
-
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import EventDetails from "@/components/EventDetails";
 
-const event = ref({
-  title: "Loving the Unlovable: In Defense of Arthropods",
-  description:
-    "An event about stuff and things. Much con will be had at this panel, class, or workshop.",
-  location: "Thoreau Room",
-  startTime: new Date("2025-07-18T09:00:00"),
-  endTime: new Date("2025-07-18T10:30:00"),
-  people: ["Lark", "Anon"],
-  category: "Entertainment",
-  tags: ["Tag 1", "Tag 2", "Tag 3"],
-});
+const route = useRoute();
+const eventId = computed(() => route.params.eventId as string);
 
-const allCategories = ["Games", "Social", "Competition", "Entertainment"];
+const events = useEvents();
+
+const allCategories = computed(() =>
+  events.value.reduce((set, event) => {
+    if (event.category && !set.includes(event.category)) {
+      set.push(event.category);
+    }
+
+    return set;
+  }, [] as Array<string>),
+);
+
+const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
 </script>
 
 <template>
   <SiteNav title="My Con">
-    <EventDetails :event="event" :all-categories="allCategories" />
+    <EventDetails v-if="thisEvent" :event="thisEvent" :all-categories="allCategories" />
   </SiteNav>
 </template>

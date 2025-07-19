@@ -2,22 +2,12 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
+import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import Divider from "primevue/divider";
 import Tag from "primevue/tag";
-
-export interface Event {
-  title: string;
-  description?: string;
-  location?: string;
-  startTime?: Date;
-  endTime?: Date;
-  people: Array<string>;
-  category?: string;
-  tags: Array<string>;
-}
 
 const router = useRouter();
 
@@ -33,7 +23,7 @@ const event = computed(() => props.event);
   <div>
     <div class="flex justify-start items-center gap-2 px-2 py-4">
       <IconButton icon="chevron-left" label="Back" @click="router.back()" />
-      <h2 class="text-xl font-bold">{{ event.title }}</h2>
+      <h2 class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">
       <div class="flex flex-col items-start gap-2">
