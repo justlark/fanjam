@@ -21,7 +21,7 @@ const event = computed(() => props.event);
 
 <template>
   <div>
-    <div class="flex justify-start items-center gap-2 px-2 py-4">
+    <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <IconButton icon="chevron-left" label="Back" @click="router.back()" />
       <h2 class="text-xl font-bold">{{ event.name }}</h2>
     </div>
