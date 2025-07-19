@@ -1,5 +1,5 @@
 use axum::http::{
-    HeaderName, HeaderValue, Method,
+    HeaderName, Method,
     header::{AUTHORIZATION, CONTENT_TYPE},
 };
 use tower_http::cors::CorsLayer;
@@ -22,10 +22,10 @@ pub fn cors_layer() -> CorsLayer {
     CorsLayer::new()
         .allow_methods(CORS_ALLOWED_METHODS)
         .allow_headers(CORS_ALLOWED_HEADERS)
-        .allow_origin(
+        .allow_origin([
             format!("https://{}", config::client_domain())
-                .parse::<HeaderValue>()
+                .parse()
                 .unwrap(),
-        )
-        .allow_origin(LOCAL_HOST.parse::<HeaderValue>().unwrap())
+            LOCAL_HOST.parse().unwrap(),
+        ])
 }
