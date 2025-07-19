@@ -15,7 +15,7 @@ const router = createRouter({
       redirect: { name: "schedule" },
     },
     {
-      path: "/app/:envId/schedule",
+      path: "/app/:envId/schedule/:dayIndex?",
       name: "schedule",
       component: () => import("../views/ScheduleView.vue"),
     },

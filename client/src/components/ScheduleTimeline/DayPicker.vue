@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import IconButton from "@/components/system/IconButton.vue";
 
-const currentDayIndex = defineModel({ type: Number, default: 0 });
+const router = useRouter();
+
+const route = useRoute();
+const currentDayIndex = computed(() =>
+  route.params.dayIndex ? parseInt(route.params.dayIndex as string, 10) : 0,
+);
 
 const props = defineProps<{
   dayNames: Array<string>;
@@ -9,13 +16,19 @@ const props = defineProps<{
 
 const selectNextDay = () => {
   if (currentDayIndex.value < props.dayNames.length - 1) {
-    currentDayIndex.value++;
+    router.push({
+      name: "schedule",
+      params: { dayIndex: currentDayIndex.value + 1 },
+    });
   }
 };
 
 const selectPrevDay = () => {
   if (currentDayIndex.value > 0) {
-    currentDayIndex.value--;
+    router.push({
+      name: "schedule",
+      params: { dayIndex: currentDayIndex.value - 1 },
+    });
   }
 };
 </script>
