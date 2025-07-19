@@ -14,6 +14,8 @@ const envId = computed(() => route.params.envId as string);
 const events = ref<Array<Event>>([]);
 const days = ref<Array<Day>>([]);
 
+// TODO: Eventually, we'll want to persist this data to the local storage so
+// the app can work offline.
 watchEffect(async () => {
   const result = await api.getEvents(envId.value);
 
