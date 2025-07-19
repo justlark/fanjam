@@ -22,7 +22,7 @@ export interface Event {
   tags: Array<string>;
 }
 
-export type ApiResponse<T> =
+export type ApiResult<T> =
   | {
     ok: true;
     value: T;
@@ -32,7 +32,7 @@ export type ApiResponse<T> =
     status: number;
   };
 
-export const getEvents = async (envId: string): Promise<ApiResponse<Array<Event>>> => {
+const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(`https://${import.meta.env.VITE_API_HOST}/events/${envId}`);
 
   if (!response.ok) {
@@ -54,4 +54,8 @@ export const getEvents = async (envId: string): Promise<ApiResponse<Array<Event>
   }));
 
   return { ok: true, value: events };
+};
+
+export default {
+  getEvents,
 };

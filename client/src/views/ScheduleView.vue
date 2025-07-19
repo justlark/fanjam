@@ -1,71 +1,66 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, watchEffect } from "vue";
+import { useRoute } from "vue-router";
+import { dateRangeToDayNames, localizeTime } from "@/utils/time";
 
+import api, { type Event } from "@/utils/api";
 import SiteNav from "@/components/SiteNav";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
+import { type Day } from "@/components/ScheduleTimeline/ScheduleTimeline.vue";
 
-const days = ref([
-  {
-    dayName: "Friday",
-    timeSlots: [
-      {
-        localizedTime: "9:00 pm",
-        events: [
-          {
-            id: "1",
-            title: "An event which has a quite a long title indeed",
-            category: "Games",
-          },
-          {
-            id: "2",
-            title: "An event",
-            category: "Social",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    dayName: "Saturday",
-    timeSlots: [
-      {
-        localizedTime: "10:00 am",
-        events: [
-          {
-            id: "3",
-            title: "An event",
-            category: "Competition",
-          },
-          {
-            id: "4",
-            title: "An event with a longer title",
-            category: "Social",
-          },
-          {
-            id: "5",
-            title: "Another event for you to join",
-            category: "Entertainment",
-          },
-        ],
-      },
-      {
-        localizedTime: "11:30 am",
-        events: [
-          {
-            id: "6",
-            title: "An event which has a quite a long title indeed",
-            category: "Entertainment",
-          },
-          {
-            id: "7",
-            title: "An event",
-            category: "Games",
-          },
-        ],
-      },
-    ],
-  },
-]);
+const route = useRoute();
+const envId = computed(() => route.params.envId as string);
+
+const events = ref<Array<Event>>([]);
+const days = ref<Array<Day>>([]);
+
+watchEffect(async () => {
+  const result = await api.getEvents(envId.value);
+
+  // TODO: Handle a 404 from this endpoint and serve the 404 page.
+
+  if (!result.ok) {
+    events.value = [];
+    return;
+  }
+
+  events.value = result.value;
+});
+
+// TODO: Rewrite and optimize.
+watchEffect(async () => {
+  days.value = [];
+
+  const allDates = events.value.reduce((set, event) => {
+    set.add(event.startTime);
+    set.add(event.endTime);
+    return set;
+  }, new Set<Date>());
+
+  const namedDays = dateRangeToDayNames(allDates);
+
+  for (const { dayName, times } of namedDays) {
+    days.value.push({
+      dayName,
+      timeSlots: events.value
+        .filter(
+          (event) =>
+            event.startTime &&
+            (times.has(event.startTime) || (event.endTime && times.has(event.endTime))),
+        )
+        .map((event) => ({
+          localizedTime: localizeTime(event.startTime),
+          events: [
+            {
+              id: event.id,
+              title: event.name,
+              category: event.category,
+            },
+          ],
+        })),
+    });
+  }
+});
 </script>
 
 <template>

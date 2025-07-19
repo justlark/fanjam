@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { localizeTimeSpan } from "@/utils/time";
 import EventDetail from "./EventDetail.vue";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import IconButton from "@/components/system/IconButton.vue";
@@ -26,27 +27,6 @@ const props = defineProps<{
 }>();
 
 const event = computed(() => props.event);
-
-const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
-const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-
-// TODO: What if the start and end days are more than a week apart? Unlikely,
-// but in that case, we ought to show the full date.
-const formatTime = (start: Date, end: Date | undefined) => {
-  const startDay = start ? weekdayFormat.format(start) : undefined;
-  const endDay = end ? weekdayFormat.format(end) : undefined;
-
-  const startTime = start ? timeFormat.format(start) : undefined;
-  const endTime = end ? timeFormat.format(end) : undefined;
-
-  if (!end) {
-    return `${startDay} ${startTime}`;
-  } else if (startDay === endDay) {
-    return `${startDay} ${startTime} - ${endTime}`;
-  } else {
-    return `${startDay} ${startTime} - ${endDay} ${endTime}`;
-  }
-};
 </script>
 
 <template>
@@ -58,7 +38,7 @@ const formatTime = (start: Date, end: Date | undefined) => {
     <div class="px-6">
       <div class="flex flex-col items-start gap-2">
         <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
-          {{ formatTime(event.startTime, event.endTime) }}
+          {{ localizeTimeSpan(event.startTime, event.endTime) }}
         </EventDetail>
         <EventDetail v-if="event.people.length > 0" icon="person-circle">
           Hosted by {{ event.people.join(", ") }}
