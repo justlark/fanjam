@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
+import Divider from "primevue/divider";
+import ScheduleTimeline from "@/components/ScheduleTimeline";
 import EventDetails from "@/components/EventDetails";
 
 const route = useRoute();
-const eventId = computed(() => route.params.eventId as string);
-
 const events = useEvents();
+
+const eventId = computed(() => route.params.eventId as string);
+const currentDayIndex = ref(0);
 
 const allCategories = computed(() =>
   events.value.reduce((set, event) => {
@@ -25,6 +28,20 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
 
 <template>
   <SiteNav title="My Con">
-    <EventDetails v-if="thisEvent" :event="thisEvent" :all-categories="allCategories" />
+    <div class="flex h-full">
+      <ScheduleTimeline
+        class="p-6 basis-1/2 grow-0 shrink-0"
+        v-model:day="currentDayIndex"
+        :events="events"
+      />
+      <Divider layout="vertical" />
+      <EventDetails
+        class="basis-1/2 grow-0 shrink-0"
+        v-if="thisEvent"
+        :event="thisEvent"
+        :day="currentDayIndex"
+        :all-categories="allCategories"
+      />
+    </div>
   </SiteNav>
 </template>

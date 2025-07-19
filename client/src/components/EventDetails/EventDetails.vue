@@ -13,16 +13,24 @@ const router = useRouter();
 
 const props = defineProps<{
   event: Event;
+  day: number;
   allCategories: Array<string>;
 }>();
 
 const event = computed(() => props.event);
+
+const back = () => {
+  router.push({
+    name: "schedule",
+    params: { dayIndex: props.day },
+  });
+};
 </script>
 
 <template>
   <div>
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
-      <IconButton icon="chevron-left" label="Back" @click="router.back()" />
+      <IconButton icon="chevron-left" label="Back" @click="back()" />
       <h2 class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">

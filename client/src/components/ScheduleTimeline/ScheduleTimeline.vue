@@ -1,32 +1,39 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute } from "vue-router";
-
+import { ref, computed, watchEffect } from "vue";
+import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
+import { useRoute, useRouter } from "vue-router";
+import { type Event } from "@/utils/api";
 import DayPicker from "./DayPicker.vue";
 import ScheduleTimeSlot, { type EventSummary } from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 
 const route = useRoute();
-const currentDayIndex = computed(() =>
-  route.params.dayIndex ? parseInt(route.params.dayIndex as string, 10) : 0,
-);
+const router = useRouter();
 
-export interface TimeSlot {
+interface TimeSlot {
   localizedTime: string;
   events: Array<EventSummary>;
 }
 
-export interface Day {
+interface Day {
   dayName: string;
   timeSlots: Array<TimeSlot>;
 }
 
 const props = defineProps<{
-  days: Array<Day>;
+  events: Array<Event>;
 }>();
 
+const currentDayIndex = defineModel("day", {
+  type: Number,
+  default: 0,
+});
+
+const days = ref<Array<Day>>([]);
+const dayIndexByEventId = ref(new Map<string, number>());
+
 const allCategories = computed(() =>
-  props.days.reduce((set, day) => {
+  days.value.reduce((set, day) => {
     day.timeSlots.forEach((timeSlot) => {
       timeSlot.events.forEach((event) => {
         if (!set.includes(event.category)) {
@@ -38,16 +45,81 @@ const allCategories = computed(() =>
   }, [] as Array<string>),
 );
 
-const dayNames = computed(() => props.days.map((day) => day.dayName));
+const dayNames = computed(() => days.value.map((day) => day.dayName));
+
+watchEffect(async () => {
+  dayIndexByEventId.value.clear();
+
+  const allDates = props.events.reduce((set, event) => {
+    if (event.startTime) {
+      set.add(event.startTime);
+    }
+
+    if (event.endTime) {
+      set.add(event.endTime);
+    }
+
+    return set;
+  }, new Set<Date>());
+
+  const namedDays = datesToDayNames(allDates);
+
+  days.value = [...namedDays.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
+    const eventsThisDay = props.events.filter(
+      (event) => event.startTime && dateIsBetween(event.startTime, dayStart, dayEnd),
+    );
+
+    const groupedEvents = groupByTime(eventsThisDay, (event) => event.startTime);
+
+    for (const event of eventsThisDay) {
+      dayIndexByEventId.value.set(event.id, dayIndex);
+    }
+
+    return {
+      dayName,
+      timeSlots: [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
+        localizedTime,
+        events: eventsInThisTimeSlot.map((event) => ({
+          id: event.id,
+          name: event.name,
+          category: event.category,
+        })),
+      })),
+    };
+  });
+});
+
+watchEffect(() => {
+  if (route.name !== "schedule") {
+    return;
+  }
+
+  router.push({
+    name: "schedule",
+    params: { dayIndex: currentDayIndex.value },
+  });
+});
+
+watchEffect(() => {
+  if (route.name === "schedule") {
+    currentDayIndex.value = route.params.dayIndex
+      ? parseInt(route.params.dayIndex as string, 10)
+      : 0;
+  } else if (route.name === "event") {
+    currentDayIndex.value = route.params.eventId
+      ? (dayIndexByEventId.value.get(route.params.eventId as string) ?? 0)
+      : 0;
+  }
+});
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <ScheduleHeader />
-    <DayPicker :day-names="dayNames" />
+    <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
     <div v-if="days.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
-        v-for="(timeSlot, index) in props.days[currentDayIndex].timeSlots"
+        v-for="(timeSlot, index) in days[currentDayIndex].timeSlots"
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
