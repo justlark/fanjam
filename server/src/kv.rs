@@ -57,12 +57,21 @@ pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> any
 
 #[worker::send]
 pub async fn get_id_env(kv: &KvStore, env_id: &EnvId) -> anyhow::Result<Option<EnvName>> {
-    Ok(kv
+    let maybe_env_name = kv
         .get(&id_env_key(env_id))
         .text()
         .await
         .map_err(wrap_kv_err)?
-        .map(EnvName::from))
+        .map(EnvName::from);
+
+    // Only the latest event ID should work. This allows us to invalidate old app links.
+    if let Some(env_name) = maybe_env_name {
+        if get_env_id(kv, &env_name).await?.as_ref() == Some(env_id) {
+            return Ok(Some(env_name));
+        }
+    }
+
+    return Ok(None);
 }
 
 #[worker::send]
