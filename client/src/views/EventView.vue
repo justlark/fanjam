@@ -37,6 +37,7 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
       <div class="hidden lg:flex basis-1/2 grow-0 shrink-0">
         <Divider layout="vertical" />
         <EventDetails
+          class="grow"
           v-if="thisEvent"
           :event="thisEvent"
           :day="currentDayIndex"
