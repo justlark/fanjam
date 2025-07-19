@@ -1,33 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from "vue";
-import { useRoute } from "vue-router";
+import { ref, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
-
-import api, { type Event } from "@/utils/api";
+import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 import { type Day } from "@/components/ScheduleTimeline/ScheduleTimeline.vue";
 
-const route = useRoute();
-const envId = computed(() => route.params.envId as string);
-
-const events = ref<Array<Event>>([]);
+const events = useEvents();
 const days = ref<Array<Day>>([]);
-
-// TODO: Eventually, we'll want to persist this data to the local storage so
-// the app can work offline.
-watchEffect(async () => {
-  const result = await api.getEvents(envId.value);
-
-  // TODO: Handle a 404 from this endpoint and serve the 404 page.
-
-  if (!result.ok) {
-    events.value = [];
-    return;
-  }
-
-  events.value = result.value;
-});
 
 watchEffect(async () => {
   const allDates = events.value.reduce((set, event) => {
