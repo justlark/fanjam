@@ -30,7 +30,7 @@ const filteredEvents = computed(() => {
 </script>
 
 <template>
-  <section>
+  <section v-if="filteredEvents.length > 0">
     <h2 class="text-xl">{{ props.localizedTime }}</h2>
     <Divider pt:root="!mt-1" />
     <div class="flex flex-wrap gap-3">
