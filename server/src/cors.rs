@@ -6,6 +6,8 @@ use tower_http::cors::CorsLayer;
 
 use crate::config;
 
+const LOCAL_HOST: &str = "http://localhost:5173";
+
 const CORS_ALLOWED_METHODS: [Method; 5] = [
     Method::GET,
     Method::POST,
@@ -25,4 +27,5 @@ pub fn cors_layer() -> CorsLayer {
                 .parse::<HeaderValue>()
                 .unwrap(),
         )
+        .allow_origin(LOCAL_HOST.parse::<HeaderValue>().unwrap())
 }
