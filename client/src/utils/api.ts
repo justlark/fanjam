@@ -1,4 +1,5 @@
 interface RawEvent {
+  id: string;
   name: string;
   description: string;
   start_time: string;
@@ -10,6 +11,7 @@ interface RawEvent {
 }
 
 export interface Event {
+  id: string;
   name: string;
   description: string;
   startTime: Date;
@@ -40,6 +42,7 @@ export const getEvents = async (envId: string): Promise<ApiResponse<Array<Event>
   const rawEvents: Array<RawEvent> = await response.json();
 
   const events: Array<Event> = rawEvents.map((event) => ({
+    id: event.id,
     name: event.name,
     description: event.description,
     startTime: new Date(event.start_time),

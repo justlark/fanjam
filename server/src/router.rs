@@ -352,6 +352,7 @@ async fn get_events(
 
     let events = vec![
         Event {
+            id: "1".to_string(),
             name: "Sonic the Hedgehog Cosplay Competition".to_string(),
             description: "Show off your best Sonic the Hedgehog cosplay!".to_string(),
             start_time: "2025-07-18T23:00:00Z".to_string(),
@@ -362,6 +363,7 @@ async fn get_events(
             tags: vec![],
         },
         Event {
+            id: "2".to_string(),
             name: "The Unexpected Comforts of Living in the Woods".to_string(),
             description: "Living in the woods is hard. You're far away from everything, you have critters living in your walls, and the housework keeps piling up. I love it. Let me share with you the unexpected comforts I found living in the woods.".to_string(),
             start_time: "2025-07-19T06:00:00Z".to_string(),
@@ -372,6 +374,7 @@ async fn get_events(
             tags: vec!["Q&A".to_string()],
         },
         Event {
+            id: "3".to_string(),
             name: "Chainmaille 101".to_string(),
             description: "In this class, you'll make a simple pair of chainmaille earrings. There is a small fee to cover the cost of supplies.".to_string(),
             start_time: "2025-07-19T07:30:00Z".to_string(),
