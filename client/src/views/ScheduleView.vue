@@ -55,6 +55,7 @@ watchEffect(async () => {
             (times.has(event.startTime) || (event.endTime && times.has(event.endTime))),
         )
         .map((event) => ({
+          // TODO: We should be smartly grouping events that start at the same time.
           localizedTime: localizeTime(event.startTime),
           events: [
             {
