@@ -20,5 +20,9 @@ pub fn cors_layer() -> CorsLayer {
     CorsLayer::new()
         .allow_methods(CORS_ALLOWED_METHODS)
         .allow_headers(CORS_ALLOWED_HEADERS)
-        .allow_origin(config::client_domain().parse::<HeaderValue>().unwrap())
+        .allow_origin(
+            format!("https://{}", config::client_domain())
+                .parse::<HeaderValue>()
+                .unwrap(),
+        )
 }
