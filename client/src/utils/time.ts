@@ -35,6 +35,10 @@ export interface NamedDay {
 
 // TODO: Optimize this.
 export const dateRangeToDayNames = (dates: Set<Date>): Array<NamedDay> => {
+  if (dates.size === 0) {
+    return [];
+  }
+
   const daysInAWeek = 7;
 
   const sortedDates = [...dates];

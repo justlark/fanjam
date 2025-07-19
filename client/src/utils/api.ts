@@ -39,7 +39,8 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
     return { ok: false, status: response.status };
   }
 
-  const rawEvents: Array<RawEvent> = await response.json();
+  const responseBody = await response.json();
+  const rawEvents: Array<RawEvent> = responseBody.events;
 
   const events: Array<Event> = rawEvents.map((event) => ({
     id: event.id,

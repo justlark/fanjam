@@ -32,8 +32,14 @@ watchEffect(async () => {
   days.value = [];
 
   const allDates = events.value.reduce((set, event) => {
-    set.add(event.startTime);
-    set.add(event.endTime);
+    if (event.startTime) {
+      set.add(event.startTime);
+    }
+
+    if (event.endTime) {
+      set.add(event.endTime);
+    }
+
     return set;
   }, new Set<Date>());
 

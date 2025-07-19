@@ -19,7 +19,7 @@ const props = defineProps<{
   days: Array<Day>;
 }>();
 
-const currentDayIndex = ref(0);
+const currentDayIndex = ref<number>();
 
 const allCategories = computed(() =>
   props.days.reduce((set, day) => {
@@ -41,7 +41,7 @@ const dayNames = computed(() => props.days.map((day) => day.dayName));
   <div class="flex flex-col gap-4">
     <ScheduleHeader />
     <DayPicker v-model="currentDayIndex" :day-names="dayNames" />
-    <div class="flex flex-col gap-8">
+    <div v-if="currentDayIndex !== undefined" class="flex flex-col gap-8">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in props.days[currentDayIndex].timeSlots"
         :key="index"
