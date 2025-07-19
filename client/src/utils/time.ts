@@ -2,6 +2,7 @@ const shortTimeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "short" 
 const shortDateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "short" });
 const shortWeekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 const longWeekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long" });
+const daysInAWeek = 7;
 
 export const localizeTime = (time: Date) => shortTimeFormat.format(time);
 
@@ -23,44 +24,96 @@ export const localizeTimeSpan = (start: Date, end: Date | undefined) => {
   }
 };
 
-const daysBetween = (start: Date, end: Date): number => {
-  const dayMillis = 24 * 60 * 60 * 1000;
-  return Math.round((start.valueOf() - end.valueOf()) / dayMillis);
+export const dateIsBetween = (date: Date, start: Date, end: Date): boolean => {
+  return date >= start && date <= end;
 };
 
-export interface NamedDay {
-  dayName: string;
-  times: Set<Date>;
-}
-
-// TODO: Optimize this.
-export const dateRangeToDayNames = (dates: Set<Date>): Array<NamedDay> => {
-  if (dates.size === 0) {
-    return [];
-  }
-
-  const daysInAWeek = 7;
-
+const dateRange = (dates: Set<Date>): { start: Date; end: Date } => {
   const sortedDates = [...dates];
   sortedDates.sort();
 
   const [start, end] = [sortedDates[0], sortedDates[sortedDates.length - 1]];
-  const dayRange = daysBetween(start, end);
 
-  return sortedDates.reduce((namedDays, date) => {
-    // If the range of dates is less than a week, use the names of the days of
-    // the week. Otherwise, use the short localized form of the date.
-    const dayName =
-      dayRange < daysInAWeek ? longWeekdayFormat.format(date) : shortDateFormat.format(date);
+  return { start, end };
+};
 
-    const times = namedDays.find((d) => d.dayName === dayName)?.times;
+const daysBetween = (start: Date, end: Date): number => {
+  const dayMillis = 24 * 60 * 60 * 1000;
+  return Math.round(Math.abs(start.valueOf() - end.valueOf()) / dayMillis);
+};
 
-    if (times) {
-      times.add(date);
-    } else {
-      namedDays.push({ dayName, times: new Set([date]) });
+const startAndEndOfDay = (date: Date): { start: Date; end: Date } => {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const end = new Date(start);
+  end.setHours(23, 59, 59);
+  return { start, end };
+};
+
+export interface NamedDay {
+  dayName: string;
+  dayStart: Date;
+  dayEnd: Date;
+}
+
+export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
+  if (dates.size === 0) {
+    return [];
+  }
+
+  const { start: earliest, end: latest } = dateRange(dates);
+  const dayRange = daysBetween(earliest, latest);
+  const rangeIsLongerThanAWeek = dayRange >= daysInAWeek;
+
+  const sortedDates = [...dates];
+  sortedDates.sort();
+
+  const namedDays: Array<NamedDay> = [];
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    const start = sortedDates[i];
+
+    const dayName = rangeIsLongerThanAWeek
+      ? shortDateFormat.format(start)
+      : longWeekdayFormat.format(start);
+
+    const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start);
+
+    for (let j = i + 1; j < sortedDates.length; j++) {
+      const end = sortedDates[j];
+
+      if (!dateIsBetween(end, start, endOfThisDay)) {
+        break;
+      }
+
+      i++;
     }
 
-    return namedDays;
-  }, [] as Array<NamedDay>);
+    namedDays.push({
+      dayName,
+      dayStart: startOfThisDay,
+      dayEnd: endOfThisDay,
+    });
+  }
+
+  return namedDays;
+};
+
+export const groupByTime = <T>(
+  values: Array<T>,
+  getTime: (value: T) => Date,
+): Map<string, Array<T>> => {
+  const grouped: Map<string, Array<T>> = new Map();
+
+  for (const value of values) {
+    const time = getTime(value);
+    const timeString = localizeTime(time);
+
+    if (!grouped.has(timeString)) {
+      grouped.set(timeString, []);
+    }
+
+    grouped.get(timeString)?.push(value);
+  }
+
+  return grouped;
 };

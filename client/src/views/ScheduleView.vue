@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import { dateRangeToDayNames, localizeTime } from "@/utils/time";
+import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 
 import api, { type Event } from "@/utils/api";
 import SiteNav from "@/components/SiteNav";
@@ -29,10 +29,7 @@ watchEffect(async () => {
   events.value = result.value;
 });
 
-// TODO: Rewrite and optimize.
 watchEffect(async () => {
-  days.value = [];
-
   const allDates = events.value.reduce((set, event) => {
     if (event.startTime) {
       set.add(event.startTime);
@@ -45,30 +42,27 @@ watchEffect(async () => {
     return set;
   }, new Set<Date>());
 
-  const namedDays = dateRangeToDayNames(allDates);
+  const namedDays = datesToDayNames(allDates);
 
-  for (const { dayName, times } of namedDays) {
-    days.value.push({
+  days.value = namedDays.map(({ dayName, dayStart, dayEnd }) => {
+    const eventsThisDay = events.value.filter(
+      (event) => event.startTime && dateIsBetween(event.startTime, dayStart, dayEnd),
+    );
+
+    const groupedEvents = groupByTime(eventsThisDay, (event) => event.startTime);
+
+    return {
       dayName,
-      timeSlots: events.value
-        .filter(
-          (event) =>
-            event.startTime &&
-            (times.has(event.startTime) || (event.endTime && times.has(event.endTime))),
-        )
-        .map((event) => ({
-          // TODO: We should be smartly grouping events that start at the same time.
-          localizedTime: localizeTime(event.startTime),
-          events: [
-            {
-              id: event.id,
-              title: event.name,
-              category: event.category,
-            },
-          ],
+      timeSlots: [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
+        localizedTime,
+        events: eventsInThisTimeSlot.map((event) => ({
+          id: event.id,
+          title: event.name,
+          category: event.category,
         })),
-    });
-  }
+      })),
+    };
+  });
 });
 </script>
 
