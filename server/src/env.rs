@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 pub struct EnvId(String);
 
 impl EnvId {
-    const LEN: usize = 8;
-    const POOL: &str = "abcdefghijklmnopqrstuvwxyz";
+    const LEN: usize = 6;
+    const POOL: &str = "0123456789";
 
     pub fn new() -> Self {
         let mut rng = rand::rng();
