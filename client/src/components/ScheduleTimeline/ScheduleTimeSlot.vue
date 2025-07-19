@@ -5,7 +5,7 @@ import { RouterLink } from "vue-router";
 
 export interface EventSummary {
   id: string;
-  title: string;
+  name: string;
   category: string;
 }
 
@@ -27,7 +27,7 @@ const props = defineProps<{
         :to="{ name: 'event', params: { eventId: event.id } }"
       >
         <CategoryLabel
-          :title="event.title"
+          :title="event.name"
           :category="event.category"
           :all-categories="props.allCategories"
         />

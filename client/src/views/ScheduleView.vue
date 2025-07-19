@@ -37,7 +37,7 @@ watchEffect(async () => {
         localizedTime,
         events: eventsInThisTimeSlot.map((event) => ({
           id: event.id,
-          title: event.name,
+          name: event.name,
           category: event.category,
         })),
       })),
