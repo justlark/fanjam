@@ -38,7 +38,7 @@ const { reload: reloadEvents } = useEvents();
     </header>
     <div class="flex grow">
       <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
-        <aside class="p-4 grow">
+        <aside class="p-4 grow min-w-50">
           <MainMenu />
         </aside>
         <Divider pt:root="!ms-0" layout="vertical" />
