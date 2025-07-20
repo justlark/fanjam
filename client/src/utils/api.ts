@@ -2,8 +2,8 @@ interface RawEvent {
   id: string;
   name: string;
   description: string;
-  start_time: string;
-  end_time: string;
+  start_time?: string;
+  end_time?: string;
   location: string;
   people: Array<string>;
   category: string;
@@ -14,8 +14,8 @@ export interface Event {
   id: string;
   name: string;
   description: string;
-  startTime: Date;
-  endTime: Date;
+  startTime?: Date;
+  endTime?: Date;
   location: string;
   people: Array<string>;
   category: string;
@@ -33,7 +33,9 @@ export type ApiResult<T> =
   };
 
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
-  const response = await fetch(`https://${import.meta.env.VITE_API_HOST}/events/${envId}`);
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/events/${envId}`,
+  );
 
   if (!response.ok) {
     return { ok: false, status: response.status };
@@ -46,8 +48,8 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
     id: event.id,
     name: event.name,
     description: event.description,
-    startTime: new Date(event.start_time),
-    endTime: new Date(event.end_time),
+    startTime: event.start_time ? new Date(event.start_time) : undefined,
+    endTime: event.end_time ? new Date(event.end_time) : undefined,
     location: event.location,
     people: event.people,
     category: event.category,

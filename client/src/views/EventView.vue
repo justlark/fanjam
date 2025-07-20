@@ -14,13 +14,13 @@ const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref(0);
 
 const allCategories = computed(() =>
-  events.value.reduce((set, event) => {
+  events.value.reduce<Array<string>>((set, event) => {
     if (event.category && !set.includes(event.category)) {
       set.push(event.category);
     }
 
     return set;
-  }, [] as Array<string>),
+  }, []),
 );
 
 const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));

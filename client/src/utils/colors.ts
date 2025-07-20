@@ -47,10 +47,10 @@ const deterministicRandomColor = (seed: string, bank: Array<string>) => {
 
 export const newFgColor = (seed: string, bank: Array<string>, colorValue: number) => {
   const color = deterministicRandomColor(seed, bank);
-  return `text-${color}-${colorValue}`;
+  return `text-${color}-${colorValue.toString()}`;
 };
 
 export const newBgColor = (seed: string, bank: Array<string>, colorValue: number) => {
   const color = deterministicRandomColor(seed, bank);
-  return `bg-${color}-${colorValue}`;
+  return `bg-${color}-${colorValue.toString()}`;
 };

@@ -8,10 +8,16 @@ export default defineConfigWithVueTs(
     name: "app/files-to-lint",
     files: ["**/*.{ts,mts,tsx,vue}"],
   },
+  {
+    rules: {
+      // We're getting a false positive with Vue's `watchEffect`.
+      "@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: false }],
+    },
+  },
 
   globalIgnores(["**/dist/**", "**/dist-ssr/**", "**/coverage/**"]),
 
   pluginVue.configs["flat/essential"],
-  vueTsConfigs.recommended,
+  vueTsConfigs.strictTypeChecked,
   skipFormatting,
 );

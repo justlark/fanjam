@@ -32,17 +32,17 @@ watchEffect(() => {
     searchIndex.add({
       id: event.id,
       name: event.name,
-      description: event.description ?? "",
-      location: event.location ?? "",
+      description: event.description,
+      location: event.location,
       people: event.people.join(", "),
-      category: event.category ?? "",
+      category: event.category,
       tags: event.tags.join(", "),
     });
   }
 });
 
 const search = () => {
-  if (searchText.value?.length ?? 0 > 0) {
+  if ((searchText.value?.length ?? 0) > 0) {
     const results = searchIndex.search(searchText.value);
     eventIds.value = results.flatMap((result) => result.result).map((id) => id.toString());
   } else {

@@ -34,7 +34,7 @@ const dayIndexByEventId = ref(new Map<string, number>());
 const searchResultEventIds = ref<Array<string>>();
 
 const allCategories = computed(() =>
-  days.value.reduce((set, day) => {
+  days.value.reduce<Array<string>>((set, day) => {
     day.timeSlots.forEach((timeSlot) => {
       timeSlot.events.forEach((event) => {
         if (!set.includes(event.category)) {
@@ -43,12 +43,12 @@ const allCategories = computed(() =>
       });
     });
     return set;
-  }, [] as Array<string>),
+  }, []),
 );
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 
-watchEffect(async () => {
+watchEffect(() => {
   dayIndexByEventId.value.clear();
 
   const allDates = props.events.reduce((set, event) => {
@@ -90,12 +90,12 @@ watchEffect(async () => {
   });
 });
 
-watchEffect(() => {
+watchEffect(async () => {
   if (route.name !== "schedule") {
     return;
   }
 
-  router.push({
+  await router.push({
     name: "schedule",
     params: { dayIndex: currentDayIndex.value },
   });

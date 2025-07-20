@@ -9,13 +9,13 @@ export const localizeTime = (time: Date) => shortTimeFormat.format(time);
 // TODO: What if the start and end days are more than a week apart? Unlikely,
 // but in that case, we ought to show the full date.
 export const localizeTimeSpan = (start: Date, end: Date | undefined) => {
-  const startDay = start ? shortWeekdayFormat.format(start) : undefined;
+  const startDay = shortWeekdayFormat.format(start);
   const endDay = end ? shortWeekdayFormat.format(end) : undefined;
 
-  const startTime = start ? shortTimeFormat.format(start) : undefined;
+  const startTime = shortTimeFormat.format(start);
   const endTime = end ? shortTimeFormat.format(end) : undefined;
 
-  if (!end) {
+  if (!endTime || !endDay) {
     return `${startDay} ${startTime}`;
   } else if (startDay === endDay) {
     return `${startDay} ${startTime} - ${endTime}`;
@@ -100,12 +100,16 @@ export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
 
 export const groupByTime = <T>(
   values: Array<T>,
-  getTime: (value: T) => Date,
+  getTime: (value: T) => Date | undefined,
 ): Map<string, Array<T>> => {
   const grouped: Map<string, Array<T>> = new Map();
 
   for (const value of values) {
     const time = getTime(value);
+    if (!time) {
+      continue;
+    }
+
     const timeString = localizeTime(time);
 
     if (!grouped.has(timeString)) {

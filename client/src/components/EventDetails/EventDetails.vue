@@ -19,8 +19,8 @@ const props = defineProps<{
 
 const event = computed(() => props.event);
 
-const back = () => {
-  router.push({
+const back = async () => {
+  await router.push({
     name: "schedule",
     params: { dayIndex: props.day },
   });
