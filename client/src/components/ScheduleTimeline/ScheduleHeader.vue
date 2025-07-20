@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, watchEffect } from "vue";
 import flexsearch from "flexsearch";
+import useEvents from "@/composables/useEvents";
 import { type Event } from "@/utils/api";
 import InputText from "primevue/inputtext";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
+
+const { reload: reloadEvents } = useEvents();
 
 const props = defineProps<{
   events: Array<Event>;
@@ -60,5 +63,11 @@ const search = () => {
       </IconField>
     </div>
     <IconButton icon="filter" label="Menu" />
+    <IconButton
+      class="!hidden lg:!flex"
+      icon="arrow-clockwise"
+      label="Refresh"
+      @click="reloadEvents"
+    />
   </div>
 </template>

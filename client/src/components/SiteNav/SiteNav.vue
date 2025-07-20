@@ -29,7 +29,12 @@ const { reload: reloadEvents } = useEvents();
           </span>
           <h1 class="text-2xl">{{ props.title }}</h1>
         </div>
-        <IconButton icon="arrow-clockwise" label="Reload" @click="reloadEvents" />
+        <IconButton
+          class="lg:!hidden"
+          icon="arrow-clockwise"
+          label="Refresh"
+          @click="reloadEvents"
+        />
       </div>
       <Drawer v-model:visible="visible" :header="props.title">
         <MainMenu />
