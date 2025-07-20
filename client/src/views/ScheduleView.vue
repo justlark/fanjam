@@ -3,7 +3,7 @@ import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 
-const events = useEvents();
+const { events } = useEvents();
 </script>
 
 <template>

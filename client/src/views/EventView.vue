@@ -8,7 +8,7 @@ import ScheduleTimeline from "@/components/ScheduleTimeline";
 import EventDetails from "@/components/EventDetails";
 
 const route = useRoute();
-const events = useEvents();
+const { events } = useEvents();
 
 const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref(0);

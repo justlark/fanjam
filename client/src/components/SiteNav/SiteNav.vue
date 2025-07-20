@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import useEvents from "@/composables/useEvents";
 import Divider from "primevue/divider";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
@@ -14,16 +15,21 @@ const visible = ref(false);
 const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
+
+const { reload: reloadEvents } = useEvents();
 </script>
 
 <template>
   <div class="flex flex-col min-h-[100vh]">
     <header class="flex flex-col">
-      <div class="flex items-center p-2 lg:p-4 gap-2">
-        <span class="lg:hidden">
-          <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
-        </span>
-        <h1 class="text-2xl">{{ props.title }}</h1>
+      <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="lg:hidden">
+            <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
+          </span>
+          <h1 class="text-2xl">{{ props.title }}</h1>
+        </div>
+        <IconButton icon="arrow-clockwise" label="Reload" @click="reloadEvents" />
       </div>
       <Drawer v-model:visible="visible" :header="props.title">
         <MainMenu />
