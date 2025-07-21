@@ -54,3 +54,8 @@ export const newBgColor = (seed: string, bank: Array<string>, colorValue: number
   const color = deterministicRandomColor(seed, bank);
   return `bg-${color}-${colorValue.toString()}`;
 };
+
+export const newOutlineColor = (seed: string, bank: Array<string>, colorValue: number) => {
+  const color = deterministicRandomColor(seed, bank);
+  return `outline-${color}-${colorValue.toString()}`;
+};

@@ -116,7 +116,11 @@ watchEffect(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
+    <ScheduleHeader
+      v-model:ids="searchResultEventIds"
+      :events="props.events"
+      :all-categories="allCategories"
+    />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
     <div v-if="days.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
