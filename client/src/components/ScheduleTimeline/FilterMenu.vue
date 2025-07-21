@@ -16,7 +16,7 @@ const props = defineProps<{
   allCategories: Array<string>;
 }>();
 
-const selectedCategories = ref<Set<string>>(new Set());
+const selectedCategories = ref<Set<string>>(new Set(criteria.value.categories));
 
 const toggleCategory = (category: string) => {
   if (selectedCategories.value.has(category)) {
