@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, useId } from "vue";
 import useEvents from "@/composables/useEvents";
 import Divider from "primevue/divider";
 import Drawer from "primevue/drawer";
@@ -17,17 +17,19 @@ const toggleMenuDrawer = () => {
 };
 
 const { reload: reloadEvents } = useEvents();
+
+const headerHeadingId = useId();
 </script>
 
 <template>
   <div class="flex flex-col min-h-[100vh]">
-    <header class="flex flex-col">
+    <header :aria-labelledby="headerHeadingId" class="flex flex-col">
       <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
         <div class="flex items-center gap-2">
           <span class="lg:hidden">
             <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
           </span>
-          <h1 class="text-2xl">{{ props.title }}</h1>
+          <h1 :id="headerHeadingId" class="text-2xl">{{ props.title }}</h1>
         </div>
         <IconButton
           class="lg:!hidden"

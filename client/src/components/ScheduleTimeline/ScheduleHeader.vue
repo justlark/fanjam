@@ -44,7 +44,7 @@ watchEffect(() => {
   }
 });
 
-const search = () => {
+const executeSearch = () => {
   if ((searchText.value?.length ?? 0) > 0) {
     const results = searchIndex.search(searchText.value);
     eventIds.value = results.flatMap((result) => result.result).map((id) => id.toString());
@@ -55,19 +55,25 @@ const search = () => {
 </script>
 
 <template>
-  <div class="flex gap-4">
+  <search class="flex gap-4">
     <div class="grow">
       <IconField>
         <InputIcon class="bi bi-search" />
-        <InputText v-model="searchText" class="w-full" placeholder="Search…" @input="search()" />
+        <InputText
+          v-model="searchText"
+          class="w-full"
+          placeholder="Search…"
+          aria-label="Search"
+          @input="executeSearch()"
+        />
       </IconField>
     </div>
-    <IconButton icon="filter" label="Menu" />
+    <IconButton icon="filter" label="Filter" />
     <IconButton
       class="!hidden lg:!flex"
       icon="arrow-clockwise"
       label="Refresh"
       @click="reloadEvents"
     />
-  </div>
+  </search>
 </template>

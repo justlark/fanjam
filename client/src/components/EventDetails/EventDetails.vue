@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import { type Event } from "@/utils/api";
@@ -25,27 +25,29 @@ const back = async () => {
     params: { dayIndex: props.day },
   });
 };
+
+const useSectionHeadingId = useId();
 </script>
 
 <template>
-  <div>
+  <section :aria-labelledby="useSectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
       <IconButton class="!hidden lg:!flex" icon="x-lg" label="Close" @click="back()" />
-      <h2 class="text-xl font-bold">{{ event.name }}</h2>
+      <h2 :id="useSectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">
-      <div class="flex flex-col items-start gap-2">
+      <dl class="flex flex-col items-start gap-2">
         <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
           {{ localizeTimeSpan(event.startTime, event.endTime) }}
         </EventDetail>
-        <EventDetail v-if="event.people.length > 0" icon="person-circle">
+        <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts">
           Hosted by {{ event.people.join(", ") }}
         </EventDetail>
         <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
           {{ event.location }}
         </EventDetail>
-      </div>
+      </dl>
       <CategoryLabel
         v-if="event.category"
         class="mt-4"
@@ -60,5 +62,5 @@ const back = async () => {
         <Tag v-for="tag in event.tags" :key="tag" :value="tag" severity="secondary" />
       </div>
     </div>
-  </div>
+  </section>
 </template>

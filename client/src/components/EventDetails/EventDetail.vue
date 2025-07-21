@@ -3,15 +3,17 @@ import SimpleIcon from "@/components/system/SimpleIcon.vue";
 
 const props = defineProps<{
   icon: string;
-  iconLabel?: string;
+  iconLabel: string;
 }>();
 </script>
 
 <template>
   <div class="flex gap-3 items-start">
-    <SimpleIcon class="text-xl" :icon="props.icon" :label="props.iconLabel" />
-    <span class="text-lg">
+    <dt>
+      <SimpleIcon class="text-xl" :icon="props.icon" :label="props.iconLabel" />
+    </dt>
+    <dd class="text-lg">
       <slot />
-    </span>
+    </dd>
   </div>
 </template>
