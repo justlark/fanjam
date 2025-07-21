@@ -34,7 +34,7 @@ const isCategorySelected = (category: string) => selectedCategories.value.has(ca
 <template>
   <div>
     <div class="flex flex-col gap-2">
-      <span>Categories</span>
+      <span>Filter by Category</span>
       <ul class="flex flex-wrap gap-3">
         <li v-for="(category, index) in props.allCategories" :key="index">
           <CategoryLabel
@@ -42,7 +42,7 @@ const isCategorySelected = (category: string) => selectedCategories.value.has(ca
             :all-categories="props.allCategories"
             :inactive="!isCategorySelected(category)"
           >
-            <button @click="toggleCategory(category)">{{ category }}</button>
+            <button class="cursor-pointer" @click="toggleCategory(category)">{{ category }}</button>
           </CategoryLabel>
         </li>
       </ul>

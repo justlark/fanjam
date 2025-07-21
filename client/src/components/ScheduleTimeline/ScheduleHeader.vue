@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from "vue";
+import { ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
 import useEvents from "@/composables/useEvents";
 import { type Event } from "@/utils/api";
@@ -80,6 +80,8 @@ watchEffect(() => {
 
   eventIds.value = filteredEvents.map((event) => event.id);
 });
+
+const filterMenuId = useId();
 </script>
 
 <template>
@@ -101,6 +103,8 @@ watchEffect(() => {
         label="Filter"
         :active="showFilterMenu"
         @click="showFilterMenu = !showFilterMenu"
+        :aria-controls="filterMenuId"
+        :aria-expanded="showFilterMenu"
       />
       <IconButton
         class="!hidden lg:!flex"
@@ -110,6 +114,7 @@ watchEffect(() => {
       />
     </div>
     <FilterMenu
+      :id="filterMenuId"
       class="mb-4"
       v-if="showFilterMenu"
       :all-categories="props.allCategories"
