@@ -10,9 +10,7 @@ export interface EventSummary {
   category: string;
 }
 
-const eventIdAllowList = defineModel("ids", {
-  type: Array<string>,
-});
+const eventIdAllowList = defineModel<Array<string>>("ids");
 
 const props = defineProps<{
   localizedTime: string;

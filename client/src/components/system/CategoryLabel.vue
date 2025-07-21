@@ -10,8 +10,6 @@ const props = defineProps<{
   allCategories: Array<string>;
 }>();
 
-const isInactive = props.inactive;
-
 const fgColor700 = computed(
   () => `!${newFgColor(props.category ?? props.title, props.allCategories, 700)}`,
 );
@@ -35,11 +33,11 @@ const outlineColor200Dark = computed(
     :class="{
       [fgColor700]: true,
       [bgColor100]: true,
-      [fgColor200NotHoverDark]: isInactive,
-      outline: isInactive,
-      'not-hover:!bg-transparent': isInactive,
-      [outlineColor700]: isInactive,
-      [outlineColor200Dark]: isInactive,
+      [fgColor200NotHoverDark]: props.inactive,
+      outline: props.inactive,
+      'not-hover:!bg-transparent': props.inactive,
+      [outlineColor700]: props.inactive,
+      [outlineColor200Dark]: props.inactive,
     }"
   >
     <slot />

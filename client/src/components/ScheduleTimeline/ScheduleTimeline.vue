@@ -24,8 +24,7 @@ const props = defineProps<{
   events: Array<Event>;
 }>();
 
-const currentDayIndex = defineModel("day", {
-  type: Number,
+const currentDayIndex = defineModel<number>("day", {
   default: 0,
 });
 

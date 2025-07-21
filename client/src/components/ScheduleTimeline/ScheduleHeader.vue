@@ -1,23 +1,36 @@
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
+import { ref, computed, watchEffect } from "vue";
 import flexsearch from "flexsearch";
 import useEvents from "@/composables/useEvents";
 import { type Event } from "@/utils/api";
+import { isNotNullish } from "@/utils/types";
 import InputText from "primevue/inputtext";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
-import FilterMenu from "./FilterMenu.vue";
+import FilterMenu, { type FilterCriteria } from "./FilterMenu.vue";
 
 const { reload: reloadEvents } = useEvents();
+
+const filterCriteria = ref<FilterCriteria>({
+  categories: [],
+});
 
 const props = defineProps<{
   events: Array<Event>;
   allCategories: Array<string>;
 }>();
 
-const eventIds = defineModel("ids", {
-  type: Array<string>,
+const eventIds = defineModel<Array<string>>("ids");
+
+const eventsById = computed<Map<string, Event>>(() => {
+  const map = new Map<string, Event>();
+
+  for (const event of props.events) {
+    map.set(event.id, event);
+  }
+
+  return map;
 });
 
 const searchIndex = new flexsearch.Document({
@@ -47,14 +60,26 @@ watchEffect(() => {
   }
 });
 
-const executeSearch = () => {
+watchEffect(() => {
+  let filteredEvents = [...props.events];
+
   if ((searchText.value?.length ?? 0) > 0) {
     const results = searchIndex.search(searchText.value);
-    eventIds.value = results.flatMap((result) => result.result).map((id) => id.toString());
-  } else {
-    eventIds.value = undefined;
+
+    filteredEvents = results
+      .flatMap((result) => result.result)
+      .map((id) => eventsById.value.get(id.toString()))
+      .filter(isNotNullish);
   }
-};
+
+  if (filterCriteria.value.categories.length > 0) {
+    filteredEvents = filteredEvents.filter((event) =>
+      filterCriteria.value.categories.includes(event.category),
+    );
+  }
+
+  eventIds.value = filteredEvents.map((event) => event.id);
+});
 </script>
 
 <template>
@@ -68,7 +93,6 @@ const executeSearch = () => {
             class="w-full"
             placeholder="Search…"
             aria-label="Search"
-            @input="executeSearch()"
           />
         </IconField>
       </div>
@@ -85,6 +109,11 @@ const executeSearch = () => {
         @click="reloadEvents"
       />
     </div>
-    <FilterMenu class="mb-4" v-if="showFilterMenu" :all-categories="props.allCategories" />
+    <FilterMenu
+      class="mb-4"
+      v-if="showFilterMenu"
+      :all-categories="props.allCategories"
+      v-model:criteria="filterCriteria"
+    />
   </search>
 </template>
