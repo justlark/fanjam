@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const bgColor = computed(() => newBgColor(props.category ?? props.title, props.allCategories, 100));
-const fgColor = computed(() => newFgColor(props.category ?? props.title, props.allCategories, 500));
+const fgColor = computed(() => newFgColor(props.category ?? props.title, props.allCategories, 700));
 </script>
 
 <template>
