@@ -7,7 +7,6 @@ import EventDetail from "./EventDetail.vue";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import Divider from "primevue/divider";
-import Tag from "primevue/tag";
 
 const router = useRouter();
 
@@ -54,7 +53,7 @@ const useSectionHeadingId = useId();
           :title="event.category"
           :all-categories="props.allCategories"
         />
-        <Tag v-for="tag in event.tags" :key="tag" :value="tag" severity="secondary" />
+        <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" />
       </div>
       <Divider />
       <div v-if="event.description" class="my-4">
