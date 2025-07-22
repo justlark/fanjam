@@ -7,23 +7,36 @@ const props = defineProps<{
   title: string;
   inactive?: boolean;
   category?: string;
-  allCategories: Array<string>;
+  allCategories?: Array<string>;
 }>();
 
-const fgColor700 = computed(
-  () => `!${newFgColor(props.category ?? props.title, props.allCategories, 700)}`,
+const allCategories = computed(() => props.allCategories ?? []);
+const hasColor = computed(() => allCategories.value.includes(props.category ?? props.title));
+
+const fgColor = computed(() =>
+  hasColor.value
+    ? `!${newFgColor(props.category ?? props.title, allCategories.value, 700)}`
+    : "!text-gray-700",
 );
-const fgColor200NotHoverDark = computed(
-  () => `not-hover:dark:!${newFgColor(props.category ?? props.title, props.allCategories, 200)}`,
+const bgColor = computed(() =>
+  hasColor.value
+    ? `!${newBgColor(props.category ?? props.title, allCategories.value, 100)}`
+    : "!bg-gray-100",
 );
-const bgColor100 = computed(
-  () => `!${newBgColor(props.category ?? props.title, props.allCategories, 100)}`,
+const fgColorNotHoverDark = computed(() =>
+  hasColor.value
+    ? `not-hover:dark:!${newFgColor(props.category ?? props.title, allCategories.value, 200)}`
+    : "not-hover:dark:!text-gray-400",
 );
-const outlineColor700 = computed(
-  () => `!${newOutlineColor(props.category ?? props.title, props.allCategories, 700)}`,
+const outlineColorLight = computed(() =>
+  hasColor.value
+    ? `!${newOutlineColor(props.category ?? props.title, allCategories.value, 700)}`
+    : "!outline-gray-700",
 );
-const outlineColor200Dark = computed(
-  () => `dark:!${newOutlineColor(props.category ?? props.title, props.allCategories, 200)}`,
+const outlineColorDark = computed(() =>
+  hasColor.value
+    ? `dark:!${newOutlineColor(props.category ?? props.title, allCategories.value, 200)}`
+    : "dark:!outline-gray-400",
 );
 </script>
 
@@ -31,13 +44,13 @@ const outlineColor200Dark = computed(
   <Tag
     :value="props.title"
     :class="{
-      [fgColor700]: true,
-      [bgColor100]: true,
-      [fgColor200NotHoverDark]: props.inactive,
       outline: props.inactive,
       'not-hover:!bg-transparent': props.inactive,
-      [outlineColor700]: props.inactive,
-      [outlineColor200Dark]: props.inactive,
+      [fgColor]: true,
+      [bgColor]: true,
+      [fgColorNotHoverDark]: props.inactive,
+      [outlineColorLight]: props.inactive,
+      [outlineColorDark]: props.inactive,
     }"
   >
     <slot />

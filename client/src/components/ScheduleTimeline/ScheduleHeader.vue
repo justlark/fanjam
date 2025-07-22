@@ -14,15 +14,35 @@ const { reload: reloadEvents } = useEvents();
 
 const filterCriteria = ref<FilterCriteria>({
   categories: [],
+  tags: [],
 });
 const isFiltered = ref<boolean>(false);
 
 const props = defineProps<{
   events: Array<Event>;
-  allCategories: Array<string>;
 }>();
 
 const eventIds = defineModel<Array<string>>("ids");
+
+const allCategories = computed(() =>
+  props.events.reduce<Array<string>>((set, event) => {
+    if (!set.includes(event.category)) {
+      set.push(event.category);
+    }
+    return set;
+  }, []),
+);
+
+const allTags = computed(() =>
+  props.events.reduce<Array<string>>((set, event) => {
+    for (const tag of event.tags) {
+      if (!set.includes(tag)) {
+        set.push(tag);
+      }
+    }
+    return set;
+  }, []),
+);
 
 const eventsById = computed<Map<string, Event>>(() => {
   const map = new Map<string, Event>();
@@ -79,6 +99,12 @@ watchEffect(() => {
     );
   }
 
+  if (filterCriteria.value.tags.length > 0) {
+    filteredEvents = filteredEvents.filter((event) =>
+      event.tags.some((tag) => filterCriteria.value.tags.includes(tag)),
+    );
+  }
+
   eventIds.value = filteredEvents.map((event) => event.id);
 });
 
@@ -121,7 +147,8 @@ const filterMenuId = useId();
       :id="filterMenuId"
       class="mb-4"
       v-if="showFilterMenu"
-      :all-categories="props.allCategories"
+      :categories="allCategories"
+      :tags="allTags"
       v-model:criteria="filterCriteria"
       v-model:filtered="isFiltered"
     />

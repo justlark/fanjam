@@ -7,7 +7,7 @@
 Because we build the color classes dynamically, we need to safelist them to
 keep them from being tree-shaken out.
  */
-@source inline("{hover:,not-hover:,}{dark:,}{!,}{bg,text,outline}-{emerald,green,lime,red,orange,amber,yellow,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose}-{50,{100,200,300,400,500,600,700,800,900},950}");
+@source inline("{hover:,not-hover:,}{dark:,}{!,}{bg,text,outline}-{emerald,green,lime,red,orange,amber,yellow,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose,slate,gray,zinc,neutral,stone}-{50,100,200,300,400,500,600,700,800,900,950}");
 
 @layer base {
   body {

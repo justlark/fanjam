@@ -32,19 +32,6 @@ const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref(new Map<string, number>());
 const searchResultEventIds = ref<Array<string>>();
 
-const allCategories = computed(() =>
-  days.value.reduce<Array<string>>((set, day) => {
-    day.timeSlots.forEach((timeSlot) => {
-      timeSlot.events.forEach((event) => {
-        if (!set.includes(event.category)) {
-          set.push(event.category);
-        }
-      });
-    });
-    return set;
-  }, []),
-);
-
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 
 watchEffect(() => {
@@ -115,11 +102,7 @@ watchEffect(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <ScheduleHeader
-      v-model:ids="searchResultEventIds"
-      :events="props.events"
-      :all-categories="allCategories"
-    />
+    <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
     <div v-if="days.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
@@ -128,7 +111,6 @@ watchEffect(() => {
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
-        :all-categories="allCategories"
       />
     </div>
   </div>

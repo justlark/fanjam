@@ -15,8 +15,16 @@ const eventIdAllowList = defineModel<Array<string>>("ids");
 const props = defineProps<{
   localizedTime: string;
   events: Array<EventSummary>;
-  allCategories: Array<string>;
 }>();
+
+const allCategories = computed(() =>
+  props.events.reduce<Array<string>>((set, event) => {
+    if (!set.includes(event.category)) {
+      set.push(event.category);
+    }
+    return set;
+  }, []),
+);
 
 const eventIdAllowSet = computed(() =>
   eventIdAllowList.value !== undefined ? new Set(eventIdAllowList.value) : undefined,
@@ -39,7 +47,7 @@ const sectionHeadingId = useId();
           <CategoryLabel
             :title="event.name"
             :category="event.category"
-            :all-categories="props.allCategories"
+            :all-categories="allCategories"
           />
         </RouterLink>
       </li>
