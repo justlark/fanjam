@@ -3,6 +3,7 @@ import { ref, computed, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 import { useRoute, useRouter } from "vue-router";
 import { type Event } from "@/utils/api";
+import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
 import ScheduleTimeSlot, { type EventSummary } from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
@@ -12,7 +13,7 @@ const router = useRouter();
 
 interface TimeSlot {
   localizedTime: string;
-  events: Array<EventSummary>;
+  events: Array<Event>;
 }
 
 interface Day {
@@ -33,6 +34,7 @@ const dayIndexByEventId = ref(new Map<string, number>());
 const searchResultEventIds = ref<Array<string>>();
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
+const allCategories = computed(() => getSortedCategories(props.events));
 
 watchEffect(() => {
   dayIndexByEventId.value.clear();
@@ -66,11 +68,7 @@ watchEffect(() => {
       dayName,
       timeSlots: [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
         localizedTime,
-        events: eventsInThisTimeSlot.map((event) => ({
-          id: event.id,
-          name: event.name,
-          category: event.category,
-        })),
+        events: eventsInThisTimeSlot,
       })),
     };
   });
@@ -111,6 +109,7 @@ watchEffect(() => {
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
+        :all-categories="allCategories"
       />
     </div>
   </div>

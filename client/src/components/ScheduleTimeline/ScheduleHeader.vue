@@ -4,6 +4,7 @@ import flexsearch from "flexsearch";
 import useEvents from "@/composables/useEvents";
 import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
+import { getSortedCategories } from "@/utils/tags";
 import InputText from "primevue/inputtext";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
@@ -24,14 +25,7 @@ const props = defineProps<{
 
 const eventIds = defineModel<Array<string>>("ids");
 
-const allCategories = computed(() =>
-  props.events.reduce<Array<string>>((set, event) => {
-    if (!set.includes(event.category)) {
-      set.push(event.category);
-    }
-    return set;
-  }, []),
-);
+const allCategories = computed(() => getSortedCategories(props.events));
 
 const allTags = computed(() =>
   props.events.reduce<Array<string>>((set, event) => {

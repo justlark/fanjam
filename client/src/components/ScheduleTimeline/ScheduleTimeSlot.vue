@@ -1,30 +1,17 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import Divider from "primevue/divider";
+import { getSortedCategories } from "@/utils/tags";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import { RouterLink } from "vue-router";
-
-export interface EventSummary {
-  id: string;
-  name: string;
-  category: string;
-}
 
 const eventIdAllowList = defineModel<Array<string>>("ids");
 
 const props = defineProps<{
   localizedTime: string;
-  events: Array<EventSummary>;
+  events: Array<Event>;
+  allCategories: Array<string>;
 }>();
-
-const allCategories = computed(() =>
-  props.events.reduce<Array<string>>((set, event) => {
-    if (!set.includes(event.category)) {
-      set.push(event.category);
-    }
-    return set;
-  }, []),
-);
 
 const eventIdAllowSet = computed(() =>
   eventIdAllowList.value !== undefined ? new Set(eventIdAllowList.value) : undefined,
@@ -47,7 +34,7 @@ const sectionHeadingId = useId();
           <CategoryLabel
             :title="event.name"
             :category="event.category"
-            :all-categories="allCategories"
+            :all-categories="props.allCategories"
           />
         </RouterLink>
       </li>

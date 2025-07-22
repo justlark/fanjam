@@ -2,7 +2,7 @@ interface RawEvent {
   id: string;
   name: string;
   description: string;
-  start_time?: string;
+  start_time: string;
   end_time?: string;
   location: string;
   people: Array<string>;
@@ -14,7 +14,7 @@ export interface Event {
   id: string;
   name: string;
   description: string;
-  startTime?: Date;
+  startTime: Date;
   endTime?: Date;
   location: string;
   people: Array<string>;
@@ -48,7 +48,7 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
     id: event.id,
     name: event.name,
     description: event.description,
-    startTime: event.start_time ? new Date(event.start_time) : undefined,
+    startTime: new Date(event.start_time),
     endTime: event.end_time ? new Date(event.end_time) : undefined,
     location: event.location,
     people: event.people,
