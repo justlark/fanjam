@@ -103,7 +103,7 @@ const filterMenuId = useId();
         icon="filter"
         label="Filter"
         :active="showFilterMenu"
-        :badge="isFiltered && !showFilterMenu"
+        :badge="isFiltered"
         @click="showFilterMenu = !showFilterMenu"
         :button-props="{
           'aria-controls': filterMenuId,
