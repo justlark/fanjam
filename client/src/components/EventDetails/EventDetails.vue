@@ -48,18 +48,17 @@ const useSectionHeadingId = useId();
           {{ event.location }}
         </EventDetail>
       </dl>
-      <CategoryLabel
-        v-if="event.category"
-        class="mt-4"
-        :title="event.category"
-        :all-categories="props.allCategories"
-      />
+      <div v-if="event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
+        <CategoryLabel
+          v-if="event.category"
+          :title="event.category"
+          :all-categories="props.allCategories"
+        />
+        <Tag v-for="tag in event.tags" :key="tag" :value="tag" severity="secondary" />
+      </div>
       <Divider />
       <div v-if="event.description" class="my-4">
         {{ event.description }}
-      </div>
-      <div v-if="event.tags.length > 0" class="flex flex-wrap gap-3">
-        <Tag v-for="tag in event.tags" :key="tag" :value="tag" severity="secondary" />
       </div>
     </div>
   </section>
