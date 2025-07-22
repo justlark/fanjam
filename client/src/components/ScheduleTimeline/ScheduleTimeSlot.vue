@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import Divider from "primevue/divider";
-import { getSortedCategories } from "@/utils/tags";
+import { type Event } from "@/utils/api";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import { RouterLink } from "vue-router";
 

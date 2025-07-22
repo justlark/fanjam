@@ -5,7 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
-import ScheduleTimeSlot, { type EventSummary } from "./ScheduleTimeSlot.vue";
+import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 
 const route = useRoute();
