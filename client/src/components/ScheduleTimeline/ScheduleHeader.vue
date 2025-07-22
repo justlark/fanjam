@@ -15,6 +15,7 @@ const { reload: reloadEvents } = useEvents();
 const filterCriteria = ref<FilterCriteria>({
   categories: [],
 });
+const isFiltered = ref<boolean>(false);
 
 const props = defineProps<{
   events: Array<Event>;
@@ -102,12 +103,15 @@ const filterMenuId = useId();
         icon="filter"
         label="Filter"
         :active="showFilterMenu"
+        :badge="isFiltered && !showFilterMenu"
         @click="showFilterMenu = !showFilterMenu"
-        :aria-controls="filterMenuId"
-        :aria-expanded="showFilterMenu"
+        :button-props="{
+          'aria-controls': filterMenuId,
+          'aria-expanded': showFilterMenu,
+        }"
       />
       <IconButton
-        class="!hidden lg:!flex"
+        class="!hidden lg:!block"
         icon="arrow-clockwise"
         label="Refresh"
         @click="reloadEvents"
@@ -119,6 +123,7 @@ const filterMenuId = useId();
       v-if="showFilterMenu"
       :all-categories="props.allCategories"
       v-model:criteria="filterCriteria"
+      v-model:filtered="isFiltered"
     />
   </search>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watchEffect } from "vue";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 
 export interface FilterCriteria {
@@ -10,6 +10,10 @@ const criteria = defineModel<FilterCriteria>("criteria", {
   default: {
     categories: [],
   },
+});
+
+const filtered = defineModel<boolean>("filtered", {
+  default: false,
 });
 
 const props = defineProps<{
@@ -29,6 +33,10 @@ const toggleCategory = (category: string) => {
 };
 
 const isCategorySelected = (category: string) => selectedCategories.value.has(category);
+
+watchEffect(() => {
+  filtered.value = criteria.value.categories.length > 0;
+});
 </script>
 
 <template>

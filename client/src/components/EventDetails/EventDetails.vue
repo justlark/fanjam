@@ -33,7 +33,7 @@ const useSectionHeadingId = useId();
   <section :aria-labelledby="useSectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
-      <IconButton class="!hidden lg:!flex" icon="x-lg" label="Close" @click="back()" />
+      <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
       <h2 :id="useSectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">
