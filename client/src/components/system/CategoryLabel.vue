@@ -52,7 +52,5 @@ const outlineColorDark = computed(() =>
       [outlineColorLight]: props.inactive,
       [outlineColorDark]: props.inactive,
     }"
-  >
-    <slot />
-  </Tag>
+  />
 </template>

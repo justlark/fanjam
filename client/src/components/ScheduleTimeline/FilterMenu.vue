@@ -61,15 +61,13 @@ watchEffect(() => {
         <span>Filter by Category</span>
         <ul class="flex flex-wrap gap-3">
           <li v-for="(category, index) in props.categories" :key="index">
-            <CategoryLabel
-              :title="category"
-              :all-categories="props.categories"
-              :inactive="!isCategorySelected(category)"
-            >
-              <button class="cursor-pointer" @click="toggleCategory(category)">
-                {{ category }}
-              </button>
-            </CategoryLabel>
+            <button class="cursor-pointer" @click="toggleCategory(category)">
+              <CategoryLabel
+                :title="category"
+                :all-categories="props.categories"
+                :inactive="!isCategorySelected(category)"
+              />
+            </button>
           </li>
         </ul>
       </div>
@@ -77,9 +75,9 @@ watchEffect(() => {
         <span>Filter by Tags</span>
         <ul class="flex flex-wrap gap-3">
           <li v-for="(tag, index) in props.tags" :key="index">
-            <CategoryLabel :title="tag" :inactive="!isTagSelected(tag)">
-              <button class="cursor-pointer" @click="toggleTag(tag)">{{ tag }}</button>
-            </CategoryLabel>
+            <button class="cursor-pointer" @click="toggleTag(tag)">
+              <CategoryLabel :title="tag" :inactive="!isTagSelected(tag)" />
+            </button>
           </li>
         </ul>
       </div>

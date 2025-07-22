@@ -40,9 +40,7 @@ watchEffect(() => {
   dayIndexByEventId.value.clear();
 
   const allDates = props.events.reduce((set, event) => {
-    if (event.startTime) {
-      set.add(event.startTime);
-    }
+    set.add(event.startTime);
 
     if (event.endTime) {
       set.add(event.endTime);
@@ -54,8 +52,8 @@ watchEffect(() => {
   const namedDays = datesToDayNames(allDates);
 
   days.value = [...namedDays.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
-    const eventsThisDay = props.events.filter(
-      (event) => event.startTime && dateIsBetween(event.startTime, dayStart, dayEnd),
+    const eventsThisDay = props.events.filter((event) =>
+      dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 
     const groupedEvents = groupByTime(eventsThisDay, (event) => event.startTime);
