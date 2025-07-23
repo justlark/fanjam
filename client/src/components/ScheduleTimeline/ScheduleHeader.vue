@@ -101,6 +101,11 @@ watchEffect(() => {
     );
   }
 
+  if (filterCriteria.hidePastEvents) {
+    const now = new Date();
+    filteredEvents = filteredEvents.filter((event) => event.startTime >= now);
+  }
+
   eventIds.value = filteredEvents.map((event) => event.id);
 });
 
