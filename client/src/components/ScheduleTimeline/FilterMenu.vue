@@ -1,47 +1,17 @@
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import { QueryParam, rawQueryParamToArray } from "@/utils/query";
+import { ref } from "vue";
+import useFilterQuery from "@/composables/useFilterQuery";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 
-const route = useRoute();
-const router = useRouter();
-
-export interface FilterCriteria {
-  categories: Array<string>;
-  tags: Array<string>;
-}
-
-const criteria = defineModel<FilterCriteria>("criteria", {
-  default: {
-    categories: [],
-    tags: [],
-  },
-});
-
-watchEffect(() => {
-  const categorieFromQuery = rawQueryParamToArray(route, QueryParam.categories);
-  if (categorieFromQuery !== undefined) {
-    criteria.value.categories = categorieFromQuery;
-  }
-
-  const tagsFromQuery = rawQueryParamToArray(route, QueryParam.tags);
-  if (tagsFromQuery !== undefined) {
-    criteria.value.tags = tagsFromQuery;
-  }
-});
-
-const filtered = defineModel<boolean>("filtered", {
-  default: false,
-});
+const criteria = useFilterQuery();
 
 const props = defineProps<{
   categories: Array<string>;
   tags: Array<string>;
 }>();
 
-const selectedCategories = ref<Set<string>>(new Set(criteria.value.categories));
-const selectedTags = ref<Set<string>>(new Set(criteria.value.tags));
+const selectedCategories = ref<Set<string>>(new Set(criteria.categories));
+const selectedTags = ref<Set<string>>(new Set(criteria.tags));
 
 const toggleCategory = (category: string) => {
   if (selectedCategories.value.has(category)) {
@@ -50,7 +20,7 @@ const toggleCategory = (category: string) => {
     selectedCategories.value.add(category);
   }
 
-  criteria.value.categories = Array.from(selectedCategories.value);
+  criteria.categories = Array.from(selectedCategories.value);
 };
 
 const toggleTag = (tag: string) => {
@@ -60,25 +30,11 @@ const toggleTag = (tag: string) => {
     selectedTags.value.add(tag);
   }
 
-  criteria.value.tags = Array.from(selectedTags.value);
+  criteria.tags = Array.from(selectedTags.value);
 };
 
 const isCategorySelected = (category: string) => selectedCategories.value.has(category);
 const isTagSelected = (tag: string) => selectedTags.value.has(tag);
-
-watchEffect(async () => {
-  await router.replace({
-    query: {
-      category:
-        criteria.value.categories.length > 0 ? criteria.value.categories.join(",") : undefined,
-      tag: criteria.value.tags.length > 0 ? criteria.value.tags.join(",") : undefined,
-    },
-  });
-});
-
-watchEffect(() => {
-  filtered.value = criteria.value.categories.length > 0 || criteria.value.tags.length > 0;
-});
 </script>
 
 <template>

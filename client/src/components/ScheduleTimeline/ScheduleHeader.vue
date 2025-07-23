@@ -2,6 +2,7 @@
 import { ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
 import useEvents from "@/composables/useEvents";
+import useFilterQuery from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
 import { getSortedCategories } from "@/utils/tags";
@@ -9,15 +10,10 @@ import InputText from "primevue/inputtext";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
-import FilterMenu, { type FilterCriteria } from "./FilterMenu.vue";
+import FilterMenu from "./FilterMenu.vue";
 
 const { reload: reloadEvents } = useEvents();
-
-const filterCriteria = ref<FilterCriteria>({
-  categories: [],
-  tags: [],
-});
-const isFiltered = ref<boolean>(false);
+const filterCriteria = useFilterQuery();
 
 const props = defineProps<{
   events: Array<Event>;
@@ -26,6 +22,9 @@ const props = defineProps<{
 const eventIds = defineModel<Array<string>>("ids");
 
 const allCategories = computed(() => getSortedCategories(props.events));
+const isFiltered = computed(
+  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
+);
 
 const allTags = computed(() =>
   props.events.reduce<Array<string>>((set, event) => {
@@ -87,15 +86,15 @@ watchEffect(() => {
       .filter(isNotNullish);
   }
 
-  if (filterCriteria.value.categories.length > 0) {
+  if (filterCriteria.categories.length > 0) {
     filteredEvents = filteredEvents.filter((event) =>
-      filterCriteria.value.categories.includes(event.category),
+      filterCriteria.categories.includes(event.category),
     );
   }
 
-  if (filterCriteria.value.tags.length > 0) {
+  if (filterCriteria.tags.length > 0) {
     filteredEvents = filteredEvents.filter((event) =>
-      event.tags.some((tag) => filterCriteria.value.tags.includes(tag)),
+      event.tags.some((tag) => filterCriteria.tags.includes(tag)),
     );
   }
 
@@ -143,8 +142,6 @@ const filterMenuId = useId();
       v-if="showFilterMenu"
       :categories="allCategories"
       :tags="allTags"
-      v-model:criteria="filterCriteria"
-      v-model:filtered="isFiltered"
     />
   </search>
 </template>

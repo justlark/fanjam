@@ -2,15 +2,16 @@
 import { ref, computed, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 import { useRoute, useRouter } from "vue-router";
+import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
-import { QueryParam } from "@/utils/query";
 import DayPicker from "./DayPicker.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 
 const route = useRoute();
 const router = useRouter();
+const filterCriteria = useFilterQuery();
 
 interface TimeSlot {
   localizedTime: string;
@@ -79,12 +80,8 @@ watchEffect(async () => {
   }
 
   await router.push({
-    name: "schedule",
     params: { dayIndex: currentDayIndex.value },
-    query: {
-      [QueryParam.categories]: route.query[QueryParam.categories],
-      [QueryParam.tags]: route.query[QueryParam.tags],
-    },
+    query: toFilterQueryParams(filterCriteria),
   });
 });
 

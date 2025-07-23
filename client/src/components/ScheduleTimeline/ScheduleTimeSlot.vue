@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
-import { useRoute } from "vue-router";
 import Divider from "primevue/divider";
+import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
-import { QueryParam } from "@/utils/query";
 import { RouterLink } from "vue-router";
 
-const route = useRoute();
+const filterCriteria = useFilterQuery();
 
 const eventIdAllowList = defineModel<Array<string>>("ids");
 
@@ -38,10 +37,7 @@ const sectionHeadingId = useId();
           :to="{
             name: 'event',
             params: { eventId: event.id },
-            query: {
-              [QueryParam.categories]: route.query[QueryParam.categories],
-              [QueryParam.tags]: route.query[QueryParam.tags],
-            },
+            query: toFilterQueryParams(filterCriteria),
           }"
         >
           <CategoryLabel
