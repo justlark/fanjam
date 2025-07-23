@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from "vue";
+import { ref, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
@@ -89,7 +89,7 @@ watchEffect(async () => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  [route.path, dayIndexByEventId],
+  [toRef(route, "path"), dayIndexByEventId],
   () => {
     if (route.name === "schedule") {
       currentDayIndex.value = route.params.dayIndex
