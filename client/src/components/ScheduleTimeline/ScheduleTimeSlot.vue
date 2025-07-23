@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
+import { useRoute } from "vue-router";
 import Divider from "primevue/divider";
 import { type Event } from "@/utils/api";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
+import { QueryParam } from "@/utils/query";
 import { RouterLink } from "vue-router";
+
+const route = useRoute();
 
 const eventIdAllowList = defineModel<Array<string>>("ids");
 
@@ -30,7 +34,16 @@ const sectionHeadingId = useId();
     <Divider pt:root="!mt-1" />
     <ul class="flex flex-wrap gap-3">
       <li v-for="event in filteredEvents" :key="event.id">
-        <RouterLink :to="{ name: 'event', params: { eventId: event.id } }">
+        <RouterLink
+          :to="{
+            name: 'event',
+            params: { eventId: event.id },
+            query: {
+              [QueryParam.categories]: route.query[QueryParam.categories],
+              [QueryParam.tags]: route.query[QueryParam.tags],
+            },
+          }"
+        >
           <CategoryLabel
             :title="event.name"
             :category="event.category"

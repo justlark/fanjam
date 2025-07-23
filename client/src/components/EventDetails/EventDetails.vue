@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
+import { QueryParam } from "@/utils/query";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import Divider from "primevue/divider";
 
+const route = useRoute();
 const router = useRouter();
 
 const props = defineProps<{
@@ -22,6 +24,10 @@ const back = async () => {
   await router.push({
     name: "schedule",
     params: { dayIndex: props.day },
+    query: {
+      [QueryParam.categories]: route.query[QueryParam.categories],
+      [QueryParam.tags]: route.query[QueryParam.tags],
+    },
   });
 };
 

@@ -4,6 +4,7 @@ import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 import { useRoute, useRouter } from "vue-router";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
+import { QueryParam } from "@/utils/query";
 import DayPicker from "./DayPicker.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
@@ -80,6 +81,10 @@ watchEffect(async () => {
   await router.push({
     name: "schedule",
     params: { dayIndex: currentDayIndex.value },
+    query: {
+      [QueryParam.categories]: route.query[QueryParam.categories],
+      [QueryParam.tags]: route.query[QueryParam.tags],
+    },
   });
 });
 

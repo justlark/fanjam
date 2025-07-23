@@ -13,9 +13,9 @@ const props = defineProps<{
 const allCategories = computed(() => props.allCategories ?? []);
 const isCategories = computed(() => allCategories.value.includes(props.category ?? props.title));
 
-const fg = (value: string) => newFgColor(props.category ?? props.title, allCategories.value, value);
-const bg = (value: string) => newBgColor(props.category ?? props.title, allCategories.value, value);
-const outline = (value: string) =>
+const fg = (value: number) => newFgColor(props.category ?? props.title, allCategories.value, value);
+const bg = (value: number) => newBgColor(props.category ?? props.title, allCategories.value, value);
+const outline = (value: number) =>
   newOutlineColor(props.category ?? props.title, allCategories.value, value);
 
 const categoryStyles = computed(() => [
