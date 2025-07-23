@@ -36,7 +36,7 @@ const standaloneStyles = computed(() => [
   "!text-slate-600",
   "!bg-slate-200",
   "dark:!text-zinc-300",
-  "dark:!bg-zinc-800",
+  "dark:!bg-zinc-700",
   ...(props.inactive
     ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700", , "not-hover:!bg-transparent"]
     : []),
