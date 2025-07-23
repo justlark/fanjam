@@ -41,12 +41,12 @@ const hidePastEventsToggleId = useId();
 </script>
 
 <template>
-  <div>
-    <div class="flex flex-col md:flex-row flex-wrap gap-x-12 gap-y-6">
-      <span class="flex items-center gap-4">
-        <ToggleSwitch :id="hidePastEventsToggleId" v-model="criteria.hidePastEvents" />
-        <label :for="hidePastEventsToggleId">Hide past events</label>
-      </span>
+  <div class="flex flex-col gap-6">
+    <span class="flex items-center gap-4">
+      <ToggleSwitch :id="hidePastEventsToggleId" v-model="criteria.hidePastEvents" />
+      <label :for="hidePastEventsToggleId">Hide past events</label>
+    </span>
+    <div class="flex flex-col md:flex-row gap-x-12 gap-y-6">
       <div class="flex flex-col gap-2">
         <span>Only show these categories:</span>
         <ul class="ms-2 flex flex-wrap gap-3">
