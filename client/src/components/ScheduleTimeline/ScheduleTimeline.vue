@@ -32,14 +32,14 @@ const currentDayIndex = defineModel<number>("day", {
 });
 
 const days = ref<Array<Day>>([]);
-const dayIndexByEventId = ref(new Map<string, number>());
+const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(props.events));
 
 watchEffect(() => {
-  dayIndexByEventId.value.clear();
+  dayIndexByEventId.value = {};
 
   const allDates = props.events.reduce((set, event) => {
     set.add(event.startTime);
@@ -61,7 +61,7 @@ watchEffect(() => {
     const groupedEvents = groupByTime(eventsThisDay, (event) => event.startTime);
 
     for (const event of eventsThisDay) {
-      dayIndexByEventId.value.set(event.id, dayIndex);
+      dayIndexByEventId.value[event.id] = dayIndex;
     }
 
     return {
@@ -89,7 +89,7 @@ watchEffect(async () => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  route.path,
+  [route.path, dayIndexByEventId],
   () => {
     if (route.name === "schedule") {
       currentDayIndex.value = route.params.dayIndex
@@ -97,7 +97,7 @@ watch(
         : 0;
     } else if (route.name === "event") {
       currentDayIndex.value = route.params.eventId
-        ? (dayIndexByEventId.value.get(route.params.eventId as string) ?? 0)
+        ? (dayIndexByEventId.value[route.params.eventId as string] ?? 0)
         : 0;
     }
   },
