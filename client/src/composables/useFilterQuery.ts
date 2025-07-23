@@ -5,6 +5,7 @@ import { isNotNullish } from "@/utils/types";
 export interface FilterCriteria {
   categories: Array<string>;
   tags: Array<string>;
+  hidePastEvents: boolean;
 }
 
 export const useFilterQuery = (): Reactive<FilterCriteria> => {
@@ -14,6 +15,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
   const criteria = reactive<FilterCriteria>({
     categories: [],
     tags: [],
+    hidePastEvents: false,
   });
 
   watch(
@@ -34,6 +36,12 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       } else {
         criteria.tags = [];
       }
+
+      if (newRoute.query.past === "false") {
+        criteria.hidePastEvents = true;
+      } else {
+        criteria.hidePastEvents = false;
+      }
     },
     { immediate: true },
   );
@@ -43,6 +51,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       query: {
         c: newCriteria.categories,
         t: newCriteria.tags,
+        past: newCriteria.hidePastEvents ? "false" : undefined,
       },
     });
   });
@@ -53,6 +62,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
 export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
   c: criteria.categories,
   t: criteria.tags,
+  past: criteria.hidePastEvents ? "false" : undefined,
 });
 
 export default useFilterQuery;
