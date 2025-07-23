@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from "vue";
+import { useId } from "vue";
 import Divider from "primevue/divider";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
@@ -8,31 +8,21 @@ import { RouterLink } from "vue-router";
 
 const filterCriteria = useFilterQuery();
 
-const eventIdAllowList = defineModel<Array<string>>("ids");
-
 const props = defineProps<{
   localizedTime: string;
   events: Array<Event>;
   allCategories: Array<string>;
 }>();
 
-const eventIdAllowSet = computed(() =>
-  eventIdAllowList.value !== undefined ? new Set(eventIdAllowList.value) : undefined,
-);
-
-const filteredEvents = computed(() => {
-  return props.events.filter((event) => eventIdAllowSet.value?.has(event.id) ?? true);
-});
-
 const sectionHeadingId = useId();
 </script>
 
 <template>
-  <section :aria-labelledby="sectionHeadingId" v-if="filteredEvents.length > 0">
+  <section :aria-labelledby="sectionHeadingId">
     <h2 :id="sectionHeadingId" class="text-xl">{{ props.localizedTime }}</h2>
     <Divider pt:root="!mt-1" />
     <ul class="flex flex-wrap gap-3">
-      <li v-for="event in filteredEvents" :key="event.id">
+      <li v-for="event in props.events" :key="event.id">
         <RouterLink
           :to="{
             name: 'event',

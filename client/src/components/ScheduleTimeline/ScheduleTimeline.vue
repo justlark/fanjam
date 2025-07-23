@@ -74,6 +74,21 @@ watchEffect(() => {
   });
 });
 
+const eventIdAllowSet = computed(() =>
+  searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
+);
+
+const filteredTimeSlots = computed(() =>
+  days.value.length === 0
+    ? []
+    : days.value[currentDayIndex.value].timeSlots
+        .map((timeSlot) => ({
+          events: timeSlot.events.filter((event) => eventIdAllowSet.value?.has(event.id) ?? true),
+          localizedTime: timeSlot.localizedTime,
+        }))
+        .filter((timeSlot) => timeSlot.events.length > 0),
+);
+
 watchEffect(async () => {
   if (route.name !== "schedule") {
     return;
@@ -109,15 +124,21 @@ watch(
   <div class="flex flex-col gap-4">
     <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
-    <div v-if="days.length > 0" class="flex flex-col gap-8">
+    <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
-        v-for="(timeSlot, index) in days[currentDayIndex].timeSlots"
-        v-model:ids="searchResultEventIds"
+        v-for="(timeSlot, index) in filteredTimeSlots"
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
         :all-categories="allCategories"
       />
+    </div>
+    <div
+      v-else
+      class="text-center italic text-slate-500 dark:text-zinc-400 mt-8 flex flex-col gap-2"
+    >
+      <span>No events for this day</span>
+      <span>(or they've been filtered out)</span>
     </div>
   </div>
 </template>
