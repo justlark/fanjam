@@ -22,7 +22,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       if (newRoute.query.c) {
         criteria.categories = Array.isArray(newRoute.query.c)
           ? newRoute.query.c.filter(isNotNullish)
-          : newRoute.query.c.split(",");
+          : [newRoute.query.c];
       } else {
         criteria.categories = [];
       }
@@ -30,7 +30,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       if (newRoute.query.t) {
         criteria.tags = Array.isArray(newRoute.query.t)
           ? newRoute.query.t.filter(isNotNullish)
-          : newRoute.query.t.split(",");
+          : [newRoute.query.t];
       } else {
         criteria.tags = [];
       }
@@ -41,8 +41,8 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
   watch(criteria, async (newCriteria) => {
     await router.replace({
       query: {
-        c: newCriteria.categories.length > 0 ? newCriteria.categories.join(",") : undefined,
-        t: newCriteria.tags.length > 0 ? newCriteria.tags.join(",") : undefined,
+        c: newCriteria.categories,
+        t: newCriteria.tags,
       },
     });
   });
@@ -51,8 +51,8 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
 };
 
 export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
-  c: criteria.categories.length > 0 ? criteria.categories.join(",") : undefined,
-  t: criteria.tags.length > 0 ? criteria.tags.join(",") : undefined,
+  c: criteria.categories,
+  t: criteria.tags,
 });
 
 export default useFilterQuery;
