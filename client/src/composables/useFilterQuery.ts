@@ -1,4 +1,4 @@
-import { watch, reactive, watchEffect, type Reactive } from "vue";
+import { watch, reactive, type Reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { isNotNullish } from "@/utils/types";
 
