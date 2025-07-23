@@ -6,6 +6,7 @@ import { newBgColor, newFgColor, newOutlineColor } from "@/utils/colors";
 const props = defineProps<{
   title: string;
   display: "active" | "inactive" | "hover";
+  size?: "xs" | "sm" | "md" | "lg";
   category?: string;
   allCategories?: Array<string>;
 }>();
@@ -13,12 +14,28 @@ const props = defineProps<{
 const allCategories = computed(() => props.allCategories ?? []);
 const isCategories = computed(() => allCategories.value.includes(props.category ?? props.title));
 
+const textSize = computed(() => {
+  switch (props.size) {
+    case "xs":
+      return "text-xs";
+    case "sm":
+      return "text-sm";
+    case "md":
+      return "text-base";
+    case "lg":
+      return "text-lg";
+    default:
+      return "text-base";
+  }
+});
+
 const fg = (value: number) => newFgColor(props.category ?? props.title, allCategories.value, value);
 const bg = (value: number) => newBgColor(props.category ?? props.title, allCategories.value, value);
 const outline = (value: number) =>
   newOutlineColor(props.category ?? props.title, allCategories.value, value);
 
 const categoryStyles = computed(() => [
+  `!${textSize.value}`,
   `!${fg(700)}`,
   `!${bg(100)}`,
   ...(props.display == "hover" || props.display == "inactive"
@@ -29,6 +46,7 @@ const categoryStyles = computed(() => [
 ]);
 
 const standaloneStyles = computed(() => [
+  `!${textSize.value}`,
   "!text-slate-600",
   "dark:!text-zinc-300",
   ...(props.display == "active" || props.display == "hover"

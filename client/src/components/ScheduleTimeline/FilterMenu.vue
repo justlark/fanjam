@@ -39,9 +39,9 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
 
 <template>
   <div>
-    <div class="flex flex-col lg:flex-row flex-wrap gap-6">
-      <div class="flex flex-col gap-2 lg:basis-1/2">
-        <span>Choose categories to filter by:</span>
+    <div class="flex flex-col md:flex-row flex-wrap gap-x-12 gap-y-6">
+      <div class="flex flex-col gap-2">
+        <span>Only show these categories:</span>
         <ul class="ms-2 flex flex-wrap gap-3">
           <li v-for="(category, index) in props.categories" :key="index">
             <button
@@ -59,8 +59,18 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
           </li>
         </ul>
       </div>
+      <div class="flex md:hidden justify-center items-center">
+        <div class="border-b w-8 mr-4"></div>
+        <span>and</span>
+        <div class="border-b w-8 ml-4"></div>
+      </div>
+      <div class="hidden md:flex flex-col justify-center items-center">
+        <div class="border-l h-4 mb-2"></div>
+        <span>and</span>
+        <div class="border-l h-4 mt-2"></div>
+      </div>
       <div class="flex flex-col gap-2">
-        <span>Choose tags to filter by:</span>
+        <span>Only show these tags:</span>
         <ul class="ms-2 flex flex-wrap gap-3">
           <li v-for="(tag, index) in props.tags" :key="index">
             <button

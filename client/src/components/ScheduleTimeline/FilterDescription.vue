@@ -10,26 +10,36 @@ const props = defineProps<{
 
 const hasCategories = computed(() => props.criteria.categories.length > 0);
 const hasTags = computed(() => props.criteria.tags.length > 0);
+const hasMultipleCategories = computed(() => props.criteria.categories.length > 1);
+const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
 </script>
 
 <template>
-  <div class="flex flex-col lg:flex-row flex-wrap gap-6">
-    <div v-if="hasCategories" class="flex flex-col gap-2 lg:basis-1/2">
-      <span>Only showing events in:</span>
-      <span v-if="hasCategories" class="ms-2 flex flex-wrap gap-3">
-        <span v-for="(category, index) in props.criteria.categories" :key="index">
-          <CategoryLabel :title="category" :all-categories="props.allCategories" display="active" />
-        </span>
+  <span>
+    <span class="font-bold me-2 mb-2 md:mb-0 block md:inline">Only showing:</span>
+    <span>
+      <span class="my-1 inline-flex flex-wrap" v-if="hasCategories">
+        <span v-if="hasMultipleCategories && hasTags" class="me-1">(</span>
+        <template v-for="(category, index) in props.criteria.categories" :key="index">
+          <span class="mx-2 italic" v-if="index != 0">or</span>
+          <CategoryLabel
+            size="xs"
+            :title="category"
+            :all-categories="props.allCategories"
+            display="active"
+          />
+        </template>
+        <span v-if="hasMultipleCategories && hasTags" class="ms-1">)</span>
       </span>
-    </div>
-    <div v-if="hasTags" class="flex flex-col gap-2">
-      <span v-if="hasCategories">And:</span>
-      <span v-else>Only showing events in:</span>
-      <span class="ms-2 flex flex-wrap gap-3">
-        <span v-for="(tag, index) in props.criteria.tags" :key="index">
-          <CategoryLabel :title="tag" display="active" />
-        </span>
+      <span class="mx-2 italic" v-if="hasCategories && hasTags">and</span>
+      <span class="my-1 inline-flex flex-wrap" v-if="hasTags">
+        <span v-if="hasMultipleTags && hasCategories" class="me-1">(</span>
+        <template v-for="(tag, index) in props.criteria.tags" :key="index">
+          <span class="mx-2 italic" v-if="index != 0">or</span>
+          <CategoryLabel size="xs" :title="tag" display="active" />
+        </template>
+        <span v-if="hasMultipleTags && hasCategories" class="ms-1">)</span>
       </span>
-    </div>
-  </div>
+    </span>
+  </span>
 </template>
