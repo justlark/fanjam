@@ -7,13 +7,19 @@ import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
 import { getSortedCategories } from "@/utils/tags";
 import InputText from "primevue/inputtext";
+import FilterDescription from "./FilterDescription.vue";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
 import FilterMenu from "./FilterMenu.vue";
 
 const { reload: reloadEvents } = useEvents();
+
 const filterCriteria = useFilterQuery();
+
+const isFiltered = computed(
+  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
+);
 
 const props = defineProps<{
   events: Array<Event>;
@@ -22,9 +28,6 @@ const props = defineProps<{
 const eventIds = defineModel<Array<string>>("ids");
 
 const allCategories = computed(() => getSortedCategories(props.events));
-const isFiltered = computed(
-  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
-);
 
 const allTags = computed(() =>
   props.events.reduce<Array<string>>((set, event) => {
@@ -142,6 +145,11 @@ const filterMenuId = useId();
       v-if="showFilterMenu"
       :categories="allCategories"
       :tags="allTags"
+    />
+    <FilterDescription
+      v-if="isFiltered && !showFilterMenu"
+      :criteria="filterCriteria"
+      :all-categories="allCategories"
     />
   </search>
 </template>

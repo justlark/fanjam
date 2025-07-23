@@ -5,7 +5,7 @@ import { newBgColor, newFgColor, newOutlineColor } from "@/utils/colors";
 
 const props = defineProps<{
   title: string;
-  inactive?: boolean;
+  display: "active" | "inactive" | "hover";
   category?: string;
   allCategories?: Array<string>;
 }>();
@@ -21,24 +21,25 @@ const outline = (value: number) =>
 const categoryStyles = computed(() => [
   `!${fg(700)}`,
   `!${bg(100)}`,
-  ...(props.inactive
-    ? [
-        "outline",
-        "not-hover:!bg-transparent",
-        `not-hover:dark:!${fg(200)}`,
-        `!${outline(700)}`,
-        `dark:!${outline(200)}`,
-      ]
+  ...(props.display == "hover" || props.display == "inactive"
+    ? ["outline", `!${outline(700)}`, `dark:!${outline(200)}`]
     : []),
+  ...(props.display == "hover" ? ["not-hover:!bg-transparent", `not-hover:dark:!${fg(200)}`] : []),
+  ...(props.display == "inactive" ? ["!bg-transparent", `dark:!${fg(200)}`] : []),
 ]);
 
 const standaloneStyles = computed(() => [
   "!text-slate-600",
-  "!bg-slate-200",
   "dark:!text-zinc-300",
-  "dark:!bg-zinc-700",
-  ...(props.inactive
-    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700", , "not-hover:!bg-transparent"]
+  ...(props.display == "active" || props.display == "hover"
+    ? ["!bg-slate-200", "dark:!bg-zinc-700"]
+    : []),
+  ...(props.display == "hover" || props.display == "inactive"
+    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700"]
+    : []),
+  ...(props.display == "hover" ? ["not-hover:!bg-transparent"] : []),
+  ...(props.display == "inactive"
+    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700", "!bg-transparent"]
     : []),
 ]);
 </script>

@@ -42,7 +42,7 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
     <div class="flex flex-col lg:flex-row flex-wrap gap-6">
       <div class="flex flex-col gap-2 lg:basis-1/2">
         <span>Filter by Category</span>
-        <ul class="flex flex-wrap gap-3">
+        <ul class="ms-2 flex flex-wrap gap-3">
           <li v-for="(category, index) in props.categories" :key="index">
             <button
               class="cursor-pointer"
@@ -53,6 +53,7 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
                 :title="category"
                 :all-categories="props.categories"
                 :inactive="!isCategorySelected(category)"
+                :display="isCategorySelected(category) ? 'active' : 'hover'"
               />
             </button>
           </li>
@@ -60,14 +61,14 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
       </div>
       <div class="flex flex-col gap-2">
         <span>Filter by Tags</span>
-        <ul class="flex flex-wrap gap-3">
+        <ul class="ms-2 flex flex-wrap gap-3">
           <li v-for="(tag, index) in props.tags" :key="index">
             <button
               class="cursor-pointer"
               @click="toggleTag(tag)"
               :aria-pressed="isTagSelected(tag)"
             >
-              <CategoryLabel :title="tag" :inactive="!isTagSelected(tag)" />
+              <CategoryLabel :title="tag" :display="isTagSelected(tag) ? 'active' : 'hover'" />
             </button>
           </li>
         </ul>

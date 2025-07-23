@@ -42,6 +42,7 @@ const sectionHeadingId = useId();
         >
           <CategoryLabel
             :title="event.name"
+            display="active"
             :category="event.category"
             :all-categories="props.allCategories"
           />

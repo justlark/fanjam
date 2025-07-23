@@ -55,8 +55,9 @@ const useSectionHeadingId = useId();
           v-if="event.category"
           :title="event.category"
           :all-categories="props.allCategories"
+          display="active"
         />
-        <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" />
+        <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" display="active" />
       </div>
       <Divider />
       <div v-if="event.description" class="my-4">
