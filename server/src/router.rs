@@ -387,7 +387,7 @@ async fn get_events(
         Event {
             id: "4".to_string(),
             name: "Chainmaille 101".to_string(),
-            description: "In this class, you'll make a simple pair of chainmaille earrings. There is a small fee to cover the cost of supplies.".to_string(),
+            description: "# Description\n\nIn this class, you'll make a simple pair of **chainmaille earrings**.\n\nSecond paragraph.\n\nThird paragraph.\n\n## Notes\n\nThere is a _small_ fee to cover the cost of supplies. This is a ~strikethrough~.\n\n> This is a quote.\n\n- A\n- B\n- C\n\n1. One\n2. Two\n3. Three\n\n```\nprintln!(\"Hello, world!\")\n```\n\n[Link](https://duckduckgo.com)".to_string(),
             start_time: "2025-07-19T15:30:00Z".to_string(),
             end_time: "2025-07-19T17:00:00Z".to_string(),
             location: "Alcott Room".to_string(),

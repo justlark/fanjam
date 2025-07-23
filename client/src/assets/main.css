@@ -19,4 +19,54 @@ keep them from being tree-shaken out.
   #app {
     min-height: 100vh;
   }
+
+  #event-description p {
+    @apply my-1;
+  }
+
+  #event-description :is(h1, h2, h3, h4, h5, h6) {
+    @apply font-bold mt-4 mb-1;
+  }
+
+  #event-description h1 {
+    @apply text-2xl;
+  }
+
+  #event-description h2 {
+    @apply text-xl;
+  }
+
+  #event-description h3 {
+    @apply text-lg;
+  }
+
+  /* NocoDB only supports H1-H3. */
+  #event-description :is(h3, h4, h5, h6) {
+    @apply text-base;
+  }
+
+  #event-description :is(ul, ol) {
+    @apply pl-4;
+    @apply mb-4;
+  }
+
+  #event-description ul {
+    @apply list-disc;
+  }
+
+  #event-description ol {
+    @apply list-decimal;
+  }
+
+  #event-description blockquote {
+    @apply border-l-4 pl-2.5 my-2 border-surface-200 dark:border-surface-600;
+  }
+
+  #event-description a {
+    @apply text-primary underline underline-offset-2;
+  }
+
+  #event-description a:hover {
+    @apply decoration-2;
+  }
 }

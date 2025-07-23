@@ -5,6 +5,7 @@ import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
+import * as commonmark from "commonmark";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import Divider from "primevue/divider";
@@ -19,6 +20,15 @@ const props = defineProps<{
 }>();
 
 const event = computed(() => props.event);
+
+const mdReader = new commonmark.Parser({ smart: true });
+const mdWriter = new commonmark.HtmlRenderer({ safe: true });
+
+const descriptionHtml = computed(() => {
+  if (!event.value.description) return undefined;
+  const parsed = mdReader.parse(event.value.description);
+  return mdWriter.render(parsed);
+});
 
 const back = async () => {
   await router.push({
@@ -60,9 +70,12 @@ const useSectionHeadingId = useId();
         <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" display="active" />
       </div>
       <Divider />
-      <div v-if="event.description" class="my-4">
-        {{ event.description }}
-      </div>
+      <article
+        id="event-description"
+        v-if="descriptionHtml"
+        v-html="descriptionHtml"
+        class="my-4"
+      ></article>
     </div>
   </section>
 </template>
