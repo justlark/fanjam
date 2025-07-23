@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
@@ -85,17 +85,24 @@ watchEffect(async () => {
   });
 });
 
-watchEffect(() => {
-  if (route.name === "schedule") {
-    currentDayIndex.value = route.params.dayIndex
-      ? parseInt(route.params.dayIndex as string, 10)
-      : 0;
-  } else if (route.name === "event") {
-    currentDayIndex.value = route.params.eventId
-      ? (dayIndexByEventId.value.get(route.params.eventId as string) ?? 0)
-      : 0;
-  }
-});
+// Do not fire when the query params change. Otherwise, if the user is viewing
+// an event, the schedule view will reset to that event's day each time they
+// change the filters, which is disruptive.
+watch(
+  route.path,
+  () => {
+    if (route.name === "schedule") {
+      currentDayIndex.value = route.params.dayIndex
+        ? parseInt(route.params.dayIndex as string, 10)
+        : 0;
+    } else if (route.name === "event") {
+      currentDayIndex.value = route.params.eventId
+        ? (dayIndexByEventId.value.get(route.params.eventId as string) ?? 0)
+        : 0;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
