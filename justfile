@@ -19,6 +19,20 @@ run-client: _install-client
 run-server:
   npx wrangler --env test dev
 
+# type check and lint the client
+[working-directory: "./client/"]
+[group("test locally")]
+check-client: _install-client
+  npm run type-check
+  npm run lint
+
+# type check and lint the server
+[working-directory: "./server/"]
+[group("test locally")]
+check-server:
+  cargo check
+  cargo clippy
+
 # deploy the client
 [working-directory: "./client/"]
 [group("deploy changes")]
