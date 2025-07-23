@@ -395,6 +395,17 @@ async fn get_events(
             category: "Class".to_string(),
             tags: vec!["$$$".to_string()],
         },
+        Event {
+            id: "5".to_string(),
+            name: "The Future".to_string(),
+            description: "This class takes place a long time from now.".to_string(),
+            start_time: "2026-02-02T18:00:00Z".to_string(),
+            end_time: "2026-02-02T19:00:00Z".to_string(),
+            location: "Space".to_string(),
+            people: vec!["Zephyr".to_string()],
+            category: "Experience".to_string(),
+            tags: vec!["Cool".to_string()],
+        },
     ];
 
     Ok(Json(GetEventsResponse { events }))
