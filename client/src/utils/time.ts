@@ -30,7 +30,7 @@ export const dateIsBetween = (date: Date, start: Date, end: Date): boolean => {
 
 const dateRange = (dates: Set<Date>): { start: Date; end: Date } => {
   const sortedDates = [...dates];
-  sortedDates.sort();
+  sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
 
   const [start, end] = [sortedDates[0], sortedDates[sortedDates.length - 1]];
 
@@ -65,7 +65,7 @@ export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
   const rangeIsLongerThanAWeek = dayRange >= daysInAWeek;
 
   const sortedDates = [...dates];
-  sortedDates.sort();
+  sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
 
   const namedDays: Array<NamedDay> = [];
 
