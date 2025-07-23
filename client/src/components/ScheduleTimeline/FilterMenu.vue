@@ -56,12 +56,16 @@ watchEffect(() => {
 
 <template>
   <div>
-    <div class="flex flex-col lg:flex-row gap-y-4 gap-x-12">
+    <div class="flex flex-col lg:flex-row flex-wrap gap-6">
       <div class="flex flex-col gap-2 lg:basis-1/2">
         <span>Filter by Category</span>
         <ul class="flex flex-wrap gap-3">
           <li v-for="(category, index) in props.categories" :key="index">
-            <button class="cursor-pointer" @click="toggleCategory(category)">
+            <button
+              class="cursor-pointer"
+              @click="toggleCategory(category)"
+              :aria-pressed="isCategorySelected(category)"
+            >
               <CategoryLabel
                 :title="category"
                 :all-categories="props.categories"
@@ -71,11 +75,15 @@ watchEffect(() => {
           </li>
         </ul>
       </div>
-      <div class="flex flex-col gap-2 lg:basis-1/2">
+      <div class="flex flex-col gap-2">
         <span>Filter by Tags</span>
         <ul class="flex flex-wrap gap-3">
           <li v-for="(tag, index) in props.tags" :key="index">
-            <button class="cursor-pointer" @click="toggleTag(tag)">
+            <button
+              class="cursor-pointer"
+              @click="toggleTag(tag)"
+              :aria-pressed="isTagSelected(tag)"
+            >
               <CategoryLabel :title="tag" :inactive="!isTagSelected(tag)" />
             </button>
           </li>
