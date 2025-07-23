@@ -11,46 +11,38 @@ const props = defineProps<{
 }>();
 
 const allCategories = computed(() => props.allCategories ?? []);
-const hasColor = computed(() => allCategories.value.includes(props.category ?? props.title));
+const isCategories = computed(() => allCategories.value.includes(props.category ?? props.title));
 
-const fgColor = computed(() =>
-  hasColor.value
-    ? `!${newFgColor(props.category ?? props.title, allCategories.value, 700)}`
-    : "!text-gray-700",
-);
-const bgColor = computed(() =>
-  hasColor.value
-    ? `!${newBgColor(props.category ?? props.title, allCategories.value, 100)}`
-    : "!bg-gray-100",
-);
-const fgColorNotHoverDark = computed(() =>
-  hasColor.value
-    ? `not-hover:dark:!${newFgColor(props.category ?? props.title, allCategories.value, 200)}`
-    : "not-hover:dark:!text-gray-400",
-);
-const outlineColorLight = computed(() =>
-  hasColor.value
-    ? `!${newOutlineColor(props.category ?? props.title, allCategories.value, 700)}`
-    : "!outline-gray-700",
-);
-const outlineColorDark = computed(() =>
-  hasColor.value
-    ? `dark:!${newOutlineColor(props.category ?? props.title, allCategories.value, 200)}`
-    : "dark:!outline-gray-400",
-);
+const fg = (value: string) => newFgColor(props.category ?? props.title, allCategories.value, value);
+const bg = (value: string) => newBgColor(props.category ?? props.title, allCategories.value, value);
+const outline = (value: string) =>
+  newOutlineColor(props.category ?? props.title, allCategories.value, value);
+
+const categoryStyles = computed(() => [
+  `!${fg(700)}`,
+  `!${bg(100)}`,
+  ...(props.inactive
+    ? [
+        "outline",
+        "not-hover:!bg-transparent",
+        `not-hover:dark:!${fg(200)}`,
+        `!${outline(700)}`,
+        `dark:!${outline(200)}`,
+      ]
+    : []),
+]);
+
+const standaloneStyles = computed(() => [
+  "!text-slate-600",
+  "!bg-slate-200",
+  "dark:!text-zinc-300",
+  "dark:!bg-zinc-800",
+  ...(props.inactive
+    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700", , "not-hover:!bg-transparent"]
+    : []),
+]);
 </script>
 
 <template>
-  <Tag
-    :value="props.title"
-    :class="{
-      outline: props.inactive,
-      'not-hover:!bg-transparent': props.inactive,
-      [fgColor]: true,
-      [bgColor]: true,
-      [fgColorNotHoverDark]: props.inactive,
-      [outlineColorLight]: props.inactive,
-      [outlineColorDark]: props.inactive,
-    }"
-  />
+  <Tag :value="props.title" :class="isCategories ? categoryStyles : standaloneStyles" />
 </template>
