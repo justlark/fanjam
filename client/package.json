@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --mode test",
+    "dev:test": "vite --mode test",
+    "dev:prod": "vite --mode prod",
     "preview": "npm run build && wrangler dev",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
