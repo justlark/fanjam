@@ -13,7 +13,7 @@ import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
 import FilterMenu from "./FilterMenu.vue";
 
-const { events, reload: reloadEvents } = useEvents();
+const { events } = useEvents();
 
 const filterCriteria = useFilterQuery();
 
@@ -132,12 +132,6 @@ const filterMenuId = useId();
           'aria-controls': filterMenuId,
           'aria-expanded': showFilterMenu,
         }"
-      />
-      <IconButton
-        class="!hidden lg:!block"
-        icon="arrow-clockwise"
-        label="Refresh"
-        @click="reloadEvents"
       />
     </div>
     <FilterMenu

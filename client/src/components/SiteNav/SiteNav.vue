@@ -23,10 +23,7 @@ const headerHeadingId = useId();
 
 <template>
   <div class="flex flex-col min-h-[100vh]">
-    <div
-      v-if="eventsStatus === 'not-found'"
-      class="flex flex-col justify-center items-center h-[100vh]"
-    >
+    <div v-if="eventsStatus === 'not-found'" class="flex flex-col justify-center items-center grow">
       <SimpleIcon
         icon="exclamation-circle"
         class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
@@ -36,12 +33,12 @@ const headerHeadingId = useId();
     </div>
     <div
       v-else-if="eventsStatus === 'loading'"
-      class="flex flex-col justify-center items-center gap-4 h-[100vh]"
+      class="flex flex-col justify-center items-center gap-4 grow"
     >
       <ProgressSpinner />
       <div class="text-xl text-muted-color">Loading…</div>
     </div>
-    <div v-else>
+    <div v-else class="flex flex-col grow">
       <header :aria-labelledby="headerHeadingId" class="flex flex-col">
         <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
           <div class="flex items-center gap-2">
@@ -50,12 +47,7 @@ const headerHeadingId = useId();
             </span>
             <h1 :id="headerHeadingId" class="text-2xl">{{ conName }}</h1>
           </div>
-          <IconButton
-            class="lg:!hidden"
-            icon="arrow-clockwise"
-            label="Refresh"
-            @click="reloadEvents"
-          />
+          <IconButton icon="arrow-clockwise" label="Refresh" @click="reloadEvents" />
         </div>
         <Drawer v-model:visible="visible" :header="conName">
           <MainMenu />
