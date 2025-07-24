@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from "vue";
+import { ref, computed, useId } from "vue";
 import useFilterQuery from "@/composables/useFilterQuery";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import ToggleSwitch from "primevue/toggleswitch";
@@ -10,6 +10,9 @@ const props = defineProps<{
   categories: Array<string>;
   tags: Array<string>;
 }>();
+
+const hasCategories = computed(() => props.categories.length > 0);
+const hasTags = computed(() => props.tags.length > 0);
 
 const selectedCategories = ref<Set<string>>(new Set(criteria.categories));
 const selectedTags = ref<Set<string>>(new Set(criteria.tags));
@@ -46,7 +49,7 @@ const hidePastEventsToggleId = useId();
       <ToggleSwitch :id="hidePastEventsToggleId" v-model="criteria.hidePastEvents" />
       <label :for="hidePastEventsToggleId">Hide past events</label>
     </span>
-    <div class="flex flex-col md:flex-row gap-x-12 gap-y-6">
+    <div v-if="hasCategories" class="flex flex-col md:flex-row gap-x-12 gap-y-6">
       <div class="flex flex-col gap-2">
         <span>Only show these categories:</span>
         <ul class="ms-2 flex flex-wrap gap-3">
@@ -66,17 +69,20 @@ const hidePastEventsToggleId = useId();
           </li>
         </ul>
       </div>
-      <div class="flex md:hidden justify-center items-center">
+      <div v-if="hasCategories && hasTags" class="flex md:hidden justify-center items-center">
         <div class="border-b w-8 mr-4"></div>
         <span>and</span>
         <div class="border-b w-8 ml-4"></div>
       </div>
-      <div class="hidden md:flex flex-col justify-center items-center">
+      <div
+        v-if="hasCategories && hasTags"
+        class="hidden md:flex flex-col justify-center items-center"
+      >
         <div class="border-l h-4 mb-2"></div>
         <span>and</span>
         <div class="border-l h-4 mt-2"></div>
       </div>
-      <div class="flex flex-col gap-2">
+      <div v-if="hasTags" class="flex flex-col gap-2">
         <span>Only show these tags:</span>
         <ul class="ms-2 flex flex-wrap gap-3">
           <li v-for="(tag, index) in props.tags" :key="index">
