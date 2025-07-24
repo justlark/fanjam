@@ -36,8 +36,8 @@ const useRemoteData = <T, S>({
   key: CacheKey;
   result: Ref<FetchResult<T>>;
   fetcher: () => Promise<Extract<FetchResult<T>, { status: "success" | "error" }>>;
-  toCache: (data: NonNullable<T>) => S;
-  fromCache: (data: S) => NonNullable<T>;
+  toCache: (data: T) => S;
+  fromCache: (data: S) => T;
 }): { reload: () => Promise<void> } => {
   const cacheKey = computed(() => `${key.category}:${key.instance}`);
 
@@ -46,16 +46,9 @@ const useRemoteData = <T, S>({
 
     if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
-
-      if (fetchResult.value !== undefined && fetchResult.value !== null) {
-        fetchCache.set(cacheKey.value, toCache(fetchResult.value));
-        localStorage.setItem(`${key.category}:key`, key.instance);
-        localStorage.setItem(`${key.category}:value`, JSON.stringify(toCache(fetchResult.value)));
-      } else {
-        fetchCache.delete(cacheKey.value);
-        localStorage.removeItem(`${key.category}:key`);
-        localStorage.removeItem(`${key.category}:value`);
-      }
+      fetchCache.set(cacheKey.value, toCache(fetchResult.value));
+      localStorage.setItem(`${key.category}:key`, key.instance);
+      localStorage.setItem(`${key.category}:value`, JSON.stringify(toCache(fetchResult.value)));
     } else {
       result.value = { status: "error", code: fetchResult.code };
     }
