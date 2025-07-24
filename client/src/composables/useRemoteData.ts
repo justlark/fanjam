@@ -112,12 +112,10 @@ export const useRemoteEvents = () => {
     key: { category: "events", instance: envId.value },
     result: eventsRef,
     fetcher: async () => {
-      const result = await api.getDump(envId.value);
-      if (result.ok) {
-        return { status: "success", value: result.value.events };
-      } else {
-        return { status: "error", code: result.status };
-      }
+      const result = await api.getEvents(envId.value);
+      return result.ok
+        ? { status: "success", value: result.value }
+        : { status: "error", code: result.code };
     },
     toCache: (data) =>
       data.map((event) => ({
@@ -170,15 +168,10 @@ export const useRemoteInfo = () => {
     key: { category: "info", instance: envId.value },
     result: infoRef,
     fetcher: async () => {
-      const result = await api.getDump(envId.value);
-      if (result.ok) {
-        return {
-          status: "success",
-          value: { about: result.value.about, links: result.value.links },
-        };
-      } else {
-        return { status: "error", code: result.status };
-      }
+      const result = await api.getInfo(envId.value);
+      return result.ok
+        ? { status: "success", value: result.value }
+        : { status: "error", code: result.code };
     },
     toCache: (data) => data,
     fromCache: (data) => data,

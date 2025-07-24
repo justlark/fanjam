@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
-import { useRemoteInfo, useRemoteEvents } from "@/composables/useEvents";
+import { useRemoteInfo, useRemoteEvents } from "@/composables/useRemoteData";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";

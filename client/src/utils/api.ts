@@ -10,21 +10,16 @@ interface RawEvent {
   tags: Array<string>;
 }
 
-export interface RawAbout {
-  name: string;
-  description: string | null;
-  website_url: string | null;
-}
-
-export interface RawLink {
-  name: string;
-  url: string;
-}
-
-export interface RawDump {
-  events: Array<RawEvent>;
-  about: RawAbout | null;
-  links: Array<RawLink>;
+export interface RawInfo {
+  about?: {
+    name: string;
+    description: string | null;
+    website_url: string | null;
+  };
+  links: Array<{
+    name: string;
+    url: string;
+  }>;
 }
 
 export interface Event {
@@ -55,12 +50,6 @@ export interface Info {
   links: Array<Link>;
 }
 
-export interface Dump {
-  events: Array<Event>;
-  about?: About;
-  links: Array<Link>;
-}
-
 export type ApiResult<T> =
   | {
     ok: true;
@@ -68,48 +57,62 @@ export type ApiResult<T> =
   }
   | {
     ok: false;
-    status: number;
+    code: number;
   };
 
-const getDump = async (envId: string): Promise<ApiResult<Dump>> => {
+const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/events/${envId}`,
   );
 
   if (!response.ok) {
-    return { ok: false, status: response.status };
+    return { ok: false, code: response.status };
   }
 
-  const rawDump: RawDump = await response.json();
+  const rawEvents: { events: Array<RawEvent> } = await response.json();
 
-  const dump: Dump = {
-    events: rawDump.events.map((event) => ({
-      id: event.id,
-      name: event.name,
-      description: event.description ?? undefined,
-      startTime: new Date(event.start_time),
-      endTime: event.end_time ? new Date(event.end_time) : undefined,
-      location: event.location ?? undefined,
-      people: event.people,
-      category: event.category ?? undefined,
-      tags: event.tags,
-    })),
-    about: rawDump.about
+  const events: Array<Event> = rawEvents.events.map((event) => ({
+    id: event.id,
+    name: event.name,
+    description: event.description ?? undefined,
+    startTime: new Date(event.start_time),
+    endTime: event.end_time ? new Date(event.end_time) : undefined,
+    location: event.location ?? undefined,
+    people: event.people,
+    category: event.category ?? undefined,
+    tags: event.tags,
+  }));
+
+  return { ok: true, value: events };
+};
+
+const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
+  const response = await fetch(`https://${import.meta.env.VITE_API_HOST as string}/info/${envId}`);
+
+  if (!response.ok) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawInfo: RawInfo = await response.json();
+
+  const info: Info = {
+    about: rawInfo.about
       ? {
-        name: rawDump.about.name,
-        description: rawDump.about.description ?? undefined,
-        websiteUrl: rawDump.about.website_url ?? undefined,
+        name: rawInfo.about.name,
+        description: rawInfo.about.description ?? undefined,
+        websiteUrl: rawInfo.about.website_url ?? undefined,
       }
       : undefined,
-    links: rawDump.links.map((link) => ({
+    links: rawInfo.links.map((link) => ({
       name: link.name,
       url: link.url,
     })),
   };
 
-  return { ok: true, value: dump };
+  return { ok: true, value: info };
 };
 
 export default {
-  getDump,
+  getEvents,
+  getInfo,
 };

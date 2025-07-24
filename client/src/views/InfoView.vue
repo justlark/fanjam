@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRemoteInfo } from "@/composables/useEvents";
+import { useRemoteInfo } from "@/composables/useRemoteData";
 import SiteNav from "@/components/SiteNav";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 

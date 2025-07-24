@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
-import { useRemoteEvents } from "@/composables/useEvents";
+import { useRemoteEvents } from "@/composables/useRemoteData";
 import SiteNav from "@/components/SiteNav";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline";

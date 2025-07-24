@@ -11,9 +11,10 @@ use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
-        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse, Link,
-        PostApplyMigrationResponse, PostBackupKind, PostBackupRequest, PostBaseRequest,
-        PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
+        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
+        GetLinkResponse, Link, PostApplyMigrationResponse, PostBackupKind, PostBackupRequest,
+        PostBaseRequest, PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest,
+        PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
@@ -75,6 +76,7 @@ pub fn new(state: AppState) -> Router {
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
         .route("/events/{env_id}", get(get_events))
+        .route("/info/{env_id}", get(get_info))
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }
@@ -361,13 +363,12 @@ async fn get_events(
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
 
-    let dump = noco::dump(&noco_client, &base_id)
+    let events = noco::get_events(&noco_client, &base_id)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     Ok(Json(GetEventsResponse {
-        events: dump
-            .events
+        events: events
             .into_iter()
             .map(|event| Event {
                 id: event.id,
@@ -381,12 +382,45 @@ async fn get_events(
                 tags: event.tags,
             })
             .collect::<Vec<_>>(),
-        about: dump.about.map(|about| About {
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_info(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<Json<GetInfoResponse>, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let api_token = kv::get_api_token(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(error::no_api_token)?;
+
+    let base_id = kv::get_base_id(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(error::no_base_id)?;
+
+    let dash_origin =
+        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+
+    let info = noco::get_info(&noco_client, &base_id)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    Ok(Json(GetInfoResponse {
+        about: info.about.map(|about| About {
             name: about.name,
             description: about.description,
             website_url: about.website_url,
         }),
-        links: dump
+        links: info
             .links
             .into_iter()
             .map(|link| Link {

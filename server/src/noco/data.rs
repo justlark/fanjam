@@ -186,13 +186,15 @@ pub struct Link {
 }
 
 #[derive(Debug)]
-pub struct Dump {
-    pub events: Vec<Event>,
+pub struct Info {
     pub about: Option<About>,
     pub links: Vec<Link>,
 }
 
-async fn list_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
+#[worker::send]
+pub async fn get_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Event>> {
+    let table_ids = find_tables(client, base_id).await?;
+
     let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
     let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
     let tags_records = list_records::<TagsResponse>(client, &table_ids.tags).await?;
@@ -255,16 +257,11 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
 }
 
 #[worker::send]
-pub async fn dump(client: &Client, base_id: &BaseId) -> anyhow::Result<Dump> {
+pub async fn get_info(client: &Client, base_id: &BaseId) -> anyhow::Result<Info> {
     let table_ids = find_tables(client, base_id).await?;
 
-    let events = list_events(client, &table_ids).await?;
     let about = get_about(client, &table_ids).await?;
     let links = get_links(client, &table_ids).await?;
 
-    Ok(Dump {
-        events,
-        about,
-        links,
-    })
+    Ok(Info { about, links })
 }

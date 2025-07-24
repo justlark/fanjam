@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
-import { useRemoteEvents } from "@/composables/useEvents";
+import { useRemoteEvents } from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";

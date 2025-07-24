@@ -94,7 +94,11 @@ pub struct Link {
 
 #[derive(Debug, Serialize)]
 pub struct GetEventsResponse {
-    pub about: Option<About>,
     pub events: Vec<Event>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetInfoResponse {
+    pub about: Option<About>,
     pub links: Vec<Link>,
 }
