@@ -1,36 +1,36 @@
 interface RawEvent {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   start_time: string;
-  end_time?: string;
-  location: string;
+  end_time: string | null;
+  location: string | null;
   people: Array<string>;
-  category: string;
+  category: string | null;
   tags: Array<string>;
 }
 
 export interface Event {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   startTime: Date;
   endTime?: Date;
-  location: string;
+  location?: string;
   people: Array<string>;
-  category: string;
+  category?: string;
   tags: Array<string>;
 }
 
 export type ApiResult<T> =
   | {
-    ok: true;
-    value: T;
-  }
+      ok: true;
+      value: T;
+    }
   | {
-    ok: false;
-    status: number;
-  };
+      ok: false;
+      status: number;
+    };
 
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
@@ -47,12 +47,12 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const events: Array<Event> = rawEvents.map((event) => ({
     id: event.id,
     name: event.name,
-    description: event.description,
+    description: event.description ?? undefined,
     startTime: new Date(event.start_time),
     endTime: event.end_time ? new Date(event.end_time) : undefined,
-    location: event.location,
+    location: event.location ?? undefined,
     people: event.people,
-    category: event.category,
+    category: event.category ?? undefined,
     tags: event.tags,
   }));
 

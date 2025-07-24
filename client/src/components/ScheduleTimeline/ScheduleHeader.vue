@@ -68,10 +68,10 @@ watchEffect(() => {
     searchIndex.add({
       id: event.id,
       name: event.name,
-      description: event.description,
-      location: event.location,
+      description: event.description ?? "",
+      location: event.location ?? "",
       people: event.people.join(", "),
-      category: event.category,
+      category: event.category ?? "",
       tags: event.tags.join(", "),
     });
   }
@@ -90,8 +90,8 @@ watchEffect(() => {
   }
 
   if (filterCriteria.categories.length > 0) {
-    filteredEvents = filteredEvents.filter((event) =>
-      filterCriteria.categories.includes(event.category),
+    filteredEvents = filteredEvents.filter(
+      (event) => event.category && filterCriteria.categories.includes(event.category),
     );
   }
 
