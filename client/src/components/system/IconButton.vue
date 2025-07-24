@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, watchEffect } from "vue";
 import Button from "primevue/button";
 
 const props = defineProps<{
@@ -7,10 +8,26 @@ const props = defineProps<{
   active?: boolean;
   disabled?: boolean;
   badge?: boolean;
+  size?: "xs" | "sm" | "md" | "lg";
   buttonProps?: Record<string, unknown>;
 }>();
 
 defineEmits(["click"]);
+
+const sizeClass = computed(() => {
+  switch (props.size) {
+    case "xs":
+      return "text-lg";
+    case "sm":
+      return "text-xl";
+    case "md":
+      return "text-2xl";
+    case "lg":
+      return "text-3xl";
+    default:
+      return "text-3xl";
+  }
+});
 </script>
 
 <template>
@@ -18,7 +35,7 @@ defineEmits(["click"]);
     <span class="relative">
       <Button
         :icon="`bi bi-${props.icon}`"
-        pt:icon="!text-3xl"
+        :pt:icon="`!${sizeClass}`"
         :variant="props.active == true ? undefined : 'text'"
         size="large"
         :aria-label="props.label"
