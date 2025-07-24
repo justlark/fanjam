@@ -27,7 +27,7 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
 </script>
 
 <template>
-  <SiteNav title="My Con">
+  <SiteNav>
     <div class="flex h-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
         <ScheduleTimeline class="p-6 grow" v-model:day="currentDayIndex" />

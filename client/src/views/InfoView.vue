@@ -3,5 +3,5 @@ import SiteNav from "@/components/SiteNav";
 </script>
 
 <template>
-  <SiteNav title="My Con" />
+  <SiteNav />
 </template>

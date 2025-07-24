@@ -34,9 +34,14 @@ export interface Event {
 }
 
 export interface About {
-  name?: string;
+  name: string;
   description?: string;
   link?: string;
+}
+
+export interface Dump {
+  events: Array<Event>;
+  about?: About;
 }
 
 export type ApiResult<T> =
@@ -49,7 +54,7 @@ export type ApiResult<T> =
       status: number;
     };
 
-const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
+const getDump = async (envId: string): Promise<ApiResult<Dump>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/events/${envId}`,
   );
@@ -58,24 +63,32 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
     return { ok: false, status: response.status };
   }
 
-  const responseBody = await response.json();
-  const rawEvents: Array<RawEvent> = responseBody.events;
+  const rawDump: RawDump = await response.json();
 
-  const events: Array<Event> = rawEvents.map((event) => ({
-    id: event.id,
-    name: event.name,
-    description: event.description ?? undefined,
-    startTime: new Date(event.start_time),
-    endTime: event.end_time ? new Date(event.end_time) : undefined,
-    location: event.location ?? undefined,
-    people: event.people,
-    category: event.category ?? undefined,
-    tags: event.tags,
-  }));
+  const dump: Dump = {
+    events: rawDump.events.map((event) => ({
+      id: event.id,
+      name: event.name,
+      description: event.description ?? undefined,
+      startTime: new Date(event.start_time),
+      endTime: event.end_time ? new Date(event.end_time) : undefined,
+      location: event.location ?? undefined,
+      people: event.people,
+      category: event.category ?? undefined,
+      tags: event.tags,
+    })),
+    about: rawDump.about
+      ? {
+          name: rawDump.about.name,
+          description: rawDump.about.description ?? undefined,
+          link: rawDump.about.link ?? undefined,
+        }
+      : undefined,
+  };
 
-  return { ok: true, value: events };
+  return { ok: true, value: dump };
 };
 
 export default {
-  getEvents,
+  getDump,
 };

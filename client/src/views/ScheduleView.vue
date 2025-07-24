@@ -4,7 +4,7 @@ import ScheduleTimeline from "@/components/ScheduleTimeline";
 </script>
 
 <template>
-  <SiteNav title="My Con">
+  <SiteNav>
     <div class="flex justify-center h-full">
       <ScheduleTimeline class="p-6 grow max-w-240" />
     </div>

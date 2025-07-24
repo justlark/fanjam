@@ -1,50 +1,76 @@
 import { type Ref, ref, computed, watch } from "vue";
 import { useRoute } from "vue-router";
-import api, { type Event } from "@/utils/api";
+import api, { type Dump, type Event, type About } from "@/utils/api";
 
 const EVENTS_LOCAL_STORAGE_KEY = "events";
 const ENV_ID_LOCAL_STORAGE_KEY = "env_id";
 
-const eventsCache: Map<string, Array<Event>> = new Map();
+const dumpCache: Map<string, Dump> = new Map();
 
-interface LocalStorageEvent {
-  id: string;
-  name: string;
-  description?: string;
-  start_time: string;
-  end_time?: string;
-  location?: string;
-  people: Array<string>;
-  category?: string;
-  tags: Array<string>;
+interface LocalStorageDump {
+  events: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    start_time: string;
+    end_time?: string;
+    location?: string;
+    people: Array<string>;
+    category?: string;
+    tags: Array<string>;
+  }>;
+  about?: {
+    name: string;
+    description?: string;
+    link?: string;
+  };
 }
 
-const toLocalStorageEvent = (event: Event): LocalStorageEvent => ({
-  id: event.id,
-  name: event.name,
-  description: event.description,
-  start_time: event.startTime.toISOString(),
-  end_time: event.endTime ? event.endTime.toISOString() : undefined,
-  location: event.location,
-  people: event.people,
-  category: event.category,
-  tags: event.tags,
+const toLocalStorageDump = (dump: Dump): LocalStorageDump => ({
+  events: dump.events.map((event) => ({
+    id: event.id,
+    name: event.name,
+    description: event.description,
+    start_time: event.startTime.toISOString(),
+    end_time: event.endTime ? event.endTime.toISOString() : undefined,
+    location: event.location,
+    people: event.people,
+    category: event.category,
+    tags: event.tags,
+  })),
+  about: dump.about
+    ? {
+        name: dump.about.name,
+        description: dump.about.description,
+        link: dump.about.link,
+      }
+    : undefined,
 });
 
-const fromLocalStorageEvent = (event: LocalStorageEvent): Event => ({
-  id: event.id,
-  name: event.name,
-  description: event.description,
-  startTime: new Date(event.start_time),
-  endTime: event.end_time ? new Date(event.end_time) : undefined,
-  location: event.location,
-  people: event.people,
-  category: event.category,
-  tags: event.tags,
+const fromLocalStorageDump = (dump: LocalStorageDump): Dump => ({
+  events: dump.events.map((event) => ({
+    id: event.id,
+    name: event.name,
+    description: event.description,
+    startTime: new Date(event.start_time),
+    endTime: event.end_time ? new Date(event.end_time) : undefined,
+    location: event.location,
+    people: event.people,
+    category: event.category,
+    tags: event.tags,
+  })),
+  about: dump.about
+    ? {
+        name: dump.about.name,
+        description: dump.about.description,
+        link: dump.about.link,
+      }
+    : undefined,
 });
 
 export interface UseEventsReturn {
   events: Readonly<Ref<Array<Event>>>;
+  about: Readonly<Ref<About | undefined>>;
   status: Readonly<Ref<"success" | "loading" | "not-found">>;
   reload: () => Promise<void>;
 }
@@ -56,19 +82,21 @@ export const useEvents = (): UseEventsReturn => {
   const envId = computed(() => route.params.envId as string);
 
   const events = ref<Array<Event>>([]);
+  const about = ref<About>();
   const status = ref<"success" | "loading" | "not-found">("loading");
 
   const reload = async (): Promise<void> => {
-    const eventsResult = await api.getEvents(envId.value);
+    const dumpResult = await api.getDump(envId.value);
 
     // We don't throw and error or show an error page if getting the events
     // from the server fails, because this app should be able to work offline.
     // If it can't reach the server, it should just use the cached events from
     // the local storage.
-    if (eventsResult.ok) {
-      events.value = eventsResult.value;
+    if (dumpResult.ok) {
+      events.value = dumpResult.value.events;
+      about.value = dumpResult.value.about;
 
-      eventsCache.set(envId.value, eventsResult.value);
+      dumpCache.set(envId.value, dumpResult.value);
 
       // We store the env ID so we know to invalidate the local storage cache
       // when the user switches to a different environment. Because the browser
@@ -78,9 +106,9 @@ export const useEvents = (): UseEventsReturn => {
 
       localStorage.setItem(
         EVENTS_LOCAL_STORAGE_KEY,
-        JSON.stringify(eventsResult.value.map(toLocalStorageEvent)),
+        JSON.stringify(toLocalStorageDump(dumpResult.value)),
       );
-    } else if (eventsResult.status === 404) {
+    } else if (dumpResult.status === 404) {
       status.value = "not-found";
     }
   };
@@ -88,8 +116,9 @@ export const useEvents = (): UseEventsReturn => {
   watch(
     envId,
     async () => {
-      if (eventsCache.has(envId.value)) {
-        events.value = eventsCache.get(envId.value) || [];
+      if (dumpCache.has(envId.value)) {
+        events.value = dumpCache.get(envId.value)?.events ?? [];
+        about.value = dumpCache.get(envId.value)?.about;
         return;
       } else {
         const storedEnvId = localStorage.getItem(ENV_ID_LOCAL_STORAGE_KEY);
@@ -99,19 +128,20 @@ export const useEvents = (): UseEventsReturn => {
           localStorage.removeItem(ENV_ID_LOCAL_STORAGE_KEY);
         }
 
-        const storedEvents = localStorage.getItem(EVENTS_LOCAL_STORAGE_KEY);
+        const storedDump = localStorage.getItem(EVENTS_LOCAL_STORAGE_KEY);
 
         // Even if the events were cached in the local storage, we still fetch
         // them from the API in the background, in case they updated on the
         // server since we last visited. However, in the meantime, we can show
         // the cached events.
-        if (storedEvents) {
-          const parsedEvents: Array<LocalStorageEvent> = JSON.parse(storedEvents);
-          const newEvents = parsedEvents.map(fromLocalStorageEvent);
+        if (storedDump) {
+          const parsedDump: LocalStorageDump = JSON.parse(storedDump);
+          const newDump = fromLocalStorageDump(parsedDump);
 
-          events.value = newEvents;
+          events.value = newDump.events;
+          about.value = newDump.about;
 
-          eventsCache.set(envId.value, newEvents);
+          dumpCache.set(envId.value, newDump);
         }
       }
 
@@ -130,7 +160,7 @@ export const useEvents = (): UseEventsReturn => {
     { immediate: true },
   );
 
-  return { events, reload, status };
+  return { events, about, reload, status };
 };
 
 export default useEvents;

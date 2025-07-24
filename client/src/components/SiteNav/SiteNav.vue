@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from "vue";
+import { ref, computed, useId } from "vue";
 import useEvents from "@/composables/useEvents";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
@@ -8,17 +8,15 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import ProgressSpinner from "primevue/progressspinner";
 
-const props = defineProps<{
-  title: string;
-}>();
-
 const visible = ref(false);
 
 const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
 
-const { status: eventsStatus, reload: reloadEvents } = useEvents();
+const { status: eventsStatus, about: aboutInfo, reload: reloadEvents } = useEvents();
+
+const conName = computed(() => aboutInfo.value?.name ?? "FanJam");
 
 const headerHeadingId = useId();
 </script>
@@ -50,7 +48,7 @@ const headerHeadingId = useId();
             <span class="lg:hidden">
               <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
             </span>
-            <h1 :id="headerHeadingId" class="text-2xl">{{ props.title }}</h1>
+            <h1 :id="headerHeadingId" class="text-2xl">{{ conName }}</h1>
           </div>
           <IconButton
             class="lg:!hidden"
@@ -59,7 +57,7 @@ const headerHeadingId = useId();
             @click="reloadEvents"
           />
         </div>
-        <Drawer v-model:visible="visible" :header="props.title">
+        <Drawer v-model:visible="visible" :header="conName">
           <MainMenu />
         </Drawer>
         <Divider pt:root="!my-0" />
