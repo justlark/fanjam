@@ -330,7 +330,7 @@ export const useRemoteInfo = () => {
   const envId = computed(() => route.params.envId as string);
 
   const { reload } = useRemoteData<Info, StoredInfo>({
-    key: { category: "events", instance: envId.value },
+    key: { category: "info", instance: envId.value },
     result: infoRef,
     fetcher: async () => {
       const result = await api.getDump(envId.value);
