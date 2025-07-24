@@ -23,6 +23,7 @@ const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
         <template v-for="(category, index) in props.criteria.categories" :key="index">
           <span class="mx-2 italic" v-if="index != 0">or</span>
           <CategoryLabel
+            class="my-1"
             size="xs"
             :title="category"
             :all-categories="props.allCategories"
