@@ -11,7 +11,7 @@ use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
-        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse,
+        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse, Link,
         PostApplyMigrationResponse, PostBackupKind, PostBackupRequest, PostBaseRequest,
         PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
@@ -384,7 +384,15 @@ async fn get_events(
         about: dump.about.map(|about| About {
             name: about.name,
             description: about.description,
-            link: about.link,
+            website_url: about.website_url,
         }),
+        links: dump
+            .links
+            .into_iter()
+            .map(|link| Link {
+                name: link.name,
+                url: link.url,
+            })
+            .collect::<Vec<_>>(),
     }))
 }

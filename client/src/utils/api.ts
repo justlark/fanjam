@@ -13,12 +13,18 @@ interface RawEvent {
 export interface RawAbout {
   name: string;
   description: string | null;
-  link: string | null;
+  website_url: string | null;
+}
+
+export interface RawLink {
+  name: string;
+  url: string;
 }
 
 export interface RawDump {
   events: Array<RawEvent>;
   about: RawAbout | null;
+  links: Array<RawLink>;
 }
 
 export interface Event {
@@ -36,23 +42,29 @@ export interface Event {
 export interface About {
   name: string;
   description?: string;
-  link?: string;
+  websiteUrl?: string;
+}
+
+export interface Link {
+  name: string;
+  url: string;
 }
 
 export interface Dump {
   events: Array<Event>;
   about?: About;
+  links: Array<Link>;
 }
 
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-    }
+    ok: true;
+    value: T;
+  }
   | {
-      ok: false;
-      status: number;
-    };
+    ok: false;
+    status: number;
+  };
 
 const getDump = async (envId: string): Promise<ApiResult<Dump>> => {
   const response = await fetch(
@@ -79,11 +91,15 @@ const getDump = async (envId: string): Promise<ApiResult<Dump>> => {
     })),
     about: rawDump.about
       ? {
-          name: rawDump.about.name,
-          description: rawDump.about.description ?? undefined,
-          link: rawDump.about.link ?? undefined,
-        }
+        name: rawDump.about.name,
+        description: rawDump.about.description ?? undefined,
+        websiteUrl: rawDump.about.website_url ?? undefined,
+      }
       : undefined,
+    links: rawDump.links.map((link) => ({
+      name: link.name,
+      url: link.url,
+    })),
   };
 
   return { ok: true, value: dump };

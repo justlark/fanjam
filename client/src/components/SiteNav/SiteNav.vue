@@ -55,12 +55,12 @@ const headerHeadingId = useId();
     </div>
     <div v-else class="flex flex-col grow">
       <header :aria-labelledby="headerHeadingId" class="flex flex-col">
-        <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
+        <div class="flex items-center justify-between p-2 lg:px-4 gap-2">
           <div class="flex items-center gap-2">
             <span class="lg:hidden">
               <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
             </span>
-            <h1 :id="headerHeadingId" class="text-2xl">{{ conName }}</h1>
+            <h1 :id="headerHeadingId" class="text-xl lg:text-2xl">{{ conName }}</h1>
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>

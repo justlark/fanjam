@@ -50,6 +50,7 @@ pub struct TableIds {
     pub people: TableId,
     pub tags: TableId,
     pub about: TableId,
+    pub links: TableId,
 }
 
 fn find_in_tables(tables: &[TableInfo], table_name: &str) -> anyhow::Result<TableId> {
@@ -72,6 +73,7 @@ async fn find_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<TableI
         people: find_in_tables(&table_info, "people")?,
         tags: find_in_tables(&table_info, "tags")?,
         about: find_in_tables(&table_info, "about")?,
+        links: find_in_tables(&table_info, "links")?,
     })
 }
 
@@ -146,7 +148,15 @@ struct AboutResponse {
     #[serde(rename = "Con Description")]
     pub description: Option<String>,
     #[serde(rename = "Website")]
-    pub link: Option<String>,
+    pub website_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LinksResponse {
+    #[serde(rename = "Link Name")]
+    pub name: String,
+    #[serde(rename = "URL")]
+    pub url: String,
 }
 
 #[derive(Debug)]
@@ -166,13 +176,20 @@ pub struct Event {
 pub struct About {
     pub name: String,
     pub description: Option<String>,
-    pub link: Option<String>,
+    pub website_url: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct Link {
+    pub name: String,
+    pub url: String,
 }
 
 #[derive(Debug)]
 pub struct Dump {
     pub events: Vec<Event>,
     pub about: Option<About>,
+    pub links: Vec<Link>,
 }
 
 async fn list_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
@@ -216,13 +233,25 @@ async fn list_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Ve
 
 async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<Option<About>> {
     let about_records = list_records::<AboutResponse>(client, &table_ids.about).await?;
-    let latest_record = about_records.into_iter().last();
+    let latest_record = about_records.into_iter().next_back();
 
     Ok(latest_record.map(|r| About {
         name: r.name,
         description: r.description,
-        link: r.link,
+        website_url: r.website_url,
     }))
+}
+
+async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Link>> {
+    let link_records = list_records::<LinksResponse>(client, &table_ids.links).await?;
+
+    Ok(link_records
+        .into_iter()
+        .map(|r| Link {
+            name: r.name,
+            url: r.url,
+        })
+        .collect())
 }
 
 #[worker::send]
@@ -231,6 +260,11 @@ pub async fn dump(client: &Client, base_id: &BaseId) -> anyhow::Result<Dump> {
 
     let events = list_events(client, &table_ids).await?;
     let about = get_about(client, &table_ids).await?;
+    let links = get_links(client, &table_ids).await?;
 
-    Ok(Dump { events, about })
+    Ok(Dump {
+        events,
+        about,
+        links,
+    })
 }

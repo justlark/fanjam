@@ -17,7 +17,7 @@ run-client stage="test": _install-client
 [group("test locally")]
 [working-directory: "./server/"]
 run-server stage="test":
-  npx wrangler --env {{ stage }} --remote dev
+  npx wrangler --env {{ stage }} dev --remote
 
 # type check and lint the client
 [working-directory: "./client/"]

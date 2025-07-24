@@ -1,6 +1,6 @@
 import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import api, { type Dump, type Event, type About } from "@/utils/api";
+import api, { type Dump, type Event, type About, type Link } from "@/utils/api";
 
 const EVENTS_LOCAL_STORAGE_KEY = "events";
 const ENV_ID_LOCAL_STORAGE_KEY = "env_id";
@@ -9,6 +9,7 @@ const dumpCache: Map<string, Dump> = new Map();
 
 const events = ref<Array<Event>>([]);
 const about = ref<About>();
+const links = ref<Array<Link>>([]);
 const status = ref<"success" | "loading" | "not-found">("loading");
 
 interface LocalStorageDump {
@@ -26,8 +27,12 @@ interface LocalStorageDump {
   about?: {
     name: string;
     description?: string;
-    link?: string;
+    website_url?: string;
   };
+  links: Array<{
+    name: string;
+    url: string;
+  }>;
 }
 
 const toLocalStorageDump = (dump: Dump): LocalStorageDump => ({
@@ -44,11 +49,15 @@ const toLocalStorageDump = (dump: Dump): LocalStorageDump => ({
   })),
   about: dump.about
     ? {
-        name: dump.about.name,
-        description: dump.about.description,
-        link: dump.about.link,
-      }
+      name: dump.about.name,
+      description: dump.about.description,
+      website_url: dump.about.websiteUrl,
+    }
     : undefined,
+  links: dump.links.map((link) => ({
+    name: link.name,
+    url: link.url,
+  })),
 });
 
 const fromLocalStorageDump = (dump: LocalStorageDump): Dump => ({
@@ -65,20 +74,27 @@ const fromLocalStorageDump = (dump: LocalStorageDump): Dump => ({
   })),
   about: dump.about
     ? {
-        name: dump.about.name,
-        description: dump.about.description,
-        link: dump.about.link,
-      }
+      name: dump.about.name,
+      description: dump.about.description,
+      websiteUrl: dump.about.website_url,
+    }
     : undefined,
+  links: dump.links.map((link) => ({
+    name: link.name,
+    url: link.url,
+  })),
 });
 
 export interface UseEventsReturn {
   events: Readonly<Ref<Array<Event>>>;
   about: Readonly<Ref<About | undefined>>;
+  links: Readonly<Ref<Array<Link>>>;
   status: Readonly<Ref<"success" | "loading" | "not-found">>;
   reload: () => Promise<void>;
 }
 
+// TODO: Refactor so we don't need to remember to update the refs (`events`,
+// `about`, `links`, etc.) in multiple places.
 export const useEvents = (): UseEventsReturn => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
@@ -93,6 +109,7 @@ export const useEvents = (): UseEventsReturn => {
     if (dumpResult.ok) {
       events.value = dumpResult.value.events;
       about.value = dumpResult.value.about;
+      links.value = dumpResult.value.links;
 
       dumpCache.set(envId.value, dumpResult.value);
 
@@ -115,6 +132,8 @@ export const useEvents = (): UseEventsReturn => {
     if (dumpCache.has(envId.value)) {
       events.value = dumpCache.get(envId.value)?.events ?? [];
       about.value = dumpCache.get(envId.value)?.about;
+      links.value = dumpCache.get(envId.value)?.links ?? [];
+
       return;
     } else {
       const storedEnvId = localStorage.getItem(ENV_ID_LOCAL_STORAGE_KEY);
@@ -136,6 +155,7 @@ export const useEvents = (): UseEventsReturn => {
 
         events.value = newDump.events;
         about.value = newDump.about;
+        links.value = newDump.links;
 
         dumpCache.set(envId.value, newDump);
       }
@@ -150,7 +170,7 @@ export const useEvents = (): UseEventsReturn => {
     }
   });
 
-  return { events, about, reload, status };
+  return { events, about, links, reload, status };
 };
 
 export default useEvents;

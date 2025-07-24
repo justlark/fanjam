@@ -83,11 +83,18 @@ pub struct Event {
 pub struct About {
     pub name: String,
     pub description: Option<String>,
-    pub link: Option<String>,
+    pub website_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Link {
+    pub name: String,
+    pub url: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct GetEventsResponse {
     pub about: Option<About>,
     pub events: Vec<Event>,
+    pub links: Vec<Link>,
 }
