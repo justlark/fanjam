@@ -365,7 +365,6 @@ async fn get_events(
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    // TODO: Query the linked tables to get the remaining fields.
     let events = event_records
         .into_iter()
         .map(|event| Event {
@@ -375,73 +374,11 @@ async fn get_events(
             start_time: event.start_time,
             end_time: event.end_time,
             location: event.location,
-            people: Vec::new(),
+            people: event.people,
             category: event.category,
-            tags: Vec::new(),
+            tags: event.tags,
         })
         .collect::<Vec<_>>();
-
-    //
-    // TODO: Replace this dummy data with real calls to NocoDB.
-    //
-
-    // let events = vec![
-    //     Event {
-    //         id: "1".to_string(),
-    //         name: "Sonic the Hedgehog Cosplay Competition".to_string(),
-    //         description: "Show off your best Sonic the Hedgehog cosplay!".to_string(),
-    //         start_time: "2025-07-18T23:00:00Z".to_string(),
-    //         end_time: "2025-07-19T01:00:00Z".to_string(),
-    //         location: "Emerson Stage".to_string(),
-    //         people: vec!["Kai".to_string(), "Alex".to_string()],
-    //         category: "Competition".to_string(),
-    //         tags: vec![],
-    //     },
-    //     Event {
-    //         id: "2".to_string(),
-    //         name: "Queer History Primer".to_string(),
-    //         description: "Come learn about queer history!".to_string(),
-    //         start_time: "2025-07-18T23:00:00Z".to_string(),
-    //         end_time: "2025-07-19T00:30:00Z".to_string(),
-    //         location: "Hawthorne Room".to_string(),
-    //         people: vec!["Avery".to_string()],
-    //         category: "Educational".to_string(),
-    //         tags: vec!["LGBTQ".to_string(), "Q&A".to_string()],
-    //     },
-    //     Event {
-    //         id: "3".to_string(),
-    //         name: "The Unexpected Comforts of Living in the Woods".to_string(),
-    //         description: "Living in the woods is hard. You're far away from everything, you have critters living in your walls, and the housework keeps piling up. I love it. Let me share with you the unexpected comforts I found living in the woods.".to_string(),
-    //         start_time: "2025-07-19T14:00:00Z".to_string(),
-    //         end_time: "2025-07-19T15:30:00Z".to_string(),
-    //         location: "Thoreau Room".to_string(),
-    //         people: vec!["Ash".to_string()],
-    //         category: "Educational".to_string(),
-    //         tags: vec!["Q&A".to_string()],
-    //     },
-    //     Event {
-    //         id: "4".to_string(),
-    //         name: "Chainmaille 101".to_string(),
-    //         description: "# Description\n\nIn this class, you'll make a simple pair of **chainmaille earrings**.\n\nSecond paragraph.\n\nThird paragraph.\n\n## Notes\n\nThere is a _small_ fee to cover the cost of supplies. This is a ~strikethrough~.\n\n> This is a quote.\n\n- A\n- B\n- C\n\n1. One\n2. Two\n3. Three\n\n```\nprintln!(\"Hello, world!\")\n```\n\n[Link](https://duckduckgo.com)".to_string(),
-    //         start_time: "2025-07-19T15:30:00Z".to_string(),
-    //         end_time: "2025-07-19T17:00:00Z".to_string(),
-    //         location: "Alcott Room".to_string(),
-    //         people: vec!["Blue".to_string()],
-    //         category: "Class".to_string(),
-    //         tags: vec!["$$$".to_string()],
-    //     },
-    //     Event {
-    //         id: "5".to_string(),
-    //         name: "The Future".to_string(),
-    //         description: "This class takes place a long time from now.".to_string(),
-    //         start_time: "2026-02-02T18:00:00Z".to_string(),
-    //         end_time: "2026-02-02T19:00:00Z".to_string(),
-    //         location: "Space".to_string(),
-    //         people: vec!["Zephyr".to_string()],
-    //         category: "Experience".to_string(),
-    //         tags: vec!["Cool".to_string()],
-    //     },
-    // ];
 
     Ok(Json(GetEventsResponse { events }))
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, de::DeserializeOwned};
 use worker::Method;
 
@@ -45,6 +47,8 @@ async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Ta
 #[derive(Debug)]
 pub struct TableIds {
     pub events: TableId,
+    pub people: TableId,
+    pub tags: TableId,
 }
 
 fn find_in_tables(tables: &[TableInfo], table_name: &str) -> anyhow::Result<TableId> {
@@ -64,6 +68,8 @@ async fn find_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<TableI
 
     Ok(TableIds {
         events: find_in_tables(&table_info, "events")?,
+        people: find_in_tables(&table_info, "people")?,
+        tags: find_in_tables(&table_info, "tags")?,
     })
 }
 
@@ -97,6 +103,38 @@ struct EventResponse {
     pub category: Option<CategoryResponse>,
     #[serde(rename = "Hidden")]
     pub hidden: bool,
+    #[serde(rename = "_nc_m2m_tags_events")]
+    pub tags_m2m: Vec<TagsM2mResponse>,
+    #[serde(rename = "_nc_m2m_people_events")]
+    pub people_m2m: Vec<PeopleM2mResponse>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PeopleM2mResponse {
+    #[serde(rename = "people_id")]
+    pub id: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct TagsM2mResponse {
+    #[serde(rename = "tags_id")]
+    pub id: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct PeopleResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Name")]
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct TagsResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Tag")]
+    pub name: String,
 }
 
 #[derive(Debug)]
@@ -108,15 +146,28 @@ pub struct Event {
     pub end_time: Option<String>,
     pub location: Option<String>,
     pub category: Option<String>,
+    pub people: Vec<String>,
+    pub tags: Vec<String>,
 }
 
 #[worker::send]
 pub async fn list_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Event>> {
     let table_ids = find_tables(client, base_id).await?;
 
-    let records = list_records::<EventResponse>(client, table_ids.events).await?;
+    let event_records = list_records::<EventResponse>(client, table_ids.events).await?;
+    let people_records = list_records::<PeopleResponse>(client, table_ids.people).await?;
+    let tags_records = list_records::<TagsResponse>(client, table_ids.tags).await?;
 
-    Ok(records
+    let people_id_to_name: HashMap<u32, String> = people_records
+        .iter()
+        .map(|p| (p.id, p.name.clone()))
+        .collect();
+    let tags_id_to_name: HashMap<u32, String> = tags_records
+        .iter()
+        .map(|p| (p.id, p.name.clone()))
+        .collect();
+
+    Ok(event_records
         .into_iter()
         .filter(|r| !r.hidden)
         .map(|r| Event {
@@ -127,6 +178,16 @@ pub async fn list_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Ve
             end_time: r.end_time,
             location: r.location.map(|l| l.name),
             category: r.category.map(|c| c.name),
+            people: r
+                .people_m2m
+                .into_iter()
+                .filter_map(|p| people_id_to_name.get(&p.id).cloned())
+                .collect(),
+            tags: r
+                .tags_m2m
+                .into_iter()
+                .filter_map(|p| tags_id_to_name.get(&p.id).cloned())
+                .collect(),
         })
         .collect())
 }
