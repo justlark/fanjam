@@ -8,6 +8,7 @@ import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
+import ProgressSpinner from "primevue/progressspinner";
 
 const route = useRoute();
 const router = useRouter();
@@ -121,10 +122,16 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
-    <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
-    <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-8">
+    <DayPicker v-if="days.length > 0" v-model:day="currentDayIndex" :day-names="dayNames" />
+    <div v-if="days.length === 0" class="flex justify-center items-center h-full">
+      <div class="flex flex-col items-center gap-4">
+        <ProgressSpinner />
+        <div>Loading the schedule…</div>
+      </div>
+    </div>
+    <div v-else-if="filteredTimeSlots.length > 0" class="flex flex-col gap-8">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"
         :key="index"

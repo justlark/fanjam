@@ -8,7 +8,7 @@ const { events } = useEvents();
 
 <template>
   <SiteNav title="My Con">
-    <div class="flex justify-center">
+    <div class="flex justify-center h-full">
       <ScheduleTimeline class="p-6 grow max-w-240" :events="events" />
     </div>
   </SiteNav>
