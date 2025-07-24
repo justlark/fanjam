@@ -7,6 +7,14 @@ use crate::noco::Client;
 
 use super::{BaseId, migrations::TableId};
 
+const PAGE_SIZE: u32 = 100;
+
+#[derive(Debug, Deserialize)]
+struct PageInfo {
+    #[serde(rename = "isLastPage")]
+    is_last_page: bool,
+}
+
 async fn list_records<T: DeserializeOwned>(
     client: &Client,
     table_id: &TableId,
@@ -14,15 +22,30 @@ async fn list_records<T: DeserializeOwned>(
     #[derive(Debug, Deserialize)]
     struct GetRecordsResponse<T> {
         list: Vec<T>,
+        #[serde(rename = "pageInfo")]
+        page_info: PageInfo,
     }
 
-    // TODO: Implement pagination logic.
-    Ok(client
-        .build_request(Method::Get, &format!("/tables/{table_id}/records"))
-        .with_param("limit", "100")
-        .fetch::<GetRecordsResponse<T>>()
-        .await?
-        .list)
+    let mut records = Vec::<T>::new();
+    let mut offset = 0;
+
+    loop {
+        let response = client
+            .build_request(Method::Get, &format!("/tables/{table_id}/records"))
+            .with_param("limit", &PAGE_SIZE.to_string())
+            .with_param("offset", &offset.to_string())
+            .fetch::<GetRecordsResponse<T>>()
+            .await?;
+
+        offset += response.list.len();
+        records.extend(response.list);
+
+        if response.page_info.is_last_page {
+            break;
+        }
+    }
+
+    Ok(records)
 }
 
 #[derive(Debug, Deserialize)]
