@@ -122,7 +122,7 @@ watch(
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
-    <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-8">
+    <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-6">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"
         :key="index"
