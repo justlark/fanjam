@@ -55,8 +55,8 @@ tail-server stage:
 
 # generate the configuration for an environment
 [group("manage infrastructure")]
-configure-env env:
-  ./tools/configure-env.nu {{ env }}
+configure-env env stage:
+  ./tools/configure-env.nu {{ env }} {{ stage}}
 
 # create a new NocoDB instance
 [group("manage infrastructure")]
@@ -78,47 +78,47 @@ get-creds env:
 
 # redeploy an existing NocoDB instance
 [group("manage environments")]
-deploy-env env stage="prod":
-  ./tools/create-deploy-backup.nu {{ stage }} {{ env }}
+deploy-env env:
+  ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # configure an environment with a NocoDB API token
 [group("manage environments")]
-set-noco-token env stage="prod":
-  ./tools/set-noco-token.nu {{ stage }} {{ env }}
+set-noco-token env:
+  ./tools/set-noco-token.nu {{ env }}
 
 # generate a new app link for an environment
 [group("manage environments")]
 [confirm("Are you sure? The old link will stop working for attendees.")]
-generate-app-link env stage="prod":
-  ./tools/generate-app-link.nu {{ stage }} {{ env }}
+generate-app-link env:
+  ./tools/generate-app-link.nu {{ env }}
 
 # delete an environment's NocoDB base and all its data
 [group("manage environments")]
 [confirm("Are you sure? This will delete all data in the environment.")]
-delete-base env stage="prod":
-  ./tools/delete-base.nu {{ stage }} {{ env }}
+delete-base env:
+  ./tools/delete-base.nu {{ env }}
 
 # get the app link for an environment
 [group("manage environments")]
-get-app-link env stage="prod":
-  ./tools/get-app-link.nu {{ stage }} {{ env }}
+get-app-link env:
+  ./tools/get-app-link.nu {{ env }}
 
 # apply any pending schema migrations to an environment
 [group("manage environments")]
 [confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
-migrate-env env stage="prod":
-  ./tools/migrate-env.nu {{ stage }} {{ env }}
+migrate-env env:
+  ./tools/migrate-env.nu {{ env }}
 
 # get the current schema version of an environment
 [group("manage environments")]
-get-schema-version env stage="prod":
-  ./tools/get-schema-version.nu {{ stage }} {{ env }}
+get-schema-version env:
+  ./tools/get-schema-version.nu {{ env }}
 
 # initialize a new environment
 [group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
-init-env env stage="prod":
-  ./tools/set-noco-token.nu {{ stage }} {{ env }}
-  ./tools/create-noco-base.nu {{ stage }} {{ env }}
-  ./tools/generate-app-link.nu {{ stage }} {{ env }}
+init-env env:
+  ./tools/set-noco-token.nu {{ env }}
+  ./tools/create-noco-base.nu {{ env }}
+  ./tools/generate-app-link.nu {{ env }}

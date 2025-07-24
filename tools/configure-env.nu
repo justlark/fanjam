@@ -44,7 +44,7 @@ def generate-app-name [env_name: string] {
   $"sparklefish-noco-($env_name)-($random_str)"
 }
 
-def main [env_name: string] {
+def main [env_name: string, stage: string] {
   let config = get-global-config
 
   let repo_path = $env.FILE_PWD | path dirname
@@ -63,6 +63,7 @@ def main [env_name: string] {
   let bucket_name = $"sparklefish-noco-($env_name)"
 
   let env_config = {
+    stage: $stage
     fly_app: $fly_app_name
     app_domain: $env_name
     neon_region: $config.default_neon_region
