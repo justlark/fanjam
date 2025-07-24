@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
-import useEvents from "@/composables/useEvents";
+import { useRemoteEvents } from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 import EventDetails from "@/components/EventDetails";
 
 const route = useRoute();
-const { events } = useEvents();
+const { value: events } = useRemoteEvents();
 
 const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref(0);

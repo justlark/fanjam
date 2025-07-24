@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
-import useEvents from "@/composables/useEvents";
+import { useRemoteEvents } from "@/composables/useEvents";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
@@ -12,7 +12,7 @@ import ScheduleHeader from "./ScheduleHeader.vue";
 
 const route = useRoute();
 const router = useRouter();
-const { events } = useEvents();
+const { value: events } = useRemoteEvents();
 const filterCriteria = useFilterQuery();
 
 interface TimeSlot {

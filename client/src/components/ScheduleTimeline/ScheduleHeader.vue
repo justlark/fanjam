@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
-import useEvents from "@/composables/useEvents";
+import { useRemoteEvents } from "@/composables/useEvents";
 import useFilterQuery from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
@@ -13,7 +13,7 @@ import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
 import FilterMenu from "./FilterMenu.vue";
 
-const { events } = useEvents();
+const { value: events } = useRemoteEvents();
 
 const filterCriteria = useFilterQuery();
 

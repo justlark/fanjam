@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
-import useEvents from "@/composables/useEvents";
+import { useRemoteInfo, useRemoteEvents } from "@/composables/useEvents";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
@@ -18,7 +18,16 @@ const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
 
-const { status: eventsStatus, about: aboutInfo, reload: reloadEvents } = useEvents();
+const { reload: reloadInfo, result: infoResult, value: info } = useRemoteInfo();
+const { reload: reloadEvents, result: eventsResult } = useRemoteEvents();
+
+const conName = computed(() => info.value?.about?.name ?? "FanJam");
+const isPending = computed(
+  () => infoResult.value.status === "pending" || eventsResult.value.status === "pending",
+);
+const isNotFound = computed(
+  () => infoResult.value.status === "error" && infoResult.value.code === 404,
+);
 
 const refresh = async () => {
   toast.add({
@@ -27,18 +36,18 @@ const refresh = async () => {
     detail: "Grabbing the latest schedule.",
     life: 1500,
   });
-  await reloadEvents();
+
+  await Promise.all([reloadInfo(), reloadEvents()]);
+
   toast.add({ severity: "success", summary: "Done", detail: "You're all up to date!", life: 1500 });
 };
-
-const conName = computed(() => aboutInfo.value?.name ?? "FanJam");
 
 const headerHeadingId = useId();
 </script>
 
 <template>
   <div class="flex flex-col min-h-[100vh]">
-    <div v-if="eventsStatus === 'not-found'" class="flex flex-col justify-center items-center grow">
+    <div v-if="isNotFound" class="flex flex-col justify-center items-center grow">
       <SimpleIcon
         icon="exclamation-circle"
         class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
@@ -46,10 +55,7 @@ const headerHeadingId = useId();
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
     </div>
-    <div
-      v-else-if="eventsStatus === 'loading'"
-      class="flex flex-col justify-center items-center gap-4 grow"
-    >
+    <div v-else-if="isPending" class="flex flex-col justify-center items-center gap-4 grow">
       <ProgressSpinner />
       <div class="text-xl text-muted-color">Loading…</div>
     </div>
