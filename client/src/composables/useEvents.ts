@@ -207,19 +207,11 @@ const useRemoteData = <T, S>({
   const reload = async (): Promise<void> => {
     const fetchResult = await fetcher();
 
-    // We don't throw and error or show an error page if getting the events
-    // from the server fails, because this app should be able to work offline.
-    // If it can't reach the server, it should just use the cached events from
-    // the local storage.
     if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
 
       fetchCache.set(cacheKey.value, fetchResult.value);
 
-      // We store the env ID so we know to invalidate the local storage cache
-      // when the user switches to a different environment. Because the browser
-      // will limit the amount of storage we're allowed to use, we only want to
-      // store the events for one environment at a time.
       localStorage.setItem(`${key.category}:key`, key.instance);
 
       if (fetchResult.value === undefined || fetchResult.value === null) {
@@ -246,10 +238,6 @@ const useRemoteData = <T, S>({
 
       const storedValue = localStorage.getItem(`${key.category}:value`);
 
-      // Even if the events were cached in the local storage, we still fetch
-      // them from the API in the background, in case they updated on the
-      // server since we last visited. However, in the meantime, we can show
-      // the cached events.
       if (storedValue) {
         const value = fromCache(JSON.parse(storedValue));
 
