@@ -10,6 +10,17 @@ interface RawEvent {
   tags: Array<string>;
 }
 
+export interface RawAbout {
+  name: string;
+  description: string | null;
+  link: string | null;
+}
+
+export interface RawDump {
+  events: Array<RawEvent>;
+  about: RawAbout | null;
+}
+
 export interface Event {
   id: string;
   name: string;
@@ -20,6 +31,12 @@ export interface Event {
   people: Array<string>;
   category?: string;
   tags: Array<string>;
+}
+
+export interface About {
+  name?: string;
+  description?: string;
+  link?: string;
 }
 
 export type ApiResult<T> =

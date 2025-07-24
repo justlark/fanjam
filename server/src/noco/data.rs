@@ -9,7 +9,7 @@ use super::{BaseId, migrations::TableId};
 
 async fn list_records<T: DeserializeOwned>(
     client: &Client,
-    table_id: TableId,
+    table_id: &TableId,
 ) -> anyhow::Result<Vec<T>> {
     #[derive(Debug, Deserialize)]
     struct GetRecordsResponse<T> {
@@ -49,6 +49,7 @@ pub struct TableIds {
     pub events: TableId,
     pub people: TableId,
     pub tags: TableId,
+    pub about: TableId,
 }
 
 fn find_in_tables(tables: &[TableInfo], table_name: &str) -> anyhow::Result<TableId> {
@@ -70,6 +71,7 @@ async fn find_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<TableI
         events: find_in_tables(&table_info, "events")?,
         people: find_in_tables(&table_info, "people")?,
         tags: find_in_tables(&table_info, "tags")?,
+        about: find_in_tables(&table_info, "about")?,
     })
 }
 
@@ -137,6 +139,16 @@ struct TagsResponse {
     pub name: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct AboutResponse {
+    #[serde(rename = "Con Name")]
+    pub name: String,
+    #[serde(rename = "Con Description")]
+    pub description: Option<String>,
+    #[serde(rename = "Website")]
+    pub link: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct Event {
     pub id: String,
@@ -150,13 +162,23 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[worker::send]
-pub async fn list_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Event>> {
-    let table_ids = find_tables(client, base_id).await?;
+#[derive(Debug)]
+pub struct About {
+    pub name: String,
+    pub description: Option<String>,
+    pub link: Option<String>,
+}
 
-    let event_records = list_records::<EventResponse>(client, table_ids.events).await?;
-    let people_records = list_records::<PeopleResponse>(client, table_ids.people).await?;
-    let tags_records = list_records::<TagsResponse>(client, table_ids.tags).await?;
+#[derive(Debug)]
+pub struct Dump {
+    pub events: Vec<Event>,
+    pub about: Option<About>,
+}
+
+async fn list_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
+    let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
+    let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
+    let tags_records = list_records::<TagsResponse>(client, &table_ids.tags).await?;
 
     let people_id_to_name: HashMap<u32, String> = people_records
         .iter()
@@ -190,4 +212,25 @@ pub async fn list_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Ve
                 .collect(),
         })
         .collect())
+}
+
+async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<Option<About>> {
+    let about_records = list_records::<AboutResponse>(client, &table_ids.about).await?;
+    let latest_record = about_records.into_iter().last();
+
+    Ok(latest_record.map(|r| About {
+        name: r.name,
+        description: r.description,
+        link: r.link,
+    }))
+}
+
+#[worker::send]
+pub async fn dump(client: &Client, base_id: &BaseId) -> anyhow::Result<Dump> {
+    let table_ids = find_tables(client, base_id).await?;
+
+    let events = list_events(client, &table_ids).await?;
+    let about = get_about(client, &table_ids).await?;
+
+    Ok(Dump { events, about })
 }

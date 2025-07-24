@@ -11,7 +11,7 @@ use worker::{console_error, console_log, kv::KvStore};
 
 use crate::{
     api::{
-        Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse,
+        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetLinkResponse,
         PostApplyMigrationResponse, PostBackupKind, PostBackupRequest, PostBaseRequest,
         PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
@@ -361,24 +361,30 @@ async fn get_events(
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
 
-    let event_records = noco::list_events(&noco_client, &base_id)
+    let dump = noco::dump(&noco_client, &base_id)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let events = event_records
-        .into_iter()
-        .map(|event| Event {
-            id: event.id,
-            name: event.name,
-            description: event.description,
-            start_time: event.start_time,
-            end_time: event.end_time,
-            location: event.location,
-            people: event.people,
-            category: event.category,
-            tags: event.tags,
-        })
-        .collect::<Vec<_>>();
-
-    Ok(Json(GetEventsResponse { events }))
+    Ok(Json(GetEventsResponse {
+        events: dump
+            .events
+            .into_iter()
+            .map(|event| Event {
+                id: event.id,
+                name: event.name,
+                description: event.description,
+                start_time: event.start_time,
+                end_time: event.end_time,
+                location: event.location,
+                people: event.people,
+                category: event.category,
+                tags: event.tags,
+            })
+            .collect::<Vec<_>>(),
+        about: dump.about.map(|about| About {
+            name: about.name,
+            description: about.description,
+            link: about.link,
+        }),
+    }))
 }

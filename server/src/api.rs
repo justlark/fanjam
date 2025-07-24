@@ -80,6 +80,14 @@ pub struct Event {
 }
 
 #[derive(Debug, Serialize)]
+pub struct About {
+    pub name: String,
+    pub description: Option<String>,
+    pub link: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct GetEventsResponse {
+    pub about: Option<About>,
     pub events: Vec<Event>,
 }
