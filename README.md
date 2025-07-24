@@ -54,12 +54,12 @@ codebase and infrastructure.
 ## Deployment
 
 These are the instructions for deploying a new instance of FanJam at
-`https://foo.fanjam.live`.
+`https://foo.fanjam.live` in the `prod` environment.
 
 Start by generating the necessary configuration for the environment.
 
 ```
-just configure-env foo
+just configure-env foo prod
 ```
 
 This will generate some files, which can be edited as necessary. Check them
