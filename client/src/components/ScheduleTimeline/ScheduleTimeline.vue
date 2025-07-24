@@ -133,7 +133,7 @@ watch(
     </div>
     <div
       v-else
-      class="text-center italic text-slate-500 dark:text-zinc-400 mt-8 flex flex-col gap-2"
+      class="text-center text-lg italic text-slate-500 dark:text-zinc-400 mt-8 flex flex-col gap-2"
     >
       <span>No events for this day</span>
       <span>(or they've been filtered out)</span>
