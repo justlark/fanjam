@@ -16,7 +16,7 @@ const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
 
 <template>
   <span>
-    <span class="font-bold me-2 mb-2 md:mb-0 block md:inline">Only showing:</span>
+    <span class="font-bold me-2 block md:inline">Only showing:</span>
     <span>
       <span class="my-1 inline-flex flex-wrap" v-if="hasCategories">
         <span v-if="hasMultipleCategories && hasTags" class="me-1">(</span>
