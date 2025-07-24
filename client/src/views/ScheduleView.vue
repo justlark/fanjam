@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
 </script>
