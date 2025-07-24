@@ -21,7 +21,7 @@ keep them from being tree-shaken out.
   }
 
   #event-description p {
-    @apply my-1;
+    @apply my-3;
   }
 
   #event-description :is(h1, h2, h3, h4, h5, h6) {
