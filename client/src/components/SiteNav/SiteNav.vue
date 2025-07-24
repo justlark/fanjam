@@ -6,6 +6,7 @@ import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
+import ProgressSpinner from "primevue/progressspinner";
 
 const props = defineProps<{
   title: string;
@@ -34,6 +35,13 @@ const headerHeadingId = useId();
       />
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
+    </div>
+    <div
+      v-else-if="eventsStatus === 'loading'"
+      class="flex flex-col justify-center items-center gap-4 h-[100vh]"
+    >
+      <ProgressSpinner />
+      <div class="text-xl text-muted-color">Loading…</div>
     </div>
     <div v-else>
       <header :aria-labelledby="headerHeadingId" class="flex flex-col">
