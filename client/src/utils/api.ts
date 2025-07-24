@@ -50,6 +50,11 @@ export interface Link {
   url: string;
 }
 
+export interface Info {
+  about?: About;
+  links: Array<Link>;
+}
+
 export interface Dump {
   events: Array<Event>;
   about?: About;
