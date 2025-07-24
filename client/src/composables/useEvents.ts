@@ -45,6 +45,7 @@ const fromLocalStorageEvent = (event: LocalStorageEvent): Event => ({
 
 export interface UseEventsReturn {
   events: Readonly<Ref<Array<Event>>>;
+  status: Readonly<Ref<"success" | "loading" | "not-found">>;
   reload: () => Promise<void>;
 }
 
@@ -55,6 +56,7 @@ export const useEvents = (): UseEventsReturn => {
   const envId = computed(() => route.params.envId as string);
 
   const events = ref<Array<Event>>([]);
+  const status = ref<"success" | "loading" | "not-found">("loading");
 
   const reload = async (): Promise<void> => {
     const eventsResult = await api.getEvents(envId.value);
@@ -78,6 +80,8 @@ export const useEvents = (): UseEventsReturn => {
         EVENTS_LOCAL_STORAGE_KEY,
         JSON.stringify(eventsResult.value.map(toLocalStorageEvent)),
       );
+    } else if (eventsResult.status === 404) {
+      status.value = "not-found";
     }
   };
 
@@ -116,7 +120,17 @@ export const useEvents = (): UseEventsReturn => {
     { immediate: true },
   );
 
-  return { events, reload };
+  watch(
+    events,
+    (newEvents) => {
+      if (newEvents.length > 0) {
+        status.value = "success";
+      }
+    },
+    { immediate: true },
+  );
+
+  return { events, reload, status };
 };
 
 export default useEvents;

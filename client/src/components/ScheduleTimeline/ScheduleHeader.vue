@@ -13,7 +13,7 @@ import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
 import FilterMenu from "./FilterMenu.vue";
 
-const { reload: reloadEvents } = useEvents();
+const { events, reload: reloadEvents } = useEvents();
 
 const filterCriteria = useFilterQuery();
 
@@ -21,16 +21,12 @@ const isFiltered = computed(
   () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
 );
 
-const props = defineProps<{
-  events: Array<Event>;
-}>();
-
 const eventIds = defineModel<Array<string>>("ids");
 
-const allCategories = computed(() => getSortedCategories(props.events));
+const allCategories = computed(() => getSortedCategories(events.value));
 
 const allTags = computed(() =>
-  props.events.reduce<Array<string>>((set, event) => {
+  events.value.reduce<Array<string>>((set, event) => {
     for (const tag of event.tags) {
       if (!set.includes(tag)) {
         set.push(tag);
@@ -43,7 +39,7 @@ const allTags = computed(() =>
 const eventsById = computed<Map<string, Event>>(() => {
   const map = new Map<string, Event>();
 
-  for (const event of props.events) {
+  for (const event of events.value) {
     map.set(event.id, event);
   }
 
@@ -64,7 +60,7 @@ const searchText = ref();
 const showFilterMenu = ref(false);
 
 watchEffect(() => {
-  for (const event of props.events) {
+  for (const event of events.value) {
     searchIndex.add({
       id: event.id,
       name: event.name,
@@ -78,7 +74,7 @@ watchEffect(() => {
 });
 
 watchEffect(() => {
-  let filteredEvents = [...props.events];
+  let filteredEvents = [...events.value];
 
   if ((searchText.value?.length ?? 0) > 0) {
     const results = searchIndex.search(searchText.value);

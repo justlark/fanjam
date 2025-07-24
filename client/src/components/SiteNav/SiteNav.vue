@@ -2,6 +2,7 @@
 import { ref, useId } from "vue";
 import useEvents from "@/composables/useEvents";
 import Divider from "primevue/divider";
+import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
@@ -16,43 +17,56 @@ const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
 
-const { reload: reloadEvents } = useEvents();
+const { status: eventsStatus, reload: reloadEvents } = useEvents();
 
 const headerHeadingId = useId();
 </script>
 
 <template>
   <div class="flex flex-col min-h-[100vh]">
-    <header :aria-labelledby="headerHeadingId" class="flex flex-col">
-      <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
-        <div class="flex items-center gap-2">
-          <span class="lg:hidden">
-            <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
-          </span>
-          <h1 :id="headerHeadingId" class="text-2xl">{{ props.title }}</h1>
+    <div
+      v-if="eventsStatus === 'not-found'"
+      class="flex flex-col justify-center items-center h-[100vh]"
+    >
+      <SimpleIcon
+        icon="exclamation-circle"
+        class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
+      />
+      <span class="mb-1 text-2xl text-muted-color">Not found</span>
+      <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
+    </div>
+    <div v-else>
+      <header :aria-labelledby="headerHeadingId" class="flex flex-col">
+        <div class="flex items-center justify-between p-2 lg:p-4 gap-2">
+          <div class="flex items-center gap-2">
+            <span class="lg:hidden">
+              <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
+            </span>
+            <h1 :id="headerHeadingId" class="text-2xl">{{ props.title }}</h1>
+          </div>
+          <IconButton
+            class="lg:!hidden"
+            icon="arrow-clockwise"
+            label="Refresh"
+            @click="reloadEvents"
+          />
         </div>
-        <IconButton
-          class="lg:!hidden"
-          icon="arrow-clockwise"
-          label="Refresh"
-          @click="reloadEvents"
-        />
-      </div>
-      <Drawer v-model:visible="visible" :header="props.title">
-        <MainMenu />
-      </Drawer>
-      <Divider pt:root="!my-0" />
-    </header>
-    <div class="flex grow">
-      <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
-        <aside class="p-4 grow min-w-50">
+        <Drawer v-model:visible="visible" :header="props.title">
           <MainMenu />
-        </aside>
-        <Divider pt:root="!ms-0" layout="vertical" />
+        </Drawer>
+        <Divider pt:root="!my-0" />
+      </header>
+      <div class="flex grow">
+        <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
+          <aside class="p-4 grow min-w-50">
+            <MainMenu />
+          </aside>
+          <Divider pt:root="!ms-0" layout="vertical" />
+        </div>
+        <main class="grow">
+          <slot />
+        </main>
       </div>
-      <main class="grow">
-        <slot />
-      </main>
     </div>
   </div>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
+import useEvents from "@/composables/useEvents";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
@@ -12,6 +13,7 @@ import ProgressSpinner from "primevue/progressspinner";
 
 const route = useRoute();
 const router = useRouter();
+const { events, status: eventsStatus } = useEvents();
 const filterCriteria = useFilterQuery();
 
 interface TimeSlot {
@@ -24,10 +26,6 @@ interface Day {
   timeSlots: Array<TimeSlot>;
 }
 
-const props = defineProps<{
-  events: Array<Event>;
-}>();
-
 const currentDayIndex = defineModel<number>("day", {
   default: 0,
 });
@@ -37,12 +35,12 @@ const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
-const allCategories = computed(() => getSortedCategories(props.events));
+const allCategories = computed(() => getSortedCategories(events.value));
 
 watchEffect(() => {
   dayIndexByEventId.value = {};
 
-  const allDates = props.events.reduce((set, event) => {
+  const allDates = events.value.reduce((set, event) => {
     set.add(event.startTime);
 
     if (event.endTime) {
@@ -55,7 +53,7 @@ watchEffect(() => {
   const namedDays = datesToDayNames(allDates);
 
   days.value = [...namedDays.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
-    const eventsThisDay = props.events.filter((event) =>
+    const eventsThisDay = events.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 
@@ -123,7 +121,7 @@ watch(
 
 <template>
   <div class="flex flex-col gap-4 h-full">
-    <ScheduleHeader v-model:ids="searchResultEventIds" :events="props.events" />
+    <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker v-if="days.length > 0" v-model:day="currentDayIndex" :day-names="dayNames" />
     <div v-if="days.length === 0" class="flex justify-center items-center h-full">
       <div class="flex flex-col items-center gap-4">

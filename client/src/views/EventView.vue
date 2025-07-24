@@ -30,7 +30,7 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
   <SiteNav title="My Con">
     <div class="flex h-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
-        <ScheduleTimeline class="p-6 grow" v-model:day="currentDayIndex" :events="events" />
+        <ScheduleTimeline class="p-6 grow" v-model:day="currentDayIndex" />
         <Divider layout="vertical" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">

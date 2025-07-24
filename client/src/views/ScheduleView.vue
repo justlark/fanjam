@@ -2,14 +2,12 @@
 import useEvents from "@/composables/useEvents";
 import SiteNav from "@/components/SiteNav";
 import ScheduleTimeline from "@/components/ScheduleTimeline";
-
-const { events } = useEvents();
 </script>
 
 <template>
   <SiteNav title="My Con">
     <div class="flex justify-center h-full">
-      <ScheduleTimeline class="p-6 grow max-w-240" :events="events" />
+      <ScheduleTimeline class="p-6 grow max-w-240" />
     </div>
   </SiteNav>
 </template>
