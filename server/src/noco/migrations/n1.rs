@@ -365,7 +365,8 @@ impl Migration<'_> {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
                         "is12hrFormat": IS_TIME_12HR
-                    }
+                    },
+                    "rqd": true,
                 }),
             },
             ColumnRequest {

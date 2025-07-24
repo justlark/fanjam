@@ -70,12 +70,12 @@ pub struct PostRestoreBackupRequest {
 pub struct Event {
     pub id: String,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub start_time: String,
-    pub end_time: String,
-    pub location: String,
+    pub end_time: Option<String>,
+    pub location: Option<String>,
     pub people: Vec<String>,
-    pub category: String,
+    pub category: Option<String>,
     pub tags: Vec<String>,
 }
 

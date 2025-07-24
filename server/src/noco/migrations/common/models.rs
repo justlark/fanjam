@@ -25,6 +25,12 @@ impl fmt::Display for BaseId {
 #[serde(transparent)]
 pub struct TableId(String);
 
+impl From<String> for TableId {
+    fn from(value: String) -> Self {
+        TableId(value)
+    }
+}
+
 impl fmt::Display for TableId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)

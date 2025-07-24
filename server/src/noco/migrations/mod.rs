@@ -5,7 +5,7 @@ mod n1;
 // incrementing migration number.
 
 pub use super::client::Client;
-pub use common::{BaseId, Migration, Version};
+pub use common::{BaseId, Migration, TableId, Version};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
