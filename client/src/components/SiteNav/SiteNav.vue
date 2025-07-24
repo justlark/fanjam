@@ -6,15 +6,30 @@ import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
+import Toast from "primevue/toast";
 import ProgressSpinner from "primevue/progressspinner";
+import { useToast } from "primevue/usetoast";
 
 const visible = ref(false);
+
+const toast = useToast();
 
 const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
 
 const { status: eventsStatus, about: aboutInfo, reload: reloadEvents } = useEvents();
+
+const refresh = async () => {
+  toast.add({
+    severity: "info",
+    summary: "Refreshing",
+    detail: "Grabbing the latest schedule.",
+    life: 1500,
+  });
+  await reloadEvents();
+  toast.add({ severity: "success", summary: "Done", detail: "You're all up to date!", life: 1500 });
+};
 
 const conName = computed(() => aboutInfo.value?.name ?? "FanJam");
 
@@ -47,7 +62,7 @@ const headerHeadingId = useId();
             </span>
             <h1 :id="headerHeadingId" class="text-2xl">{{ conName }}</h1>
           </div>
-          <IconButton icon="arrow-clockwise" label="Refresh" @click="reloadEvents" />
+          <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
         <Drawer v-model:visible="visible" :header="conName">
           <MainMenu />
@@ -66,5 +81,6 @@ const headerHeadingId = useId();
         </main>
       </div>
     </div>
+    <Toast position="bottom-center" />
   </div>
 </template>
