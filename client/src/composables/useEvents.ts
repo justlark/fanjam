@@ -1,4 +1,4 @@
-import { type Ref, ref, computed, watch } from "vue";
+import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type Dump, type Event, type About } from "@/utils/api";
 
@@ -6,6 +6,10 @@ const EVENTS_LOCAL_STORAGE_KEY = "events";
 const ENV_ID_LOCAL_STORAGE_KEY = "env_id";
 
 const dumpCache: Map<string, Dump> = new Map();
+
+const events = ref<Array<Event>>([]);
+const about = ref<About>();
+const status = ref<"success" | "loading" | "not-found">("loading");
 
 interface LocalStorageDump {
   events: Array<{
@@ -75,15 +79,9 @@ export interface UseEventsReturn {
   reload: () => Promise<void>;
 }
 
-// TODO: Eventually, we'll want to persist this data to the local storage so
-// the app can work offline.
 export const useEvents = (): UseEventsReturn => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
-
-  const events = ref<Array<Event>>([]);
-  const about = ref<About>();
-  const status = ref<"success" | "loading" | "not-found">("loading");
 
   const reload = async (): Promise<void> => {
     const dumpResult = await api.getDump(envId.value);
@@ -113,52 +111,44 @@ export const useEvents = (): UseEventsReturn => {
     }
   };
 
-  watch(
-    envId,
-    async () => {
-      if (dumpCache.has(envId.value)) {
-        events.value = dumpCache.get(envId.value)?.events ?? [];
-        about.value = dumpCache.get(envId.value)?.about;
-        return;
-      } else {
-        const storedEnvId = localStorage.getItem(ENV_ID_LOCAL_STORAGE_KEY);
+  watchEffect(async () => {
+    if (dumpCache.has(envId.value)) {
+      events.value = dumpCache.get(envId.value)?.events ?? [];
+      about.value = dumpCache.get(envId.value)?.about;
+      return;
+    } else {
+      const storedEnvId = localStorage.getItem(ENV_ID_LOCAL_STORAGE_KEY);
 
-        if (storedEnvId !== envId.value) {
-          localStorage.removeItem(EVENTS_LOCAL_STORAGE_KEY);
-          localStorage.removeItem(ENV_ID_LOCAL_STORAGE_KEY);
-        }
-
-        const storedDump = localStorage.getItem(EVENTS_LOCAL_STORAGE_KEY);
-
-        // Even if the events were cached in the local storage, we still fetch
-        // them from the API in the background, in case they updated on the
-        // server since we last visited. However, in the meantime, we can show
-        // the cached events.
-        if (storedDump) {
-          const parsedDump: LocalStorageDump = JSON.parse(storedDump);
-          const newDump = fromLocalStorageDump(parsedDump);
-
-          events.value = newDump.events;
-          about.value = newDump.about;
-
-          dumpCache.set(envId.value, newDump);
-        }
+      if (storedEnvId !== envId.value) {
+        localStorage.removeItem(EVENTS_LOCAL_STORAGE_KEY);
+        localStorage.removeItem(ENV_ID_LOCAL_STORAGE_KEY);
       }
 
-      await reload();
-    },
-    { immediate: true },
-  );
+      const storedDump = localStorage.getItem(EVENTS_LOCAL_STORAGE_KEY);
 
-  watch(
-    events,
-    (newEvents) => {
-      if (newEvents.length > 0) {
-        status.value = "success";
+      // Even if the events were cached in the local storage, we still fetch
+      // them from the API in the background, in case they updated on the
+      // server since we last visited. However, in the meantime, we can show
+      // the cached events.
+      if (storedDump) {
+        const parsedDump: LocalStorageDump = JSON.parse(storedDump);
+        const newDump = fromLocalStorageDump(parsedDump);
+
+        events.value = newDump.events;
+        about.value = newDump.about;
+
+        dumpCache.set(envId.value, newDump);
       }
-    },
-    { immediate: true },
-  );
+    }
+
+    await reload();
+  });
+
+  watchEffect(() => {
+    if (events.value.length > 0) {
+      status.value = "success";
+    }
+  });
 
   return { events, about, reload, status };
 };
