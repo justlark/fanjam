@@ -49,7 +49,7 @@ const useRemoteData = <T, S>({
       fetchCache.set(cacheKey.value, toCache(fetchResult.value));
       localStorage.setItem(`${key.category}:key`, key.instance);
       localStorage.setItem(`${key.category}:value`, JSON.stringify(toCache(fetchResult.value)));
-    } else {
+    } else if (result.value.status === "pending") {
       result.value = { status: "error", code: fetchResult.code };
     }
   };
