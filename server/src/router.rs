@@ -22,7 +22,8 @@ use crate::{
     error, kv, neon,
     noco::{
         self, ApiToken, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-        NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, check_base_exists,
+        NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
+        check_base_exists,
     },
     url,
 };
@@ -348,22 +349,44 @@ async fn get_events(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
-
     let base_id = kv::get_base_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or_else(error::no_base_id)?;
+
+    let api_token = kv::get_api_token(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(error::no_api_token)?;
 
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
 
-    let events = noco::get_events(&noco_client, &base_id)
+    let table_ids = match kv::get_tables(&state.kv, &env_name)
+        .await
+        .and_then(TableIds::try_from)
+    {
+        Ok(table_ids) => table_ids,
+        Err(e) => {
+            console_log!("Failed to get table IDs from KV: {}", e);
+
+            let table_ids = noco::list_tables(&noco_client, &base_id)
+                .await
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            kv::put_tables(&state.kv, &env_name, &table_ids)
+                .await
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            table_ids
+                .try_into()
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        }
+    };
+
+    let events = noco::get_events(&noco_client, &table_ids)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
@@ -395,22 +418,44 @@ async fn get_info(
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
-
     let base_id = kv::get_base_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .ok_or_else(error::no_base_id)?;
+
+    let api_token = kv::get_api_token(&state.kv, &env_name)
+        .await
+        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .ok_or_else(error::no_api_token)?;
 
     let dash_origin =
         url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
 
-    let info = noco::get_info(&noco_client, &base_id)
+    let table_ids = match kv::get_tables(&state.kv, &env_name)
+        .await
+        .and_then(TableIds::try_from)
+    {
+        Ok(table_ids) => table_ids,
+        Err(e) => {
+            console_log!("Failed to get table IDs from KV: {}", e);
+
+            let table_ids = noco::list_tables(&noco_client, &base_id)
+                .await
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            kv::put_tables(&state.kv, &env_name, &table_ids)
+                .await
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            table_ids
+                .try_into()
+                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        }
+    };
+
+    let info = noco::get_info(&noco_client, &table_ids)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, de::DeserializeOwned};
-use worker::Method;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use worker::{Method, console_log};
 
 use crate::noco::Client;
 
@@ -48,13 +48,15 @@ async fn list_records<T: DeserializeOwned>(
     Ok(records)
 }
 
-#[derive(Debug, Deserialize)]
-struct TableInfo {
-    id: String,
-    table_name: String,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TableInfo {
+    id: TableId,
+    #[serde(rename = "table_name")]
+    name: String,
 }
 
-async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<TableInfo>> {
+#[worker::send]
+pub async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<TableInfo>> {
     #[derive(Debug, Deserialize)]
     struct GetTablesResponse {
         list: Vec<TableInfo>,
@@ -65,39 +67,6 @@ async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Ta
         .fetch::<GetTablesResponse>()
         .await?
         .list)
-}
-
-#[derive(Debug)]
-pub struct TableIds {
-    pub events: TableId,
-    pub people: TableId,
-    pub tags: TableId,
-    pub about: TableId,
-    pub links: TableId,
-}
-
-fn find_in_tables(tables: &[TableInfo], table_name: &str) -> anyhow::Result<TableId> {
-    tables
-        .iter()
-        .find(|table| table.table_name == table_name)
-        .map(|table| TableId::from(table.id.clone()))
-        .ok_or_else(|| anyhow::anyhow!("No table named `{table_name}` found"))
-}
-
-async fn find_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<TableIds> {
-    let table_info = list_tables(client, base_id).await?;
-
-    if table_info.is_empty() {
-        return Err(anyhow::anyhow!("No tables found in base `{base_id}`"));
-    }
-
-    Ok(TableIds {
-        events: find_in_tables(&table_info, "events")?,
-        people: find_in_tables(&table_info, "people")?,
-        tags: find_in_tables(&table_info, "tags")?,
-        about: find_in_tables(&table_info, "about")?,
-        links: find_in_tables(&table_info, "links")?,
-    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -214,10 +183,47 @@ pub struct Info {
     pub links: Vec<Link>,
 }
 
-#[worker::send]
-pub async fn get_events(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<Event>> {
-    let table_ids = find_tables(client, base_id).await?;
+pub struct TableIds {
+    events: TableId,
+    people: TableId,
+    tags: TableId,
+    about: TableId,
+    links: TableId,
+}
 
+impl TryFrom<Vec<TableInfo>> for TableIds {
+    type Error = anyhow::Error;
+
+    fn try_from(tables: Vec<TableInfo>) -> Result<Self, Self::Error> {
+        console_log!("{:?}", &tables);
+
+        let mut ids = HashMap::new();
+        for table in tables {
+            ids.insert(table.name, table.id);
+        }
+
+        Ok(TableIds {
+            events: ids
+                .remove("events")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'events' table in cache"))?,
+            people: ids
+                .remove("people")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'people' table in cache"))?,
+            tags: ids
+                .remove("tags")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'tags' table in cache"))?,
+            about: ids
+                .remove("about")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'about' table in cache"))?,
+            links: ids
+                .remove("links")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'links' table in cache"))?,
+        })
+    }
+}
+
+#[worker::send]
+pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
     let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
     let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
     let tags_records = list_records::<TagsResponse>(client, &table_ids.tags).await?;
@@ -280,11 +286,9 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
 }
 
 #[worker::send]
-pub async fn get_info(client: &Client, base_id: &BaseId) -> anyhow::Result<Info> {
-    let table_ids = find_tables(client, base_id).await?;
-
-    let about = get_about(client, &table_ids).await?;
-    let links = get_links(client, &table_ids).await?;
+pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
+    let about = get_about(client, table_ids).await?;
+    let links = get_links(client, table_ids).await?;
 
     Ok(Info { about, links })
 }

@@ -3,7 +3,7 @@ use worker::kv::{KvError, KvStore};
 
 use crate::{
     env::{EnvId, EnvName},
-    noco::{self, ApiToken, BaseId},
+    noco::{self, ApiToken, BaseId, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -36,6 +36,11 @@ fn api_token_key(env_name: &EnvName) -> String {
 // The NocoDB base ID for the environment. Each NocoDB instance contains a single base.
 fn base_id_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:base-id")
+}
+
+// The cached ID of a table in NocoDB.
+fn tables_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:tables")
 }
 
 // The current schema migration number of an environment. This is how we know where to start when
@@ -148,6 +153,31 @@ pub async fn delete_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<
         .map_err(wrap_kv_err)?;
 
     Ok(())
+}
+
+#[worker::send]
+pub async fn put_tables(
+    kv: &KvStore,
+    env_name: &EnvName,
+    tables: &[TableInfo],
+) -> anyhow::Result<()> {
+    kv.put(&tables_key(env_name), tables)
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Vec<TableInfo>> {
+    Ok(kv
+        .get(&tables_key(env_name))
+        .json::<Vec<TableInfo>>()
+        .await
+        .map_err(wrap_kv_err)?
+        .unwrap_or_default())
 }
 
 #[worker::send]
