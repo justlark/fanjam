@@ -2,10 +2,6 @@ import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type Event, type Info } from "@/utils/api";
 
-// We cache the data in two places: here, and in the browser local storage.
-// This cache serves to persist data between components. The local storage
-// exists to avoid a length page loads when the user returns to the site next,
-// and to allow the app to work offline.
 const fetchCache: Map<string, unknown> = new Map();
 
 export type FetchResult<T> =
@@ -25,19 +21,16 @@ function unwrapFetchResult<T>(
   return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
 }
 
-interface CacheKey {
-  category: string;
-  instance: string;
-}
-
 const useRemoteData = <T, S>({
   key,
+  instance,
   result,
   fetcher,
   toCache,
   fromCache,
 }: {
-  key: CacheKey;
+  key: string;
+  instance: Readonly<Ref<string>>;
   result: Ref<FetchResult<T>>;
   fetcher: () => Promise<Extract<FetchResult<T>, { status: "success" | "error" }>>;
   // We want the option to change the shape of the data in memory without
@@ -46,10 +39,11 @@ const useRemoteData = <T, S>({
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
 }): { reload: () => Promise<void> } => {
-  const cacheKey = computed(() => `${key.category}:${key.instance}`);
+  const cacheKey = computed(() => `${key}:${instance.value}`);
+  const instanceStorageKey = computed(() => `${key}:key`);
+  const valueStorageKey = computed(() => `${key}:value`);
 
-  // A function which fetches the most recent data from the server and updates
-  // the ref.
+  // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
     const fetchResult = await fetcher();
 
@@ -58,6 +52,9 @@ const useRemoteData = <T, S>({
 
       fetchCache.set(cacheKey.value, toCache(fetchResult.value));
 
+      // We use the browser local storage to cut down on the initial page load
+      // time and to allow the app to function offline.
+      //
       // Because the browser will only give us so much storage space per
       // origin, and because users are unlikely to be attending multiple cons
       // simultaneously, we only cache the data for the current environment.
@@ -65,8 +62,8 @@ const useRemoteData = <T, S>({
       // However, we need to keep track of *which* environment we're caching
       // data for, so we know to invalidate the cache if the user switches to a
       // different environment.
-      localStorage.setItem(`${key.category}:key`, key.instance);
-      localStorage.setItem(`${key.category}:value`, JSON.stringify(toCache(fetchResult.value)));
+      localStorage.setItem(instanceStorageKey.value, instance.value);
+      localStorage.setItem(valueStorageKey.value, JSON.stringify(toCache(fetchResult.value)));
     } else if (result.value.status === "pending") {
       // If the API request succeeded previously, we don't want to show the
       // user an error and wipe the screen; we can just keep displaying the
@@ -83,14 +80,14 @@ const useRemoteData = <T, S>({
       result.value = { status: "success", value: fromCache(fetchCache.get(cacheKey.value) as S) };
       return;
     } else {
-      const storedCacheKey = localStorage.getItem(`${key.category}:key`);
+      const storedInstance = localStorage.getItem(instanceStorageKey.value);
 
-      if (storedCacheKey !== key.instance) {
-        localStorage.removeItem(`${key.category}:key`);
-        localStorage.removeItem(`${key.category}:value`);
+      if (storedInstance !== instance.value) {
+        localStorage.removeItem(instanceStorageKey.value);
+        localStorage.removeItem(valueStorageKey.value);
       }
 
-      const storedValue = localStorage.getItem(`${key.category}:value`);
+      const storedValue = localStorage.getItem(valueStorageKey.value);
 
       if (storedValue) {
         const value = fromCache(JSON.parse(storedValue));
@@ -126,7 +123,8 @@ export const useRemoteEvents = () => {
   const envId = computed(() => route.params.envId as string);
 
   const { reload } = useRemoteData<Array<Event>, Array<StoredEvent>>({
-    key: { category: "events", instance: envId.value },
+    key: "events",
+    instance: envId,
     result: eventsRef,
     fetcher: async () => {
       const result = await api.getEvents(envId.value);
@@ -182,7 +180,8 @@ export const useRemoteInfo = () => {
   const envId = computed(() => route.params.envId as string);
 
   const { reload } = useRemoteData<Info, StoredInfo>({
-    key: { category: "info", instance: envId.value },
+    key: "info",
+    instance: envId,
     result: infoRef,
     fetcher: async () => {
       const result = await api.getInfo(envId.value);
