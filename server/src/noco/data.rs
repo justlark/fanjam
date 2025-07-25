@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use worker::{Method, console_log};
+use worker::Method;
 
 use crate::noco::Client;
 
