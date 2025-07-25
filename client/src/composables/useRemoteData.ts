@@ -2,6 +2,10 @@ import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type Event, type Info } from "@/utils/api";
 
+// We cache the data in two places: here, and in the browser local storage.
+// This cache serves to persist data between components. The local storage
+// exists to avoid a length page loads when the user returns to the site next,
+// and to allow the app to work offline.
 const fetchCache: Map<string, unknown> = new Map();
 
 export type FetchResult<T> =
@@ -36,20 +40,40 @@ const useRemoteData = <T, S>({
   key: CacheKey;
   result: Ref<FetchResult<T>>;
   fetcher: () => Promise<Extract<FetchResult<T>, { status: "success" | "error" }>>;
+  // We want the option to change the shape of the data in memory without
+  // changing the shape of the data in the browser local storage, since the
+  // latter would have to be migrated or deleted.
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
 }): { reload: () => Promise<void> } => {
   const cacheKey = computed(() => `${key.category}:${key.instance}`);
 
+  // A function which fetches the most recent data from the server and updates
+  // the ref.
   const reload = async (): Promise<void> => {
     const fetchResult = await fetcher();
 
     if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
+
       fetchCache.set(cacheKey.value, toCache(fetchResult.value));
+
+      // Because the browser will only give us so much storage space per
+      // origin, and because users are unlikely to be attending multiple cons
+      // simultaneously, we only cache the data for the current environment.
+      //
+      // However, we need to keep track of *which* environment we're caching
+      // data for, so we know to invalidate the cache if the user switches to a
+      // different environment.
       localStorage.setItem(`${key.category}:key`, key.instance);
       localStorage.setItem(`${key.category}:value`, JSON.stringify(toCache(fetchResult.value)));
     } else if (result.value.status === "pending") {
+      // If the API request succeeded previously, we don't want to show the
+      // user an error and wipe the screen; we can just keep displaying the
+      // data that's currently cached.
+      //
+      // If the API request never succeeded in the first place, then we should
+      // show an error, because we have nothing else to show the user.
       result.value = { status: "error", code: fetchResult.code };
     }
   };
