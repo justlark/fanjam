@@ -38,7 +38,10 @@ const useRemoteData = <T, S>({
   // latter would have to be migrated or deleted.
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
-}): { reload: () => Promise<void> } => {
+}): {
+  reload: () => Promise<void>;
+  clear: () => void;
+} => {
   const cacheKey = computed(() => `${key}:${instance.value}`);
   const instanceStorageKey = computed(() => `${key}:key`);
   const valueStorageKey = computed(() => `${key}:value`);
@@ -75,6 +78,11 @@ const useRemoteData = <T, S>({
     }
   };
 
+  const clear = () => {
+    localStorage.removeItem(instanceStorageKey.value);
+    localStorage.removeItem(valueStorageKey.value);
+  };
+
   watchEffect(async () => {
     if (fetchCache.has(cacheKey.value)) {
       result.value = { status: "success", value: fromCache(fetchCache.get(cacheKey.value) as S) };
@@ -83,8 +91,7 @@ const useRemoteData = <T, S>({
       const storedInstance = localStorage.getItem(instanceStorageKey.value);
 
       if (storedInstance !== instance.value) {
-        localStorage.removeItem(instanceStorageKey.value);
-        localStorage.removeItem(valueStorageKey.value);
+        clear();
       }
 
       const storedValue = localStorage.getItem(valueStorageKey.value);
@@ -101,7 +108,7 @@ const useRemoteData = <T, S>({
     await reload();
   });
 
-  return { reload };
+  return { reload, clear };
 };
 
 interface StoredEvent {
@@ -122,7 +129,7 @@ export const useRemoteEvents = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
 
-  const { reload } = useRemoteData<Array<Event>, Array<StoredEvent>>({
+  const { reload, clear } = useRemoteData<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: envId,
     result: eventsRef,
@@ -158,7 +165,7 @@ export const useRemoteEvents = () => {
       })),
   });
 
-  return { reload, result: eventsRef, value: unwrapFetchResult(eventsRef, []) };
+  return { reload, clear, result: eventsRef, value: unwrapFetchResult(eventsRef, []) };
 };
 
 interface StoredInfo {
@@ -179,7 +186,7 @@ export const useRemoteInfo = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
 
-  const { reload } = useRemoteData<Info, StoredInfo>({
+  const { reload, clear } = useRemoteData<Info, StoredInfo>({
     key: "info",
     instance: envId,
     result: infoRef,
@@ -193,5 +200,5 @@ export const useRemoteInfo = () => {
     fromCache: (data) => data,
   });
 
-  return { reload, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
+  return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
 };
