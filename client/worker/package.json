@@ -1,0 +1,9 @@
+{
+  "name": "sparklefish-client-worker",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250715.0"
+  },
+  "dependencies": {}
+}
