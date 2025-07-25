@@ -11,26 +11,26 @@ export const usePageMeta = () => {
   const webAppManifest = computed(() => ({
     name: info.value?.about?.name ?? "FanJam",
     description: info.value?.about?.description ?? undefined,
-    scope: `/app/${envId.value}/`,
-    start_url: `/app/${envId.value}/`,
+    scope: `${window.location.origin}/app/${envId.value}/`,
+    start_url: `${window.location.origin}/app/${envId.value}/`,
     display: "standalone",
     icons: [
       {
-        src: "/icons/icon.png",
+        src: `${window.location.origin}/icons/icon.png`,
         type: "image/png",
       },
       {
-        src: "/icons/icon-maskable.png",
+        src: `${window.location.origin}/icons/icon-maskable.png`,
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-monochrome.png",
+        src: `${window.location.origin}/icons/icon-monochrome.png`,
         type: "image/png",
         purpose: "monochrome",
       },
       {
-        src: "/icons/icon-monochrome-maskable.png",
+        src: `${window.location.origin}/icons/icon-monochrome-maskable.png`,
         type: "image/png",
         purpose: "monochrome maskable",
       },
@@ -38,11 +38,11 @@ export const usePageMeta = () => {
     shortcuts: [
       {
         name: "Schedule",
-        url: `/app/${envId.value}/schedule`,
+        url: `${window.location.origin}/app/${envId.value}/schedule`,
       },
       {
         name: "Info",
-        url: `/app/${envId.value}/info`,
+        url: `${window.location.origin}/app/${envId.value}/info`,
       },
     ],
   }));
