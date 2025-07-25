@@ -7,7 +7,7 @@ use axum::{
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{console_error, console_log, kv::KvStore};
+use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
@@ -38,13 +38,6 @@ use crate::{
 //    manually, and functionality is split out into distinct endpoints to provide granular control
 //    over the state of environments.
 //
-
-fn to_status<T: Into<anyhow::Error>>(code: StatusCode) -> impl FnOnce(T) -> ErrorResponse {
-    move |err| {
-        console_error!("Error: {}", err.into());
-        code.into()
-    }
-}
 
 pub struct AppState {
     pub kv: KvStore,
@@ -88,15 +81,14 @@ async fn post_link(
 
     kv::put_id_env(&state.kv, &env_id, &env_name)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(Error::Internal)?;
 
     kv::put_env_id(&state.kv, &env_name, &env_id)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(Error::Internal)?;
 
-    let dash_url =
-        url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-    let app_url = url::app_url(&env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
+    let app_url = url::app_url(&env_id).map_err(Error::Internal)?;
 
     Ok(Json(PostLinkResponse {
         dash_url: dash_url.to_string(),
@@ -111,12 +103,11 @@ async fn get_link(
 ) -> Result<Json<GetLinkResponse>, ErrorResponse> {
     let env_id = kv::get_env_id(&state.kv, &env_name)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .map_err(Error::Internal)?
         .ok_or(Error::NoEnvId)?;
 
-    let dash_url =
-        url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-    let app_url = url::app_url(&env_id).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
+    let app_url = url::app_url(&env_id).map_err(Error::Internal)?;
 
     Ok(Json(GetLinkResponse {
         dash_url: dash_url.to_string(),
@@ -132,7 +123,7 @@ async fn put_token(
 ) -> Result<NoContent, ErrorResponse> {
     kv::put_api_token(&state.kv, &env_name, ApiToken::from(body.token))
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(Error::Internal)?;
 
     Ok(NoContent)
 }
