@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
 import { useRemoteInfo, useRemoteEvents } from "@/composables/useRemoteData";
-import { usePageMeta } from "@/composables/usePageMeta";
+import usePageMeta from "@/composables/usePageMeta";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
+import AppUpdater from "@/components/SiteNav/AppUpdater.vue";
 import Toast from "primevue/toast";
 import ProgressSpinner from "primevue/progressspinner";
 import { useToast } from "primevue/usetoast";
@@ -91,5 +92,6 @@ const headerHeadingId = useId();
       </div>
     </div>
     <Toast position="bottom-center" />
+    <AppUpdater />
   </div>
 </template>

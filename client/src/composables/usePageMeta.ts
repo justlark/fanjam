@@ -76,3 +76,5 @@ export const usePageMeta = () => {
     }
   });
 };
+
+export default usePageMeta;
