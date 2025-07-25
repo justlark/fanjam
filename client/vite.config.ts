@@ -14,8 +14,19 @@ export default defineConfig({
     vueDevTools(),
     cloudflare(),
     tailwindcss(),
-    // We generate the manifest dynamically in the app.
-    VitePWA({ manifest: false }),
+    VitePWA({
+      // We generate the manifest dynamically in the app.
+      manifest: false,
+      // Normally, this plugin automatically includes icons linked in the
+      // manifest. However, because we're generating the manifest ourselves, we
+      // need to tell it where to find them.
+      includeAssets: ["images/*"],
+      // Because the Bootstrap icon fonts do not live in the `public/`
+      // directory, we need to tell the plugin to include them.
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,woff,woff2}"],
+      },
+    }),
   ],
   resolve: {
     alias: {
