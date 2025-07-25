@@ -16,7 +16,7 @@ const headerPatterns = {
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   },
   "/app/": {
-    "X-Robots-Tag": "noindex",
+    "X-Robots-Tag": "none",
   },
 };
 
