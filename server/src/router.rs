@@ -55,19 +55,28 @@ pub fn new(state: AppState) -> Router {
     // environments.
     Router::new()
         // ADMIN API (AUTHENTICATED)
-        .route("/links/{env_name}", post(post_link))
-        .route("/links/{env_name}", get(get_link))
-        .route("/tokens/{env_name}", put(put_token))
-        .route("/bases/{env_name}", post(post_base))
-        .route("/bases/{env_name}", delete(delete_base))
-        .route("/migrations/{env_name}/apply", post(post_apply_migration))
-        .route("/migrations/{env_name}/current", get(get_current_migration))
-        .route("/backups/{env_name}", post(post_backup))
-        .route("/backups/{env_name}/restore", post(post_restore_backup))
+        .route("/admin/env/{env_name}/links", post(post_link))
+        .route("/admin/env/{env_name}/links", get(get_link))
+        .route("/admin/env/{env_name}/tokens", put(put_token))
+        .route("/admin/env/{env_name}/bases", post(post_base))
+        .route("/admin/env/{env_name}/bases", delete(delete_base))
+        .route(
+            "/admin/env/{env_name}/migrations/apply",
+            post(post_apply_migration),
+        )
+        .route(
+            "/admin/env/{env_name}/migrations/current",
+            get(get_current_migration),
+        )
+        .route("/admin/env/{env_name}/backups", post(post_backup))
+        .route(
+            "/admin/env/{env_name}/backups/restore",
+            post(post_restore_backup),
+        )
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
-        .route("/events/{env_id}", get(get_events))
-        .route("/info/{env_id}", get(get_info))
+        .route("/apps/{env_id}/events", get(get_events))
+        .route("/apps/{env_id}/info", get(get_info))
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }

@@ -6,7 +6,7 @@ source ./config.nu
 def main [env_name: string] {
   let env_config = get-env-config $env_name
 
-  admin-api post $env_config.stage $"/backups/($env_name)" {
+  admin-api post $env_config.stage $"/admin/env/($env_name)/backups" {
     type: "deployment"
   }
 }

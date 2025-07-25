@@ -62,7 +62,7 @@ export type ApiResult<T> =
 
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
-    `https://${import.meta.env.VITE_API_HOST as string}/events/${envId}`,
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
   );
 
   if (!response.ok) {
@@ -87,7 +87,9 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
 };
 
 const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
-  const response = await fetch(`https://${import.meta.env.VITE_API_HOST as string}/info/${envId}`);
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
+  );
 
   if (!response.ok) {
     return { ok: false, code: response.status };

@@ -13,5 +13,5 @@ def main [env_name: string] {
 
   let env_config = get-env-config $env_name
 
-  admin-api delete $env_config.stage $"/bases/($env_name)"
+  admin-api delete $env_config.stage $"/admin/env/($env_name)/bases"
 }

@@ -8,7 +8,7 @@ def main [env_name: string] {
   let email = input "Enter the email address of the initial user: "
   let env_config = get-env-config $env_name
 
-  admin-api post $env_config.stage $"/bases/($env_name)" {
+  admin-api post $env_config.stage $"/admin/env/($env_name)/bases" {
     title: $title,
     email: $email,
   }

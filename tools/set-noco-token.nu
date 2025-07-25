@@ -7,7 +7,7 @@ def main [env_name: string] {
   let api_token = input "Enter the NocoDB API token: "
   let env_config = get-env-config $env_name
 
-  admin-api put $env_config.stage $"/tokens/($env_name)" {
+  admin-api put $env_config.stage $"/admin/env/($env_name)/tokens" {
     token: $api_token,
   }
 }
