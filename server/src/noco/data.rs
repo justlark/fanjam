@@ -195,8 +195,6 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
     type Error = anyhow::Error;
 
     fn try_from(tables: Vec<TableInfo>) -> Result<Self, Self::Error> {
-        console_log!("{:?}", &tables);
-
         let mut ids = HashMap::new();
         for table in tables {
             ids.insert(table.name, table.id);
