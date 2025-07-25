@@ -24,8 +24,28 @@ export default defineConfig({
       // need to tell it where to find them.
       includeAssets: ["icons/*"],
       workbox: {
-        // Cache assets fetched from CDNs.
         runtimeCaching: [
+          // This is necessary to ensure that the service worker doesn't
+          // clobber response headers from the origin (such as the CSP).
+          {
+            urlPattern: /^https:\/\/fanjam\.live\/.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "origin-cache",
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              plugins: [
+                {
+                  // Preserve original request
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(request.url),
+                  // Return the response as-is to preserve headers.
+                  cacheWillUpdate: ({ response }) => Promise.resolve(response.status === 200 ? response : null),
+                }
+              ]
+            },
+          },
+          // Cache assets fetched from CDNs.
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "StaleWhileRevalidate",
@@ -33,7 +53,6 @@ export default defineConfig({
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -47,7 +66,6 @@ export default defineConfig({
               cacheName: "gstatic-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -61,7 +79,6 @@ export default defineConfig({
               cacheName: "jsdelivr-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
