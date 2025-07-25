@@ -9,6 +9,7 @@ mod kv;
 mod neon;
 mod noco;
 mod router;
+mod store;
 mod url;
 
 use router::AppState;

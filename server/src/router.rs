@@ -12,19 +12,16 @@ use worker::{console_error, console_log, kv::KvStore};
 use crate::{
     api::{
         About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, Link, PostApplyMigrationResponse, PostBackupKind, PostBackupRequest,
-        PostBaseRequest, PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest,
-        PutTokenRequest,
+        GetLinkResponse, Link, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
     env::{EnvId, EnvName},
-    error, kv, neon,
-    noco::{
-        self, ApiToken, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-        NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
-        check_base_exists,
-    },
+    error::Error,
+    kv, neon,
+    noco::{self, ApiToken, MigrationState},
+    store::{MigrationChange, Store},
     url,
 };
 
@@ -115,7 +112,7 @@ async fn get_link(
     let env_id = kv::get_env_id(&state.kv, &env_name)
         .await
         .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_env_id)?;
+        .ok_or(Error::NoEnvId)?;
 
     let dash_url =
         url::dash_url(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -148,26 +145,25 @@ async fn post_base(
 ) -> Result<StatusCode, ErrorResponse> {
     let api_token = kv::get_api_token(&state.kv, &env_name)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoApiToken)?;
 
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let dash_origin = url::dash_origin(&env_name).map_err(Error::Internal)?;
 
     let noco_client = noco::Client::new(dash_origin.clone(), api_token);
     let neon_client = neon::Client::new();
 
     let existing_base_id = kv::get_base_id(&state.kv, &env_name)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(Error::Internal)?;
 
     if let Some(base_id) = existing_base_id {
-        let base_exists_in_noco = check_base_exists(&noco_client, &base_id)
+        let base_exists_in_noco = noco::check_base_exists(&noco_client, &base_id)
             .await
-            .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+            .map_err(Error::Internal)?;
 
         if base_exists_in_noco {
-            return Err(error::base_already_exists());
+            Err(Error::BaseAlreadyExists)?;
         } else {
             // The NocoDB base ID was stored in KV, but the base no longer exists in NocoDB. This
             // could happen if the base is deleted manually by the system user (as opposed to via
@@ -178,7 +174,7 @@ async fn post_base(
 
             kv::delete_base_id(&state.kv, &env_name)
                 .await
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+                .map_err(Error::Internal)?;
         }
     }
 
@@ -189,7 +185,7 @@ async fn post_base(
     migrator
         .migrate(&env_name, migration_state)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(Error::Internal)?;
 
     Ok(StatusCode::CREATED)
 }
@@ -199,42 +195,9 @@ async fn delete_base(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<NoContent, ErrorResponse> {
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
+    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
-    let base_id = kv::get_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_base_id)?;
-
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-    let neon_client = neon::Client::new();
-
-    // Back up the database in case we delete the NocoDB base accidentally.
-    neon_client
-        .create_backup(
-            &env_name.clone().into(),
-            &NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-        )
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    noco::delete_base(&noco_client, &base_id)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    kv::delete_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    kv::delete_migration_version(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    store.delete_base().await?;
 
     Ok(NoContent)
 }
@@ -244,38 +207,12 @@ async fn post_apply_migration(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<Json<PostApplyMigrationResponse>, ErrorResponse> {
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
+    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
-    let base_id = kv::get_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_base_id)?;
-
-    let old_version = kv::get_migration_version(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .unwrap_or(noco::Version::INITIAL);
-
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-    let neon_client = neon::Client::new();
-
-    let migration_state = MigrationState::existing(old_version, base_id);
-
-    let migrator = noco::Migrator::new(&noco_client, &neon_client, &state.kv);
-
-    let ExistingMigrationState {
-        version: new_version,
-        ..
-    } = migrator
-        .migrate(&env_name, migration_state)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let MigrationChange {
+        old_version,
+        new_version,
+    } = store.migrate().await?;
 
     Ok(Json(PostApplyMigrationResponse {
         old_version,
@@ -290,7 +227,7 @@ async fn get_current_migration(
 ) -> Result<Json<GetCurrentMigrationResponse>, ErrorResponse> {
     let version = kv::get_migration_version(&state.kv, &env_name)
         .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .map_err(Error::Internal)?
         .unwrap_or(noco::Version::INITIAL);
 
     Ok(Json(GetCurrentMigrationResponse { version }))
@@ -298,43 +235,26 @@ async fn get_current_migration(
 
 #[axum::debug_handler]
 async fn post_backup(
+    State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
     Json(body): Json<PostBackupRequest>,
 ) -> Result<NoContent, ErrorResponse> {
-    let neon_client = neon::Client::new();
+    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
-    let dest_branch_name = match body.kind {
-        PostBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-    };
-
-    neon_client
-        .create_backup(&env_name.clone().into(), &dest_branch_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    store.create_backup(body.kind).await?;
 
     Ok(NoContent)
 }
 
 #[axum::debug_handler]
 async fn post_restore_backup(
+    State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
     Json(body): Json<PostRestoreBackupRequest>,
 ) -> Result<NoContent, ErrorResponse> {
-    let neon_client = neon::Client::new();
+    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
-    let source_branch_name = match body.kind {
-        PostRestoreBackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-        PostRestoreBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-    };
-
-    neon_client
-        .restore_backup(
-            &env_name.clone().into(),
-            &source_branch_name,
-            &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
-        )
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    store.restore_backup(body.kind).await?;
 
     Ok(NoContent)
 }
@@ -344,51 +264,9 @@ async fn get_events(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<Json<GetEventsResponse>, ErrorResponse> {
-    let env_name = kv::get_id_env(&state.kv, &env_id)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
-    let base_id = kv::get_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_base_id)?;
-
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
-
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-
-    let table_ids = match kv::get_tables(&state.kv, &env_name)
-        .await
-        .and_then(TableIds::try_from)
-    {
-        Ok(table_ids) => table_ids,
-        Err(e) => {
-            console_log!("Failed to get table IDs from KV: {}", e);
-
-            let table_ids = noco::list_tables(&noco_client, &base_id)
-                .await
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-            kv::put_tables(&state.kv, &env_name, &table_ids)
-                .await
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-            table_ids
-                .try_into()
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        }
-    };
-
-    let events = noco::get_events(&noco_client, &table_ids)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let events = store.get_events().await?;
 
     Ok(Json(GetEventsResponse {
         events: events
@@ -413,51 +291,9 @@ async fn get_info(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<Json<GetInfoResponse>, ErrorResponse> {
-    let env_name = kv::get_id_env(&state.kv, &env_id)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
-    let base_id = kv::get_base_id(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_base_id)?;
-
-    let api_token = kv::get_api_token(&state.kv, &env_name)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        .ok_or_else(error::no_api_token)?;
-
-    let dash_origin =
-        url::dash_origin(&env_name).map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-
-    let table_ids = match kv::get_tables(&state.kv, &env_name)
-        .await
-        .and_then(TableIds::try_from)
-    {
-        Ok(table_ids) => table_ids,
-        Err(e) => {
-            console_log!("Failed to get table IDs from KV: {}", e);
-
-            let table_ids = noco::list_tables(&noco_client, &base_id)
-                .await
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-            kv::put_tables(&state.kv, &env_name, &table_ids)
-                .await
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-            table_ids
-                .try_into()
-                .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?
-        }
-    };
-
-    let info = noco::get_info(&noco_client, &table_ids)
-        .await
-        .map_err(to_status(StatusCode::INTERNAL_SERVER_ERROR))?;
+    let info = store.get_info().await?;
 
     Ok(Json(GetInfoResponse {
         about: info.about.map(|about| About {

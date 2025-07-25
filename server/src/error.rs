@@ -1,42 +1,48 @@
 use axum::{Json, http::StatusCode, response::ErrorResponse};
+use thiserror::Error;
 use worker::console_error;
 
 use crate::api::ErrorResponse as ApiErrorResponse;
 
-fn error_response(code: StatusCode, message: &str) -> ErrorResponse {
-    console_error!("Error: {}", message);
-    ErrorResponse::from((
-        code,
-        Json(ApiErrorResponse {
-            error: message.to_string(),
-        }),
-    ))
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("There is no NocoDB API token configured for this environment.")]
+    NoApiToken,
+
+    #[error("You have not generated an app link for this environment.")]
+    NoEnvId,
+
+    #[error("A NocoDB base does not exist for this environment.")]
+    NoBaseId,
+
+    #[error("A NocoDB base already exists for this environment.")]
+    BaseAlreadyExists,
+
+    #[error("Internal server error: {0}")]
+    Internal(anyhow::Error),
 }
 
-pub fn no_api_token() -> ErrorResponse {
-    error_response(
-        StatusCode::CONFLICT,
-        "There is no NocoDB API token configured for this environment.",
-    )
+impl Error {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Error::NoApiToken => StatusCode::CONFLICT,
+            Error::NoEnvId => StatusCode::NOT_FOUND,
+            Error::NoBaseId => StatusCode::NOT_FOUND,
+            Error::BaseAlreadyExists => StatusCode::CONFLICT,
+            Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
 }
 
-pub fn no_env_id() -> ErrorResponse {
-    error_response(
-        StatusCode::NOT_FOUND,
-        "You have not generated an app link for this environment.",
-    )
-}
+impl From<Error> for ErrorResponse {
+    fn from(error: Error) -> Self {
+        console_error!("Error: {}", error);
 
-pub fn no_base_id() -> ErrorResponse {
-    error_response(
-        StatusCode::NOT_FOUND,
-        "A NocoDB base does not exist for this environment.",
-    )
-}
-
-pub fn base_already_exists() -> ErrorResponse {
-    error_response(
-        StatusCode::CONFLICT,
-        "A NocoDB base already exists for this environment.",
-    )
+        ErrorResponse::from((
+            error.status_code(),
+            Json(ApiErrorResponse {
+                error: error.to_string(),
+            }),
+        ))
+    }
 }
