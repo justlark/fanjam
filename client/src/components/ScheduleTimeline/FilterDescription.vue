@@ -18,32 +18,26 @@ const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
 <template>
   <span>
     <span class="font-bold me-2 block md:inline">Only showing:</span>
-    <span>
-      <span class="my-1 inline-flex flex-wrap" v-if="hasCategories">
-        <span v-if="hasMultipleCategories && hasTags" class="me-1">(</span>
-        <template v-for="(category, index) in props.criteria.categories" :key="index">
-          <span class="mx-2 italic" v-if="index != 0">or</span>
-          <CategoryLabel
-            class="my-1"
-            size="xs"
-            :title="category"
-            :all-categories="props.allCategories"
-            display="active"
-          />
-        </template>
-        <span v-if="hasMultipleCategories && hasTags" class="ms-1">)</span>
-      </span>
-      <span class="mx-2 italic" v-if="hasCategories && hasTags">and</span>
-      <span class="my-1 inline-flex flex-wrap" v-if="hasTags">
-        <span v-if="hasMultipleTags && hasCategories" class="me-1">(</span>
-        <template v-for="(tag, index) in props.criteria.tags" :key="index">
-          <span class="mx-2 italic" v-if="index != 0">or</span>
-          <CategoryLabel class="my-1" size="xs" :title="tag" display="active" />
-        </template>
-        <span v-if="hasMultipleTags && hasCategories" class="ms-1">)</span>
-      </span>
-      <span class="mx-2 italic" v-if="(hasCategories || hasTags) && hasSearch">and</span>
-      <span class="my-1 text-sm" v-if="hasSearch">"{{ props.criteria.search }}"</span>
-    </span>
+    <span v-if="hasMultipleCategories && (hasTags || hasSearch)" class="me-1">(</span>
+    <template v-for="(category, index) in props.criteria.categories" :key="index">
+      <span class="mx-2 italic" v-if="index != 0">or</span>
+      <CategoryLabel
+        class="my-1"
+        size="xs"
+        :title="category"
+        :all-categories="props.allCategories"
+        display="active"
+      />
+    </template>
+    <span v-if="hasMultipleCategories && (hasTags || hasSearch)" class="ms-1">)</span>
+    <span class="mx-2 italic" v-if="hasCategories && hasTags">and</span>
+    <span v-if="hasMultipleTags && (hasCategories || hasSearch)" class="me-1">(</span>
+    <template v-for="(tag, index) in props.criteria.tags" :key="index">
+      <span class="mx-2 italic" v-if="index != 0">or</span>
+      <CategoryLabel class="my-1" size="xs" :title="tag" display="active" />
+    </template>
+    <span v-if="hasMultipleTags && (hasCategories || hasSearch)" class="ms-1">)</span>
+    <span class="mx-2 italic" v-if="(hasCategories || hasTags) && hasSearch">and</span>
+    <span class="my-1 text-sm" v-if="hasSearch">"{{ props.criteria.search }}"</span>
   </span>
 </template>
