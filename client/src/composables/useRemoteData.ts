@@ -175,6 +175,11 @@ interface StoredInfo {
     name: string;
     url: string;
   }>;
+  files: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
 }
 
 const infoRef = ref<FetchResult<Info>>({ status: "pending" });
@@ -188,8 +193,28 @@ const useRemoteInfo = () => {
     instance: envId,
     result: infoRef,
     fetcher: () => api.getInfo(envId.value),
-    toCache: (data) => data,
-    fromCache: (data) => data,
+    toCache: (data) => ({
+      name: data.name,
+      description: data.description,
+      website_url: data.websiteUrl,
+      links: data.links.map((link) => ({ name: link.name, url: link.url })),
+      files: data.files.map((file) => ({
+        name: file.name,
+        media_type: file.mediaType,
+        signed_url: file.signedUrl,
+      })),
+    }),
+    fromCache: (data) => ({
+      name: data.name,
+      description: data.description,
+      websiteUrl: data.website_url,
+      links: data.links.map((link) => ({ name: link.name, url: link.url })),
+      files: data.files.map((file) => ({
+        name: file.name,
+        mediaType: file.media_type,
+        signedUrl: file.signed_url,
+      })),
+    }),
   });
 
   return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };

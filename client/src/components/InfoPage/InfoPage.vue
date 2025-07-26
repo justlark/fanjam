@@ -2,7 +2,8 @@
 import { computed } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
-import LinkList from "./LinkList.vue";
+import LinksList from "./LinksList.vue";
+import FilesList from "./FilesList.vue";
 
 const {
   data: { info },
@@ -32,10 +33,17 @@ const websiteUrlDomain = computed(() =>
       </span>
       <p v-if="info.description">{{ info.description }}</p>
     </div>
-    <LinkList
-      class="max-w-140 w-full mx-auto"
-      v-if="info && info.links.length > 0"
-      :links="info.links"
-    />
+    <div class="flex flex-col gap-2">
+      <LinksList
+        class="max-w-140 w-full mx-auto"
+        v-if="info && info.links.length > 0"
+        :links="info.links"
+      />
+      <FilesList
+        class="max-w-140 w-full mx-auto"
+        v-if="info && info.files.length > 0"
+        :files="info.files"
+      />
+    </div>
   </div>
 </template>

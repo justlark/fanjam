@@ -18,6 +18,11 @@ export interface RawInfo {
     name: string;
     url: string;
   }>;
+  files: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
 }
 
 export interface Event {
@@ -37,11 +42,18 @@ export interface Link {
   url: string;
 }
 
+export interface File {
+  name: string;
+  mediaType: string;
+  signedUrl: string;
+}
+
 export interface Info {
   name?: string;
   description?: string;
   websiteUrl?: string;
   links: Array<Link>;
+  files: Array<File>;
 }
 
 export type ApiResult<T> =
@@ -98,6 +110,11 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
     links: rawInfo.links.map((link) => ({
       name: link.name,
       url: link.url,
+    })),
+    files: rawInfo.files.map((file) => ({
+      name: file.name,
+      mediaType: file.media_type,
+      signedUrl: file.signed_url,
     })),
   };
 
