@@ -7,6 +7,7 @@ env:
   NC_INVITE_ONLY_SIGNUP: "true"
   NC_PUBLIC_URL: https://demo.fanjam.live
   NC_S3_BUCKET_NAME: sparklefish-noco-demo
+  NC_S3_REGION: auto
   NC_S3_ENDPOINT: https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/sparklefish-noco-demo
 http_service:
   internal_port: 8080

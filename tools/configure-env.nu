@@ -14,6 +14,7 @@ def generate-fly-config [app: string, url: string, bucket: string] {
     env: {
       NC_PUBLIC_URL: $url,
       NC_S3_BUCKET_NAME: $bucket,
+      NC_S3_REGION: "auto",
       NC_S3_ENDPOINT: $"https://($config.cloudflare_account_id).r2.cloudflarestorage.com/($bucket)",
       NC_INVITE_ONLY_SIGNUP: "true",
       NC_ADMIN_EMAIL: ($config.admin_email),
