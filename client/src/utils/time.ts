@@ -100,11 +100,15 @@ export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
 
 export const groupByTime = <T>(
   values: Array<T>,
-  getTime: (value: T) => Date | undefined,
+  getTime: (value: T) => Date,
 ): Map<string, Array<T>> => {
+  // Maps in JS preserve insertion order, so as long as we sort the values, the
+  // groups will be ordered temporally as well.
   const grouped: Map<string, Array<T>> = new Map();
 
-  for (const value of values) {
+  const sortedValues = [...values].sort((a, b) => getTime(a).valueOf() - getTime(b).valueOf());
+
+  for (const value of sortedValues) {
     const time = getTime(value);
     if (!time) {
       continue;
