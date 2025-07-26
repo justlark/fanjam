@@ -72,7 +72,7 @@ const headerHeadingId = useId();
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
-        <Drawer v-model:visible="visible" :header="conName">
+        <Drawer v-model:visible="visible" header="Menu" class="!w-60">
           <MainMenu />
         </Drawer>
         <Divider pt:root="!my-0" />
