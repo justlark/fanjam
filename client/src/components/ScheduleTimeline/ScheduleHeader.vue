@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect, useId } from "vue";
+import { toRef, ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
 import { useRemoteEvents } from "@/composables/useRemoteData";
 import useFilterQuery from "@/composables/useFilterQuery";
@@ -16,9 +16,13 @@ import FilterMenu from "./FilterMenu.vue";
 const { value: events } = useRemoteEvents();
 
 const filterCriteria = useFilterQuery();
+const searchText = toRef(filterCriteria, "search");
 
 const isFiltered = computed(
-  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
+  () =>
+    filterCriteria.categories.length > 0 ||
+    filterCriteria.tags.length > 0 ||
+    filterCriteria.search.length > 0,
 );
 
 const eventIds = defineModel<Array<string>>("ids");
@@ -56,7 +60,6 @@ const searchIndex = new flexsearch.Document({
   },
 });
 
-const searchText = ref();
 const showFilterMenu = ref(false);
 
 watchEffect(() => {

@@ -5,6 +5,7 @@ import { isNotNullish } from "@/utils/types";
 export interface FilterCriteria {
   categories: Array<string>;
   tags: Array<string>;
+  search: string;
   hidePastEvents: boolean;
 }
 
@@ -15,6 +16,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
   const criteria = reactive<FilterCriteria>({
     categories: [],
     tags: [],
+    search: "",
     hidePastEvents: false,
   });
 
@@ -37,6 +39,14 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
         criteria.tags = [];
       }
 
+      if (newRoute.query.q) {
+        criteria.search = Array.isArray(newRoute.query.q)
+          ? newRoute.query.q.join(" ")
+          : newRoute.query.q;
+      } else {
+        criteria.search = "";
+      }
+
       if (newRoute.query.past === "false") {
         criteria.hidePastEvents = true;
       } else {
@@ -51,6 +61,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       query: {
         c: newCriteria.categories,
         t: newCriteria.tags,
+        q: newCriteria.search || undefined,
         past: newCriteria.hidePastEvents ? "false" : undefined,
       },
     });
@@ -62,6 +73,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
 export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
   c: criteria.categories,
   t: criteria.tags,
+  q: criteria.search,
   past: criteria.hidePastEvents ? "false" : undefined,
 });
 

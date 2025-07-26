@@ -10,6 +10,7 @@ const props = defineProps<{
 
 const hasCategories = computed(() => props.criteria.categories.length > 0);
 const hasTags = computed(() => props.criteria.tags.length > 0);
+const hasSearch = computed(() => props.criteria.search.length > 0);
 const hasMultipleCategories = computed(() => props.criteria.categories.length > 1);
 const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
 </script>
@@ -23,7 +24,6 @@ const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
         <template v-for="(category, index) in props.criteria.categories" :key="index">
           <span class="mx-2 italic" v-if="index != 0">or</span>
           <CategoryLabel
-            class="my-1"
             size="xs"
             :title="category"
             :all-categories="props.allCategories"
@@ -41,6 +41,8 @@ const hasMultipleTags = computed(() => props.criteria.tags.length > 1);
         </template>
         <span v-if="hasMultipleTags && hasCategories" class="ms-1">)</span>
       </span>
+      <span class="mx-2 italic" v-if="(hasCategories || hasTags) && hasSearch">and</span>
+      <span class="my-1 text-sm" v-if="hasSearch">"{{ props.criteria.search }}"</span>
     </span>
   </span>
 </template>
