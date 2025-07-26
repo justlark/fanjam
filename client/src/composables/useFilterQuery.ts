@@ -73,7 +73,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
 export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
   c: criteria.categories,
   t: criteria.tags,
-  q: criteria.search,
+  q: criteria.search || undefined,
   past: criteria.hidePastEvents ? "false" : undefined,
 });
 
