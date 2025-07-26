@@ -91,9 +91,17 @@ pub struct Link {
 }
 
 #[derive(Debug, Serialize)]
+pub struct File {
+    pub name: String,
+    pub media_type: String,
+    pub signed_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct GetInfoResponse {
     pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
     pub links: Vec<Link>,
+    pub files: Vec<File>,
 }

@@ -151,6 +151,22 @@ struct LinksResponse {
     pub url: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct FilesResponse {
+    #[serde(rename = "File Name")]
+    pub name: String,
+    #[serde(rename = "File")]
+    pub files: Vec<FileBodyResponse>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FileBodyResponse {
+    #[serde(rename = "mimetype")]
+    pub media_type: String,
+    #[serde(rename = "signedUrl")]
+    pub signed_url: String,
+}
+
 #[derive(Debug)]
 pub struct Event {
     pub id: String,
@@ -181,6 +197,14 @@ pub struct Link {
 pub struct Info {
     pub about: Option<About>,
     pub links: Vec<Link>,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug)]
+pub struct File {
+    pub name: String,
+    pub media_type: String,
+    pub signed_url: String,
 }
 
 pub struct TableIds {
@@ -189,6 +213,7 @@ pub struct TableIds {
     tags: TableId,
     about: TableId,
     links: TableId,
+    files: TableId,
 }
 
 impl TryFrom<Vec<TableInfo>> for TableIds {
@@ -216,6 +241,9 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             links: ids
                 .remove("links")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'links' table in cache"))?,
+            files: ids
+                .remove("files")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache"))?,
         })
     }
 }
@@ -283,10 +311,39 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
         .collect())
 }
 
+async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<File>> {
+    let file_records = list_records::<FilesResponse>(client, &table_ids.files).await?;
+
+    let mut results = Vec::new();
+
+    for record in file_records {
+        let first_file = match record.files.as_slice() {
+            [file] => file,
+            // If multiple files were uploaded in this record, only include the first one.
+            // TODO: Change this behavior to be less confusing for users.
+            [file, ..] => file,
+            [] => continue,
+        };
+
+        results.push(File {
+            name: record.name.clone(),
+            media_type: first_file.media_type.clone(),
+            signed_url: first_file.signed_url.clone(),
+        });
+    }
+
+    Ok(results)
+}
+
 #[worker::send]
 pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
     let about = get_about(client, table_ids).await?;
     let links = get_links(client, table_ids).await?;
+    let files = get_files(client, table_ids).await?;
 
-    Ok(Info { about, links })
+    Ok(Info {
+        about,
+        links,
+        files,
+    })
 }

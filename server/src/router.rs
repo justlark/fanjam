@@ -11,9 +11,9 @@ use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
-        Event, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse, GetLinkResponse,
-        Link, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
-        PostRestoreBackupRequest, PutTokenRequest,
+        Event, File, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
+        GetLinkResponse, Link, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
@@ -311,6 +311,15 @@ async fn get_info(
             .map(|link| Link {
                 name: link.name,
                 url: link.url,
+            })
+            .collect::<Vec<_>>(),
+        files: info
+            .files
+            .into_iter()
+            .map(|file| File {
+                name: file.name,
+                media_type: file.media_type,
+                signed_url: file.signed_url,
             })
             .collect::<Vec<_>>(),
     }))
