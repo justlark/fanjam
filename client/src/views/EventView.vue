@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import SiteNav from "@/components/SiteNav";
 import Divider from "primevue/divider";
@@ -8,6 +8,7 @@ import ScheduleTimeline from "@/components/ScheduleTimeline";
 import EventDetails from "@/components/EventDetails";
 
 const route = useRoute();
+const router = useRouter();
 const {
   data: { events },
 } = useRemoteData();
@@ -26,6 +27,14 @@ const allCategories = computed(() =>
 );
 
 const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
+
+// If the event does not (or no longer) exists, redirect to the schedule view.
+if (!thisEvent.value) {
+  router.replace({
+    name: "schedule",
+    params: { dayIndex: currentDayIndex.value },
+  });
+}
 </script>
 
 <template>
