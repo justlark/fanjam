@@ -60,7 +60,7 @@ const useSectionHeadingId = useId();
           {{ event.location }}
         </EventDetail>
       </dl>
-      <div v-if="event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
+      <div v-if="event.category || event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
         <CategoryLabel
           v-if="event.category"
           :title="event.category"
