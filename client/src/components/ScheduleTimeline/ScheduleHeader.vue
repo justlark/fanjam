@@ -19,11 +19,10 @@ const filterCriteria = useFilterQuery();
 const searchText = toRef(filterCriteria, "search");
 
 const isFiltered = computed(
-  () =>
-    filterCriteria.categories.length > 0 ||
-    filterCriteria.tags.length > 0 ||
-    filterCriteria.search.length > 0,
+  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
 );
+
+const isFilteredOrSearch = computed(() => isFiltered.value || filterCriteria.search.length > 0);
 
 const eventIds = defineModel<Array<string>>("ids");
 
@@ -145,7 +144,7 @@ const filterMenuId = useId();
       :tags="allTags"
     />
     <FilterDescription
-      v-if="isFiltered && !showFilterMenu"
+      v-if="isFilteredOrSearch && !showFilterMenu"
       :criteria="filterCriteria"
       :all-categories="allCategories"
     />
