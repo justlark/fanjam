@@ -29,6 +29,14 @@ const router = createRouter({
       name: "info",
       component: () => import("../views/InfoView.vue"),
     },
+    {
+      path: "/app/:envId/:catchAll(.*)",
+      redirect: { name: "app" },
+    },
+    {
+      path: "/:catchAll(.*)",
+      redirect: { name: "home" },
+    },
   ],
 });
 
