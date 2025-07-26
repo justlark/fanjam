@@ -19,7 +19,10 @@ const filterCriteria = useFilterQuery();
 const searchText = toRef(filterCriteria, "search");
 
 const isFiltered = computed(
-  () => filterCriteria.categories.length > 0 || filterCriteria.tags.length > 0,
+  () =>
+    filterCriteria.categories.length > 0 ||
+    filterCriteria.tags.length > 0 ||
+    filterCriteria.hidePastEvents,
 );
 
 const isFilteredOrSearch = computed(() => isFiltered.value || filterCriteria.search.length > 0);

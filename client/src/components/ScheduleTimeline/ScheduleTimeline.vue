@@ -7,6 +7,7 @@ import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuer
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
+import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 
@@ -40,10 +41,8 @@ const currentDayTimeSlots = computed(() =>
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
 
-watchEffect(() => {
-  dayIndexByEventId.value = {};
-
-  const allDates = events.value.reduce((set, event) => {
+const allDates = computed(() =>
+  events.value.reduce((set, event) => {
     set.add(event.startTime);
 
     if (event.endTime) {
@@ -51,11 +50,15 @@ watchEffect(() => {
     }
 
     return set;
-  }, new Set<Date>());
+  }, new Set<Date>()),
+);
 
-  const namedDays = datesToDayNames(allDates);
+const namedDays = computed(() => datesToDayNames(allDates.value));
 
-  days.value = [...namedDays.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
+watchEffect(() => {
+  dayIndexByEventId.value = {};
+
+  days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
     const eventsThisDay = events.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
@@ -87,6 +90,11 @@ const filteredTimeSlots = computed(() =>
       localizedTime: timeSlot.localizedTime,
     }))
     .filter((timeSlot) => timeSlot.events.length > 0),
+);
+
+const currentDayStart = computed(() => namedDays.value[currentDayIndex.value]?.dayStart);
+const isDayFiteringPastEvents = computed(
+  () => filterCriteria.hidePastEvents && currentDayStart.value < new Date(),
 );
 
 watchEffect(async () => {
@@ -124,7 +132,10 @@ watch(
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
-    <span class="text-center text-sm italic" v-if="pastEventsHidden">(past events hidden)</span>
+    <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFiteringPastEvents">
+      <SimpleIcon class="text-lg" icon="eye-slash-fill" />
+      <span class="italic">past events hidden</span>
+    </span>
     <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-6">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"
@@ -134,12 +145,8 @@ watch(
         :all-categories="allCategories"
       />
     </div>
-    <div
-      v-else
-      class="text-center italic text-slate-500 dark:text-zinc-400 mt-8 flex flex-col gap-2"
-    >
-      <span class="text-lg">No events this day</span>
-      <span>(or they've been filtered out)</span>
+    <div v-else class="text-center text-lg italic text-slate-500 dark:text-zinc-400 mt-8">
+      No events
     </div>
   </div>
 </template>
