@@ -18,14 +18,19 @@ const { value: events } = useRemoteEvents();
 const filterCriteria = useFilterQuery();
 const searchText = toRef(filterCriteria, "search");
 
-const isFiltered = computed(
+const showFilterBadge = computed(
   () =>
     filterCriteria.categories.length > 0 ||
     filterCriteria.tags.length > 0 ||
     filterCriteria.hidePastEvents,
 );
 
-const isFilteredOrSearch = computed(() => isFiltered.value || filterCriteria.search.length > 0);
+const showFilterDescription = computed(
+  () =>
+    filterCriteria.categories.length > 0 ||
+    filterCriteria.tags.length > 0 ||
+    filterCriteria.search.length > 0,
+);
 
 const eventIds = defineModel<Array<string>>("ids");
 
@@ -134,7 +139,7 @@ const filterMenuId = useId();
         icon="filter"
         label="Filter"
         :active="showFilterMenu"
-        :badge="isFiltered"
+        :badge="showFilterBadge"
         @click="showFilterMenu = !showFilterMenu"
         :button-props="{
           'aria-controls': filterMenuId,
@@ -150,7 +155,7 @@ const filterMenuId = useId();
       :tags="allTags"
     />
     <FilterDescription
-      v-if="isFilteredOrSearch && !showFilterMenu"
+      v-if="showFilterDescription && !showFilterMenu"
       :criteria="filterCriteria"
       :all-categories="allCategories"
     />
