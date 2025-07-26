@@ -35,6 +35,7 @@ const linkProps = computed(() => {
     return {
       href: props.target.url,
       type: props.target.mediaType,
+      target: "_blank",
     };
   } else {
     return {
