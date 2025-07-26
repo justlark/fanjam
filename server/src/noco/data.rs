@@ -126,7 +126,7 @@ struct PeopleResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct TagsResponse {
+struct TagResponse {
     #[serde(rename = "ID")]
     pub id: u32,
     #[serde(rename = "Tag")]
@@ -144,7 +144,7 @@ struct AboutResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct LinksResponse {
+struct LinkResponse {
     #[serde(rename = "Link Name")]
     pub name: String,
     #[serde(rename = "URL")]
@@ -152,7 +152,7 @@ struct LinksResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct FilesResponse {
+struct FileResponse {
     #[serde(rename = "File Name")]
     pub name: String,
     #[serde(rename = "File")]
@@ -165,6 +165,14 @@ struct FileBodyResponse {
     pub media_type: String,
     #[serde(rename = "signedUrl")]
     pub signed_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PageResponse {
+    #[serde(rename = "Page Title")]
+    pub title: String,
+    #[serde(rename = "Page Body")]
+    pub body: String,
 }
 
 #[derive(Debug)]
@@ -198,6 +206,7 @@ pub struct Info {
     pub about: Option<About>,
     pub links: Vec<Link>,
     pub files: Vec<File>,
+    pub pages: Vec<Page>,
 }
 
 #[derive(Debug)]
@@ -207,6 +216,12 @@ pub struct File {
     pub signed_url: String,
 }
 
+#[derive(Debug)]
+pub struct Page {
+    pub title: String,
+    pub body: String,
+}
+
 pub struct TableIds {
     events: TableId,
     people: TableId,
@@ -214,6 +229,7 @@ pub struct TableIds {
     about: TableId,
     links: TableId,
     files: TableId,
+    pages: TableId,
 }
 
 impl TryFrom<Vec<TableInfo>> for TableIds {
@@ -244,6 +260,9 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             files: ids
                 .remove("files")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache"))?,
+            pages: ids
+                .remove("pages")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'pages' table in cache"))?,
         })
     }
 }
@@ -252,7 +271,7 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
 pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
     let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
     let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
-    let tags_records = list_records::<TagsResponse>(client, &table_ids.tags).await?;
+    let tags_records = list_records::<TagResponse>(client, &table_ids.tags).await?;
 
     let people_id_to_name: HashMap<u32, String> = people_records
         .iter()
@@ -300,7 +319,7 @@ async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<Opti
 }
 
 async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Link>> {
-    let link_records = list_records::<LinksResponse>(client, &table_ids.links).await?;
+    let link_records = list_records::<LinkResponse>(client, &table_ids.links).await?;
 
     Ok(link_records
         .into_iter()
@@ -312,7 +331,7 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
 }
 
 async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<File>> {
-    let file_records = list_records::<FilesResponse>(client, &table_ids.files).await?;
+    let file_records = list_records::<FileResponse>(client, &table_ids.files).await?;
 
     let mut results = Vec::new();
 
@@ -335,15 +354,29 @@ async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
     Ok(results)
 }
 
+async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Page>> {
+    let page_records = list_records::<PageResponse>(client, &table_ids.pages).await?;
+
+    Ok(page_records
+        .into_iter()
+        .map(|r| Page {
+            title: r.title,
+            body: r.body,
+        })
+        .collect())
+}
+
 #[worker::send]
 pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
     let about = get_about(client, table_ids).await?;
     let links = get_links(client, table_ids).await?;
     let files = get_files(client, table_ids).await?;
+    let pages = get_pages(client, table_ids).await?;
 
     Ok(Info {
         about,
         links,
         files,
+        pages,
     })
 }

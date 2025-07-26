@@ -100,10 +100,17 @@ pub struct File {
 }
 
 #[derive(Debug, Serialize)]
+pub struct Page {
+    pub title: String,
+    pub body: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct GetInfoResponse {
     pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
     pub links: Vec<Link>,
     pub files: Vec<File>,
+    pub pages: Vec<Page>,
 }
