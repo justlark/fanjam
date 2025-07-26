@@ -1,5 +1,6 @@
 mod common;
 mod n1;
+mod n2;
 
 // Each base schema migration lives in its own module with the name `nX`, where `X` is the
 // incrementing migration number.
@@ -17,8 +18,7 @@ pub enum Outcome {
 pub async fn run(client: &Client, base_id: BaseId, version: Version) -> anyhow::Result<Outcome> {
     match version {
         n1::Migration::INDEX => n1::Migration::new(client).migrate(base_id).await?,
-        // Example:
-        // n2::Migration::INDEX => n2::Migration::new(client).migrate(base_id).await?,
+        n2::Migration::INDEX => n2::Migration::new(client).migrate(base_id).await?,
         _ => return Ok(Outcome::AlreadyUpToDate),
     }
 
