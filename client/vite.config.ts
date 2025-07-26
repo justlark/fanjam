@@ -8,7 +8,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     vueDevTools(),
@@ -16,6 +16,18 @@ export default defineConfig({
     tailwindcss(),
     // This plugin installs a service worker to allow this app to work offline.
     VitePWA({
+      // This is confusing; let me explain.
+      //
+      // By default, the service worker is only installed in `prod`
+      // deployments. We also want to enable it in `test` deployments, for
+      // testing. This option configures which Vite mode the service worker
+      // should be enabled in, and sets it to the current mode (i.e. always
+      // enabled). However, for some reason, it's typed to only accept the
+      // default modes (`"development" | "production"`).
+      //
+      // We need to lie to the type system here, but this is not the same thing
+      // as actually passing the string "production".
+      mode: mode as "production",
       // We generate the manifest dynamically in the app, so don't let the
       // plugin do it.
       manifest: false,
@@ -40,9 +52,10 @@ export default defineConfig({
                   // Preserve original request
                   cacheKeyWillBeUsed: ({ request }) => Promise.resolve(request.url),
                   // Return the response as-is to preserve headers.
-                  cacheWillUpdate: ({ response }) => Promise.resolve(response.status === 200 ? response : null),
-                }
-              ]
+                  cacheWillUpdate: ({ response }) =>
+                    Promise.resolve(response.status === 200 ? response : null),
+                },
+              ],
             },
           },
           // Cache assets fetched from CDNs.
@@ -94,4 +107,4 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-});
+}));
