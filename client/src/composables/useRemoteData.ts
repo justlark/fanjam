@@ -1,6 +1,6 @@
 import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import api, { type Event, type Info } from "@/utils/api";
+import api, { type ApiResult, type Event, type Info } from "@/utils/api";
 
 const fetchCache: Map<string, unknown> = new Map();
 
@@ -21,7 +21,10 @@ function unwrapFetchResult<T>(
   return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
 }
 
-const useRemoteData = <T, S>({
+const hasErrorCode = (result: FetchResult<unknown>, code: number): boolean =>
+  result.status === "error" && result.code === code;
+
+const useRemoteDataInner = <T, S>({
   key,
   instance,
   result,
@@ -32,10 +35,8 @@ const useRemoteData = <T, S>({
   key: string;
   instance: Readonly<Ref<string>>;
   result: Ref<FetchResult<T>>;
-  fetcher: () => Promise<Extract<FetchResult<T>, { status: "success" | "error" }>>;
-  // We want the option to change the shape of the data in memory without
-  // changing the shape of the data in the browser local storage, since the
-  // latter would have to be migrated or deleted.
+  fetcher: () => Promise<ApiResult<T>>;
+  // Some values may need to be serialized manually before being stored.
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
 }): {
@@ -48,7 +49,10 @@ const useRemoteData = <T, S>({
 
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
-    const fetchResult = await fetcher();
+    const fetchApiResult = await fetcher();
+    const fetchResult: FetchResult<T> = fetchApiResult.ok
+      ? { status: "success", value: fetchApiResult.value }
+      : { status: "error", code: fetchApiResult.code };
 
     if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
@@ -125,20 +129,15 @@ interface StoredEvent {
 
 const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
-export const useRemoteEvents = () => {
+const useRemoteEvents = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
 
-  const { reload, clear } = useRemoteData<Array<Event>, Array<StoredEvent>>({
+  const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: envId,
     result: eventsRef,
-    fetcher: async () => {
-      const result = await api.getEvents(envId.value);
-      return result.ok
-        ? { status: "success", value: result.value }
-        : { status: "error", code: result.code };
-    },
+    fetcher: () => api.getEvents(envId.value),
     toCache: (data) =>
       data.map((event) => ({
         id: event.id,
@@ -169,11 +168,9 @@ export const useRemoteEvents = () => {
 };
 
 interface StoredInfo {
-  about?: {
-    name: string;
-    description?: string;
-    website_url?: string;
-  };
+  name?: string;
+  description?: string;
+  website_url?: string;
   links: Array<{
     name: string;
     url: string;
@@ -182,23 +179,54 @@ interface StoredInfo {
 
 const infoRef = ref<FetchResult<Info>>({ status: "pending" });
 
-export const useRemoteInfo = () => {
+const useRemoteInfo = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
 
-  const { reload, clear } = useRemoteData<Info, StoredInfo>({
+  const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: envId,
     result: infoRef,
-    fetcher: async () => {
-      const result = await api.getInfo(envId.value);
-      return result.ok
-        ? { status: "success", value: result.value }
-        : { status: "error", code: result.code };
-    },
+    fetcher: () => api.getInfo(envId.value),
     toCache: (data) => data,
     fromCache: (data) => data,
   });
 
   return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
 };
+
+const useRemoteData = () => {
+  const {
+    reload: reloadEvents,
+    clear: clearEvents,
+    result: eventsResult,
+    value: eventsValue,
+  } = useRemoteEvents();
+
+  const {
+    reload: reloadInfo,
+    clear: clearInfo,
+    result: infoResult,
+    value: infoValue,
+  } = useRemoteInfo();
+
+  const reload = async () => {
+    await Promise.all([reloadEvents(), reloadInfo()]);
+  };
+
+  const clear = () => {
+    clearEvents();
+    clearInfo();
+  };
+
+  const isPending = computed(
+    () => infoResult.value.status === "pending" || eventsResult.value.status === "pending",
+  );
+  const isNotFound = computed(
+    () => hasErrorCode(infoResult.value, 404) || hasErrorCode(eventsResult.value, 404),
+  );
+
+  return { reload, clear, isPending, isNotFound, data: { events: eventsValue, info: infoValue } };
+};
+
+export default useRemoteData;

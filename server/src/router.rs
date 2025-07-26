@@ -11,9 +11,9 @@ use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
-        About, Event, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, Link, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
+        Event, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse, GetLinkResponse,
+        Link, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
+        PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cors::cors_layer,
@@ -296,11 +296,15 @@ async fn get_info(
     let info = store.get_info().await?;
 
     Ok(Json(GetInfoResponse {
-        about: info.about.map(|about| About {
-            name: about.name,
-            description: about.description,
-            website_url: about.website_url,
-        }),
+        name: info.about.as_ref().map(|about| about.name.clone()),
+        description: info
+            .about
+            .as_ref()
+            .and_then(|about| about.description.clone()),
+        website_url: info
+            .about
+            .as_ref()
+            .and_then(|about| about.website_url.clone()),
         links: info
             .links
             .into_iter()

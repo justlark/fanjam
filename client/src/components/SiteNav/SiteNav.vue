@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
-import { useRemoteInfo, useRemoteEvents } from "@/composables/useRemoteData";
+import useRemoteData from "@/composables/useRemoteData";
 import usePageMeta from "@/composables/usePageMeta";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
@@ -22,16 +22,14 @@ const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
 
-const { reload: reloadInfo, result: infoResult, value: info } = useRemoteInfo();
-const { reload: reloadEvents, result: eventsResult } = useRemoteEvents();
+const {
+  data: { info },
+  reload,
+  isPending,
+  isNotFound,
+} = useRemoteData();
 
-const conName = computed(() => info.value?.about?.name ?? "FanJam");
-const isPending = computed(
-  () => infoResult.value.status === "pending" || eventsResult.value.status === "pending",
-);
-const isNotFound = computed(
-  () => infoResult.value.status === "error" && infoResult.value.code === 404,
-);
+const conName = computed(() => info.value?.name ?? "FanJam");
 
 const refresh = async () => {
   toast.add({
@@ -41,7 +39,7 @@ const refresh = async () => {
     life: 1500,
   });
 
-  await Promise.all([reloadInfo(), reloadEvents()]);
+  await reload();
 
   toast.add({ severity: "success", summary: "Done", detail: "You're all up to date!", life: 1500 });
 };

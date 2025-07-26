@@ -11,11 +11,9 @@ interface RawEvent {
 }
 
 export interface RawInfo {
-  about?: {
-    name: string;
-    description: string | null;
-    website_url: string | null;
-  };
+  name: string | null;
+  description: string | null;
+  website_url: string | null;
   links: Array<{
     name: string;
     url: string;
@@ -34,19 +32,15 @@ export interface Event {
   tags: Array<string>;
 }
 
-export interface About {
-  name: string;
-  description?: string;
-  websiteUrl?: string;
-}
-
 export interface Link {
   name: string;
   url: string;
 }
 
 export interface Info {
-  about?: About;
+  name?: string;
+  description?: string;
+  websiteUrl?: string;
   links: Array<Link>;
 }
 
@@ -98,13 +92,9 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
   const rawInfo: RawInfo = await response.json();
 
   const info: Info = {
-    about: rawInfo.about
-      ? {
-        name: rawInfo.about.name,
-        description: rawInfo.about.description ?? undefined,
-        websiteUrl: rawInfo.about.website_url ?? undefined,
-      }
-      : undefined,
+    name: rawInfo.name ?? undefined,
+    description: rawInfo.description ?? undefined,
+    websiteUrl: rawInfo.website_url ?? undefined,
     links: rawInfo.links.map((link) => ({
       name: link.name,
       url: link.url,

@@ -110,10 +110,6 @@ export const groupByTime = <T>(
 
   for (const value of sortedValues) {
     const time = getTime(value);
-    if (!time) {
-      continue;
-    }
-
     const timeString = localizeTime(time);
 
     if (!grouped.has(timeString)) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toRef, ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
-import { useRemoteEvents } from "@/composables/useRemoteData";
+import useRemoteData from "@/composables/useRemoteData";
 import useFilterQuery from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
@@ -13,7 +13,9 @@ import InputIcon from "primevue/inputicon";
 import IconButton from "@/components/system/IconButton.vue";
 import FilterMenu from "./FilterMenu.vue";
 
-const { value: events } = useRemoteEvents();
+const {
+  data: { events },
+} = useRemoteData();
 
 const filterCriteria = useFilterQuery();
 const searchText = toRef(filterCriteria, "search");

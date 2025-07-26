@@ -1,16 +1,18 @@
 import { computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import { useRemoteInfo } from "@/composables/useRemoteData";
+import useRemoteData from "@/composables/useRemoteData";
 
 export const usePageMeta = () => {
-  const { value: info } = useRemoteInfo();
+  const {
+    data: { info },
+  } = useRemoteData();
 
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
 
   const webAppManifest = computed(() => ({
-    name: info.value?.about?.name ?? "FanJam",
-    description: info.value?.about?.description ?? undefined,
+    name: info.value?.name ?? "FanJam",
+    description: info.value?.description ?? undefined,
     scope: `${window.location.origin}/app/${envId.value}/`,
     start_url: `${window.location.origin}/app/${envId.value}/`,
     display: "standalone",
@@ -65,14 +67,14 @@ export const usePageMeta = () => {
 
   // Dynamically set the page title and description.
   watchEffect(() => {
-    if (info.value?.about?.name) {
-      document.title = info.value.about.name;
+    if (info.value?.name) {
+      document.title = info.value.name;
     }
 
-    if (info.value?.about?.description) {
+    if (info.value?.description) {
       document
         .querySelector('meta[name="description"]')
-        ?.setAttribute("content", info.value.about.description);
+        ?.setAttribute("content", info.value.description);
     }
   });
 };
