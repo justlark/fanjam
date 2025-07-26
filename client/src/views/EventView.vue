@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import SiteNav from "@/components/SiteNav";
@@ -28,13 +28,14 @@ const allCategories = computed(() =>
 
 const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
 
-// If the event does not (or no longer) exists, redirect to the schedule view.
-if (!thisEvent.value) {
-  router.replace({
-    name: "schedule",
-    params: { dayIndex: currentDayIndex.value },
-  });
-}
+watchEffect(async () => {
+  // If the event does not (or no longer) exists, redirect to the schedule view.
+  if (!thisEvent.value) {
+    await router.replace({
+      name: "schedule",
+    });
+  }
+});
 </script>
 
 <template>
