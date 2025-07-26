@@ -58,12 +58,14 @@ pub struct PostBackupRequest {
 pub enum PostRestoreBackupKind {
     Deletion,
     Deployment,
+    Migration,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct PostRestoreBackupRequest {
     #[serde(rename = "type")]
     pub kind: PostRestoreBackupKind,
+    pub migration: Option<noco::Version>,
 }
 
 #[derive(Debug, Serialize)]

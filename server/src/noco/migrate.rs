@@ -18,7 +18,7 @@ pub const NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME: BranchName =
 pub const NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME: BranchName =
     BranchName::new("noco-pre-manual-restore");
 
-fn noco_migration_branch_name(version: &Version) -> BranchName {
+pub fn noco_migration_branch_name(version: &Version) -> BranchName {
     format!("noco-migration-{version}").into()
 }
 

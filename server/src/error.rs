@@ -18,6 +18,9 @@ pub enum Error {
     #[error("A NocoDB base already exists for this environment.")]
     BaseAlreadyExists,
 
+    #[error("You must specify the migration to roll back to.")]
+    MissingMigrationVersion,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -29,6 +32,7 @@ impl Error {
             Error::NoEnvId => StatusCode::NOT_FOUND,
             Error::NoBaseId => StatusCode::NOT_FOUND,
             Error::BaseAlreadyExists => StatusCode::CONFLICT,
+            Error::MissingMigrationVersion => StatusCode::BAD_REQUEST,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

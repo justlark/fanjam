@@ -10,5 +10,6 @@ pub use data::{Event, Info, TableIds, TableInfo, get_events, get_info, list_tabl
 pub use migrate::{
     ExistingMigrationState, MigrationState, Migrator, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
+    noco_migration_branch_name,
 };
 pub use migrations::{BaseId, Version};
