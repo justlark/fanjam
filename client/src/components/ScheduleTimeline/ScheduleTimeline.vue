@@ -36,9 +36,7 @@ const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 
-const currentDayTimeSlots = computed(() =>
-  days.value.length === 0 ? [] : days.value[currentDayIndex.value].timeSlots,
-);
+const currentDayTimeSlots = computed(() => days.value[currentDayIndex.value]?.timeSlots ?? []);
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
@@ -105,7 +103,9 @@ watchEffect(async () => {
   }
 
   await router.push({
-    params: { dayIndex: currentDayIndex.value },
+    name: "schedule",
+    // Don't show the page number on the first page.
+    params: currentDayIndex.value !== 0 ? { dayIndex: currentDayIndex.value } : undefined,
     query: toFilterQueryParams(filterCriteria),
   });
 });
@@ -117,9 +117,10 @@ watch(
   [toRef(route, "path"), dayIndexByEventId],
   () => {
     if (route.name === "schedule") {
-      currentDayIndex.value = route.params.dayIndex
-        ? parseInt(route.params.dayIndex as string, 10)
-        : 0;
+      // Handle the page number in the path being out of range or not a number.
+      const parsed = route.params.dayIndex ? parseInt(route.params.dayIndex as string, 10) : 0;
+      currentDayIndex.value =
+        isNaN(parsed) || parsed < 0 || parsed >= days.value.length ? 0 : parsed;
     } else if (route.name === "event") {
       currentDayIndex.value = route.params.eventId
         ? (dayIndexByEventId.value[route.params.eventId as string] ?? 0)
