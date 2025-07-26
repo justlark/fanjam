@@ -70,12 +70,7 @@ const useSectionHeadingId = useId();
         <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" display="active" />
       </div>
       <Divider />
-      <article
-        id="event-description"
-        v-if="descriptionHtml"
-        v-html="descriptionHtml"
-        class="my-4"
-      ></article>
+      <article id="document" v-if="descriptionHtml" v-html="descriptionHtml" class="my-4"></article>
       <div v-else class="text-center text-lg italic text-slate-500 dark:text-zinc-400 mt-8">
         <span>No description</span>
       </div>

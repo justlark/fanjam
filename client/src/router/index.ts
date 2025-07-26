@@ -30,6 +30,11 @@ const router = createRouter({
       component: () => import("../views/InfoView.vue"),
     },
     {
+      path: "/app/:envId/pages/:pageId",
+      name: "page",
+      component: () => import("../views/PageView.vue"),
+    },
+    {
       path: "/app/:envId/:catchAll(.*)",
       redirect: { name: "app" },
     },

@@ -23,6 +23,11 @@ export interface RawInfo {
     media_type: string;
     signed_url: string;
   }>;
+  pages: Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
 }
 
 export interface Event {
@@ -48,23 +53,30 @@ export interface File {
   signedUrl: string;
 }
 
+export interface Page {
+  id: string;
+  title: string;
+  body: string;
+}
+
 export interface Info {
   name?: string;
   description?: string;
   websiteUrl?: string;
   links: Array<Link>;
   files: Array<File>;
+  pages: Array<Page>;
 }
 
 export type ApiResult<T> =
   | {
-    ok: true;
-    value: T;
-  }
+      ok: true;
+      value: T;
+    }
   | {
-    ok: false;
-    code: number;
-  };
+      ok: false;
+      code: number;
+    };
 
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
@@ -115,6 +127,11 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
       name: file.name,
       mediaType: file.media_type,
       signedUrl: file.signed_url,
+    })),
+    pages: rawInfo.pages.map((page) => ({
+      id: page.id,
+      title: page.title,
+      body: page.body,
     })),
   };
 

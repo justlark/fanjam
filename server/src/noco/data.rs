@@ -169,6 +169,8 @@ struct FileBodyResponse {
 
 #[derive(Debug, Deserialize)]
 struct PageResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
     #[serde(rename = "Page Title")]
     pub title: String,
     #[serde(rename = "Page Body")]
@@ -218,6 +220,7 @@ pub struct File {
 
 #[derive(Debug)]
 pub struct Page {
+    pub id: String,
     pub title: String,
     pub body: String,
 }
@@ -360,6 +363,7 @@ async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
     Ok(page_records
         .into_iter()
         .map(|r| Page {
+            id: r.id.to_string(),
             title: r.title,
             body: r.body,
         })

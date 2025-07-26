@@ -326,6 +326,7 @@ async fn get_info(
             .pages
             .into_iter()
             .map(|page| Page {
+                id: page.id,
                 title: page.title,
                 body: page.body,
             })

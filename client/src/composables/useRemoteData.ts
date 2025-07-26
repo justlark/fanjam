@@ -180,6 +180,11 @@ interface StoredInfo {
     media_type: string;
     signed_url: string;
   }>;
+  pages: Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
 }
 
 const infoRef = ref<FetchResult<Info>>({ status: "pending" });
@@ -203,6 +208,7 @@ const useRemoteInfo = () => {
         media_type: file.mediaType,
         signed_url: file.signedUrl,
       })),
+      pages: data.pages.map((page) => ({ id: page.id, title: page.title, body: page.body })),
     }),
     fromCache: (data) => ({
       name: data.name,
@@ -214,6 +220,7 @@ const useRemoteInfo = () => {
         mediaType: file.media_type,
         signedUrl: file.signed_url,
       })),
+      pages: data.pages.map((page) => ({ id: page.id, title: page.title, body: page.body })),
     }),
   });
 

@@ -101,6 +101,7 @@ pub struct File {
 
 #[derive(Debug, Serialize)]
 pub struct Page {
+    pub id: String,
     pub title: String,
     pub body: String,
 }
