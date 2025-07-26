@@ -33,6 +33,10 @@ const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 
+const currentDayTimeSlots = computed(() =>
+  days.value.length === 0 ? [] : days.value[currentDayIndex.value].timeSlots,
+);
+
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
 
@@ -72,19 +76,17 @@ watchEffect(() => {
   });
 });
 
-const eventIdAllowSet = computed(() =>
+const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
 const filteredTimeSlots = computed(() =>
-  days.value.length === 0
-    ? []
-    : days.value[currentDayIndex.value].timeSlots
-        .map((timeSlot) => ({
-          events: timeSlot.events.filter((event) => eventIdAllowSet.value?.has(event.id) ?? true),
-          localizedTime: timeSlot.localizedTime,
-        }))
-        .filter((timeSlot) => timeSlot.events.length > 0),
+  currentDayTimeSlots.value
+    .map((timeSlot) => ({
+      events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+      localizedTime: timeSlot.localizedTime,
+    }))
+    .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
 watchEffect(async () => {
@@ -122,6 +124,7 @@ watch(
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
+    <span class="text-center text-sm italic" v-if="pastEventsHidden">(past events hidden)</span>
     <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-6">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"

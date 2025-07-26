@@ -75,10 +75,13 @@ watchEffect(() => {
   }
 });
 
+const filterTags = computed(() => new Set(filterCriteria.tags));
+const filterCategories = computed(() => new Set(filterCriteria.categories));
+
 watchEffect(() => {
   let filteredEvents = [...events.value];
 
-  if ((searchText.value?.length ?? 0) > 0) {
+  if (searchText.value.length > 0) {
     const results = searchIndex.search(searchText.value);
 
     filteredEvents = results
@@ -89,13 +92,13 @@ watchEffect(() => {
 
   if (filterCriteria.categories.length > 0) {
     filteredEvents = filteredEvents.filter(
-      (event) => event.category && filterCriteria.categories.includes(event.category),
+      (event) => event.category && filterCategories.value.has(event.category),
     );
   }
 
   if (filterCriteria.tags.length > 0) {
     filteredEvents = filteredEvents.filter((event) =>
-      event.tags.some((tag) => filterCriteria.tags.includes(tag)),
+      event.tags.some((tag) => filterTags.value.has(tag)),
     );
   }
 
