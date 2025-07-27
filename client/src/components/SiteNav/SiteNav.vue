@@ -9,7 +9,6 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "@/components/system/IconButton.vue";
 import AppUpdater from "@/components/SiteNav/AppUpdater.vue";
 import Toast from "primevue/toast";
-import ProgressSpinner from "primevue/progressspinner";
 import { useToast } from "primevue/usetoast";
 
 usePageMeta();
@@ -25,7 +24,6 @@ const toggleMenuDrawer = () => {
 const {
   data: { info },
   reload,
-  isPending,
   isNotFound,
 } = useRemoteData();
 
@@ -56,10 +54,6 @@ const headerHeadingId = useId();
       />
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
-    </div>
-    <div v-else-if="isPending" class="flex flex-col justify-center items-center gap-4 grow">
-      <ProgressSpinner />
-      <div class="text-xl text-muted-color">Loading…</div>
     </div>
     <div v-else class="flex flex-col grow">
       <header :aria-labelledby="headerHeadingId" class="flex flex-col">

@@ -243,6 +243,8 @@ const useRemoteInfo = () => {
   return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
 };
 
+// We fetch *all* data from the server eagerly on first page load and when
+// `reload()` is called. This is primarily so the app works offline.
 const useRemoteData = () => {
   const {
     reload: reloadEvents,
@@ -267,14 +269,11 @@ const useRemoteData = () => {
     clearInfo();
   };
 
-  const isPending = computed(
-    () => infoResult.value.status === "pending" || eventsResult.value.status === "pending",
-  );
   const isNotFound = computed(
     () => hasErrorCode(infoResult.value, 404) || hasErrorCode(eventsResult.value, 404),
   );
 
-  return { reload, clear, isPending, isNotFound, data: { events: eventsValue, info: infoValue } };
+  return { reload, clear, isNotFound, data: { events: eventsValue, info: infoValue } };
 };
 
 export default useRemoteData;
