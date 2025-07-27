@@ -8,26 +8,38 @@ const {
   data: { info },
 } = useRemoteData();
 
-const websiteUrlDomain = computed(() =>
-  info.value?.websiteUrl ? new URL(info.value.websiteUrl).hostname : undefined,
-);
+const websiteUrl = computed(() => {
+  try {
+    if (!info.value?.websiteUrl) return undefined;
+
+    if (
+      !info.value.websiteUrl.startsWith("http://") &&
+      !info.value.websiteUrl.startsWith("https://")
+    ) {
+      return new URL(`https://${info.value.websiteUrl}`);
+    } else {
+      return new URL(info.value.websiteUrl);
+    }
+  } catch {
+    return undefined;
+  }
+});
+
+const conName = computed(() => info.value?.name || "FanJam");
 </script>
 
 <template>
   <div class="mt-8 text-center flex flex-col gap-10 px-6">
-    <div
-      v-if="info?.name || info?.websiteUrl || info?.description"
-      class="flex flex-col items-center gap-4"
-    >
-      <h1 class="text-3xl">{{ info.name }}</h1>
-      <span v-if="info.websiteUrl && websiteUrlDomain" class="flex gap-2 text-lg">
+    <div class="flex flex-col items-center gap-4">
+      <h1 class="text-3xl">{{ conName }}</h1>
+      <span v-if="websiteUrl" class="flex gap-2 text-lg">
         <SimpleIcon icon="box-arrow-up-right" label="External Link" />
         <a
-          :href="info.websiteUrl"
+          :href="websiteUrl"
           target="_blank"
           class="text-primary underline underline-offset-2 hover:decoration-2"
         >
-          {{ websiteUrlDomain }}
+          {{ websiteUrl.hostname }}
         </a>
       </span>
       <p class="max-w-200 text-justify" v-if="info.description">{{ info.description }}</p>
