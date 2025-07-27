@@ -44,7 +44,6 @@ const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
 const isStarred = ref(starredEventsSet.value.has(event.value.id));
 
 watchEffect(() => {
-  console.log("WATCH EFFECT SET EVENTS FROM SET");
   starredEvents.value = Array.from(starredEventsSet.value);
 });
 
