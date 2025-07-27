@@ -62,7 +62,7 @@ const sectionHeadingId = useId();
 </script>
 
 <template>
-  <section :aria-labelledby="sectionHeadingId">
+  <section class="flex flex-col" :aria-labelledby="sectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
       <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
@@ -101,7 +101,7 @@ const sectionHeadingId = useId();
         <span>No description</span>
       </div>
     </div>
-    <div class="flex mx-6 sticky bottom-6 justify-end">
+    <div class="flex grow mx-6 sticky bottom-6 items-end justify-end">
       <IconButton
         label="Star"
         :icon="isStarred ? 'star-fill' : 'star'"
