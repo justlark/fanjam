@@ -89,7 +89,16 @@ const useRemoteDataInner = <T, S>({
 
   watchEffect(async () => {
     if (fetchCache.has(cacheKey.value)) {
-      result.value = { status: "success", value: fromCache(fetchCache.get(cacheKey.value) as S) };
+      try {
+        result.value = { status: "success", value: fromCache(fetchCache.get(cacheKey.value) as S) };
+      } catch {
+        // This can happen if the shape of the cached data has changed and we
+        // need to clear it and re-fetch from the server.
+        //
+        // If we don't due this, the app may hang on the loading page forever.
+        await reload();
+      }
+
       return;
     } else {
       const storedInstance = localStorage.getItem(instanceStorageKey.value);
@@ -101,7 +110,14 @@ const useRemoteDataInner = <T, S>({
       const storedValue = localStorage.getItem(valueStorageKey.value);
 
       if (storedValue) {
-        const value = fromCache(JSON.parse(storedValue));
+        let value;
+
+        try {
+          value = fromCache(JSON.parse(storedValue));
+        } catch {
+          await reload();
+          return;
+        }
 
         result.value = { status: "success", value };
 
