@@ -38,15 +38,15 @@ const back = async () => {
   });
 };
 
-const useSectionHeadingId = useId();
+const sectionHeadingId = useId();
 </script>
 
 <template>
-  <section :aria-labelledby="useSectionHeadingId">
+  <section :aria-labelledby="sectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
       <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
-      <h2 :id="useSectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
+      <h2 :id="sectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">
       <dl class="flex flex-col items-start gap-2">
@@ -70,7 +70,13 @@ const useSectionHeadingId = useId();
         <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" display="active" />
       </div>
       <Divider />
-      <article id="document" v-if="descriptionHtml" v-html="descriptionHtml" class="my-4"></article>
+      <article
+        id="document"
+        v-if="descriptionHtml"
+        v-html="descriptionHtml"
+        :aria-labelledby="sectionHeadingId"
+        class="my-4"
+      ></article>
       <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
         <span>No description</span>
       </div>

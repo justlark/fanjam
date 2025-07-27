@@ -3,7 +3,7 @@ import MainMenuItem from "./MainMenuItem.vue";
 </script>
 
 <template>
-  <nav class="flex flex-col gap-3">
+  <nav class="flex flex-col gap-3" aria-label="Menu">
     <MainMenuItem
       icon="bi bi-calendar-event"
       label="Schedule"

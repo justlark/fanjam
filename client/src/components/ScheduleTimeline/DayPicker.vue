@@ -26,14 +26,14 @@ const selectPrevDay = () => {
   <nav class="flex items-center justify-center gap-4">
     <IconButton
       icon="chevron-left"
-      label="Previous Day"
+      label="Previous"
       :disabled="currentDayIndex === 0"
       @click="selectPrevDay"
     />
     <span class="text-xl">{{ props.dayNames[currentDayIndex] }}</span>
     <IconButton
       icon="chevron-right"
-      label="Next Day"
+      label="Next"
       :disabled="currentDayIndex === props.dayNames.length - 1"
       @click="selectNextDay"
     />

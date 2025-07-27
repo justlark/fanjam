@@ -41,13 +41,18 @@ const isCategorySelected = (category: string) => selectedCategories.value.has(ca
 const isTagSelected = (tag: string) => selectedTags.value.has(tag);
 
 const hidePastEventsToggleId = useId();
+const hidePastEventsLabelId = useId();
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
     <span class="flex items-center gap-4">
-      <ToggleSwitch :id="hidePastEventsToggleId" v-model="criteria.hidePastEvents" />
-      <label :for="hidePastEventsToggleId">Hide past events</label>
+      <ToggleSwitch
+        :id="hidePastEventsToggleId"
+        :aria-labelledby="hidePastEventsLabelId"
+        v-model="criteria.hidePastEvents"
+      />
+      <label :id="hidePastEventsLabelId" :for="hidePastEventsToggleId">Hide past events</label>
     </span>
     <div v-if="hasCategories" class="flex flex-col md:flex-row gap-x-12 gap-y-6">
       <div class="flex flex-col gap-2">
