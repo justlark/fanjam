@@ -235,6 +235,11 @@ pub async fn put_cached_events(
 ) -> anyhow::Result<()> {
     let ttl = config::noco_cache_ttl();
 
+    if ttl.is_zero() {
+        // If the TTL is zero, we have nothing to cache and can just return silently.
+        return Ok(());
+    }
+
     kv.put(&events_cache_key(env_name), events)
         .map_err(wrap_kv_err)?
         .expiration_ttl(ttl.as_secs())
