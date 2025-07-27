@@ -70,14 +70,21 @@ export interface Info {
 
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-    }
+    ok: true;
+    value: T;
+  }
   | {
-      ok: false;
-      code: number;
-    };
+    ok: false;
+    code: number;
+  };
 
+// TODO: Implement pagination instead of fetching all events at once. This
+// should be fairly effective, since the user will only see the first day of
+// the schedule on first page load.
+//
+// It's important that we still fetch all events eagerly, rather than lazily
+// paginating as the user tabs through the schedule. This is necessary so the
+// app works offline.
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
