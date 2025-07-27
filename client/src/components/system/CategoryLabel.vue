@@ -47,17 +47,17 @@ const categoryStyles = computed(() => [
 
 const standaloneStyles = computed(() => [
   `!${textSize.value}`,
-  "!text-slate-600",
-  "dark:!text-zinc-300",
+  "!text-surface-600",
+  "dark:!text-surface-300",
   ...(props.display == "active" || props.display == "hover"
-    ? ["!bg-slate-200", "dark:!bg-zinc-700"]
+    ? ["!bg-surface-200", "dark:!bg-surface-700"]
     : []),
   ...(props.display == "hover" || props.display == "inactive"
-    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700"]
+    ? ["outline", "!outline-surface-400", "dark:!outline-surface-700"]
     : []),
   ...(props.display == "hover" ? ["not-hover:!bg-transparent"] : []),
   ...(props.display == "inactive"
-    ? ["outline", "!outline-slate-400", "dark:!outline-zinc-700", "!bg-transparent"]
+    ? ["outline", "!outline-surface-400", "dark:!outline-surface-700", "!bg-transparent"]
     : []),
 ]);
 </script>

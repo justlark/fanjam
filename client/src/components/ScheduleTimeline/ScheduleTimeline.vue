@@ -148,7 +148,7 @@ watch(
         :all-categories="allCategories"
       />
     </div>
-    <div v-else class="text-center text-lg italic text-slate-500 dark:text-zinc-400 mt-8">
+    <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
       No events
     </div>
   </div>
