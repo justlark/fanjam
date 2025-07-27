@@ -2,10 +2,9 @@ use secrecy::ExposeSecret;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
-    api::{GetEventsResponse, GetInfoResponse},
     config,
     env::{EnvId, EnvName},
-    noco::{self, ApiToken, BaseId, TableInfo},
+    noco::{self, ApiToken, BaseId, Event, Info, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -232,7 +231,7 @@ pub async fn delete_migration_version(kv: &KvStore, env_name: &EnvName) -> anyho
 pub async fn put_cached_events(
     kv: &KvStore,
     env_name: &EnvName,
-    events: &GetEventsResponse,
+    events: &[Event],
 ) -> anyhow::Result<()> {
     let ttl = config::noco_cache_ttl();
 
@@ -250,20 +249,15 @@ pub async fn put_cached_events(
 pub async fn get_cached_events(
     kv: &KvStore,
     env_name: &EnvName,
-) -> anyhow::Result<Option<GetEventsResponse>> {
-    Ok(kv
-        .get(&events_cache_key(env_name))
-        .json::<GetEventsResponse>()
+) -> anyhow::Result<Option<Vec<Event>>> {
+    kv.get(&events_cache_key(env_name))
+        .json::<Vec<Event>>()
         .await
-        .map_err(wrap_kv_err)?)
+        .map_err(wrap_kv_err)
 }
 
 #[worker::send]
-pub async fn put_cached_info(
-    kv: &KvStore,
-    env_name: &EnvName,
-    events: &GetInfoResponse,
-) -> anyhow::Result<()> {
+pub async fn put_cached_info(kv: &KvStore, env_name: &EnvName, info: &Info) -> anyhow::Result<()> {
     let ttl = config::noco_cache_ttl();
 
     if ttl.is_zero() {
@@ -271,7 +265,7 @@ pub async fn put_cached_info(
         return Ok(());
     }
 
-    kv.put(&info_cache_key(env_name), events)
+    kv.put(&info_cache_key(env_name), info)
         .map_err(wrap_kv_err)?
         .expiration_ttl(ttl.as_secs())
         .execute()
@@ -282,13 +276,9 @@ pub async fn put_cached_info(
 }
 
 #[worker::send]
-pub async fn get_cached_info(
-    kv: &KvStore,
-    env_name: &EnvName,
-) -> anyhow::Result<Option<GetInfoResponse>> {
-    Ok(kv
-        .get(&info_cache_key(env_name))
-        .json::<GetInfoResponse>()
+pub async fn get_cached_info(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<Info>> {
+    kv.get(&info_cache_key(env_name))
+        .json::<Info>()
         .await
-        .map_err(wrap_kv_err)?)
+        .map_err(wrap_kv_err)
 }

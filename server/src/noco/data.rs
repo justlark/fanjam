@@ -177,7 +177,7 @@ struct PageResponse {
     pub body: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -190,20 +190,20 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct About {
     pub name: String,
     pub description: Option<String>,
     pub website_url: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Link {
     pub name: String,
     pub url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Info {
     pub about: Option<About>,
     pub links: Vec<Link>,
@@ -211,14 +211,14 @@ pub struct Info {
     pub pages: Vec<Page>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct File {
     pub name: String,
     pub media_type: String,
     pub signed_url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Page {
     pub id: String,
     pub title: String,

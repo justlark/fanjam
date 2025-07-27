@@ -9,8 +9,8 @@ use crate::noco::{
 use crate::{kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use std::fmt;
-use worker::console_log;
 use worker::kv::KvStore;
+use worker::{console_log, console_warn};
 
 pub struct Store {
     noco_client: NocoClient,
@@ -96,19 +96,51 @@ impl Store {
     }
 
     pub async fn get_info(&self) -> Result<noco::Info, Error> {
+        match kv::get_cached_info(&self.kv, &self.env_name).await {
+            Ok(Some(info)) => return Ok(info),
+            Ok(None) => {
+                console_log!("No cached info found, fetching from NocoDB.");
+            }
+            Err(e) => {
+                console_warn!("Failed to get info from cache: {}", e);
+            }
+        }
+
         let table_ids = self.get_table_ids().await?;
 
-        noco::get_info(&self.noco_client, &table_ids)
+        let info = noco::get_info(&self.noco_client, &table_ids)
             .await
-            .map_err(Error::Internal)
+            .map_err(Error::Internal)?;
+
+        if let Err(e) = kv::put_cached_info(&self.kv, &self.env_name, &info).await {
+            console_warn!("Failed putting info in cache: {}", e);
+        }
+
+        Ok(info)
     }
 
     pub async fn get_events(&self) -> Result<Vec<noco::Event>, Error> {
+        match kv::get_cached_events(&self.kv, &self.env_name).await {
+            Ok(Some(events)) => return Ok(events),
+            Ok(None) => {
+                console_log!("No cached events found, fetching from NocoDB.");
+            }
+            Err(e) => {
+                console_warn!("Failed to get events from cache: {}", e);
+            }
+        }
+
         let table_ids = self.get_table_ids().await?;
 
-        noco::get_events(&self.noco_client, &table_ids)
+        let events = noco::get_events(&self.noco_client, &table_ids)
             .await
-            .map_err(Error::Internal)
+            .map_err(Error::Internal)?;
+
+        if let Err(e) = kv::put_cached_events(&self.kv, &self.env_name, &events).await {
+            console_warn!("Failed putting events in cache: {}", e);
+        }
+
+        Ok(events)
     }
 
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
