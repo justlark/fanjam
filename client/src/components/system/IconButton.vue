@@ -45,22 +45,24 @@ const variant = computed(() => {
 
 <template>
   <div>
-    <Button
-      :icon="`bi bi-${props.icon}`"
-      :pt:icon="`!${sizeClass}`"
-      :variant="variant"
-      :aria-pressed="props.active ?? false"
-      size="large"
-      :aria-label="props.label"
-      rounded
-      :disabled="props.disabled ?? false"
-      @click="$emit('click')"
-      v-bind="props.buttonProps"
-    />
-    <span
-      v-if="props.badge && !props.active"
-      class="absolute -top-2 right-3 border-4 border-red-400 dark:border-red-300 current rounded-full outline-3 outline-surface-50 dark:outline-surface-900"
-    >
+    <span class="relative">
+      <Button
+        :icon="`bi bi-${props.icon}`"
+        :pt:icon="`!${sizeClass}`"
+        :variant="variant"
+        :aria-pressed="props.active ?? false"
+        size="large"
+        :aria-label="props.label"
+        rounded
+        :disabled="props.disabled ?? false"
+        @click="$emit('click')"
+        v-bind="props.buttonProps"
+      />
+      <span
+        v-if="props.badge && !props.active"
+        class="absolute -top-2 right-3 border-4 border-red-400 dark:border-red-300 current rounded-full outline-3 outline-surface-50 dark:outline-surface-900"
+      >
+      </span>
     </span>
   </div>
 </template>
