@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, useId } from "vue";
+import { computed, watchEffect, ref, useId } from "vue";
 import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import * as commonmark from "commonmark";
@@ -12,6 +13,7 @@ import Divider from "primevue/divider";
 
 const router = useRouter();
 const filterCriteria = useFilterQuery();
+const starredEvents = useStarredEvents();
 
 const props = defineProps<{
   event: Event;
@@ -38,7 +40,23 @@ const back = async () => {
   });
 };
 
-const isStarred = ref(false);
+const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
+const isStarred = ref(starredEventsSet.value.has(event.value.id));
+
+watchEffect(() => {
+  console.log("WATCH EFFECT SET EVENTS FROM SET");
+  starredEvents.value = Array.from(starredEventsSet.value);
+});
+
+watchEffect(() => {
+  if (starredEvents.value === undefined) return;
+
+  if (isStarred.value) {
+    starredEventsSet.value.add(event.value.id);
+  } else {
+    starredEventsSet.value.delete(event.value.id);
+  }
+});
 
 const sectionHeadingId = useId();
 </script>
@@ -85,7 +103,7 @@ const sectionHeadingId = useId();
     </div>
     <div class="flex mx-6 sticky bottom-6 justify-end">
       <IconButton
-        :label="Star"
+        label="Star"
         :icon="isStarred ? 'star-fill' : 'star'"
         :active="isStarred"
         inactive-variant="filled"

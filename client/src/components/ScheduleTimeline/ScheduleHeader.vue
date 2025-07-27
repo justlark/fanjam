@@ -2,6 +2,7 @@
 import { toRef, ref, computed, watchEffect, useId } from "vue";
 import flexsearch from "flexsearch";
 import useRemoteData from "@/composables/useRemoteData";
+import useStarredEvents from "@/composables/useStarredEvents";
 import useFilterQuery from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { isNotNullish } from "@/utils/types";
@@ -18,6 +19,7 @@ const {
 } = useRemoteData();
 
 const filterCriteria = useFilterQuery();
+const starredEvents = useStarredEvents();
 const searchText = toRef(filterCriteria, "search");
 
 const showFilterBadge = computed(
@@ -29,6 +31,7 @@ const showFilterBadge = computed(
 
 const showFilterDescription = computed(
   () =>
+    filterCriteria.hideNotStarred ||
     filterCriteria.categories.length > 0 ||
     filterCriteria.tags.length > 0 ||
     filterCriteria.search.length > 0,
@@ -115,6 +118,12 @@ watchEffect(() => {
   if (filterCriteria.hidePastEvents) {
     const now = new Date();
     filteredEvents = filteredEvents.filter((event) => event.startTime >= now);
+  }
+
+  if (filterCriteria.hideNotStarred) {
+    filteredEvents = filteredEvents.filter(
+      (event) => starredEvents.value === undefined || starredEvents.value.includes(event.id),
+    );
   }
 
   eventIds.value = filteredEvents.map((event) => event.id);

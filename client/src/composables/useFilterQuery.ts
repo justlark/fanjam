@@ -7,6 +7,7 @@ export interface FilterCriteria {
   tags: Array<string>;
   search: string;
   hidePastEvents: boolean;
+  hideNotStarred: boolean;
 }
 
 export const useFilterQuery = (): Reactive<FilterCriteria> => {
@@ -18,6 +19,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
     tags: [],
     search: "",
     hidePastEvents: false,
+    hideNotStarred: false,
   });
 
   watch(
@@ -52,6 +54,12 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
       } else {
         criteria.hidePastEvents = false;
       }
+
+      if (newRoute.query.star === "true") {
+        criteria.hideNotStarred = true;
+      } else {
+        criteria.hideNotStarred = false;
+      }
     },
     { immediate: true },
   );
@@ -62,6 +70,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
         c: newCriteria.categories,
         t: newCriteria.tags,
         q: newCriteria.search || undefined,
+        star: newCriteria.hideNotStarred ? "true" : undefined,
         past: newCriteria.hidePastEvents ? "false" : undefined,
       },
     });
@@ -74,6 +83,7 @@ export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
   c: criteria.categories,
   t: criteria.tags,
   q: criteria.search || undefined,
+  star: criteria.hideNotStarred ? "true" : undefined,
   past: criteria.hidePastEvents ? "false" : undefined,
 });
 
