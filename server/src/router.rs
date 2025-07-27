@@ -21,6 +21,7 @@ use crate::{
     error::Error,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
+    response::EtagJson,
     store::{MigrationChange, Store},
     url,
 };
@@ -263,12 +264,12 @@ async fn post_restore_backup(
 async fn get_events(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
-) -> Result<Json<GetEventsResponse>, ErrorResponse> {
+) -> Result<EtagJson<GetEventsResponse>, ErrorResponse> {
     let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
     let events = store.get_events().await?;
 
-    Ok(Json(GetEventsResponse {
+    Ok(EtagJson(GetEventsResponse {
         events: events
             .into_iter()
             .map(|event| Event {
@@ -290,12 +291,12 @@ async fn get_events(
 async fn get_info(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
-) -> Result<Json<GetInfoResponse>, ErrorResponse> {
+) -> Result<EtagJson<GetInfoResponse>, ErrorResponse> {
     let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
     let info = store.get_info().await?;
 
-    Ok(Json(GetInfoResponse {
+    Ok(EtagJson(GetInfoResponse {
         name: info.about.as_ref().map(|about| about.name.clone()),
         description: info
             .about
