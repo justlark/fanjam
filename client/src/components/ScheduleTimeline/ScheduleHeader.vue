@@ -24,9 +24,10 @@ const searchText = toRef(filterCriteria, "search");
 
 const showFilterBadge = computed(
   () =>
+    filterCriteria.hidePastEvents ||
+    filterCriteria.hideNotStarred ||
     filterCriteria.categories.length > 0 ||
-    filterCriteria.tags.length > 0 ||
-    filterCriteria.hidePastEvents,
+    filterCriteria.tags.length > 0,
 );
 
 const showFilterDescription = computed(
