@@ -6,6 +6,7 @@ import { RouterLink } from "vue-router";
 
 const props = defineProps<{
   to: string;
+  activeRoutes: Array<string>;
   label: string;
   icon: string;
 }>();
@@ -20,7 +21,7 @@ const route = useRoute();
     :to="{ name: props.to }"
     :icon="props.icon"
     :label="props.label"
-    :variant="route.name === props.to ? 'undefined' : 'outlined'"
+    :variant="activeRoutes.includes(route.name) ? undefined : 'outlined'"
     size="large"
   />
 </template>
