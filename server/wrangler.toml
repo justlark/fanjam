@@ -14,12 +14,8 @@ enabled = true
 [env.test.vars]
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "test.fanjam.live"
-# As a special case, we can set the TTL to zero to disable caching. This is
-# preferred for test environments; the load will always be small, and it's more
-# convenient to not have to wait for the cache to expire. If the caching
-# functionality is what needs to be tested, you can always change this
-# temporarily and redeploy.
-NOCO_CACHE_TTL_SECONDS = "0"
+# As a special case, you can set the TTL to zero to disable caching.
+NOCO_CACHE_TTL_SECONDS = "60"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
