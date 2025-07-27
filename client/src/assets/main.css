@@ -27,7 +27,7 @@ keep them from being tree-shaken out.
 @layer base {
   body {
     font-family: "Fira Sans", sans-serif;
-    @apply bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-200;
+    @apply bg-surface-100 dark:bg-surface-900 text-surface-800 dark:text-surface-200;
   }
 
   body,
