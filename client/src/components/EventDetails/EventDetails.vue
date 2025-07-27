@@ -41,21 +41,20 @@ const back = async () => {
 };
 
 const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
-const isStarred = ref(starredEventsSet.value.has(event.value.id));
 
 watchEffect(() => {
   starredEvents.value = Array.from(starredEventsSet.value);
 });
 
-watchEffect(() => {
-  if (starredEvents.value === undefined) return;
+const isStarred = computed(() => starredEventsSet.value.has(event.value.id));
 
+const toggleStarred = () => {
   if (isStarred.value) {
-    starredEventsSet.value.add(event.value.id);
-  } else {
     starredEventsSet.value.delete(event.value.id);
+  } else {
+    starredEventsSet.value.add(event.value.id);
   }
-});
+};
 
 const sectionHeadingId = useId();
 </script>
@@ -109,7 +108,7 @@ const sectionHeadingId = useId();
         :button-props="{
           raised: true,
         }"
-        @click="isStarred = !isStarred"
+        @click="toggleStarred()"
       />
     </div>
   </section>
