@@ -81,7 +81,7 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetEventsResponse {
     pub events: Vec<Event>,
 }
@@ -106,7 +106,7 @@ pub struct Page {
     pub body: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetInfoResponse {
     pub name: Option<String>,
     pub description: Option<String>,

@@ -2,6 +2,8 @@ use secrecy::ExposeSecret;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
+    api::{GetEventsResponse, GetInfoResponse},
+    config,
     env::{EnvId, EnvName},
     noco::{self, ApiToken, BaseId, TableInfo},
 };
@@ -47,6 +49,15 @@ fn tables_key(env_name: &EnvName) -> String {
 // applying migrations, so we don't accidentally apply the same migration twice.
 fn migration_version_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:migration")
+}
+
+// We cache responses from the upstream NocoDB server to reduce the load on it.
+fn events_cache_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:cache:events")
+}
+
+fn info_cache_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:cache:info")
 }
 
 #[worker::send]
@@ -215,4 +226,69 @@ pub async fn delete_migration_version(kv: &KvStore, env_name: &EnvName) -> anyho
         .map_err(wrap_kv_err)?;
 
     Ok(())
+}
+
+#[worker::send]
+pub async fn put_cached_events(
+    kv: &KvStore,
+    env_name: &EnvName,
+    events: &GetEventsResponse,
+) -> anyhow::Result<()> {
+    let ttl = config::noco_cache_ttl();
+
+    kv.put(&events_cache_key(env_name), events)
+        .map_err(wrap_kv_err)?
+        .expiration_ttl(ttl.as_secs())
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_cached_events(
+    kv: &KvStore,
+    env_name: &EnvName,
+) -> anyhow::Result<Option<GetEventsResponse>> {
+    Ok(kv
+        .get(&events_cache_key(env_name))
+        .json::<GetEventsResponse>()
+        .await
+        .map_err(wrap_kv_err)?)
+}
+
+#[worker::send]
+pub async fn put_cached_info(
+    kv: &KvStore,
+    env_name: &EnvName,
+    events: &GetInfoResponse,
+) -> anyhow::Result<()> {
+    let ttl = config::noco_cache_ttl();
+
+    if ttl.is_zero() {
+        // If the TTL is zero, we have nothing to cache and can just return silently.
+        return Ok(());
+    }
+
+    kv.put(&info_cache_key(env_name), events)
+        .map_err(wrap_kv_err)?
+        .expiration_ttl(ttl.as_secs())
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_cached_info(
+    kv: &KvStore,
+    env_name: &EnvName,
+) -> anyhow::Result<Option<GetInfoResponse>> {
+    Ok(kv
+        .get(&info_cache_key(env_name))
+        .json::<GetInfoResponse>()
+        .await
+        .map_err(wrap_kv_err)?)
 }
