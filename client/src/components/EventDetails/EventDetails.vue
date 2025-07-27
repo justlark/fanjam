@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from "vue";
+import { computed, ref, useId } from "vue";
 import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
@@ -37,6 +37,8 @@ const back = async () => {
     query: toFilterQueryParams(filterCriteria),
   });
 };
+
+const isStarred = ref(false);
 
 const sectionHeadingId = useId();
 </script>
@@ -80,6 +82,18 @@ const sectionHeadingId = useId();
       <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
         <span>No description</span>
       </div>
+    </div>
+    <div class="flex mx-6 sticky bottom-6 justify-end">
+      <IconButton
+        :label="Star"
+        :icon="isStarred ? 'star-fill' : 'star'"
+        :active="isStarred"
+        inactive-variant="filled"
+        :button-props="{
+          raised: true,
+        }"
+        @click="isStarred = !isStarred"
+      />
     </div>
   </section>
 </template>
