@@ -35,14 +35,14 @@ const conName = computed(() => info.value?.name || "FanJam");
       <span v-if="websiteUrl" class="flex gap-2 text-lg">
         <SimpleIcon icon="box-arrow-up-right" label="External Link" />
         <a
-          :href="websiteUrl"
+          :href="websiteUrl.href"
           target="_blank"
           class="text-primary underline underline-offset-2 hover:decoration-2"
         >
           {{ websiteUrl.hostname }}
         </a>
       </span>
-      <p class="max-w-200 text-justify" v-if="info.description">{{ info.description }}</p>
+      <p class="max-w-200 text-justify" v-if="info?.description">{{ info.description }}</p>
     </div>
     <div class="flex flex-col gap-2">
       <LinksList
