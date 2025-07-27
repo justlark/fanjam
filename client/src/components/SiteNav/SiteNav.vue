@@ -60,7 +60,7 @@ const headerHeadingId = useId();
         :aria-labelledby="headerHeadingId"
         class="sticky top-0 z-2 bg-surface-100 dark:bg-surface-900 flex flex-col"
       >
-        <div class="flex items-center justify-between p-2 lg:px-4 gap-2">
+        <div class="h-16 flex items-center justify-between px-2 lg:px-4 gap-2">
           <div class="flex items-center gap-2">
             <span class="lg:hidden">
               <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
@@ -75,11 +75,13 @@ const headerHeadingId = useId();
         <Divider pt:root="!my-0" />
       </header>
       <div class="flex grow">
-        <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
+        <div class="hidden lg:flex sticky top-16 h-full grow-0 shrink-0 items-stretch">
           <aside class="p-4 grow min-w-50">
             <MainMenu />
           </aside>
-          <Divider pt:root="!ms-0" layout="vertical" />
+        </div>
+        <div class="hidden lg:block">
+          <Divider class="!ms-0" layout="vertical" />
         </div>
         <main class="grow">
           <slot />
