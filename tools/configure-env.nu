@@ -22,7 +22,7 @@ def generate-fly-config [app: string, url: string, bucket: string] {
     http_service: {
       internal_port: 8080,
       force_https: true,
-      auto_stop_machines: true,
+      auto_stop_machines: "suspend",
       auto_start_machines: true,
       min_machines_running: 0,
       processes: ["app"],
