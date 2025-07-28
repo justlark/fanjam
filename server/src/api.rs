@@ -100,6 +100,15 @@ pub struct File {
 }
 
 #[derive(Debug, Serialize)]
+pub struct GetInfoResponse {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub website_url: Option<String>,
+    pub links: Vec<Link>,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Page {
     pub id: String,
     pub title: String,
@@ -107,11 +116,6 @@ pub struct Page {
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetInfoResponse {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub website_url: Option<String>,
-    pub links: Vec<Link>,
-    pub files: Vec<File>,
+pub struct GetPagesResponse {
     pub pages: Vec<Page>,
 }

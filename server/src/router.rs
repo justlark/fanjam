@@ -13,8 +13,9 @@ use worker::{console_log, kv::KvStore};
 use crate::{
     api::{
         Event, File, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, Link, Page, PostApplyMigrationResponse, PostBackupRequest,
-        PostBaseRequest, PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
+        GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
+        PostBackupRequest, PostBaseRequest, PostLinkResponse, PostRestoreBackupRequest,
+        PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
@@ -79,6 +80,7 @@ pub fn new(state: AppState) -> Router {
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
         .route("/apps/{env_id}/info", get(get_info))
+        .route("/apps/{env_id}/pages", get(get_pages))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
@@ -325,8 +327,20 @@ async fn get_info(
                 signed_url: file.signed_url,
             })
             .collect::<Vec<_>>(),
-        pages: info
-            .pages
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_pages(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<EtagJson<GetPagesResponse>, ErrorResponse> {
+    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+
+    let pages = store.get_pages().await?;
+
+    Ok(EtagJson(GetPagesResponse {
+        pages: pages
             .into_iter()
             .map(|page| Page {
                 id: page.id,

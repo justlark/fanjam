@@ -4,7 +4,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     config,
     env::{EnvId, EnvName},
-    noco::{self, ApiToken, BaseId, Event, Info, TableInfo},
+    noco::{self, ApiToken, BaseId, Event, Info, Page, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -57,6 +57,10 @@ fn events_cache_key(env_name: &EnvName) -> String {
 
 fn info_cache_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:cache:info")
+}
+
+fn pages_cache_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:cache:pages")
 }
 
 #[worker::send]
@@ -284,6 +288,40 @@ pub async fn put_cached_info(kv: &KvStore, env_name: &EnvName, info: &Info) -> a
 pub async fn get_cached_info(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<Info>> {
     kv.get(&info_cache_key(env_name))
         .json::<Info>()
+        .await
+        .map_err(wrap_kv_err)
+}
+
+#[worker::send]
+pub async fn put_cached_pages(
+    kv: &KvStore,
+    env_name: &EnvName,
+    pages: &[Page],
+) -> anyhow::Result<()> {
+    let ttl = config::noco_cache_ttl();
+
+    if ttl.is_zero() {
+        // If the TTL is zero, we have nothing to cache and can just return silently.
+        return Ok(());
+    }
+
+    kv.put(&pages_cache_key(env_name), pages)
+        .map_err(wrap_kv_err)?
+        .expiration_ttl(ttl.as_secs())
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_cached_pages(
+    kv: &KvStore,
+    env_name: &EnvName,
+) -> anyhow::Result<Option<Vec<Page>>> {
+    kv.get(&pages_cache_key(env_name))
+        .json::<Vec<Page>>()
         .await
         .map_err(wrap_kv_err)
 }

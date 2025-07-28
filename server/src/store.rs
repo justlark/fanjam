@@ -95,6 +95,30 @@ impl Store {
         )
     }
 
+    pub async fn get_events(&self) -> Result<Vec<noco::Event>, Error> {
+        match kv::get_cached_events(&self.kv, &self.env_name).await {
+            Ok(Some(events)) => return Ok(events),
+            Ok(None) => {
+                console_log!("No cached events found, fetching from NocoDB.");
+            }
+            Err(e) => {
+                console_warn!("Failed to get events from cache: {}", e);
+            }
+        }
+
+        let table_ids = self.get_table_ids().await?;
+
+        let events = noco::get_events(&self.noco_client, &table_ids)
+            .await
+            .map_err(Error::Internal)?;
+
+        if let Err(e) = kv::put_cached_events(&self.kv, &self.env_name, &events).await {
+            console_warn!("Failed putting events in cache: {}", e);
+        }
+
+        Ok(events)
+    }
+
     pub async fn get_info(&self) -> Result<noco::Info, Error> {
         match kv::get_cached_info(&self.kv, &self.env_name).await {
             Ok(Some(info)) => return Ok(info),
@@ -119,28 +143,28 @@ impl Store {
         Ok(info)
     }
 
-    pub async fn get_events(&self) -> Result<Vec<noco::Event>, Error> {
-        match kv::get_cached_events(&self.kv, &self.env_name).await {
-            Ok(Some(events)) => return Ok(events),
+    pub async fn get_pages(&self) -> Result<Vec<noco::Page>, Error> {
+        match kv::get_cached_pages(&self.kv, &self.env_name).await {
+            Ok(Some(pages)) => return Ok(pages),
             Ok(None) => {
-                console_log!("No cached events found, fetching from NocoDB.");
+                console_log!("No cached pages found, fetching from NocoDB.");
             }
             Err(e) => {
-                console_warn!("Failed to get events from cache: {}", e);
+                console_warn!("Failed to get pages from cache: {}", e);
             }
         }
 
         let table_ids = self.get_table_ids().await?;
 
-        let events = noco::get_events(&self.noco_client, &table_ids)
+        let pages = noco::get_pages(&self.noco_client, &table_ids)
             .await
             .map_err(Error::Internal)?;
 
-        if let Err(e) = kv::put_cached_events(&self.kv, &self.env_name, &events).await {
-            console_warn!("Failed putting events in cache: {}", e);
+        if let Err(e) = kv::put_cached_pages(&self.kv, &self.env_name, &pages).await {
+            console_warn!("Failed putting pages in cache: {}", e);
         }
 
-        Ok(events)
+        Ok(pages)
     }
 
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {

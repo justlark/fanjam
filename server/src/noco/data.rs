@@ -208,7 +208,6 @@ pub struct Info {
     pub about: Option<About>,
     pub links: Vec<Link>,
     pub files: Vec<File>,
-    pub pages: Vec<Page>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -357,7 +356,21 @@ async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
     Ok(results)
 }
 
-async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Page>> {
+#[worker::send]
+pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
+    let about = get_about(client, table_ids).await?;
+    let links = get_links(client, table_ids).await?;
+    let files = get_files(client, table_ids).await?;
+
+    Ok(Info {
+        about,
+        links,
+        files,
+    })
+}
+
+#[worker::send]
+pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Page>> {
     let page_records = list_records::<PageResponse>(client, &table_ids.pages).await?;
 
     Ok(page_records
@@ -368,19 +381,4 @@ async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
             body: r.body,
         })
         .collect())
-}
-
-#[worker::send]
-pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
-    let about = get_about(client, table_ids).await?;
-    let links = get_links(client, table_ids).await?;
-    let files = get_files(client, table_ids).await?;
-    let pages = get_pages(client, table_ids).await?;
-
-    Ok(Info {
-        about,
-        links,
-        files,
-        pages,
-    })
 }
