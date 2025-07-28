@@ -42,6 +42,15 @@ const removeItem = (key: string): void => {
 
 const hasLoaded = new Set<string>();
 
+const ifNotLoaded = (key: string, func: () => Promise<void>): Promise<void> => {
+  if (hasLoaded.has(key)) {
+    return Promise.resolve();
+  }
+
+  hasLoaded.add(key);
+  return func();
+};
+
 const useRemoteDataInner = <T, S>({
   key,
   instance,
@@ -113,7 +122,10 @@ const useRemoteDataInner = <T, S>({
     const storedValue = getItem<S>(key);
 
     if (!storedValue || storedValue.instance !== instance.value) {
-      await reload();
+      // Fetch the data exactly once on the initial page load, before it's
+      // cached locally.
+      await ifNotLoaded(key, reload);
+
       return;
     }
 
@@ -131,10 +143,7 @@ const useRemoteDataInner = <T, S>({
     result.value = { status: "success", value };
 
     // Refetch the data exactly once when the user refreshes the page.
-    if (!hasLoaded.has(key)) {
-      hasLoaded.add(key);
-      await reload();
-    }
+    await ifNotLoaded(key, reload);
   });
 
   return { reload, clear };
