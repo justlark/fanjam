@@ -3,9 +3,15 @@ import { useRoute } from "vue-router";
 import api, { type ApiResult, type Event, type Info } from "@/utils/api";
 
 export type FetchResult<T> =
-  | { status: "success"; value: T }
+  | { status: "success"; value: T; etag?: string }
   | { status: "pending" }
   | { status: "error"; code: number };
+
+interface StoredValue<T> {
+  instance: string;
+  etag?: string;
+  value: T;
+}
 
 function unwrapFetchResult<T>(
   result: Readonly<Ref<FetchResult<T>>>,
@@ -43,14 +49,13 @@ const useRemoteDataInner = <T, S>({
   reload: () => Promise<void>;
   clear: () => void;
 } => {
-  const instanceStorageKey = computed(() => `store:${key}:key`);
-  const valueStorageKey = computed(() => `store:${key}:value`);
+  const storageKey = computed(() => `store:${key}`);
 
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
     const fetchApiResult = await fetcher();
     const fetchResult: FetchResult<T> = fetchApiResult.ok
-      ? { status: "success", value: fetchApiResult.value }
+      ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
       : { status: "error", code: fetchApiResult.code };
 
     if (fetchResult.status === "success") {
@@ -66,8 +71,14 @@ const useRemoteDataInner = <T, S>({
       // However, we need to keep track of *which* environment we're caching
       // data for, so we know to invalidate the cache if the user switches to a
       // different environment.
-      localStorage.setItem(instanceStorageKey.value, instance.value);
-      localStorage.setItem(valueStorageKey.value, JSON.stringify(toCache(fetchResult.value)));
+
+      const storedValue: StoredValue<S> = {
+        instance: instance.value,
+        etag: fetchResult.etag,
+        value: toCache(fetchResult.value),
+      };
+
+      localStorage.setItem(storageKey.value, JSON.stringify(storedValue));
     } else if (result.value.status === "pending") {
       // If the API request succeeded previously, we can just keep displaying
       // the data that's currently cached.
@@ -79,21 +90,16 @@ const useRemoteDataInner = <T, S>({
   };
 
   const clear = () => {
-    localStorage.removeItem(instanceStorageKey.value);
-    localStorage.removeItem(valueStorageKey.value);
+    localStorage.removeItem(storageKey.value);
   };
 
   watchEffect(async () => {
-    const storedInstance = localStorage.getItem(instanceStorageKey.value);
+    const serializedStoredValue = localStorage.getItem(storageKey.value);
+    const storedValue = serializedStoredValue
+      ? (JSON.parse(serializedStoredValue) as StoredValue<S>)
+      : undefined;
 
-    if (storedInstance !== instance.value) {
-      await reload();
-      return;
-    }
-
-    const storedValue = localStorage.getItem(valueStorageKey.value);
-
-    if (storedValue === null) {
+    if (!storedValue || storedValue.instance !== instance.value) {
       await reload();
       return;
     }
@@ -101,7 +107,7 @@ const useRemoteDataInner = <T, S>({
     let value;
 
     try {
-      value = fromCache(JSON.parse(storedValue));
+      value = fromCache(storedValue.value);
     } catch {
       // This can happen if the shape of the cached data has changed and we
       // need to clear it and re-fetch from the server.

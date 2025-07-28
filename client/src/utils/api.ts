@@ -72,6 +72,7 @@ export type ApiResult<T> =
   | {
     ok: true;
     value: T;
+    etag?: string;
   }
   | {
     ok: false;
@@ -108,7 +109,11 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
     tags: event.tags,
   }));
 
-  return { ok: true, value: events };
+  return {
+    ok: true,
+    value: events,
+    etag: response.headers.get("ETag") ?? undefined,
+  };
 };
 
 const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
@@ -142,7 +147,11 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
     })),
   };
 
-  return { ok: true, value: info };
+  return {
+    ok: true,
+    value: info,
+    etag: response.headers.get("ETag") ?? undefined,
+  };
 };
 
 export default {
