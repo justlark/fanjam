@@ -86,9 +86,18 @@ export type ApiResult<T> =
 // It's important that we still fetch all events eagerly, rather than lazily
 // paginating as the user tabs through the schedule. This is necessary so the
 // app works offline.
-const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
+const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<Event>>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+            "If-None-Match": etag,
+          }
+          : {}),
+      },
+    },
   );
 
   if (!response.ok) {
@@ -116,9 +125,18 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   };
 };
 
-const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
+const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+            "If-None-Match": etag,
+          }
+          : {}),
+      },
+    },
   );
 
   if (!response.ok) {

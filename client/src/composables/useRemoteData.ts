@@ -28,6 +28,21 @@ function unwrapFetchResult<T>(
 const hasErrorCode = (result: FetchResult<unknown>, code: number): boolean =>
   result.status === "error" && result.code === code;
 
+const storageKey = (key: string): string => `store:${key}`;
+
+const setItem = (key: string, value: unknown): void => {
+  localStorage.setItem(storageKey(key), JSON.stringify(value));
+};
+
+const getItem = <T>(key: string): StoredValue<T> | undefined => {
+  const serialized = localStorage.getItem(storageKey(key));
+  return serialized ? (JSON.parse(serialized) as StoredValue<T>) : undefined;
+};
+
+const removeItem = (key: string): void => {
+  localStorage.removeItem(storageKey(key));
+};
+
 const hasLoaded = new Set<string>();
 
 const useRemoteDataInner = <T, S>({
@@ -49,8 +64,6 @@ const useRemoteDataInner = <T, S>({
   reload: () => Promise<void>;
   clear: () => void;
 } => {
-  const storageKey = computed(() => `store:${key}`);
-
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
     const fetchApiResult = await fetcher();
@@ -58,7 +71,13 @@ const useRemoteDataInner = <T, S>({
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
       : { status: "error", code: fetchApiResult.code };
 
-    if (fetchResult.status === "success") {
+    const storedValue = getItem<S>(key);
+
+    if (fetchResult.status === "error" && fetchResult.code === 304 && storedValue !== undefined) {
+      // If the server returns a 304 Not Modified, we can just keep displaying
+      // the data we already have cached locally.
+      result.value = { status: "success", value: fromCache(storedValue.value) };
+    } else if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
 
       // We use the browser local storage to cut down on the initial page load
@@ -78,7 +97,7 @@ const useRemoteDataInner = <T, S>({
         value: toCache(fetchResult.value),
       };
 
-      localStorage.setItem(storageKey.value, JSON.stringify(storedValue));
+      setItem(key, storedValue);
     } else if (result.value.status === "pending") {
       // If the API request succeeded previously, we can just keep displaying
       // the data that's currently cached.
@@ -90,14 +109,11 @@ const useRemoteDataInner = <T, S>({
   };
 
   const clear = () => {
-    localStorage.removeItem(storageKey.value);
+    removeItem(key);
   };
 
   watchEffect(async () => {
-    const serializedStoredValue = localStorage.getItem(storageKey.value);
-    const storedValue = serializedStoredValue
-      ? (JSON.parse(serializedStoredValue) as StoredValue<S>)
-      : undefined;
+    const storedValue = getItem<S>(key);
 
     if (!storedValue || storedValue.instance !== instance.value) {
       await reload();
@@ -144,12 +160,13 @@ const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 const useRemoteEvents = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
+  const storedValue: StoredValue<unknown> | undefined = getItem("events");
 
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: envId,
     result: eventsRef,
-    fetcher: () => api.getEvents(envId.value),
+    fetcher: () => api.getEvents(envId.value, storedValue?.etag),
     toCache: (data) =>
       data.map((event) => ({
         id: event.id,
@@ -204,12 +221,13 @@ const infoRef = ref<FetchResult<Info>>({ status: "pending" });
 const useRemoteInfo = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
+  const storedValue: StoredValue<unknown> | undefined = getItem("info");
 
   const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: envId,
     result: infoRef,
-    fetcher: () => api.getInfo(envId.value),
+    fetcher: () => api.getInfo(envId.value, storedValue?.etag),
     toCache: (data) => ({
       name: data.name,
       description: data.description,
