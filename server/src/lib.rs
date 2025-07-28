@@ -1,5 +1,6 @@
 mod api;
 mod auth;
+mod cache;
 mod config;
 mod cors;
 mod env;
@@ -8,7 +9,6 @@ mod http;
 mod kv;
 mod neon;
 mod noco;
-mod response;
 mod router;
 mod store;
 mod url;

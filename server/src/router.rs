@@ -4,6 +4,7 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
+    middleware,
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
@@ -16,12 +17,12 @@ use crate::{
         PostBaseRequest, PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
+    cache::{EtagJson, if_none_match_middleware},
     cors::cors_layer,
     env::{EnvId, EnvName},
     error::Error,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
-    response::EtagJson,
     store::{MigrationChange, Store},
     url,
 };
@@ -78,6 +79,7 @@ pub fn new(state: AppState) -> Router {
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
         .route("/apps/{env_id}/info", get(get_info))
+        .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }
