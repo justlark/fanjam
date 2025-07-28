@@ -10,11 +10,13 @@ import DayPicker from "./DayPicker.vue";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
+import ProgressSpinner from "primevue/progressspinner";
 
 const route = useRoute();
 const router = useRouter();
 const {
   data: { events },
+  status: { events: eventsStatus },
 } = useRemoteData();
 const filterCriteria = useFilterQuery();
 
@@ -134,7 +136,7 @@ watch(
 <template>
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
-    <DayPicker v-model:day="currentDayIndex" :day-names="dayNames" />
+    <DayPicker v-if="days.length > 0" v-model:day="currentDayIndex" :day-names="dayNames" />
     <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFiteringPastEvents">
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
@@ -147,6 +149,9 @@ watch(
         :events="timeSlot.events"
         :all-categories="allCategories"
       />
+    </div>
+    <div class="m-auto" v-else-if="eventsStatus === 'pending'">
+      <ProgressSpinner />
     </div>
     <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
       No events

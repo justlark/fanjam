@@ -1,4 +1,4 @@
-import { type Ref, ref, computed, watchEffect } from "vue";
+import { type Ref, toRef, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Event, type Info, type Page } from "@/utils/api";
 
@@ -193,7 +193,7 @@ const useRemoteEvents = () => {
       })),
   });
 
-  return { reload, clear, result: eventsRef, value: unwrapFetchResult(eventsRef, []) };
+  return { reload, clear, result: eventsRef };
 };
 
 interface StoredInfo {
@@ -247,7 +247,7 @@ const useRemoteInfo = () => {
     }),
   });
 
-  return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
+  return { reload, clear, result: infoRef };
 };
 
 interface StoredPage {
@@ -282,32 +282,17 @@ const useRemotePages = () => {
       })),
   });
 
-  return { reload, clear, result: pagesRef, value: unwrapFetchResult(pagesRef, []) };
+  return { reload, clear, result: pagesRef };
 };
 
 // We fetch *all* data from the server eagerly on first page load and when
 // `reload()` is called. This is primarily so the app works offline.
 const useRemoteData = () => {
-  const {
-    reload: reloadEvents,
-    clear: clearEvents,
-    result: eventsResult,
-    value: eventsValue,
-  } = useRemoteEvents();
+  const { reload: reloadEvents, clear: clearEvents, result: eventsResult } = useRemoteEvents();
 
-  const {
-    reload: reloadInfo,
-    clear: clearInfo,
-    result: infoResult,
-    value: infoValue,
-  } = useRemoteInfo();
+  const { reload: reloadInfo, clear: clearInfo, result: infoResult } = useRemoteInfo();
 
-  const {
-    reload: reloadPages,
-    clear: clearPages,
-    result: pagesResult,
-    value: pagesValue,
-  } = useRemotePages();
+  const { reload: reloadPages, clear: clearPages, result: pagesResult } = useRemotePages();
 
   const reload = async () => {
     await Promise.all([reloadEvents(), reloadInfo(), reloadPages()]);
@@ -330,7 +315,16 @@ const useRemoteData = () => {
     reload,
     clear,
     isNotFound,
-    data: { events: eventsValue, info: infoValue, pages: pagesValue },
+    status: {
+      events: toRef(() => eventsResult.value.status),
+      info: toRef(() => infoResult.value.status),
+      pages: toRef(() => pagesResult.value.status),
+    },
+    data: {
+      events: unwrapFetchResult(eventsResult, []),
+      info: unwrapFetchResult(infoResult, undefined),
+      pages: unwrapFetchResult(pagesResult, []),
+    },
   };
 };
 
