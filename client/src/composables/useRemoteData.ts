@@ -1,4 +1,4 @@
-import { type Ref, toRef, ref, computed, watchEffect } from "vue";
+import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Event, type Info, type Page } from "@/utils/api";
 
@@ -24,9 +24,6 @@ function unwrapFetchResult<T>(
 ): Readonly<Ref<T | undefined>> {
   return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
 }
-
-const hasErrorCode = (result: FetchResult<unknown>, code: number): boolean =>
-  result.status === "error" && result.code === code;
 
 const storageKey = (key: string): string => `store:${key}`;
 
@@ -304,21 +301,13 @@ const useRemoteData = () => {
     clearPages();
   };
 
-  const isNotFound = computed(
-    () =>
-      hasErrorCode(eventsResult.value, 404) ||
-      hasErrorCode(infoResult.value, 404) ||
-      hasErrorCode(pagesResult.value, 404),
-  );
-
   return {
     reload,
     clear,
-    isNotFound,
-    status: {
-      events: toRef(() => eventsResult.value.status),
-      info: toRef(() => infoResult.value.status),
-      pages: toRef(() => pagesResult.value.status),
+    result: {
+      events: eventsResult,
+      info: infoResult,
+      pages: pagesResult,
     },
     data: {
       events: unwrapFetchResult(eventsResult, []),

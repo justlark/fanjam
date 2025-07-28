@@ -16,7 +16,7 @@ const route = useRoute();
 const router = useRouter();
 const {
   data: { events },
-  status: { events: eventsStatus },
+  result: { events: eventsResult },
 } = useRemoteData();
 const filterCriteria = useFilterQuery();
 
@@ -150,7 +150,7 @@ watch(
         :all-categories="allCategories"
       />
     </div>
-    <div class="m-auto" v-else-if="eventsStatus === 'pending'">
+    <div class="m-auto" v-else-if="eventsResult.status === 'pending'">
       <ProgressSpinner />
     </div>
     <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
