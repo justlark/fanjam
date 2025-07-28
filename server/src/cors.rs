@@ -1,6 +1,6 @@
 use axum::http::{
     HeaderName, Method,
-    header::{AUTHORIZATION, CONTENT_TYPE, ETAG},
+    header::{AUTHORIZATION, CONTENT_TYPE, ETAG, IF_NONE_MATCH},
 };
 use tower_http::cors::CorsLayer;
 
@@ -16,7 +16,7 @@ const CORS_ALLOWED_METHODS: [Method; 5] = [
     Method::DELETE,
 ];
 
-const CORS_ALLOWED_HEADERS: [HeaderName; 2] = [CONTENT_TYPE, AUTHORIZATION];
+const CORS_ALLOWED_HEADERS: [HeaderName; 3] = [CONTENT_TYPE, AUTHORIZATION, IF_NONE_MATCH];
 
 const CORS_EXPOSED_HEADERS: [HeaderName; 1] = [ETAG];
 
