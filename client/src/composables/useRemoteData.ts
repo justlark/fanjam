@@ -2,8 +2,6 @@ import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Event, type Info } from "@/utils/api";
 
-const fetchCache: Map<string, unknown> = new Map();
-
 export type FetchResult<T> =
   | { status: "success"; value: T }
   | { status: "pending" }
@@ -24,6 +22,8 @@ function unwrapFetchResult<T>(
 const hasErrorCode = (result: FetchResult<unknown>, code: number): boolean =>
   result.status === "error" && result.code === code;
 
+const hasLoaded = new Set<string>();
+
 const useRemoteDataInner = <T, S>({
   key,
   instance,
@@ -43,9 +43,8 @@ const useRemoteDataInner = <T, S>({
   reload: () => Promise<void>;
   clear: () => void;
 } => {
-  const cacheKey = computed(() => `${key}:${instance.value}`);
-  const instanceStorageKey = computed(() => `${key}:key`);
-  const valueStorageKey = computed(() => `${key}:value`);
+  const instanceStorageKey = computed(() => `store:${key}:key`);
+  const valueStorageKey = computed(() => `store:${key}:value`);
 
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
@@ -56,8 +55,6 @@ const useRemoteDataInner = <T, S>({
 
     if (fetchResult.status === "success") {
       result.value = { status: "success", value: fetchResult.value };
-
-      fetchCache.set(cacheKey.value, toCache(fetchResult.value));
 
       // We use the browser local storage to cut down on the initial page load
       // time and to allow the app to function offline.
@@ -72,9 +69,8 @@ const useRemoteDataInner = <T, S>({
       localStorage.setItem(instanceStorageKey.value, instance.value);
       localStorage.setItem(valueStorageKey.value, JSON.stringify(toCache(fetchResult.value)));
     } else if (result.value.status === "pending") {
-      // If the API request succeeded previously, we don't want to show the
-      // user an error and wipe the screen; we can just keep displaying the
-      // data that's currently cached.
+      // If the API request succeeded previously, we can just keep displaying
+      // the data that's currently cached.
       //
       // If the API request never succeeded in the first place, then we should
       // show an error, because we have nothing else to show the user.
@@ -88,44 +84,38 @@ const useRemoteDataInner = <T, S>({
   };
 
   watchEffect(async () => {
-    if (fetchCache.has(cacheKey.value)) {
-      try {
-        result.value = { status: "success", value: fromCache(fetchCache.get(cacheKey.value) as S) };
-      } catch {
-        // This can happen if the shape of the cached data has changed and we
-        // need to clear it and re-fetch from the server.
-        //
-        // If we don't due this, the app may hang on the loading page forever.
-        await reload();
-      }
+    const storedInstance = localStorage.getItem(instanceStorageKey.value);
 
+    if (storedInstance !== instance.value) {
+      await reload();
       return;
-    } else {
-      const storedInstance = localStorage.getItem(instanceStorageKey.value);
-
-      if (storedInstance !== instance.value) {
-        clear();
-      }
-
-      const storedValue = localStorage.getItem(valueStorageKey.value);
-
-      if (storedValue) {
-        let value;
-
-        try {
-          value = fromCache(JSON.parse(storedValue));
-        } catch {
-          await reload();
-          return;
-        }
-
-        result.value = { status: "success", value };
-
-        fetchCache.set(cacheKey.value, toCache(value));
-      }
     }
 
-    await reload();
+    const storedValue = localStorage.getItem(valueStorageKey.value);
+
+    if (storedValue === null) {
+      await reload();
+      return;
+    }
+
+    let value;
+
+    try {
+      value = fromCache(JSON.parse(storedValue));
+    } catch {
+      // This can happen if the shape of the cached data has changed and we
+      // need to clear it and re-fetch from the server.
+      await reload();
+      return;
+    }
+
+    result.value = { status: "success", value };
+
+    // Refetch the data exactly once when the user refreshes the page.
+    if (!hasLoaded.has(key)) {
+      hasLoaded.add(key);
+      await reload();
+    }
   });
 
   return { reload, clear };
