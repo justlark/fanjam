@@ -23,11 +23,12 @@ export interface RawInfo {
     media_type: string;
     signed_url: string;
   }>;
-  pages: Array<{
-    id: string;
-    title: string;
-    body: string;
-  }>;
+}
+
+export interface RawPage {
+  id: string;
+  title: string;
+  body: string;
 }
 
 export interface Event {
@@ -65,7 +66,6 @@ export interface Info {
   websiteUrl?: string;
   links: Array<Link>;
   files: Array<File>;
-  pages: Array<Page>;
 }
 
 export type ApiResult<T> =
@@ -158,11 +158,6 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       mediaType: file.media_type,
       signedUrl: file.signed_url,
     })),
-    pages: rawInfo.pages.map((page) => ({
-      id: page.id,
-      title: page.title,
-      body: page.body,
-    })),
   };
 
   return {
@@ -172,7 +167,41 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
   };
 };
 
+const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<Page>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/pages`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+            "If-None-Match": etag,
+          }
+          : {}),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawPages: { pages: Array<RawPage> } = await response.json();
+
+  const pages: Array<Page> = rawPages.pages.map((page) => ({
+    id: page.id,
+    title: page.title,
+    body: page.body,
+  }));
+
+  return {
+    ok: true,
+    value: pages,
+    etag: response.headers.get("ETag") ?? undefined,
+  };
+};
+
 export default {
   getEvents,
   getInfo,
+  getPages,
 };

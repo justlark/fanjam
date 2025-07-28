@@ -5,7 +5,7 @@ import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import LinksList from "./LinksList.vue";
 
 const {
-  data: { info },
+  data: { info, pages },
 } = useRemoteData();
 
 const websiteUrl = computed(() => {
@@ -47,10 +47,10 @@ const conName = computed(() => info.value?.name || "FanJam");
     <div class="flex flex-col gap-2">
       <LinksList
         class="max-w-140 w-full mx-auto"
-        v-if="info && info.links.length > 0"
-        :links="info.links"
-        :files="info.files"
-        :pages="info.pages"
+        v-if="info || pages"
+        :links="info?.links ?? []"
+        :files="info?.files ?? []"
+        :pages="pages"
       />
     </div>
   </div>

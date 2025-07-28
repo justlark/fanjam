@@ -10,13 +10,13 @@ const route = useRoute();
 const router = useRouter();
 
 const {
-  data: { info },
+  data: { pages },
 } = useRemoteData();
 
 const pageId = computed(() => route.params.pageId as string);
 
 const page = computed(() => {
-  return info.value?.pages.find((p) => p.id === pageId.value);
+  return pages.value.find((p) => p.id === pageId.value);
 });
 
 watchEffect(async () => {

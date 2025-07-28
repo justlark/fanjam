@@ -1,6 +1,6 @@
 import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import api, { type ApiResult, type Event, type Info } from "@/utils/api";
+import api, { type ApiResult, type Event, type Info, type Page } from "@/utils/api";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -209,11 +209,6 @@ interface StoredInfo {
     media_type: string;
     signed_url: string;
   }>;
-  pages: Array<{
-    id: string;
-    title: string;
-    body: string;
-  }>;
 }
 
 const infoRef = ref<FetchResult<Info>>({ status: "pending" });
@@ -238,7 +233,6 @@ const useRemoteInfo = () => {
         media_type: file.mediaType,
         signed_url: file.signedUrl,
       })),
-      pages: data.pages.map((page) => ({ id: page.id, title: page.title, body: page.body })),
     }),
     fromCache: (data) => ({
       name: data.name,
@@ -250,11 +244,45 @@ const useRemoteInfo = () => {
         mediaType: file.media_type,
         signedUrl: file.signed_url,
       })),
-      pages: data.pages.map((page) => ({ id: page.id, title: page.title, body: page.body })),
     }),
   });
 
   return { reload, clear, result: infoRef, value: unwrapFetchResult(infoRef, undefined) };
+};
+
+interface StoredPage {
+  id: string;
+  title: string;
+  body: string;
+}
+
+const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
+
+const useRemotePages = () => {
+  const route = useRoute();
+  const envId = computed(() => route.params.envId as string);
+  const storedValue: StoredValue<unknown> | undefined = getItem("pages");
+
+  const { reload, clear } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
+    key: "pages",
+    instance: envId,
+    result: pagesRef,
+    fetcher: () => api.getPages(envId.value, storedValue?.etag),
+    toCache: (data) =>
+      data.map((page) => ({
+        id: page.id,
+        title: page.title,
+        body: page.body,
+      })),
+    fromCache: (data) =>
+      data.map((page) => ({
+        id: page.id,
+        title: page.title,
+        body: page.body,
+      })),
+  });
+
+  return { reload, clear, result: pagesRef, value: unwrapFetchResult(pagesRef, []) };
 };
 
 // We fetch *all* data from the server eagerly on first page load and when
@@ -274,20 +302,36 @@ const useRemoteData = () => {
     value: infoValue,
   } = useRemoteInfo();
 
+  const {
+    reload: reloadPages,
+    clear: clearPages,
+    result: pagesResult,
+    value: pagesValue,
+  } = useRemotePages();
+
   const reload = async () => {
-    await Promise.all([reloadEvents(), reloadInfo()]);
+    await Promise.all([reloadEvents(), reloadInfo(), reloadPages()]);
   };
 
   const clear = () => {
     clearEvents();
     clearInfo();
+    clearPages();
   };
 
   const isNotFound = computed(
-    () => hasErrorCode(infoResult.value, 404) || hasErrorCode(eventsResult.value, 404),
+    () =>
+      hasErrorCode(eventsResult.value, 404) ||
+      hasErrorCode(infoResult.value, 404) ||
+      hasErrorCode(pagesResult.value, 404),
   );
 
-  return { reload, clear, isNotFound, data: { events: eventsValue, info: infoValue } };
+  return {
+    reload,
+    clear,
+    isNotFound,
+    data: { events: eventsValue, info: infoValue, pages: pagesValue },
+  };
 };
 
 export default useRemoteData;
