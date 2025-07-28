@@ -76,6 +76,7 @@ pub fn new(state: AppState) -> Router {
             "/admin/env/{env_name}/backups/restore",
             post(post_restore_backup),
         )
+        .route("/admin/env/{env_name}/cache", delete(delete_cache))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
@@ -260,6 +261,18 @@ async fn post_restore_backup(
     let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
     store.restore_backup(body.kind, body.migration).await?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn delete_cache(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::delete_cache(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
 
     Ok(NoContent)
 }

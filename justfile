@@ -122,3 +122,7 @@ init-env env:
   ./tools/set-noco-token.nu {{ env }}
   ./tools/create-noco-base.nu {{ env }}
   ./tools/generate-app-link.nu {{ env }}
+
+[group("manage environments")]
+clear-cache env:
+  ./tools/clear-cache.nu {{ env }}

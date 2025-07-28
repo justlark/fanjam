@@ -51,16 +51,20 @@ fn migration_version_key(env_name: &EnvName) -> String {
 }
 
 // We cache responses from the upstream NocoDB server to reduce the load on it.
+fn cache_key_prefix(env_name: &EnvName) -> String {
+    format!("env:{env_name}:cache:")
+}
+
 fn events_cache_key(env_name: &EnvName) -> String {
-    format!("env:{env_name}:cache:events")
+    format!("{}events", cache_key_prefix(env_name))
 }
 
 fn info_cache_key(env_name: &EnvName) -> String {
-    format!("env:{env_name}:cache:info")
+    format!("{}info", cache_key_prefix(env_name))
 }
 
 fn pages_cache_key(env_name: &EnvName) -> String {
-    format!("env:{env_name}:cache:pages")
+    format!("{}pages", cache_key_prefix(env_name))
 }
 
 #[worker::send]
@@ -324,4 +328,23 @@ pub async fn get_cached_pages(
         .json::<Vec<Page>>()
         .await
         .map_err(wrap_kv_err)
+}
+
+#[worker::send]
+pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    // The default and maximum number of keys this will return is 1000, which is more than plenty
+    // that we don't have to worry about pagination.
+    let cache_keys = kv
+        .list()
+        .prefix(cache_key_prefix(env_name))
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?
+        .keys;
+
+    for key in cache_keys {
+        kv.delete(&key.name).await.map_err(wrap_kv_err)?;
+    }
+
+    Ok(())
 }
