@@ -599,7 +599,7 @@ impl Migration<'_> {
         let views = views.map(|id| id.expect("expected view ID, found none"));
 
         self.client
-            .build_request(Method::Patch, &format!("/meta/forms/{}", &views.add_event))
+            .build_request_v2(Method::Patch, &format!("/meta/forms/{}", &views.add_event))
             .with_json(&json!({
                 "heading": "Add Event",
                 "subheading": "Add an event to the schedule.",
@@ -613,7 +613,7 @@ impl Migration<'_> {
         console_log!("Updated Noco form view with ID `{}`", views.add_event);
 
         self.client
-            .build_request(
+            .build_request_v2(
                 Method::Patch,
                 &format!("/meta/forms/{}", &views.make_announcement),
             )

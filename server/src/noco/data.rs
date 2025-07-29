@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use axum::http::StatusCode;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use worker::Method;
+use worker::{Method, console_warn};
 
 use crate::noco::Client;
 
@@ -31,7 +32,7 @@ async fn list_records<T: DeserializeOwned>(
 
     loop {
         let response = client
-            .build_request(Method::Get, &format!("/tables/{table_id}/records"))
+            .build_request_v2(Method::Get, &format!("/tables/{table_id}/records"))
             .with_param("limit", &PAGE_SIZE.to_string())
             .with_param("offset", &offset.to_string())
             .fetch::<GetRecordsResponse<T>>()
@@ -63,7 +64,7 @@ pub async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Ve
     }
 
     Ok(client
-        .build_request(Method::Get, &format!("/meta/bases/{base_id}/tables"))
+        .build_request_v2(Method::Get, &format!("/meta/bases/{base_id}/tables"))
         .fetch::<GetTablesResponse>()
         .await?
         .list)
@@ -381,4 +382,17 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
             body: r.body,
         })
         .collect())
+}
+
+#[worker::send]
+pub async fn check_health(client: &Client) -> bool {
+    match client.build_request_v1(Method::Get, "/health").exec().await {
+        Ok(status) if status == StatusCode::OK => true,
+        _ => {
+            console_warn!(
+                "The NocoDB instance failed its health check. It might still be starting up."
+            );
+            false
+        }
+    }
 }
