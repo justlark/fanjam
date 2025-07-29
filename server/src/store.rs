@@ -166,7 +166,7 @@ macro_rules! get_data {
             let envelope: DataResponseEnvelope<$type_name> = match maybe_value_if_healthy {
                 Some(value) => DataResponseEnvelope { value, retry_after: None },
                 None => {
-                    console_log!("NocoDB is unavailable, fetching istale data if available.");
+                    console_log!("NocoDB is unavailable, fetching stale data if available.");
 
                     match $get_stored_fn(&self.kv, &self.env_name).await {
                         Ok(Some(value)) => {
