@@ -97,7 +97,10 @@ macro_rules! get_data {
                 // When the value is fetched from this cache, we do not instruct the client to
                 // retry the request. This data will always be reasonably fresh, and instructing
                 // the client to retry the request would get it stuck in a refresh loop.
-                Ok(Some(value)) => return Ok(DataResponseEnvelope { value, retry_after: None }),
+                Ok(Some(value)) => {
+                    console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
+                    return Ok(DataResponseEnvelope { value, retry_after: None });
+                },
                 Ok(None) => {
                     console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
                 }
@@ -112,7 +115,7 @@ macro_rules! get_data {
                     console_warn!("Failed getting table IDs from NocoDB: {}", e);
 
                     if matches!(e, Error::NocoUnavailable) {
-                        console_log!("NocoDB is unavailable, returning stored data.");
+                        console_log!("NocoDB is unavailable, fetching from the store instead.");
 
                         return Ok(DataResponseEnvelope {
                             value: $get_stored_fn(&self.kv, &self.env_name)
@@ -139,7 +142,7 @@ macro_rules! get_data {
                     console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
 
                     if matches!(e, Error::NocoUnavailable) {
-                        console_log!("NocoDB is unavailable, returning stored data.");
+                        console_log!("NocoDB is unavailable, fetching from the store instead.");
 
                         return Ok(DataResponseEnvelope {
                             value: $get_stored_fn(&self.kv, &self.env_name)

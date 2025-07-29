@@ -21,9 +21,7 @@ pub enum Error {
     #[error("You must specify the migration to roll back to.")]
     MissingMigrationVersion,
 
-    #[error(
-        "The NocoDB instance is not available; it may still be starting up. There is no cached data to return."
-    )]
+    #[error("The NocoDB instance is not available; it may still be starting up.")]
     NocoUnavailable,
 
     #[error("Internal server error: {0}")]
