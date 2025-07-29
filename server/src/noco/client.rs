@@ -1,3 +1,4 @@
+use axum::http::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use worker::{Method, Url};
 
@@ -45,5 +46,11 @@ impl Client {
         RequestBuilder::new(method, &endpoint)
             .with_header("Xc-Token", self.api_token.0.expose_secret())
             .with_header("Accept", "application/json")
+            // The Fly Machine shuts down when it hasn't received requests in a while. It starts
+            // itself back up when it receives a request, but that can take several seconds. In the
+            // meantime, API calls against it return a 404 Not Found. We map this to a 503 Service
+            // Unavailable so that callers can handle it appropriately, such as by returning cached
+            // data instead.
+            .map_status(StatusCode::NOT_FOUND, StatusCode::SERVICE_UNAVAILABLE)
     }
 }

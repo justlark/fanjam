@@ -23,6 +23,7 @@ pub struct RequestBuilder {
     headers: HashMap<String, String>,
     body: Option<JsValue>,
     allowed_status: HashSet<StatusCode>,
+    status_map: HashMap<StatusCode, StatusCode>,
     retry: Option<RetryStrategy>,
 }
 
@@ -35,6 +36,7 @@ impl RequestBuilder {
             headers: HashMap::new(),
             body: None,
             allowed_status: HashSet::new(),
+            status_map: HashMap::new(),
             retry: None,
         }
     }
@@ -67,6 +69,15 @@ impl RequestBuilder {
         self
     }
 
+    // This applies before `allow_status` and `with_retry`.
+    pub fn map_status(mut self, from: StatusCode, to: StatusCode) -> Self {
+        if from != to {
+            self.status_map.insert(from, to);
+        }
+
+        self
+    }
+
     // Just in case we decide we need this later.
     #[allow(dead_code)]
     pub fn with_retry(
@@ -95,7 +106,7 @@ impl RequestBuilder {
 
         let mut retries_remaining = self.retry.as_ref().map(|r| r.max_retries).unwrap_or(0);
 
-        let mut resp = loop {
+        let (mut resp, status_code) = loop {
             let req = Request::new_with_init(
                 url.as_ref(),
                 &RequestInit {
@@ -107,24 +118,29 @@ impl RequestBuilder {
             )?;
 
             let resp = Fetch::Request(req).send().await?;
-            let status_code = StatusCode::from_u16(resp.status_code())?;
-            let is_failed = resp.status_code() >= 400 && resp.status_code() <= 599;
+            let original_status = StatusCode::from_u16(resp.status_code())?;
+            let status_code = self
+                .status_map
+                .get(&original_status)
+                .cloned()
+                .unwrap_or(original_status);
+            let is_failed = status_code.as_u16() >= 400 && status_code.as_u16() <= 599;
 
             if !is_failed {
-                break resp;
+                break (resp, status_code);
             }
 
             let retry = match &self.retry {
                 Some(retry) => retry,
                 None => {
-                    break resp;
+                    break (resp, status_code);
                 }
             };
 
             let retry_allowed = retry.if_status.contains(&status_code);
 
             if !retry_allowed || retries_remaining == 0 {
-                break resp;
+                break (resp, status_code);
             }
 
             let retry_no = retry.max_retries - retries_remaining;
@@ -144,8 +160,7 @@ impl RequestBuilder {
         };
 
         let body = resp.text().await?;
-        let status_code = StatusCode::from_u16(resp.status_code())?;
-        let is_failed = resp.status_code() >= 400 && resp.status_code() <= 599;
+        let is_failed = status_code.as_u16() >= 400 && status_code.as_u16() <= 599;
 
         if is_failed && !self.allowed_status.contains(&status_code) {
             return Err(anyhow::anyhow!(
