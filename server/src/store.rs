@@ -10,10 +10,9 @@ use crate::{kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
-use std::io;
 use std::pin::pin;
 use std::time::Duration;
-use wasm_timer::TryFutureExt;
+use wasm_timer::Delay;
 use worker::kv::KvStore;
 use worker::{console_log, console_warn};
 
@@ -126,12 +125,24 @@ macro_rules! get_data {
             };
 
             // A request to NocoDB's healthcheck endpoint.
+            let healthcheck_request = pin!(noco::check_health(&self.noco_client));
+
+            let healthcheck_timeout = pin!(Delay::new(NOCO_HEALTHCHECK_TIMEOUT));
+
+            // Perform a healthcheck on the NocoDB server with a timeout.
             //
             // The timeout is important, because API requests to NocoDB tend to hang while the Fly
             // Machine is starting up.
-            let healthcheck_request = pin!(noco::check_health(&self.noco_client).map(io::Result::Ok).timeout(
-                NOCO_HEALTHCHECK_TIMEOUT,
-            ));
+            let healthcheck = future::select(
+                healthcheck_request,
+                healthcheck_timeout,
+            ).map(|either| match either {
+                Either::Left((is_healthy, _)) => is_healthy,
+                Either::Right(_) => {
+                    console_warn!("NocoDB healthcheck timed out after {} seconds.", NOCO_HEALTHCHECK_TIMEOUT.as_secs());
+                    false
+                }
+            });
 
             // This is important! We're both fetching the latest data from NocoDB *and* checking
             // whether it's healthy, in parallel.
@@ -143,9 +154,9 @@ macro_rules! get_data {
             // - If the healthcheck returns first and indicates that NocoDB is healthy, then will
             // await the API request and return it.
             // - If the API request returns first (unlikely), we will not await the healthcheck.
-            let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck_request)).await {
+            let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
                 Either::Left((value_result, _)) => Some(value_result?),
-                Either::Right((is_healthy, value_future)) => if is_healthy.unwrap_or(false) {
+                Either::Right((is_healthy, value_future)) => if is_healthy {
                     Some(value_future.await?)
                 } else {
                     None
