@@ -84,6 +84,7 @@ macro_rules! get_data {
         put_stored_fn: $put_stored_fn:path,
         err_msg_key: $err_msg_key:expr,
     } => {
+        #[worker::send]
         pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
             match $get_cached_fn(&self.kv, &self.env_name).await {
                 // When the value is fetched from this cache, we do not instruct the client to
