@@ -163,37 +163,39 @@ macro_rules! get_data {
                 }
             };
 
-            let envelope: DataResponseEnvelope<$type_name> = match maybe_value_if_healthy {
-                Some(value) => DataResponseEnvelope { value, retry_after: None },
+            match maybe_value_if_healthy {
+                Some(value) => {
+                    console_log!("Caching latest {} from NocoDB.", $err_msg_key);
+                    if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &value).await {
+                        console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
+                    }
+
+                    console_log!("Storing latest {} from NocoDB.", $err_msg_key);
+                    if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &value).await {
+                        console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
+                    }
+
+                    Ok(DataResponseEnvelope { value, retry_after: None })
+                },
                 None => {
                     console_log!("NocoDB is unavailable, fetching stale data if available.");
 
                     match $get_stored_fn(&self.kv, &self.env_name).await {
                         Ok(Some(value)) => {
                             console_log!("Returning stale {} from store.", $err_msg_key);
-                            DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) }
+                            Ok(DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
                         }
                         Ok(None) => {
                             console_warn!("No cached or stored {} found.", $err_msg_key);
-                            return Err(Error::NocoUnavailable)
+                            Err(Error::NocoUnavailable)
                         }
                         Err(e) => {
                             console_warn!("Failed getting {} from store: {}", $err_msg_key, e);
-                            return Err(Error::Internal(e))
+                            Err(Error::Internal(e))
                         }
                     }
                 }
-            };
-
-            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &envelope.value).await {
-                console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
             }
-
-            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &envelope.value).await {
-                console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
-            }
-
-            Ok(envelope)
         }
     }
 }
