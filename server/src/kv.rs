@@ -11,6 +11,14 @@ fn wrap_kv_err(err: KvError) -> anyhow::Error {
     anyhow::Error::msg(err.to_string())
 }
 
+macro_rules! concat_key_fn {
+    ($name:ident, $prefix:expr, $key:expr) => {
+        fn $name(env_name: &EnvName) -> String {
+            format!("{}{}", $prefix(env_name), $key)
+        }
+    };
+}
+
 // This random ID forms part of the app URL gives to attendees. We use a random ID instead of the
 // environment name for two reasons:
 // 1. The environment name isn't meant to change; it's used to identify a lot of resources in the
@@ -55,17 +63,17 @@ fn cache_key_prefix(env_name: &EnvName) -> String {
     format!("env:{env_name}:cache:")
 }
 
-fn events_cache_key(env_name: &EnvName) -> String {
-    format!("{}events", cache_key_prefix(env_name))
+concat_key_fn!(events_cache_key, cache_key_prefix, "events");
+concat_key_fn!(info_cache_key, cache_key_prefix, "info");
+concat_key_fn!(pages_cache_key, cache_key_prefix, "pages");
+
+fn store_key_prefix(env_name: &EnvName) -> String {
+    format!("env:{env_name}:store:")
 }
 
-fn info_cache_key(env_name: &EnvName) -> String {
-    format!("{}info", cache_key_prefix(env_name))
-}
-
-fn pages_cache_key(env_name: &EnvName) -> String {
-    format!("{}pages", cache_key_prefix(env_name))
-}
+concat_key_fn!(events_store_key, store_key_prefix, "events");
+concat_key_fn!(info_store_key, store_key_prefix, "info");
+concat_key_fn!(pages_store_key, store_key_prefix, "pages");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -235,100 +243,48 @@ pub async fn delete_migration_version(kv: &KvStore, env_name: &EnvName) -> anyho
     Ok(())
 }
 
-#[worker::send]
-pub async fn put_cached_events(
-    kv: &KvStore,
-    env_name: &EnvName,
-    events: &[Event],
-) -> anyhow::Result<()> {
-    let ttl = config::noco_cache_ttl();
+macro_rules! put_cache_fn {
+    ($name:ident, $key_fn:expr, $type:ty) => {
+        #[worker::send]
+        pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
+            let ttl = config::noco_cache_ttl();
 
-    if ttl.is_zero() {
-        // If the TTL is zero, we have nothing to cache and can just return silently.
-        return Ok(());
-    }
+            if ttl.is_zero() {
+                // If the TTL is zero, we have nothing to cache and can just return silently.
+                return Ok(());
+            }
 
-    kv.put(&events_cache_key(env_name), events)
-        .map_err(wrap_kv_err)?
-        .expiration_ttl(ttl.as_secs())
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
+            kv.put(&$key_fn(env_name), value)
+                .map_err(wrap_kv_err)?
+                .expiration_ttl(ttl.as_secs())
+                .execute()
+                .await
+                .map_err(wrap_kv_err)?;
 
-    Ok(())
+            Ok(())
+        }
+    };
 }
 
-#[worker::send]
-pub async fn get_cached_events(
-    kv: &KvStore,
-    env_name: &EnvName,
-) -> anyhow::Result<Option<Vec<Event>>> {
-    kv.get(&events_cache_key(env_name))
-        .json::<Vec<Event>>()
-        .await
-        .map_err(wrap_kv_err)
+put_cache_fn!(put_cached_events, events_cache_key, &[Event]);
+put_cache_fn!(put_cached_info, info_cache_key, &Info);
+put_cache_fn!(put_cached_pages, pages_cache_key, &[Page]);
+
+macro_rules! get_cache_fn {
+    ($name:ident, $key_fn:expr, $type:ty) => {
+        #[worker::send]
+        pub async fn $name(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<$type>> {
+            kv.get(&$key_fn(env_name))
+                .json::<$type>()
+                .await
+                .map_err(wrap_kv_err)
+        }
+    };
 }
 
-#[worker::send]
-pub async fn put_cached_info(kv: &KvStore, env_name: &EnvName, info: &Info) -> anyhow::Result<()> {
-    let ttl = config::noco_cache_ttl();
-
-    if ttl.is_zero() {
-        // If the TTL is zero, we have nothing to cache and can just return silently.
-        return Ok(());
-    }
-
-    kv.put(&info_cache_key(env_name), info)
-        .map_err(wrap_kv_err)?
-        .expiration_ttl(ttl.as_secs())
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn get_cached_info(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<Info>> {
-    kv.get(&info_cache_key(env_name))
-        .json::<Info>()
-        .await
-        .map_err(wrap_kv_err)
-}
-
-#[worker::send]
-pub async fn put_cached_pages(
-    kv: &KvStore,
-    env_name: &EnvName,
-    pages: &[Page],
-) -> anyhow::Result<()> {
-    let ttl = config::noco_cache_ttl();
-
-    if ttl.is_zero() {
-        // If the TTL is zero, we have nothing to cache and can just return silently.
-        return Ok(());
-    }
-
-    kv.put(&pages_cache_key(env_name), pages)
-        .map_err(wrap_kv_err)?
-        .expiration_ttl(ttl.as_secs())
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn get_cached_pages(
-    kv: &KvStore,
-    env_name: &EnvName,
-) -> anyhow::Result<Option<Vec<Page>>> {
-    kv.get(&pages_cache_key(env_name))
-        .json::<Vec<Page>>()
-        .await
-        .map_err(wrap_kv_err)
-}
+get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
+get_cache_fn!(get_cached_info, info_cache_key, Info);
+get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {

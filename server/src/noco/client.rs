@@ -1,6 +1,3 @@
-use std::time::Duration;
-
-use axum::http::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use worker::{Method, Url};
 
@@ -48,6 +45,5 @@ impl Client {
         RequestBuilder::new(method, &endpoint)
             .with_header("Xc-Token", self.api_token.0.expose_secret())
             .with_header("Accept", "application/json")
-            .with_retry(&[StatusCode::NOT_FOUND], 2, Duration::from_millis(500))
     }
 }

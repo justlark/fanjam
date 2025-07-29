@@ -67,6 +67,8 @@ impl RequestBuilder {
         self
     }
 
+    // Just in case we decide we need this later.
+    #[allow(dead_code)]
     pub fn with_retry(
         mut self,
         if_status: &[StatusCode],
