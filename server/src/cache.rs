@@ -6,16 +6,19 @@ use axum::{
 };
 use serde::Serialize;
 
+use crate::api::DataResponseEnvelope;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct EtagJson<T>(pub T);
 
-impl<T> IntoResponse for EtagJson<T>
+// We want to cache the data itself, not the whole response body.
+impl<T> IntoResponse for EtagJson<DataResponseEnvelope<T>>
 where
     T: Serialize,
 {
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
-        let res = serde_json::to_writer(&mut buf, &self.0);
+        let res = serde_json::to_writer(&mut buf, &self.0.value);
         let hash = blake3::hash(&buf);
 
         match res {
