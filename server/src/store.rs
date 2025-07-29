@@ -1,6 +1,7 @@
 use crate::api::{PostBackupKind, PostRestoreBackupKind};
 use crate::env::{EnvId, EnvName};
 use crate::error::Error;
+use crate::http::StatusError;
 use crate::noco::{
     self, BaseId, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
@@ -8,6 +9,7 @@ use crate::noco::{
 };
 use crate::{kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
+use axum::http::StatusCode;
 use std::fmt;
 use worker::kv::KvStore;
 use worker::{console_log, console_warn};
@@ -33,6 +35,85 @@ impl fmt::Debug for Store {
 pub struct MigrationChange {
     pub old_version: noco::Version,
     pub new_version: noco::Version,
+}
+
+fn map_noco_api_error(err: anyhow::Error) -> Error {
+    if let Some(status_err) = err.downcast_ref::<StatusError>() {
+        if status_err.code() == StatusCode::SERVICE_UNAVAILABLE {
+            return Error::NocoUnavailable;
+        }
+    }
+    Error::Internal(err)
+}
+
+macro_rules! get_data {
+    {
+        fn_name: $fn_name:ident,
+        type_name: $type_name:ty,
+        get_api_fn: $get_api_fn:path,
+        get_cached_fn: $get_cached_fn:path,
+        put_cached_fn: $put_cached_fn:path,
+        get_stored_fn: $get_stored_fn:path,
+        put_stored_fn: $put_stored_fn:path,
+        err_msg_key: $err_msg_key:expr,
+    } => {
+        pub async fn $fn_name(&self) -> Result<$type_name, Error> {
+            match $get_cached_fn(&self.kv, &self.env_name).await {
+                Ok(Some(events)) => return Ok(events),
+                Ok(None) => {
+                    console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
+                }
+                Err(e) => {
+                    console_warn!("Failed to get {} from cache: {}", $err_msg_key, e);
+                }
+            }
+
+            let table_ids = match self.get_table_ids().await {
+                Ok(table_ids) => table_ids,
+                Err(e) => {
+                    if matches!(e, Error::NocoUnavailable) {
+                        return $get_stored_fn(&self.kv, &self.env_name)
+                            .await
+                            .map_err(Error::Internal)?
+                            .ok_or(Error::NocoUnavailable);
+                    }
+
+                    return Err(e);
+                }
+            };
+
+            let events = match $get_api_fn(&self.noco_client, &table_ids)
+                .await
+                .map_err(map_noco_api_error)
+            {
+                Ok(events) => events,
+                Err(e) => {
+                    console_warn!("Failed getting {}, from NocoDB: {}", $err_msg_key, e);
+
+                    if matches!(e, Error::NocoUnavailable) {
+                        console_log!("NocoDB is unavailable, returning stored data.");
+
+                        return $get_stored_fn(&self.kv, &self.env_name)
+                            .await
+                            .map_err(Error::Internal)?
+                            .ok_or(Error::NocoUnavailable);
+                    }
+
+                    return Err(e);
+                }
+            };
+
+            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &events).await {
+                console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
+            }
+
+            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &events).await {
+                console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
+            }
+
+            Ok(events)
+        }
+    }
 }
 
 impl Store {
@@ -83,7 +164,7 @@ impl Store {
 
                     let table_ids = noco::list_tables(&self.noco_client, &self.base_id)
                         .await
-                        .map_err(Error::Internal)?;
+                        .map_err(map_noco_api_error)?;
 
                     kv::put_tables(&self.kv, &self.env_name, &table_ids)
                         .await
@@ -95,76 +176,37 @@ impl Store {
         )
     }
 
-    pub async fn get_events(&self) -> Result<Vec<noco::Event>, Error> {
-        match kv::get_cached_events(&self.kv, &self.env_name).await {
-            Ok(Some(events)) => return Ok(events),
-            Ok(None) => {
-                console_log!("No cached events found, fetching from NocoDB.");
-            }
-            Err(e) => {
-                console_warn!("Failed to get events from cache: {}", e);
-            }
-        }
-
-        let table_ids = self.get_table_ids().await?;
-
-        let events = noco::get_events(&self.noco_client, &table_ids)
-            .await
-            .map_err(Error::Internal)?;
-
-        if let Err(e) = kv::put_cached_events(&self.kv, &self.env_name, &events).await {
-            console_warn!("Failed putting events in cache: {}", e);
-        }
-
-        Ok(events)
+    get_data! {
+        fn_name: get_events,
+        type_name: Vec<noco::Event>,
+        get_api_fn: noco::get_events,
+        get_cached_fn: kv::get_cached_events,
+        put_cached_fn: kv::put_cached_events,
+        get_stored_fn: kv::get_stored_events,
+        put_stored_fn: kv::put_stored_events,
+        err_msg_key: "events",
     }
 
-    pub async fn get_info(&self) -> Result<noco::Info, Error> {
-        match kv::get_cached_info(&self.kv, &self.env_name).await {
-            Ok(Some(info)) => return Ok(info),
-            Ok(None) => {
-                console_log!("No cached info found, fetching from NocoDB.");
-            }
-            Err(e) => {
-                console_warn!("Failed to get info from cache: {}", e);
-            }
-        }
-
-        let table_ids = self.get_table_ids().await?;
-
-        let info = noco::get_info(&self.noco_client, &table_ids)
-            .await
-            .map_err(Error::Internal)?;
-
-        if let Err(e) = kv::put_cached_info(&self.kv, &self.env_name, &info).await {
-            console_warn!("Failed putting info in cache: {}", e);
-        }
-
-        Ok(info)
+    get_data! {
+        fn_name: get_info,
+        type_name: noco::Info,
+        get_api_fn: noco::get_info,
+        get_cached_fn: kv::get_cached_info,
+        put_cached_fn: kv::put_cached_info,
+        get_stored_fn: kv::get_stored_info,
+        put_stored_fn: kv::put_stored_info,
+        err_msg_key: "info",
     }
 
-    pub async fn get_pages(&self) -> Result<Vec<noco::Page>, Error> {
-        match kv::get_cached_pages(&self.kv, &self.env_name).await {
-            Ok(Some(pages)) => return Ok(pages),
-            Ok(None) => {
-                console_log!("No cached pages found, fetching from NocoDB.");
-            }
-            Err(e) => {
-                console_warn!("Failed to get pages from cache: {}", e);
-            }
-        }
-
-        let table_ids = self.get_table_ids().await?;
-
-        let pages = noco::get_pages(&self.noco_client, &table_ids)
-            .await
-            .map_err(Error::Internal)?;
-
-        if let Err(e) = kv::put_cached_pages(&self.kv, &self.env_name, &pages).await {
-            console_warn!("Failed putting pages in cache: {}", e);
-        }
-
-        Ok(pages)
+    get_data! {
+        fn_name: get_pages,
+        type_name: Vec<noco::Page>,
+        get_api_fn: noco::get_pages,
+        get_cached_fn: kv::get_cached_pages,
+        put_cached_fn: kv::put_cached_pages,
+        get_stored_fn: kv::get_stored_pages,
+        put_stored_fn: kv::put_stored_pages,
+        err_msg_key: "pages",
     }
 
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {

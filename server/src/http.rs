@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt,
     time::Duration,
 };
 
@@ -26,6 +27,35 @@ pub struct RequestBuilder {
     status_map: HashMap<StatusCode, StatusCode>,
     retry: Option<RetryStrategy>,
 }
+
+#[derive(Debug)]
+pub struct StatusError {
+    code: StatusCode,
+    url: Url,
+    body: String,
+}
+
+impl StatusError {
+    pub fn new(code: StatusCode, url: Url, body: String) -> Self {
+        Self { code, url, body }
+    }
+
+    pub fn code(&self) -> StatusCode {
+        self.code
+    }
+}
+
+impl fmt::Display for StatusError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "status {} for {} with body:\n{}",
+            self.code, self.url, self.body,
+        )
+    }
+}
+
+impl std::error::Error for StatusError {}
 
 impl RequestBuilder {
     pub fn new(method: Method, url: &str) -> Self {
@@ -163,12 +193,7 @@ impl RequestBuilder {
         let is_failed = status_code.as_u16() >= 400 && status_code.as_u16() <= 599;
 
         if is_failed && !self.allowed_status.contains(&status_code) {
-            return Err(anyhow::anyhow!(
-                "status {} for {} with body:\n{}",
-                status_code,
-                url.to_string(),
-                body,
-            ));
+            return Err(StatusError::new(status_code, url, body.clone()).into());
         }
 
         Ok((status_code, body))
