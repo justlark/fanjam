@@ -12,9 +12,8 @@ use futures::future::{self, Either, FutureExt};
 use std::fmt;
 use std::pin::pin;
 use std::time::Duration;
-use wasm_timer::Delay;
 use worker::kv::KvStore;
-use worker::{console_log, console_warn};
+use worker::{Delay, console_log, console_warn};
 
 #[derive(Debug)]
 pub struct DataResponseEnvelope<T> {
@@ -127,7 +126,7 @@ macro_rules! get_data {
             // A request to NocoDB's healthcheck endpoint.
             let healthcheck_request = pin!(noco::check_health(&self.noco_client));
 
-            let healthcheck_timeout = pin!(Delay::new(NOCO_HEALTHCHECK_TIMEOUT));
+            let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
 
             // Perform a healthcheck on the NocoDB server with a timeout.
             //
