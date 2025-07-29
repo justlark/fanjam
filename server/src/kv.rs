@@ -286,6 +286,35 @@ get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
 get_cache_fn!(get_cached_info, info_cache_key, Info);
 get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
 
+macro_rules! put_store_fn {
+    ($name:ident, $key_fn:expr, $type:ty) => {
+        #[worker::send]
+        pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
+            kv.put(&$key_fn(env_name), value)
+                .map_err(wrap_kv_err)?
+                .execute()
+                .await
+                .map_err(wrap_kv_err)?;
+
+            Ok(())
+        }
+    };
+}
+
+put_store_fn!(put_stored_events, events_store_key, &[Event]);
+put_store_fn!(put_stored_info, info_store_key, &Info);
+put_store_fn!(put_stored_pages, pages_store_key, &[Page]);
+
+macro_rules! get_store_fn {
+    ($name:ident, $key_fn:expr, $type:ty) => {
+        get_cache_fn!($name, $key_fn, $type);
+    };
+}
+
+get_store_fn!(get_stored_events, events_store_key, Vec<Event>);
+get_store_fn!(get_stored_info, info_store_key, Info);
+get_store_fn!(get_stored_pages, pages_store_key, Vec<Page>);
+
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     // The default and maximum number of keys this will return is 1000, which is more than plenty
@@ -298,7 +327,17 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
         .map_err(wrap_kv_err)?
         .keys;
 
-    for key in cache_keys {
+    let store_keys = kv
+        .list()
+        .prefix(store_key_prefix(env_name))
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?
+        .keys;
+
+    let keys = cache_keys.into_iter().chain(store_keys.into_iter());
+
+    for key in keys {
         kv.delete(&key.name).await.map_err(wrap_kv_err)?;
     }
 
