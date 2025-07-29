@@ -11,8 +11,15 @@ use crate::{kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use axum::http::StatusCode;
 use std::fmt;
+use std::time::Duration;
 use worker::kv::KvStore;
 use worker::{console_log, console_warn};
+
+#[derive(Debug)]
+pub struct DataResponseEnvelope<T> {
+    pub retry_after: Option<Duration>,
+    pub value: T,
+}
 
 pub struct Store {
     noco_client: NocoClient,
@@ -46,6 +53,34 @@ fn map_noco_api_error(err: anyhow::Error) -> Error {
     Error::Internal(err)
 }
 
+const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
+
+// This macro generates a method on the `Store` for fetching data from NocoDB with caching.
+//
+// TLDR: We're using aggressive caching to create an eventually consistent system that maximizes
+// availability while allowing the NocoDB instance to shut itself off when not in use.
+//
+// There are two caches, which we'll call the "cache" and the "store". The cache has a short TTL
+// and is used to reduce the load on the NocoDB instance, which is slower and more expensive than
+// this worker. Data we fetch from NocoDB is put into the cache, where it expires after *n*
+// seconds. Requests that come in from the client during that time will get the cached data. This
+// means that NocoDB will only get hit at most every *n* seconds, and data returned to the client
+// will only be stale by at most *n* seconds.
+//
+// Whenever we fetch data from NocoDB, we also put it into the store, where it does not expire. The
+// purpose of the store is to handle the specific case where the NocoDB instance is temporarily
+// unavailable, but the cache is empty. This can happen fairly often, because if the Fly Machine
+// shuts itself off (which it is configured to do, to save money), it takes a few seconds to start
+// back up, and during that time it will not respond to requests.
+//
+// Whenever the worker responds to a request with data from the store, it includes a directive for
+// the client to retry the request after a short delay, by which point the NocoDB instance is
+// hopefully online. This saves the user from a 10+ second loading spinner while the NocoDB
+// instance starts up.
+//
+// We can't make any guarantees about how stale the data in the store is, but it's not particularly
+// important, because that data will only be shown to the user for a few seconds until the client
+// is able to fetch the latest data from NocoDB.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -57,9 +92,12 @@ macro_rules! get_data {
         put_stored_fn: $put_stored_fn:path,
         err_msg_key: $err_msg_key:expr,
     } => {
-        pub async fn $fn_name(&self) -> Result<$type_name, Error> {
+        pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
             match $get_cached_fn(&self.kv, &self.env_name).await {
-                Ok(Some(events)) => return Ok(events),
+                // When the value is fetched from this cache, we do not instruct the client to
+                // retry the request. This data will always be reasonably fresh, and instructing
+                // the client to retry the request would get it stuck in a refresh loop.
+                Ok(Some(value)) => return Ok(DataResponseEnvelope { value, retry_after: None }),
                 Ok(None) => {
                     console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
                 }
@@ -71,47 +109,64 @@ macro_rules! get_data {
             let table_ids = match self.get_table_ids().await {
                 Ok(table_ids) => table_ids,
                 Err(e) => {
-                    if matches!(e, Error::NocoUnavailable) {
-                        return $get_stored_fn(&self.kv, &self.env_name)
-                            .await
-                            .map_err(Error::Internal)?
-                            .ok_or(Error::NocoUnavailable);
-                    }
-
-                    return Err(e);
-                }
-            };
-
-            let events = match $get_api_fn(&self.noco_client, &table_ids)
-                .await
-                .map_err(map_noco_api_error)
-            {
-                Ok(events) => events,
-                Err(e) => {
-                    console_warn!("Failed getting {}, from NocoDB: {}", $err_msg_key, e);
+                    console_warn!("Failed getting table IDs from NocoDB: {}", e);
 
                     if matches!(e, Error::NocoUnavailable) {
                         console_log!("NocoDB is unavailable, returning stored data.");
 
-                        return $get_stored_fn(&self.kv, &self.env_name)
-                            .await
-                            .map_err(Error::Internal)?
-                            .ok_or(Error::NocoUnavailable);
+                        return Ok(DataResponseEnvelope {
+                            value: $get_stored_fn(&self.kv, &self.env_name)
+                                .await
+                                .map_err(Error::Internal)?
+                                // If NocoDB is unavailable, we don't have a cache to fall back on,
+                                // it's *really* unavailable, and there's not much we can do about
+                                // it. The client can always implement retry logic in this case.
+                                .ok_or(Error::NocoUnavailable)?,
+                            retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY),
+                        })
                     }
 
                     return Err(e);
                 }
             };
 
-            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &events).await {
+            let value = match $get_api_fn(&self.noco_client, &table_ids)
+                .await
+                .map_err(map_noco_api_error)
+            {
+                Ok(value) => value,
+                Err(e) => {
+                    console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+
+                    if matches!(e, Error::NocoUnavailable) {
+                        console_log!("NocoDB is unavailable, returning stored data.");
+
+                        return Ok(DataResponseEnvelope {
+                            value: $get_stored_fn(&self.kv, &self.env_name)
+                                .await
+                                .map_err(Error::Internal)?
+                                // See the note above.
+                                .ok_or(Error::NocoUnavailable)?,
+                            retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY),
+                        })
+                    };
+
+                    return Err(e);
+                }
+            };
+
+            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &value).await {
                 console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
             }
 
-            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &events).await {
+            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &value).await {
                 console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
             }
 
-            Ok(events)
+        Ok(DataResponseEnvelope {
+            value,
+            retry_after: None,
+        })
         }
     }
 }

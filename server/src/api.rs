@@ -69,6 +69,12 @@ pub struct PostRestoreBackupRequest {
 }
 
 #[derive(Debug, Serialize)]
+pub struct DataResponseEnvelope<T> {
+    pub retry_after_ms: Option<u64>,
+    pub value: T,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Event {
     pub id: String,
     pub name: String,

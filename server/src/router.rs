@@ -12,8 +12,8 @@ use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
-        Event, File, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
+        DataResponseEnvelope, Event, File, GetCurrentMigrationResponse, GetEventsResponse,
+        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
         PostBackupRequest, PostBaseRequest, PostLinkResponse, PostRestoreBackupRequest,
         PutTokenRequest,
     },
@@ -24,7 +24,7 @@ use crate::{
     error::Error,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
-    store::{MigrationChange, Store},
+    store::{self, MigrationChange, Store},
     url,
 };
 
@@ -281,26 +281,32 @@ async fn delete_cache(
 async fn get_events(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<GetEventsResponse>, ErrorResponse> {
+) -> Result<EtagJson<DataResponseEnvelope<GetEventsResponse>>, ErrorResponse> {
     let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
-    let events = store.get_events().await?;
+    let store::DataResponseEnvelope {
+        retry_after,
+        value: events,
+    } = store.get_events().await?;
 
-    Ok(EtagJson(GetEventsResponse {
-        events: events
-            .into_iter()
-            .map(|event| Event {
-                id: event.id,
-                name: event.name,
-                description: event.description,
-                start_time: event.start_time,
-                end_time: event.end_time,
-                location: event.location,
-                people: event.people,
-                category: event.category,
-                tags: event.tags,
-            })
-            .collect::<Vec<_>>(),
+    Ok(EtagJson(DataResponseEnvelope {
+        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
+        value: GetEventsResponse {
+            events: events
+                .into_iter()
+                .map(|event| Event {
+                    id: event.id,
+                    name: event.name,
+                    description: event.description,
+                    start_time: event.start_time,
+                    end_time: event.end_time,
+                    location: event.location,
+                    people: event.people,
+                    category: event.category,
+                    tags: event.tags,
+                })
+                .collect::<Vec<_>>(),
+        },
     }))
 }
 
@@ -308,38 +314,44 @@ async fn get_events(
 async fn get_info(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<GetInfoResponse>, ErrorResponse> {
+) -> Result<EtagJson<DataResponseEnvelope<GetInfoResponse>>, ErrorResponse> {
     let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
-    let info = store.get_info().await?;
+    let store::DataResponseEnvelope {
+        retry_after,
+        value: info,
+    } = store.get_info().await?;
 
-    Ok(EtagJson(GetInfoResponse {
-        name: info.about.as_ref().map(|about| about.name.clone()),
-        description: info
-            .about
-            .as_ref()
-            .and_then(|about| about.description.clone()),
-        website_url: info
-            .about
-            .as_ref()
-            .and_then(|about| about.website_url.clone()),
-        links: info
-            .links
-            .into_iter()
-            .map(|link| Link {
-                name: link.name,
-                url: link.url,
-            })
-            .collect::<Vec<_>>(),
-        files: info
-            .files
-            .into_iter()
-            .map(|file| File {
-                name: file.name,
-                media_type: file.media_type,
-                signed_url: file.signed_url,
-            })
-            .collect::<Vec<_>>(),
+    Ok(EtagJson(DataResponseEnvelope {
+        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
+        value: GetInfoResponse {
+            name: info.about.as_ref().map(|about| about.name.clone()),
+            description: info
+                .about
+                .as_ref()
+                .and_then(|about| about.description.clone()),
+            website_url: info
+                .about
+                .as_ref()
+                .and_then(|about| about.website_url.clone()),
+            links: info
+                .links
+                .into_iter()
+                .map(|link| Link {
+                    name: link.name,
+                    url: link.url,
+                })
+                .collect::<Vec<_>>(),
+            files: info
+                .files
+                .into_iter()
+                .map(|file| File {
+                    name: file.name,
+                    media_type: file.media_type,
+                    signed_url: file.signed_url,
+                })
+                .collect::<Vec<_>>(),
+        },
     }))
 }
 
@@ -347,19 +359,25 @@ async fn get_info(
 async fn get_pages(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<GetPagesResponse>, ErrorResponse> {
+) -> Result<EtagJson<DataResponseEnvelope<GetPagesResponse>>, ErrorResponse> {
     let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
 
-    let pages = store.get_pages().await?;
+    let store::DataResponseEnvelope {
+        retry_after,
+        value: pages,
+    } = store.get_pages().await?;
 
-    Ok(EtagJson(GetPagesResponse {
-        pages: pages
-            .into_iter()
-            .map(|page| Page {
-                id: page.id,
-                title: page.title,
-                body: page.body,
-            })
-            .collect::<Vec<_>>(),
+    Ok(EtagJson(DataResponseEnvelope {
+        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
+        value: GetPagesResponse {
+            pages: pages
+                .into_iter()
+                .map(|page| Page {
+                    id: page.id,
+                    title: page.title,
+                    body: page.body,
+                })
+                .collect::<Vec<_>>(),
+        },
     }))
 }
