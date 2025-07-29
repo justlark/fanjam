@@ -22,6 +22,7 @@ impl ExposeSecret<str> for ApiToken {
 enum ApiVersion {
     V1,
     V2,
+    #[allow(dead_code)]
     V3,
 }
 
@@ -39,7 +40,7 @@ impl ApiVersion {
             ApiVersion::V3 => "api/v3",
         };
 
-        format!("{}{}", origin, url_prefix)
+        format!("{origin}{url_prefix}")
     }
 }
 

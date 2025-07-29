@@ -1,7 +1,6 @@
 use crate::api::{PostBackupKind, PostRestoreBackupKind};
 use crate::env::{EnvId, EnvName};
 use crate::error::Error;
-use crate::http::StatusError;
 use crate::noco::{
     self, BaseId, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
@@ -9,8 +8,9 @@ use crate::noco::{
 };
 use crate::{kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
-use axum::http::StatusCode;
+use futures::future::{self, Either};
 use std::fmt;
+use std::pin::pin;
 use std::time::Duration;
 use worker::kv::KvStore;
 use worker::{console_log, console_warn};
@@ -44,15 +44,6 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
-fn map_noco_api_error(err: anyhow::Error) -> Error {
-    if let Some(status_err) = err.downcast_ref::<StatusError>() {
-        if status_err.code() == StatusCode::SERVICE_UNAVAILABLE {
-            return Error::NocoUnavailable;
-        }
-    }
-    Error::Internal(err)
-}
-
 const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
@@ -69,9 +60,9 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 //
 // Whenever we fetch data from NocoDB, we also put it into the store, where it does not expire. The
 // purpose of the store is to handle the specific case where the NocoDB instance is temporarily
-// unavailable, but the cache is empty. This can happen fairly often, because if the Fly Machine
-// shuts itself off (which it is configured to do, to save money), it takes a few seconds to start
-// back up, and during that time it will not respond to requests.
+// unavailable, but the cache is empty. This may happen fairly often, because if the Fly Machine
+// shuts itself off (which it is configured to do, to save money), it takes about 10 seconds to
+// start back up, and during that time it will not respond to requests.
 //
 // Whenever the worker responds to a request with data from the store, it includes a directive for
 // the client to retry the request after a short delay, by which point the NocoDB instance is
@@ -109,67 +100,81 @@ macro_rules! get_data {
                 }
             }
 
-            let table_ids = match self.get_table_ids().await {
-                Ok(table_ids) => table_ids,
-                Err(e) => {
-                    console_warn!("Failed getting table IDs from NocoDB: {}", e);
-
-                    if matches!(e, Error::NocoUnavailable) {
-                        console_log!("NocoDB is unavailable, fetching from the store instead.");
-
-                        return Ok(DataResponseEnvelope {
-                            value: $get_stored_fn(&self.kv, &self.env_name)
-                                .await
-                                .map_err(Error::Internal)?
-                                // If NocoDB is unavailable, we don't have a cache to fall back on,
-                                // it's *really* unavailable, and there's not much we can do about
-                                // it. The client can always implement retry logic in this case.
-                                .ok_or(Error::NocoUnavailable)?,
-                            retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY),
-                        })
+            // A request to get the most recent data from NocoDB.
+            let value_request = async {
+                let table_ids = match self.get_table_ids().await {
+                    Ok(table_ids) => table_ids,
+                    Err(e) => {
+                        console_warn!("Failed getting table IDs from NocoDB: {}", e);
+                        return Err(e);
                     }
+                };
 
-                    return Err(e);
+                match $get_api_fn(&self.noco_client, &table_ids)
+                    .await
+                    .map_err(Error::Internal)
+                {
+                    Ok(value) => Ok(value),
+                    Err(e) => {
+                        console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+                        Err(e)
+                    }
                 }
             };
 
-            let value = match $get_api_fn(&self.noco_client, &table_ids)
-                .await
-                .map_err(map_noco_api_error)
-            {
-                Ok(value) => value,
-                Err(e) => {
-                    console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+            // A request to NocoDB's healthcheck endpoint.
+            let healthcheck_request = noco::check_health(&self.noco_client);
 
-                    if matches!(e, Error::NocoUnavailable) {
-                        console_log!("NocoDB is unavailable, fetching from the store instead.");
-
-                        return Ok(DataResponseEnvelope {
-                            value: $get_stored_fn(&self.kv, &self.env_name)
-                                .await
-                                .map_err(Error::Internal)?
-                                // See the note above.
-                                .ok_or(Error::NocoUnavailable)?,
-                            retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY),
-                        })
-                    };
-
-                    return Err(e);
+            // This is important! We're both fetching the latest data from NocoDB *and* checking
+            // whether it's healthy, in parallel.
+            //
+            // - If the healthcheck returns first and indicates that NocoDB is unhealthy, or if it
+            // times out (more likely, as requests to the Fly Machine tend to hang when while it's
+            // starting up), then we will not await the API request, and will instead go straight to
+            // the store.
+            // - If the healthcheck returns first and indicates that NocoDB is healthy (most likely
+            // if it's already running), then will await the API request and return it.
+            // - If the API request returns first (unlikely), we will not await the healthcheck.
+            let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck_request)).await {
+                Either::Left((value_result, _)) => Some(value_result?),
+                Either::Right((is_healthy, value_future)) => if is_healthy {
+                    Some(value_future.await?)
+                } else {
+                    None
                 }
             };
 
-            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &value).await {
+            let envelope: DataResponseEnvelope<$type_name> = match maybe_value_if_healthy {
+                Some(value) => DataResponseEnvelope { value, retry_after: None },
+                None => {
+                    console_log!("NocoDB is unavailable, fetching istale data if available.");
+
+                    match $get_stored_fn(&self.kv, &self.env_name).await {
+                        Ok(Some(value)) => {
+                            console_log!("Returning stale {} from store.", $err_msg_key);
+                            DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) }
+                        }
+                        Ok(None) => {
+                            console_warn!("No cached or stored {} found.", $err_msg_key);
+                            return Err(Error::NocoUnavailable)
+                        }
+                        Err(e) => {
+                            console_warn!("Failed getting {} from store: {}", $err_msg_key, e);
+                            return Err(Error::Internal(e))
+                        }
+                    }
+                }
+            };
+
+            if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &envelope.value).await {
                 console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
             }
 
-            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &value).await {
+            if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &envelope.value).await {
                 console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
             }
 
-        Ok(DataResponseEnvelope {
-            value,
-            retry_after: None,
-        })
+            Ok(envelope)
         }
     }
 }
@@ -222,7 +227,7 @@ impl Store {
 
                     let table_ids = noco::list_tables(&self.noco_client, &self.base_id)
                         .await
-                        .map_err(map_noco_api_error)?;
+                        .map_err(Error::Internal)?;
 
                     kv::put_tables(&self.kv, &self.env_name, &table_ids)
                         .await

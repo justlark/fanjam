@@ -39,10 +39,6 @@ impl StatusError {
     pub fn new(code: StatusCode, url: Url, body: String) -> Self {
         Self { code, url, body }
     }
-
-    pub fn code(&self) -> StatusCode {
-        self.code
-    }
 }
 
 impl fmt::Display for StatusError {
@@ -99,7 +95,10 @@ impl RequestBuilder {
         self
     }
 
+    // TODO: Remove this if we find we don't end up needing it later.
+    //
     // This applies before `allow_status` and `with_retry`.
+    #[allow(dead_code)]
     pub fn map_status(mut self, from: StatusCode, to: StatusCode) -> Self {
         if from != to {
             self.status_map.insert(from, to);
@@ -108,7 +107,7 @@ impl RequestBuilder {
         self
     }
 
-    // Just in case we decide we need this later.
+    // TODO: Remove this if we find we don't end up needing it later.
     #[allow(dead_code)]
     pub fn with_retry(
         mut self,

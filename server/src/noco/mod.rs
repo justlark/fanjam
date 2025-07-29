@@ -7,7 +7,8 @@ mod migrations;
 pub use base::{check_base_exists, create_base, delete_base};
 pub use client::{ApiToken, Client};
 pub use data::{
-    Event, Info, Page, TableIds, TableInfo, get_events, get_info, get_pages, list_tables,
+    Event, Info, Page, TableIds, TableInfo, check_health, get_events, get_info, get_pages,
+    list_tables,
 };
 pub use migrate::{
     ExistingMigrationState, MigrationState, Migrator, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
