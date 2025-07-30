@@ -19,8 +19,14 @@ enabled = true
 pattern = "test.fanjam.live"
 custom_domain = true
 
+[env.test.vars]
+API_DOMAIN = "api-test.fanjam.live"
+
 [env.prod]
 
 [env.prod.route]
 pattern = "fanjam.live"
 custom_domain = true
+
+[env.prod.vars]
+API_DOMAIN = "api.fanjam.live"

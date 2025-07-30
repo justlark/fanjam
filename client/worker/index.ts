@@ -1,7 +1,14 @@
-import { type Fetcher, type Request } from "@cloudflare/workers-types";
+import {
+  type Fetcher,
+  type Request,
+  Response,
+  HTMLRewriter,
+  Element,
+} from "@cloudflare/workers-types";
 
 interface Env {
   ASSETS: Fetcher;
+  API_DOMAIN: string;
 }
 
 const headerPatterns = {
@@ -20,9 +27,121 @@ const headerPatterns = {
   },
 };
 
+interface AppInfo {
+  name?: string;
+  description?: string;
+}
+
+interface ApiEnvelope<T> {
+  value: T;
+}
+
+const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
+
+  if (!response.ok) {
+    return {};
+  }
+
+  try {
+    const body = await response.json();
+    return (body as ApiEnvelope<AppInfo>).value;
+  } catch {
+    return {};
+  }
+};
+
+const appPathRegex = new RegExp(`^/app/([^/]+)/`);
+const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest$`);
+
+const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response | undefined> => {
+  const matches = manifestPathRegex.exec(requestUrl.pathname);
+
+  if (!matches) {
+    return undefined;
+  }
+
+  const envId = matches[1];
+  const appInfo = await getAppInfo(env.API_DOMAIN, envId);
+
+  const webManifest = {
+    name: appInfo.name ?? "FanJam",
+    description: appInfo.description,
+    scope: `${requestUrl.origin}/app/${envId}/`,
+    start_url: `${requestUrl.origin}/app/${envId}/`,
+    display: "standalone",
+    icons: [
+      {
+        src: `${requestUrl.origin}/icons/icon.png`,
+        type: "image/png",
+      },
+      {
+        src: `${requestUrl.origin}/icons/icon-maskable.png`,
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: `${requestUrl.origin}/icons/icon-monochrome.png`,
+        type: "image/png",
+        purpose: "monochrome",
+      },
+      {
+        src: `${requestUrl.origin}/icons/icon-monochrome-maskable.png`,
+        type: "image/png",
+        purpose: "monochrome maskable",
+      },
+    ],
+    shortcuts: [
+      {
+        name: "Schedule",
+        url: `${requestUrl.origin}/app/${envId}/schedule`,
+      },
+      {
+        name: "Info",
+        url: `${requestUrl.origin}/app/${envId}/info`,
+      },
+    ],
+  };
+
+  return new Response(JSON.stringify(webManifest), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/manifest+json",
+      "Cache-Control": "no-cache",
+    },
+  });
+};
+
+const injectWebManifestLink = (requestUrl: URL, response: Response): Response => {
+  const matches = appPathRegex.exec(requestUrl.pathname);
+
+  if (!matches) {
+    return response;
+  }
+
+  const envId = matches[1];
+  const webManifestUrl = `${requestUrl.origin}/app/${envId}/app.webmanifest`;
+
+  return new HTMLRewriter()
+    .on("head", {
+      element(element: Element) {
+        element.append(`<link rel="manifest" href="${webManifestUrl}" />`, { html: true });
+      },
+    })
+    .transform(response);
+};
+
 export default {
   async fetch(request: Request, env: Env) {
     const requestUrl = new URL(request.url);
+
+    // If this is the URL of a web manifest, generate it instead of forwarding
+    // the request to the CDN.
+    const webManifest = await webManifestResponse(requestUrl, env);
+
+    if (webManifest) {
+      return webManifest;
+    }
 
     const response = await env.ASSETS.fetch(request);
 
@@ -32,7 +151,7 @@ export default {
       newHeaders.set(key, value);
     }
 
-    const newResponse = new Response(response.body, {
+    let newResponse = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: newHeaders,
@@ -46,6 +165,9 @@ export default {
         }
       }
     }
+
+    // Inject the web manifest URL into the response if this is a page in the app.
+    newResponse = injectWebManifestLink(requestUrl, newResponse);
 
     return newResponse;
   },
