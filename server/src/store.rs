@@ -6,7 +6,7 @@ use crate::noco::{
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
     noco_migration_branch_name,
 };
-use crate::{kv, neon, url};
+use crate::{config, kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
@@ -309,7 +309,10 @@ impl Store {
     pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
         match kv::get_cached_summary(&self.kv, &self.env_name).await {
             Ok(Some(value)) => {
-                console_log!("Returning cached summary; skipping NocoDB.");
+                console_log!(
+                    "Returning summary from separate cache with TTL {}s; skipping NocoDB.",
+                    config::noco_summary_cache_ttl().as_secs()
+                );
                 return Ok(value);
             }
             Ok(None) => {
