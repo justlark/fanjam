@@ -28,59 +28,63 @@ export default defineConfig(({ mode }) => ({
       // We need to lie to the type system here, but this is not the same thing
       // as actually passing the string "production".
       mode: mode as "production",
-      // We generate the manifest dynamically in the client worker, so don't
-      // let the plugin do it.
+      // We generate the manifest dynamically at the edge, so don't let the
+      // plugin do it.
       manifest: false,
       // Normally, this plugin automatically includes icons linked in the
       // manifest. However, because we're generating the manifest ourselves, we
       // need to tell it where to find them.
       includeAssets: ["icons/*"],
+      // This is all quite complicated and I don't fully grok it, but this
+      // configuration accomplishes a few things:
+      //
+      // - It ensures the service worker fetches the `index.html` from the edge
+      // function instead of bundling the default/static one, which it would
+      // otherwise prefer.
+      // - It ensures headers from upstream aren't clobbered by the service
+      // worker.
+      // - It caches resources fetched from CDNs, which aren't included in the
+      // bundle.
+      // - The app can work completely offline and transition seamlessly.
       workbox: {
-        navigateFallbackDenylist: [new RegExp(`^/app/[^/]+/app.webmanifest$`)],
+        // Exclude `**/*.html`, which is an implicit default.
+        globPatterns: ["**/*.{js,css}"],
+        navigateFallback: null,
         runtimeCaching: [
-          // This is necessary to ensure that the service worker doesn't
-          // clobber response headers from the origin (such as the CSP).
           {
-            urlPattern: new RegExp(`^https://fanjam\.live/.*`, "i"),
-            handler: "StaleWhileRevalidate",
+            urlPattern: ({ request, url }) =>
+              request.destination === "document" && url.origin === "https://fanjam.live",
+            handler: "NetworkFirst",
             options: {
               cacheName: "origin-cache",
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
               plugins: [
                 {
-                  // Preserve original request
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(request.url),
-                  // Return the response as-is to preserve headers.
-                  cacheWillUpdate: ({ response }) =>
-                    Promise.resolve(response.status === 200 ? response : null),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
+                  cacheWillUpdate: ({ response }) => {
+                    return Promise.resolve(response.status === 200 ? response : null);
+                  },
                 },
               ],
             },
           },
           {
-            urlPattern: new RegExp(`^https://test\.fanjam\.live/.*`, "i"),
-            handler: "StaleWhileRevalidate",
+            urlPattern: ({ request, url }) =>
+              request.destination === "document" && url.origin === "https://test.fanjam.live",
+            handler: "NetworkFirst",
             options: {
               cacheName: "origin-test-cache",
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
               plugins: [
                 {
-                  // Preserve original request
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(request.url),
-                  // Return the response as-is to preserve headers.
-                  cacheWillUpdate: ({ response }) =>
-                    Promise.resolve(response.status === 200 ? response : null),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
+                  cacheWillUpdate: ({ response }) => {
+                    return Promise.resolve(response.status === 200 ? response : null);
+                  },
                 },
               ],
             },
           },
-          // Cache assets fetched from CDNs.
           {
-            urlPattern: new RegExp(`^https://fonts\.googleapis\.com/.*`, "i"),
+            urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com",
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "google-fonts-cache",
@@ -93,7 +97,7 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: new RegExp(`^https://fonts\.gstatic\.com/.*`, "i"),
+            urlPattern: ({ url }) => url.origin === "https://fonts.gstatic.com",
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "gstatic-fonts-cache",
@@ -106,7 +110,7 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: new RegExp(`^https://cdn\.jsdelivr\.net/.*`, "i"),
+            urlPattern: ({ url }) => url.origin === "https://cdn.jsdelivr.net",
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "jsdelivr-cache",
