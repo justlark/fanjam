@@ -47,7 +47,7 @@ const refresh = async () => {
       detail: "Grabbing the latest schedule.",
       life: 1500,
     });
-  }, 200);
+  }, 350);
 
   await reload();
 
