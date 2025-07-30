@@ -10,7 +10,7 @@ interface RawEvent {
   tags: Array<string>;
 }
 
-export interface RawInfo {
+interface RawInfo {
   name: string | null;
   description: string | null;
   website_url: string | null;
@@ -25,10 +25,15 @@ export interface RawInfo {
   }>;
 }
 
-export interface RawPage {
+interface RawPage {
   id: string;
   title: string;
   body: string;
+}
+
+interface Envelope<T> {
+  retry_after_ms?: number;
+  value: T;
 }
 
 export interface Event {
@@ -70,14 +75,14 @@ export interface Info {
 
 export type ApiResult<T> =
   | {
-    ok: true;
-    value: T;
-    etag?: string;
-  }
+      ok: true;
+      value: T;
+      etag?: string;
+    }
   | {
-    ok: false;
-    code: number;
-  };
+      ok: false;
+      code: number;
+    };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -93,8 +98,8 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -104,9 +109,9 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
     return { ok: false, code: response.status };
   }
 
-  const rawEvents: { events: Array<RawEvent> } = await response.json();
+  const rawEvents: Envelope<{ events: Array<RawEvent> }> = await response.json();
 
-  const events: Array<Event> = rawEvents.events.map((event) => ({
+  const events: Array<Event> = rawEvents.value.events.map((event) => ({
     id: event.id,
     name: event.name,
     description: event.description ?? undefined,
@@ -132,8 +137,8 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -143,17 +148,17 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
     return { ok: false, code: response.status };
   }
 
-  const rawInfo: RawInfo = await response.json();
+  const rawInfo: Envelope<RawInfo> = await response.json();
 
   const info: Info = {
-    name: rawInfo.name ?? undefined,
-    description: rawInfo.description ?? undefined,
-    websiteUrl: rawInfo.website_url ?? undefined,
-    links: rawInfo.links.map((link) => ({
+    name: rawInfo.value.name ?? undefined,
+    description: rawInfo.value.description ?? undefined,
+    websiteUrl: rawInfo.value.website_url ?? undefined,
+    links: rawInfo.value.links.map((link) => ({
       name: link.name,
       url: link.url,
     })),
-    files: rawInfo.files.map((file) => ({
+    files: rawInfo.value.files.map((file) => ({
       name: file.name,
       mediaType: file.media_type,
       signedUrl: file.signed_url,
@@ -174,8 +179,8 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -185,9 +190,9 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     return { ok: false, code: response.status };
   }
 
-  const rawPages: { pages: Array<RawPage> } = await response.json();
+  const rawPages: Envelope<{ pages: Array<RawPage> }> = await response.json();
 
-  const pages: Array<Page> = rawPages.pages.map((page) => ({
+  const pages: Array<Page> = rawPages.value.pages.map((page) => ({
     id: page.id,
     title: page.title,
     body: page.body,
