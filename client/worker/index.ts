@@ -32,7 +32,7 @@ const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> =>
 
   if (!response.ok) {
     console.warn(
-      `Failed to fetch app summary for app ${envId}: ${response.status} ${response.statusText}`,
+      `Failed to fetch app summary for app ${envId}: ${response.status.toString()} ${response.statusText}`,
     );
     return {};
   }
@@ -42,7 +42,7 @@ const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> =>
     return body as AppInfo;
   } catch {
     console.warn(
-      `Failed to deserialize app summary for app ${envId}: ${response.status} ${response.statusText}`,
+      `Failed to deserialize app summary for app ${envId}: ${response.status.toString()} ${response.statusText}`,
     );
     return {};
   }
