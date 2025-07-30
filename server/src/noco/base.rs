@@ -12,7 +12,7 @@ async fn create_empty_base(client: &Client, title: String) -> anyhow::Result<Bas
     }
 
     let base_id = client
-        .build_request(Method::Post, "/meta/bases")
+        .build_request_v2(Method::Post, "/meta/bases")
         .with_json(&json!({
             "title": title
         }))?
@@ -31,7 +31,7 @@ async fn add_user(
     initial_user_email: String,
 ) -> anyhow::Result<()> {
     client
-        .build_request(Method::Post, &format!("/meta/bases/{base_id}/users"))
+        .build_request_v2(Method::Post, &format!("/meta/bases/{base_id}/users"))
         .with_json(&json!({
             "email": initial_user_email,
             "roles": "editor",
@@ -62,7 +62,7 @@ pub async fn create_base(
 #[worker::send]
 pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()> {
     client
-        .build_request(Method::Delete, &format!("/meta/bases/{base_id}"))
+        .build_request_v2(Method::Delete, &format!("/meta/bases/{base_id}"))
         .exec()
         .await?;
 
@@ -74,7 +74,7 @@ pub async fn delete_base(client: &Client, base_id: &BaseId) -> anyhow::Result<()
 #[worker::send]
 pub async fn check_base_exists(client: &Client, base_id: &BaseId) -> anyhow::Result<bool> {
     let status_code = client
-        .build_request(Method::Get, &format!("/meta/bases/{base_id}"))
+        .build_request_v2(Method::Get, &format!("/meta/bases/{base_id}"))
         .allow_status(StatusCode::NOT_FOUND)
         .allow_status(StatusCode::UNPROCESSABLE_ENTITY)
         .exec()

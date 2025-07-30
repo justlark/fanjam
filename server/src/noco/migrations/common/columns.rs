@@ -33,7 +33,7 @@ pub async fn create_columns(
 
     for request in requests {
         let column_id = client
-            .build_request(
+            .build_request_v2(
                 Method::Post,
                 &format!("/meta/tables/{}/columns", request.table_id),
             )

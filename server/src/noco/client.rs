@@ -1,6 +1,3 @@
-use std::time::Duration;
-
-use axum::http::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use worker::{Method, Url};
 
@@ -21,10 +18,30 @@ impl ExposeSecret<str> for ApiToken {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ApiVersion {
+    V1,
+    V2,
+    #[allow(dead_code)]
+    V3,
+}
+
 #[derive(Debug)]
 pub struct Client {
     dash_origin: Url,
     api_token: ApiToken,
+}
+
+impl ApiVersion {
+    fn url(&self, origin: &str) -> String {
+        let url_prefix = match self {
+            ApiVersion::V1 => "api/v1",
+            ApiVersion::V2 => "api/v2",
+            ApiVersion::V3 => "api/v3",
+        };
+
+        format!("{origin}{url_prefix}")
+    }
 }
 
 impl Client {
@@ -35,19 +52,21 @@ impl Client {
         }
     }
 
-    // Once it's stable, we can migrate to v3 of the NocoDB API.
-    pub fn build_request(&self, method: Method, path: &str) -> RequestBuilder {
-        let endpoint = format!("{}api/v2{}", self.dash_origin, path);
+    fn build_request(&self, version: ApiVersion, method: Method, path: &str) -> RequestBuilder {
+        let endpoint = format!("{}{}", version.url(self.dash_origin.as_str()), path);
 
-        // We retry requests that return a 404 Not Found. If the Fly Machine hosting the NocoDB
-        // instance is in a stopped state when the request is made, it may return a 404 until it
-        // finishes starting up.
-        //
-        // Fly Machines also have a "suspended" state which starts up much quicker, but in my
-        // testing that doesn't seem to play nicely with NocoDB.
         RequestBuilder::new(method, &endpoint)
             .with_header("Xc-Token", self.api_token.0.expose_secret())
             .with_header("Accept", "application/json")
-            .with_retry(&[StatusCode::NOT_FOUND], 2, Duration::from_millis(500))
+    }
+
+    // Currently just used for the health check endpoint.
+    pub fn build_request_v1(&self, method: Method, path: &str) -> RequestBuilder {
+        self.build_request(ApiVersion::V1, method, path)
+    }
+
+    // Once it's stable, we can migrate to v3 of the NocoDB API.
+    pub fn build_request_v2(&self, method: Method, path: &str) -> RequestBuilder {
+        self.build_request(ApiVersion::V2, method, path)
     }
 }

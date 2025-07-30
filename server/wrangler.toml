@@ -15,7 +15,8 @@ enabled = true
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "test.fanjam.live"
 # As a special case, you can set the TTL to zero to disable caching.
-NOCO_CACHE_TTL_SECONDS = "60"
+NOCO_BUFFER_CACHE_TTL_SECONDS = "60"
+NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
@@ -31,10 +32,19 @@ preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
 [env.prod.vars]
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "fanjam.live"
+# The purpose of this cache is to absorb high load and reduce the load on the
+# NocoDB instance.
+#
 # We probably don't need to cache the NocoDB API responses for this long, and
 # ideally would pick a shorter TTL. However, this is the minimum TTL that
 # Cloudflare KV supports.
-NOCO_CACHE_TTL_SECONDS = "60"
+NOCO_BUFFER_CACHE_TTL_SECONDS = "60"
+# This cache is specifically for the name and description that are fetched from
+# NocoDB and shown in the HTML page metadata. Fetching this data blocks the
+# page load, so we want it to be as fast as possible. Because the effect is
+# minor—only really affecting link embeds and browser tab names—we can tolerate
+# a longer TTL.
+NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
 
 [env.prod.route]
 pattern = "api.fanjam.live"

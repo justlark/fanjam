@@ -21,6 +21,9 @@ pub enum Error {
     #[error("You must specify the migration to roll back to.")]
     MissingMigrationVersion,
 
+    #[error("The NocoDB instance is not available; it may still be starting up.")]
+    NocoUnavailable,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -33,6 +36,7 @@ impl Error {
             Error::NoBaseId => StatusCode::NOT_FOUND,
             Error::BaseAlreadyExists => StatusCode::CONFLICT,
             Error::MissingMigrationVersion => StatusCode::BAD_REQUEST,
+            Error::NocoUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

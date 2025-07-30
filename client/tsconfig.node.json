@@ -6,8 +6,10 @@
     "cypress.config.*",
     "nightwatch.conf.*",
     "playwright.config.*",
-    "eslint.config.*",
-    "worker/index.ts"
+    "eslint.config.*"
+  ],
+  "exclude": [
+    "worker/**/*"
   ],
   "compilerOptions": {
     "noEmit": true,

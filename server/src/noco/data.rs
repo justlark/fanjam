@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use axum::http::StatusCode;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use worker::Method;
+use worker::{Method, console_warn};
 
 use crate::noco::Client;
 
@@ -31,7 +32,7 @@ async fn list_records<T: DeserializeOwned>(
 
     loop {
         let response = client
-            .build_request(Method::Get, &format!("/tables/{table_id}/records"))
+            .build_request_v2(Method::Get, &format!("/tables/{table_id}/records"))
             .with_param("limit", &PAGE_SIZE.to_string())
             .with_param("offset", &offset.to_string())
             .fetch::<GetRecordsResponse<T>>()
@@ -63,7 +64,7 @@ pub async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Ve
     }
 
     Ok(client
-        .build_request(Method::Get, &format!("/meta/bases/{base_id}/tables"))
+        .build_request_v2(Method::Get, &format!("/meta/bases/{base_id}/tables"))
         .fetch::<GetTablesResponse>()
         .await?
         .list)
@@ -190,9 +191,9 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct About {
-    pub name: String,
+    pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
 }
@@ -205,7 +206,7 @@ pub struct Link {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Info {
-    pub about: Option<About>,
+    pub about: About,
     pub links: Vec<Link>,
     pub files: Vec<File>,
 }
@@ -222,6 +223,12 @@ pub struct Page {
     pub id: String,
     pub title: String,
     pub body: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Summary {
+    pub name: Option<String>,
+    pub description: Option<String>,
 }
 
 pub struct TableIds {
@@ -309,15 +316,17 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
         .collect())
 }
 
-async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<Option<About>> {
+pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<About> {
     let about_records = list_records::<AboutResponse>(client, &table_ids.about).await?;
     let latest_record = about_records.into_iter().next_back();
 
-    Ok(latest_record.map(|r| About {
-        name: r.name,
-        description: r.description,
-        website_url: r.website_url,
-    }))
+    Ok(latest_record
+        .map(|r| About {
+            name: Some(r.name),
+            description: r.description,
+            website_url: r.website_url,
+        })
+        .unwrap_or_default())
 }
 
 async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Link>> {
@@ -381,4 +390,17 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
             body: r.body,
         })
         .collect())
+}
+
+#[worker::send]
+pub async fn check_health(client: &Client) -> bool {
+    match client.build_request_v1(Method::Get, "/health").exec().await {
+        Ok(status) if status == StatusCode::OK => true,
+        _ => {
+            console_warn!(
+                "The NocoDB instance failed its health check. It might still be starting up."
+            );
+            false
+        }
+    }
 }
