@@ -125,6 +125,62 @@ const injectWebManifestLink = (requestUrl: URL, response: Response): Response =>
     .transform(response);
 };
 
+const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Promise<Response> => {
+  const matches = appPathRegex.exec(requestUrl.pathname);
+
+  if (!matches) {
+    return response;
+  }
+
+  const envId = matches[1];
+  const appInfo = await getAppInfo(env.API_DOMAIN, envId);
+
+  return new HTMLRewriter()
+    .on("head > title", {
+      element(element: Element) {
+        if (appInfo.name) {
+          element.setInnerContent(appInfo.name);
+        }
+      },
+    })
+    .on("head > meta[name='description']", {
+      element(element: Element) {
+        if (appInfo.description) {
+          element.setAttribute("content", appInfo.description);
+        }
+      },
+    })
+    .on("head > meta[property='og:title']", {
+      element(element: Element) {
+        if (appInfo.name) {
+          element.setAttribute("content", appInfo.name);
+        }
+      },
+    })
+    .on("head > meta[property='og:description']", {
+      element(element: Element) {
+        if (appInfo.description) {
+          element.setAttribute("content", appInfo.description);
+        }
+      },
+    })
+    .on("head > meta[property='twitter:title']", {
+      element(element: Element) {
+        if (appInfo.name) {
+          element.setAttribute("content", appInfo.name);
+        }
+      },
+    })
+    .on("head > meta[property='twitter:description']", {
+      element(element: Element) {
+        if (appInfo.description) {
+          element.setAttribute("content", appInfo.description);
+        }
+      },
+    })
+    .transform(response);
+};
+
 export default {
   async fetch(request: Request, env: Env) {
     const requestUrl = new URL(request.url);
@@ -161,7 +217,11 @@ export default {
     }
 
     // Inject the web manifest URL into the response if this is a page in the app.
-    const withManifest = injectWebManifestLink(requestUrl, withHeaders);
+    const withMetadata = await injectMetadata(requestUrl, env, withHeaders);
+
+    // Replace the default metadata with user-configured instance-specific
+    // metadata if this is a page in the app.
+    const withManifest = injectWebManifestLink(requestUrl, withMetadata);
 
     return withManifest;
   },
