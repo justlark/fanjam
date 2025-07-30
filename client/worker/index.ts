@@ -1,10 +1,4 @@
-import {
-  type Fetcher,
-  type Request,
-  Response,
-  HTMLRewriter,
-  Element,
-} from "@cloudflare/workers-types";
+import { type Fetcher, type Request } from "@cloudflare/workers-types";
 
 interface Env {
   ASSETS: Fetcher;
@@ -151,7 +145,7 @@ export default {
       newHeaders.set(key, value);
     }
 
-    let newResponse = new Response(response.body, {
+    const withHeaders = new Response(response.body as ReadableStream<Uint8Array> | null, {
       status: response.status,
       statusText: response.statusText,
       headers: newHeaders,
@@ -161,14 +155,14 @@ export default {
     for (const [prefix, patternHeaders] of Object.entries(headerPatterns)) {
       if (requestUrl.pathname.startsWith(prefix)) {
         for (const [key, value] of Object.entries(patternHeaders)) {
-          newResponse.headers.set(key, value);
+          withHeaders.headers.set(key, value);
         }
       }
     }
 
     // Inject the web manifest URL into the response if this is a page in the app.
-    newResponse = injectWebManifestLink(requestUrl, newResponse);
+    const withManifest = injectWebManifestLink(requestUrl, withHeaders);
 
-    return newResponse;
+    return withManifest;
   },
 };
