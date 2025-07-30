@@ -36,11 +36,12 @@ export default defineConfig(({ mode }) => ({
       // need to tell it where to find them.
       includeAssets: ["icons/*"],
       workbox: {
+        navigateFallbackDenylist: [new RegExp(`^/app/[^/]+/app.webmanifest$`)],
         runtimeCaching: [
           // This is necessary to ensure that the service worker doesn't
           // clobber response headers from the origin (such as the CSP).
           {
-            urlPattern: /^https:\/\/fanjam\.live\/.*/i,
+            urlPattern: new RegExp(`^https://fanjam\.live/.*`, "i"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "origin-cache",
@@ -58,9 +59,28 @@ export default defineConfig(({ mode }) => ({
               ],
             },
           },
+          {
+            urlPattern: new RegExp(`^https://test\.fanjam\.live/.*`, "i"),
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "origin-test-cache",
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              plugins: [
+                {
+                  // Preserve original request
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(request.url),
+                  // Return the response as-is to preserve headers.
+                  cacheWillUpdate: ({ response }) =>
+                    Promise.resolve(response.status === 200 ? response : null),
+                },
+              ],
+            },
+          },
           // Cache assets fetched from CDNs.
           {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            urlPattern: new RegExp(`^https://fonts\.googleapis\.com/.*`, "i"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "google-fonts-cache",
@@ -73,7 +93,7 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            urlPattern: new RegExp(`^https://fonts\.gstatic\.com/.*`, "i"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "gstatic-fonts-cache",
@@ -86,7 +106,7 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+            urlPattern: new RegExp(`^https://cdn\.jsdelivr\.net/.*`, "i"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "jsdelivr-cache",
