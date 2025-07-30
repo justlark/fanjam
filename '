@@ -218,8 +218,7 @@ export default {
     }
 
     // Replace the default metadata with user-configured instance-specific
-    // metadata if this is a page in the app. This has performance implications
-    // for page load time.
+    // metadata if this is a page in the app.
     if (env.INJECT_MANIFEST === "true") {
       newResponse = await injectMetadata(requestUrl, env, newResponse);
     }

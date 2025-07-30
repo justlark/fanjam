@@ -21,6 +21,7 @@ custom_domain = true
 
 [env.test.vars]
 API_DOMAIN = "api-test.fanjam.live"
+INJECT_METADATA = "true"
 
 [env.prod]
 
@@ -30,3 +31,4 @@ custom_domain = true
 
 [env.prod.vars]
 API_DOMAIN = "api.fanjam.live"
+INJECT_METADATA = "true"
