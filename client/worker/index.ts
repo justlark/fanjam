@@ -3,7 +3,7 @@ import { type Fetcher, type Request } from "@cloudflare/workers-types";
 interface Env {
   ASSETS: Fetcher;
   API_DOMAIN: string;
-  INJECT_MANIFEST: string;
+  INJECT_METADATA: string;
 }
 
 const headerPatterns = {
@@ -27,21 +27,23 @@ interface AppInfo {
   description?: string;
 }
 
-interface ApiEnvelope<T> {
-  value: T;
-}
-
 const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/summary`);
 
   if (!response.ok) {
+    console.warn(
+      `Failed to fetch app summary for app ${envId}: ${response.status} ${response.statusText}`,
+    );
     return {};
   }
 
   try {
     const body = await response.json();
-    return (body as ApiEnvelope<AppInfo>).value;
+    return body as AppInfo;
   } catch {
+    console.warn(
+      `Failed to deserialize app summary for app ${envId}: ${response.status} ${response.statusText}`,
+    );
     return {};
   }
 };
@@ -220,7 +222,7 @@ export default {
     // Replace the default metadata with user-configured instance-specific
     // metadata if this is a page in the app. This has performance implications
     // for page load time.
-    if (env.INJECT_MANIFEST === "true") {
+    if (env.INJECT_METADATA === "true") {
       newResponse = await injectMetadata(requestUrl, env, newResponse);
     }
 

@@ -13,9 +13,9 @@ use worker::{console_log, kv::KvStore};
 use crate::{
     api::{
         DataResponseEnvelope, Event, File, GetCurrentMigrationResponse, GetEventsResponse,
-        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
-        PostBackupRequest, PostBaseRequest, PostLinkResponse, PostRestoreBackupRequest,
-        PutTokenRequest,
+        GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse, Link, Page,
+        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
+        PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
@@ -82,6 +82,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/events", get(get_events))
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
+        .route("/apps/{env_id}/summary", get(get_summary))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
@@ -325,15 +326,9 @@ async fn get_info(
     Ok(EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
         value: GetInfoResponse {
-            name: info.about.as_ref().map(|about| about.name.clone()),
-            description: info
-                .about
-                .as_ref()
-                .and_then(|about| about.description.clone()),
-            website_url: info
-                .about
-                .as_ref()
-                .and_then(|about| about.website_url.clone()),
+            name: info.about.name.clone(),
+            description: info.about.description.clone(),
+            website_url: info.about.website_url.clone(),
             links: info
                 .links
                 .into_iter()
@@ -379,5 +374,20 @@ async fn get_pages(
                 })
                 .collect::<Vec<_>>(),
         },
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_summary(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<Json<GetSummaryResponse>, ErrorResponse> {
+    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+
+    let summary = store.get_summary().await?;
+
+    Ok(Json(GetSummaryResponse {
+        name: summary.name,
+        description: summary.description,
     }))
 }

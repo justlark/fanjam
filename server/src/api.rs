@@ -125,3 +125,9 @@ pub struct Page {
 pub struct GetPagesResponse {
     pub pages: Vec<Page>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct GetSummaryResponse {
+    pub name: Option<String>,
+    pub description: Option<String>,
+}

@@ -191,9 +191,9 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct About {
-    pub name: String,
+    pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
 }
@@ -206,7 +206,7 @@ pub struct Link {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Info {
-    pub about: Option<About>,
+    pub about: About,
     pub links: Vec<Link>,
     pub files: Vec<File>,
 }
@@ -223,6 +223,12 @@ pub struct Page {
     pub id: String,
     pub title: String,
     pub body: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Summary {
+    pub name: Option<String>,
+    pub description: Option<String>,
 }
 
 pub struct TableIds {
@@ -310,15 +316,17 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
         .collect())
 }
 
-async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<Option<About>> {
+pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<About> {
     let about_records = list_records::<AboutResponse>(client, &table_ids.about).await?;
     let latest_record = about_records.into_iter().next_back();
 
-    Ok(latest_record.map(|r| About {
-        name: r.name,
-        description: r.description,
-        website_url: r.website_url,
-    }))
+    Ok(latest_record
+        .map(|r| About {
+            name: Some(r.name),
+            description: r.description,
+            website_url: r.website_url,
+        })
+        .unwrap_or_default())
 }
 
 async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Link>> {

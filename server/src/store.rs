@@ -293,6 +293,47 @@ impl Store {
         err_msg_key: "pages",
     }
 
+    get_data! {
+        fn_name: get_about,
+        type_name: noco::About,
+        get_api_fn: noco::get_about,
+        get_cached_fn: kv::get_cached_about,
+        put_cached_fn: kv::put_cached_about,
+        get_stored_fn: kv::get_stored_about,
+        put_stored_fn: kv::put_stored_about,
+        err_msg_key: "about",
+    }
+
+    // We add an additional layer of caching here with a longer TTL, because this endpoint can
+    // block the entire app from loading.
+    pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
+        match kv::get_cached_summary(&self.kv, &self.env_name).await {
+            Ok(Some(value)) => {
+                console_log!("Returning cached summary; skipping NocoDB.");
+                return Ok(value);
+            }
+            Ok(None) => {
+                console_log!("No cached summary found, fetching from NocoDB.");
+            }
+            Err(e) => {
+                console_warn!("Failed to get summary from cache: {}", e);
+            }
+        }
+
+        let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
+
+        let summary = noco::Summary {
+            name: about.name.clone(),
+            description: about.description,
+        };
+
+        kv::put_cached_summary(&self.kv, &self.env_name, &summary)
+            .await
+            .map_err(Error::Internal)?;
+
+        Ok(summary)
+    }
+
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
         let dest_branch_name = match kind {
             PostBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
