@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
-import usePageMeta from "@/composables/usePageMeta";
 import Divider from "primevue/divider";
 import SimpleIcon from "@/components/system/SimpleIcon.vue";
 import Drawer from "primevue/drawer";
@@ -10,8 +9,6 @@ import IconButton from "@/components/system/IconButton.vue";
 import AppUpdater from "@/components/SiteNav/AppUpdater.vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
-
-usePageMeta();
 
 const visible = ref(false);
 
