@@ -28,8 +28,8 @@ export default defineConfig(({ mode }) => ({
       // We need to lie to the type system here, but this is not the same thing
       // as actually passing the string "production".
       mode: mode as "production",
-      // We generate the manifest dynamically in the app, so don't let the
-      // plugin do it.
+      // We generate the manifest dynamically in the client worker, so don't
+      // let the plugin do it.
       manifest: false,
       // Normally, this plugin automatically includes icons linked in the
       // manifest. However, because we're generating the manifest ourselves, we
