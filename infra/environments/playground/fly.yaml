@@ -9,6 +9,7 @@ env:
   NC_S3_ENDPOINT: https://151bc8670b862fa7d694cf7246a2c0dc.r2.cloudflarestorage.com/sparklefish-noco-playground
   NC_INVITE_ONLY_SIGNUP: "true"
   NC_ADMIN_EMAIL: system@fanjam.live
+  NC_CACHE_PREFIX: "sparklefish:env:playground:noco"
 http_service:
   internal_port: 8080
   force_https: true
