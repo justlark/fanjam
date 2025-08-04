@@ -1,7 +1,7 @@
 app: sparklefish-noco-demo-890210
 primary_region: iad
 build:
-  image: nocodb/nocodb:0.263.8
+  image: nocodb/nocodb:0.264.2
 env:
   NC_ADMIN_EMAIL: system@fanjam.live
   NC_INVITE_ONLY_SIGNUP: "true"
