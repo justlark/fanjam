@@ -7,6 +7,7 @@ const currentDayIndex = defineModel<number>("day", {
 
 const props = defineProps<{
   dayNames: Array<string>;
+  todayIndex: number;
 }>();
 
 const selectNextDay = () => {
@@ -20,22 +21,38 @@ const selectPrevDay = () => {
     currentDayIndex.value -= 1;
   }
 };
+
+const selectToday = () => {
+  currentDayIndex.value = props.todayIndex;
+};
 </script>
 
 <template>
-  <nav class="flex items-center justify-center gap-4">
-    <IconButton
-      icon="chevron-left"
-      label="Previous"
-      :disabled="currentDayIndex === 0"
-      @click="selectPrevDay"
-    />
-    <span class="text-xl">{{ props.dayNames[currentDayIndex] }}</span>
-    <IconButton
-      icon="chevron-right"
-      label="Next"
-      :disabled="currentDayIndex === props.dayNames.length - 1"
-      @click="selectNextDay"
-    />
+  <nav class="flex items-center justify-between gap-4">
+    <span class="text-2xl font-bold">{{ props.dayNames[currentDayIndex] }}</span>
+    <span class="flex gap-2 items-center">
+      <IconButton
+        icon="calendar-event"
+        label="Today"
+        size="md"
+        :active="currentDayIndex === props.todayIndex"
+        v-if="props.todayIndex >= 0"
+        @click="selectToday"
+      />
+      <span class="flex items-center">
+        <IconButton
+          icon="chevron-left"
+          label="Previous"
+          :disabled="currentDayIndex === 0"
+          @click="selectPrevDay"
+        />
+        <IconButton
+          icon="chevron-right"
+          label="Next"
+          :disabled="currentDayIndex === props.dayNames.length - 1"
+          @click="selectNextDay"
+        />
+      </span>
+    </span>
   </nav>
 </template>

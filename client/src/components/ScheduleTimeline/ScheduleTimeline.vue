@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, toRef, computed, watch, watchEffect } from "vue";
-import { datesToDayNames, dateIsBetween, groupByTime } from "@/utils/time";
+import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
@@ -99,6 +99,11 @@ const isDayFiteringPastEvents = computed(
   () => filterCriteria.hidePastEvents && currentDayStart.value < new Date(),
 );
 
+const todayIndex = computed(() => {
+  const today = new Date();
+  return namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today));
+});
+
 watchEffect(async () => {
   if (route.name !== "schedule") {
     return;
@@ -136,7 +141,12 @@ watch(
 <template>
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
-    <DayPicker v-if="days.length > 0" v-model:day="currentDayIndex" :day-names="dayNames" />
+    <DayPicker
+      v-if="days.length > 0"
+      v-model:day="currentDayIndex"
+      :day-names="dayNames"
+      :today-index="todayIndex"
+    />
     <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFiteringPastEvents">
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
