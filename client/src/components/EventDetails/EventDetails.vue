@@ -62,22 +62,43 @@ const sectionHeadingId = useId();
 <template>
   <section :aria-labelledby="sectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
-      <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
-      <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
+      <span class="flex items-center">
+        <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
+        <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
+        <IconButton
+          class="hidden lg:block"
+          label="Star"
+          :icon="isStarred ? 'star-fill' : 'star'"
+          @click="toggleStarred()"
+        />
+      </span>
       <h2 :id="sectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
     </div>
     <div class="px-6">
-      <dl class="flex flex-col items-start gap-2">
-        <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
-          {{ localizeTimeSpan(event.startTime, event.endTime) }}
-        </EventDetail>
-        <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts">
-          Hosted by {{ event.people.join(", ") }}
-        </EventDetail>
-        <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
-          {{ event.location }}
-        </EventDetail>
-      </dl>
+      <div class="flex justify-between items-end">
+        <dl class="flex flex-col items-start gap-2">
+          <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
+            {{ localizeTimeSpan(event.startTime, event.endTime) }}
+          </EventDetail>
+          <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts">
+            Hosted by {{ event.people.join(", ") }}
+          </EventDetail>
+          <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
+            {{ event.location }}
+          </EventDetail>
+        </dl>
+        <IconButton
+          class="lg:hidden"
+          label="Star"
+          :icon="isStarred ? 'star-fill' : 'star'"
+          :active="isStarred"
+          inactive-variant="filled"
+          :button-props="{
+            raised: true,
+          }"
+          @click="toggleStarred()"
+        />
+      </div>
       <div v-if="event.category || event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
         <CategoryLabel
           v-if="event.category"
@@ -98,18 +119,6 @@ const sectionHeadingId = useId();
       <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
         <span>No description</span>
       </div>
-    </div>
-    <div class="fixed bottom-6 right-6">
-      <IconButton
-        label="Star"
-        :icon="isStarred ? 'star-fill' : 'star'"
-        :active="isStarred"
-        inactive-variant="filled"
-        :button-props="{
-          raised: true,
-        }"
-        @click="toggleStarred()"
-      />
     </div>
   </section>
 </template>
