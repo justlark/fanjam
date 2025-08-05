@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { type FilterCriteria } from "@/composables/useFilterQuery";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import Tag from "primevue/tag";
 
 const props = defineProps<{
   allCategories: Array<string>;
@@ -16,6 +16,10 @@ const hasTags = computed(() => criteria.value.tags.length > 0);
 const hasSearch = computed(() => criteria.value.search.length > 0);
 const hasMultipleCategories = computed(() => criteria.value.categories.length > 1);
 const hasMultipleTags = computed(() => criteria.value.tags.length > 1);
+
+const clearStarred = () => {
+  criteria.value.hideNotStarred = false;
+};
 
 const clearCategory = (category: string) => {
   const index = criteria.value.categories.indexOf(category);
@@ -36,7 +40,15 @@ const clearTag = (tag: string) => {
   <span>
     <span class="font-bold me-2 block md:inline">Only showing:</span>
     <span v-if="onlyStarred">
-      <SimpleIcon icon="star-fill" label="Star" />
+      <button aria-label="Clear: Starred Only" class="cursor-pointer" @click="clearStarred()">
+        <Tag
+          class="!text-xs"
+          icon="bi bi-x-lg"
+          value="Starred"
+          severity="primary"
+          pt:icon:class="flex items-center justify-center mr-1"
+        />
+      </button>
     </span>
     <span class="mx-2 italic" v-if="onlyStarred && (hasCategories || hasTags || hasSearch)"
       >and</span
