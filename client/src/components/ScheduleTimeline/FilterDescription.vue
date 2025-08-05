@@ -42,7 +42,7 @@ const clearTag = (tag: string) => {
     <span v-if="onlyStarred">
       <button aria-label="Clear: Starred Only" class="cursor-pointer" @click="clearStarred()">
         <Tag
-          class="!text-xs"
+          class="!text-xs my-1"
           icon="bi bi-x-lg"
           value="Starred"
           severity="primary"
