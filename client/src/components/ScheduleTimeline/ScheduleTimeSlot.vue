@@ -30,6 +30,8 @@ const isCurrentTimeSlot = computed(() => {
 
   return dateIsBetween(now, firstEventStartTime, lastEventEndTime);
 });
+
+const isStarred = (eventId: string) => starredEvents.value && starredEvents.value.includes(eventId);
 </script>
 
 <template>
@@ -61,10 +63,11 @@ const isCurrentTimeSlot = computed(() => {
             params: { eventId: event.id },
             query: toFilterQueryParams(filterCriteria),
           }"
+          :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
         >
           <CategoryLabel
             :title="event.name"
-            :icon="starredEvents && starredEvents.includes(event.id) ? 'star-fill' : undefined"
+            :icon="isStarred(event.id) ? 'star-fill' : undefined"
             display="active"
             :category="event.category"
             :all-categories="props.allCategories"
