@@ -46,7 +46,7 @@ const clearTag = (tag: string) => {
     >
     <template v-for="(category, index) in criteria.categories" :key="index">
       <span class="mx-2 italic" v-if="index != 0">or</span>
-      <button @click="clearCategory(category)">
+      <button class="cursor-pointer" @click="clearCategory(category)">
         <CategoryLabel
           class="my-1"
           size="xs"
@@ -66,7 +66,7 @@ const clearTag = (tag: string) => {
     >
     <template v-for="(tag, index) in criteria.tags" :key="index">
       <span class="mx-2 italic" v-if="index != 0">or</span>
-      <button @click="clearTag(tag)">
+      <button class="cursor-pointer" @click="clearTag(tag)">
         <CategoryLabel class="my-1" size="xs" :title="tag" display="active" />
       </button>
     </template>
