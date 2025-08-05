@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watchEffect, ref, useId } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useStarredEvents from "@/composables/useStarredEvents";
@@ -100,13 +100,35 @@ const sectionHeadingId = useId();
         />
       </div>
       <div v-if="event.category || event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
-        <CategoryLabel
+        <RouterLink
           v-if="event.category"
-          :title="event.category"
-          :all-categories="props.allCategories"
-          display="active"
-        />
-        <CategoryLabel v-for="tag in event.tags" :key="tag" :title="tag" display="active" />
+          :to="{
+            name: 'schedule',
+            params: { dayIndex: props.day },
+            query: toFilterQueryParams({
+              categories: [event.category],
+            }),
+          }"
+        >
+          <CategoryLabel
+            :title="event.category"
+            :all-categories="props.allCategories"
+            display="active"
+          />
+        </RouterLink>
+        <RouterLink
+          v-for="tag in event.tags"
+          :key="tag"
+          :to="{
+            name: 'schedule',
+            params: { dayIndex: props.day },
+            query: toFilterQueryParams({
+              tags: [tag],
+            }),
+          }"
+        >
+          <CategoryLabel :title="tag" display="active" />
+        </RouterLink>
       </div>
       <Divider />
       <article

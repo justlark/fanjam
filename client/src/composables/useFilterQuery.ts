@@ -79,7 +79,7 @@ export const useFilterQuery = (): Reactive<FilterCriteria> => {
   return criteria;
 };
 
-export const toFilterQueryParams = (criteria: Reactive<FilterCriteria>) => ({
+export const toFilterQueryParams = (criteria: Reactive<Partial<FilterCriteria>>) => ({
   c: criteria.categories,
   t: criteria.tags,
   q: criteria.search || undefined,
