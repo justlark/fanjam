@@ -30,15 +30,19 @@ interface Day {
   timeSlots: Array<TimeSlot>;
 }
 
-const currentDayIndex = defineModel<number>("day", {
-  default: 0,
-});
+const currentDayIndex = defineModel<number>("day");
 
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 
-const currentDayTimeSlots = computed(() => days.value[currentDayIndex.value]?.timeSlots ?? []);
+const currentDayTimeSlots = computed(() => {
+  if (currentDayIndex.value === undefined) {
+    return [];
+  }
+
+  return days.value[currentDayIndex.value]?.timeSlots ?? [];
+});
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
@@ -56,6 +60,24 @@ const allDates = computed(() =>
 );
 
 const namedDays = computed(() => datesToDayNames(allDates.value));
+
+const todayIndex = computed(() => {
+  const today = new Date();
+  const index = namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today));
+
+  if (index === -1) {
+    // There are no events today.
+    return undefined;
+  }
+
+  return index;
+});
+
+watchEffect(() => {
+  if (currentDayIndex.value === undefined) {
+    currentDayIndex.value = todayIndex.value ?? 0;
+  }
+});
 
 watchEffect(() => {
   dayIndexByEventId.value = {};
@@ -94,14 +116,19 @@ const filteredTimeSlots = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
-const currentDayStart = computed(() => namedDays.value[currentDayIndex.value]?.dayStart);
-const isDayFiteringPastEvents = computed(
-  () => filterCriteria.hidePastEvents && currentDayStart.value < new Date(),
-);
+const currentDayStart = computed(() => {
+  if (currentDayIndex.value === undefined) {
+    return undefined;
+  }
 
-const todayIndex = computed(() => {
-  const today = new Date();
-  return namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today));
+  return namedDays.value[currentDayIndex.value]?.dayStart;
+});
+const isDayFilteringPastEvents = computed(() => {
+  if (currentDayStart.value === undefined) {
+    return false;
+  }
+
+  return filterCriteria.hidePastEvents && currentDayStart.value < new Date();
 });
 
 watchEffect(async () => {
@@ -112,7 +139,7 @@ watchEffect(async () => {
   await router.push({
     name: "schedule",
     // Don't show the page number on the first page.
-    params: currentDayIndex.value !== 0 ? { dayIndex: currentDayIndex.value } : undefined,
+    params: { dayIndex: currentDayIndex.value },
     query: toFilterQueryParams(filterCriteria),
   });
 });
@@ -124,8 +151,12 @@ watch(
   [toRef(route, "path"), dayIndexByEventId],
   () => {
     if (route.name === "schedule") {
+      if (!route.params.dayIndex) {
+        return;
+      }
+
       // Handle the page number in the path being out of range or not a number.
-      const parsed = route.params.dayIndex ? parseInt(route.params.dayIndex as string, 10) : 0;
+      const parsed = parseInt(route.params.dayIndex as string, 10);
       currentDayIndex.value =
         isNaN(parsed) || parsed < 0 || parsed >= days.value.length ? 0 : parsed;
     } else if (route.name === "event") {
@@ -142,12 +173,12 @@ watch(
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker
-      v-if="days.length > 0"
+      v-if="currentDayIndex !== undefined && days.length > 0"
       v-model:day="currentDayIndex"
       :day-names="dayNames"
       :today-index="todayIndex"
     />
-    <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFiteringPastEvents">
+    <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFilteringPastEvents">
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>

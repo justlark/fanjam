@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import IconButton from "@/components/system/IconButton.vue";
 
-const currentDayIndex = defineModel<number>("day", {
-  default: 0,
-});
+const currentDayIndex = defineModel<number>("day", { required: true });
 
 const props = defineProps<{
   dayNames: Array<string>;
-  todayIndex: number;
+  todayIndex: number | undefined;
 }>();
 
 const selectNextDay = () => {
@@ -23,7 +21,9 @@ const selectPrevDay = () => {
 };
 
 const selectToday = () => {
-  currentDayIndex.value = props.todayIndex;
+  if (props.todayIndex !== undefined) {
+    currentDayIndex.value = props.todayIndex;
+  }
 };
 </script>
 
@@ -37,7 +37,7 @@ const selectToday = () => {
         :show-label="true"
         size="sm"
         :active="currentDayIndex === props.todayIndex"
-        v-if="props.todayIndex >= 0"
+        v-if="props.todayIndex !== undefined"
         @click="selectToday"
       />
       <IconButton
