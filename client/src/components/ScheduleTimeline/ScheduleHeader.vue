@@ -11,7 +11,10 @@ import InputText from "primevue/inputtext";
 import FilterDescription from "./FilterDescription.vue";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
+import InputGroup from "primevue/inputgroup";
+import InputGroupAddon from "primevue/inputgroupaddon";
 import IconButton from "@/components/system/IconButton.vue";
+import Button from "primevue/button";
 import FilterMenu from "./FilterMenu.vue";
 
 const {
@@ -137,15 +140,25 @@ const filterMenuId = useId();
   <search class="flex flex-col gap-4">
     <div class="flex gap-4">
       <div class="grow">
-        <IconField>
-          <InputIcon class="bi bi-search" />
-          <InputText
-            v-model="searchText"
-            class="w-full"
-            placeholder="Search…"
-            aria-label="Search"
-          />
-        </IconField>
+        <InputGroup>
+          <IconField>
+            <InputIcon class="bi bi-search" />
+            <InputText
+              v-model="searchText"
+              class="w-full"
+              placeholder="Search…"
+              aria-label="Search"
+            />
+          </IconField>
+          <InputGroupAddon>
+            <Button
+              aria-label="Clear"
+              icon="bit bi-x-lg"
+              severity="secondary"
+              @click="searchText = ''"
+            />
+          </InputGroupAddon>
+        </InputGroup>
       </div>
       <IconButton
         icon="filter"
