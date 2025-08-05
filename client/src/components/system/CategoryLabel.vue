@@ -6,6 +6,7 @@ import { newBgColor, newFgColor, newOutlineColor } from "@/utils/colors";
 const props = defineProps<{
   title: string;
   display: "active" | "inactive" | "hover";
+  icon?: string;
   size?: "xs" | "sm" | "md" | "lg";
   category?: string;
   allCategories?: Array<string>;
@@ -63,5 +64,10 @@ const standaloneStyles = computed(() => [
 </script>
 
 <template>
-  <Tag :value="props.title" :class="isCategories ? categoryStyles : standaloneStyles" />
+  <Tag
+    :icon="props.icon ? `bi bi-${props.icon}` : undefined"
+    :value="props.title"
+    :class="isCategories ? categoryStyles : standaloneStyles"
+    :pt:icon:class="`!${textSize} flex items-center justify-center mr-1`"
+  />
 </template>

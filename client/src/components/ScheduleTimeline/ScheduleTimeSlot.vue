@@ -6,6 +6,7 @@ import { type Event } from "@/utils/api";
 import { dateIsBetween } from "@/utils/time";
 import CategoryLabel from "@/components/system/CategoryLabel.vue";
 import { RouterLink } from "vue-router";
+import useStarredEvents from "@/composables/useStarredEvents";
 
 const filterCriteria = useFilterQuery();
 
@@ -14,6 +15,8 @@ const props = defineProps<{
   events: Array<Event>;
   allCategories: Array<string>;
 }>();
+
+const starredEvents = useStarredEvents();
 
 const sectionHeadingId = useId();
 
@@ -61,6 +64,7 @@ const isCurrentTimeSlot = computed(() => {
         >
           <CategoryLabel
             :title="event.name"
+            :icon="starredEvents.includes(event.id) ? 'star-fill' : undefined"
             display="active"
             :category="event.category"
             :all-categories="props.allCategories"
