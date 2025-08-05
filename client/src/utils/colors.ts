@@ -13,22 +13,26 @@ const djb2Hash = (str: string) => {
 
 const allPaletteColors = [
   "red",
-  "blue",
   "green",
-  "orange",
+  "cyan",
   "purple",
   "yellow",
   "pink",
-  "rose",
-  "cyan",
   "lime",
+  "orange",
+  "rose",
   "amber",
-  "indigo",
   "fuchsia",
   "teal",
-  "emerald",
   "sky",
   "violet",
+  "emerald",
+
+  // We're not using these colors because they're the primary colors for light
+  // and dark mode respectively.
+
+  // "blue",
+  // "indigo",
 ];
 
 // To avoid accidentally choosing similar colors, the palette above is sorted,
