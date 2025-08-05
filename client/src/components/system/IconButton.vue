@@ -10,7 +10,7 @@ const props = defineProps<{
   badge?: boolean;
   inactiveVariant?: "outlined" | "empty" | "filled";
   size?: "xs" | "sm" | "md" | "lg";
-  showLabel?: string;
+  showLabel?: boolean;
   buttonProps?: Record<string, unknown>;
 }>();
 
