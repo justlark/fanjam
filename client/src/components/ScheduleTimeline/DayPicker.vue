@@ -35,7 +35,7 @@ const selectToday = () => {
         icon="calendar-event"
         label="Today"
         :show-label="true"
-        size="md"
+        size="sm"
         :active="currentDayIndex === props.todayIndex"
         v-if="props.todayIndex >= 0"
         @click="selectToday"
