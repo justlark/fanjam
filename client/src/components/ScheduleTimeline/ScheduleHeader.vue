@@ -181,7 +181,7 @@ const filterMenuId = useId();
     />
     <FilterDescription
       v-if="showFilterDescription && !showFilterMenu"
-      :criteria="filterCriteria"
+      v-model:criteria="filterCriteria"
       :all-categories="allCategories"
     />
   </search>
