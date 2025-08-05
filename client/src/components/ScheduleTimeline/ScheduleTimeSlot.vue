@@ -64,7 +64,7 @@ const isCurrentTimeSlot = computed(() => {
         >
           <CategoryLabel
             :title="event.name"
-            :icon="starredEvents.includes(event.id) ? 'star-fill' : undefined"
+            :icon="starredEvents && starredEvents.includes(event.id) ? 'star-fill' : undefined"
             display="active"
             :category="event.category"
             :all-categories="props.allCategories"
