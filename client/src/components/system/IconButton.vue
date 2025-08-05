@@ -10,12 +10,13 @@ const props = defineProps<{
   badge?: boolean;
   inactiveVariant?: "outlined" | "empty" | "filled";
   size?: "xs" | "sm" | "md" | "lg";
+  showLabel?: string;
   buttonProps?: Record<string, unknown>;
 }>();
 
 defineEmits(["click"]);
 
-const sizeClass = computed(() => {
+const iconSizeClass = computed(() => {
   switch (props.size) {
     case "xs":
       return "text-lg";
@@ -27,6 +28,21 @@ const sizeClass = computed(() => {
       return "text-3xl";
     default:
       return "text-3xl";
+  }
+});
+
+const textSizeClass = computed(() => {
+  switch (props.size) {
+    case "xs":
+      return "text-sm";
+    case "sm":
+      return "text-base";
+    case "md":
+      return "text-lg";
+    case "lg":
+      return "text-xl";
+    default:
+      return "text-xl";
   }
 });
 
@@ -48,13 +64,16 @@ const variant = computed(() => {
     <span class="relative">
       <Button
         :icon="`bi bi-${props.icon}`"
-        :pt:icon="`!${sizeClass}`"
+        :pt:icon="`!${iconSizeClass}`"
+        :pt:label="`!${textSizeClass} ml-1`"
         :variant="variant"
         :aria-pressed="props.active ?? false"
         size="large"
         :aria-label="props.label"
         rounded
         :disabled="props.disabled ?? false"
+        :label="props.showLabel ? props.label : undefined"
+        :icon-pos="props.showLabel ? 'left' : undefined"
         @click="$emit('click')"
         v-bind="props.buttonProps"
       />

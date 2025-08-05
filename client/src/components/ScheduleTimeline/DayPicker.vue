@@ -30,29 +30,28 @@ const selectToday = () => {
 <template>
   <nav class="flex items-center justify-between gap-4">
     <span class="text-2xl font-bold">{{ props.dayNames[currentDayIndex] }}</span>
-    <span class="flex gap-2 items-center">
+    <span class="flex items-center">
       <IconButton
         icon="calendar-event"
         label="Today"
+        :show-label="true"
         size="md"
         :active="currentDayIndex === props.todayIndex"
         v-if="props.todayIndex >= 0"
         @click="selectToday"
       />
-      <span class="flex items-center">
-        <IconButton
-          icon="chevron-left"
-          label="Previous"
-          :disabled="currentDayIndex === 0"
-          @click="selectPrevDay"
-        />
-        <IconButton
-          icon="chevron-right"
-          label="Next"
-          :disabled="currentDayIndex === props.dayNames.length - 1"
-          @click="selectNextDay"
-        />
-      </span>
+      <IconButton
+        icon="chevron-left"
+        label="Previous"
+        :disabled="currentDayIndex === 0"
+        @click="selectPrevDay"
+      />
+      <IconButton
+        icon="chevron-right"
+        label="Next"
+        :disabled="currentDayIndex === props.dayNames.length - 1"
+        @click="selectNextDay"
+      />
     </span>
   </nav>
 </template>
