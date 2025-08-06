@@ -118,7 +118,7 @@ migrate-env env:
 
 # roll back to a previous schema migration for an environment
 [group("manage environments")]
-[confirm("Are you sure? This will delete all changes made since the specified migration.")]
+[confirm("Are you sure? This will delete all changes made since the last migration.")]
 rollback-migration env:
   ./tools/rollback-migration.nu {{ env }}
 

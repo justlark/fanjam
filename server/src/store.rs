@@ -364,7 +364,25 @@ impl Store {
                 &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
             )
             .await
-            .map_err(Error::Internal)
+            .map_err(Error::Internal)?;
+
+        if kind == PostRestoreBackupKind::Migration {
+            if let Some(current_migration_version) =
+                kv::get_migration_version(&self.kv, &self.env_name)
+                    .await
+                    .map_err(Error::Internal)?
+            {
+                kv::put_migration_version(
+                    &self.kv,
+                    &self.env_name,
+                    current_migration_version.prev(),
+                )
+                .await
+                .map_err(Error::Internal)?;
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn migrate(&self) -> Result<MigrationChange, Error> {
