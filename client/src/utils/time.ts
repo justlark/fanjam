@@ -123,6 +123,6 @@ export const groupByTime = <T>(
 };
 
 export const isSameDay = (a: Date, b: Date): boolean =>
-  a.getUTCFullYear() === b.getUTCFullYear() &&
-  a.getUTCMonth() === b.getUTCMonth() &&
-  a.getUTCDate() === b.getUTCDate();
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
