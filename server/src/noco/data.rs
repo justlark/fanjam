@@ -6,7 +6,7 @@ use worker::{Method, console_warn};
 
 use crate::noco::Client;
 
-use super::{BaseId, migrations::TableId};
+use super::migrations::{TableId, TableIds};
 
 const PAGE_SIZE: u32 = 100;
 
@@ -49,27 +49,6 @@ async fn list_records<T: DeserializeOwned>(
     Ok(records)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TableInfo {
-    id: TableId,
-    #[serde(rename = "table_name")]
-    name: String,
-}
-
-#[worker::send]
-pub async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Vec<TableInfo>> {
-    #[derive(Debug, Deserialize)]
-    struct GetTablesResponse {
-        list: Vec<TableInfo>,
-    }
-
-    Ok(client
-        .build_request_v2(Method::Get, &format!("/meta/bases/{base_id}/tables"))
-        .fetch::<GetTablesResponse>()
-        .await?
-        .list)
-}
-
 #[derive(Debug, Deserialize)]
 struct LocationResponse {
     #[serde(rename = "Location")]
@@ -91,7 +70,7 @@ struct EventResponse {
     #[serde(rename = "Description")]
     pub description: Option<String>,
     #[serde(rename = "Start Time")]
-    pub start_time: String,
+    pub start_time: Option<String>,
     #[serde(rename = "End Time")]
     pub end_time: Option<String>,
     #[serde(rename = "Locations")]
@@ -231,51 +210,6 @@ pub struct Summary {
     pub description: Option<String>,
 }
 
-pub struct TableIds {
-    events: TableId,
-    people: TableId,
-    tags: TableId,
-    about: TableId,
-    links: TableId,
-    files: TableId,
-    pages: TableId,
-}
-
-impl TryFrom<Vec<TableInfo>> for TableIds {
-    type Error = anyhow::Error;
-
-    fn try_from(tables: Vec<TableInfo>) -> Result<Self, Self::Error> {
-        let mut ids = HashMap::new();
-        for table in tables {
-            ids.insert(table.name, table.id);
-        }
-
-        Ok(TableIds {
-            events: ids
-                .remove("events")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'events' table in cache"))?,
-            people: ids
-                .remove("people")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'people' table in cache"))?,
-            tags: ids
-                .remove("tags")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'tags' table in cache"))?,
-            about: ids
-                .remove("about")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'about' table in cache"))?,
-            links: ids
-                .remove("links")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'links' table in cache"))?,
-            files: ids
-                .remove("files")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache"))?,
-            pages: ids
-                .remove("pages")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'pages' table in cache"))?,
-        })
-    }
-}
-
 #[worker::send]
 pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
     let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
@@ -294,11 +228,16 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
     Ok(event_records
         .into_iter()
         .filter(|r| !r.hidden)
+        // We allow event organizers to create events in NocoDB without a start time to give them
+        // more flexibility in how they plan the schedule. However, events without a start time
+        // will not be returned to the client, because it's not obvious how the client should
+        // display them in the schedule view.
+        .filter(|r| r.start_time.is_some())
         .map(|r| Event {
             id: r.id.to_string(),
             name: r.name,
             description: r.description,
-            start_time: r.start_time,
+            start_time: r.start_time.unwrap(),
             end_time: r.end_time,
             location: r.location.map(|l| l.name),
             category: r.category.map(|c| c.name),

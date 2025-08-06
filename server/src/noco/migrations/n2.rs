@@ -4,7 +4,7 @@ use crate::noco::migrations::common::TableRequest;
 
 use super::{
     BaseId, Client, TableId, Version,
-    common::{self, ColumnRequest, create_columns, create_tables, set_nop, set_ref},
+    common::{self, CreateColumnRequest, create_columns, create_tables, set_nop, set_ref},
     n1,
 };
 
@@ -64,7 +64,7 @@ impl Migration<'_> {
     }
 
     async fn create_columns(&self, tables: &Tables) -> anyhow::Result<()> {
-        let requests = vec![ColumnRequest {
+        let requests = vec![CreateColumnRequest {
             table_id: &tables.pages,
             column_ref: set_nop(),
             body: json!({

@@ -6,7 +6,7 @@ use worker::{Method, console_log};
 use crate::noco::Client;
 
 use super::common::{
-    ColumnRequest, DATE_FORMAT, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
+    CreateColumnRequest, DATE_FORMAT, IS_TIME_12HR, TIME_FORMAT, TableRequest, ViewId, ViewRequest,
     ViewType, create_columns, create_tables, create_views, lock_views, set_nop, set_ref,
 };
 
@@ -340,7 +340,7 @@ impl Migration<'_> {
         let columns = ByColumn::<Option<ColumnId>>::default();
 
         let requests = vec![
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.events,
                 column_ref: set_nop(),
                 body: json!({
@@ -353,7 +353,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.events,
                 column_ref: set_nop(),
                 body: json!({
@@ -369,7 +369,7 @@ impl Migration<'_> {
                     "rqd": true,
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.events,
                 column_ref: set_nop(),
                 body: json!({
@@ -384,7 +384,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.locations,
                 column_ref: set_nop(),
                 body: json!({
@@ -397,7 +397,7 @@ impl Migration<'_> {
                     "childId": &tables.events
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.people,
                 column_ref: set_nop(),
                 body: json!({
@@ -407,7 +407,7 @@ impl Migration<'_> {
                     "description": "Contact info for this person. Attendees cannot see this."
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.people,
                 column_ref: set_nop(),
                 body: json!({
@@ -420,7 +420,7 @@ impl Migration<'_> {
                     "childId": &tables.events
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.categories,
                 column_ref: set_nop(),
                 body: json!({
@@ -433,7 +433,7 @@ impl Migration<'_> {
                     "childId": &tables.events
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.tags,
                 column_ref: set_nop(),
                 body: json!({
@@ -446,7 +446,7 @@ impl Migration<'_> {
                     "childId": &tables.events
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.events,
                 column_ref: set_nop(),
                 body: json!({
@@ -459,7 +459,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.announcements,
                 column_ref: set_nop(),
                 body: json!({
@@ -472,7 +472,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.announcements,
                 column_ref: set_nop(),
                 body: json!({
@@ -482,7 +482,7 @@ impl Migration<'_> {
                     "description": "Attach images or other files to be shown alongside the announcement."
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.announcements,
                 column_ref: set_nop(),
                 body: json!({
@@ -497,7 +497,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.announcements,
                 column_ref: set_nop(),
                 body: json!({
@@ -512,7 +512,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.about,
                 column_ref: set_nop(),
                 body: json!({
@@ -525,7 +525,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.about,
                 column_ref: set_nop(),
                 body: json!({
@@ -538,7 +538,7 @@ impl Migration<'_> {
                     }
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.links,
                 column_ref: set_nop(),
                 body: json!({
@@ -552,7 +552,7 @@ impl Migration<'_> {
                     "rqd": true,
                 }),
             },
-            ColumnRequest {
+            CreateColumnRequest {
                 table_id: &tables.files,
                 column_ref: set_nop(),
                 body: json!({

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use serde::Deserialize;
 use worker::{Method, console_log};
@@ -7,13 +7,58 @@ use crate::noco::Client;
 
 use super::{ColumnId, RefSetter, TableId};
 
-pub struct ColumnRequest<'a> {
+#[derive(Debug, Deserialize)]
+pub struct ColumnInfo {
+    pub id: ColumnId,
+    #[serde(rename = "column_name")]
+    pub name: Option<String>,
+}
+
+pub struct ColumnIds {
+    by_name: HashMap<String, ColumnId>,
+}
+
+impl From<Vec<ColumnInfo>> for ColumnIds {
+    fn from(info: Vec<ColumnInfo>) -> Self {
+        Self {
+            by_name: info
+                .into_iter()
+                .filter_map(|col| col.name.map(|name| (name, col.id)))
+                .collect(),
+        }
+    }
+}
+
+impl ColumnIds {
+    pub fn find(&self, name: &str) -> anyhow::Result<ColumnId> {
+        self.by_name
+            .get(name)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Column `{name}` not found"))
+    }
+}
+
+#[worker::send]
+pub async fn list_columns(client: &Client, table_id: &TableId) -> anyhow::Result<Vec<ColumnInfo>> {
+    #[derive(Debug, Deserialize)]
+    struct GetTableMetadataResponse {
+        columns: Vec<ColumnInfo>,
+    }
+
+    Ok(client
+        .build_request_v2(Method::Get, &format!("/meta/tables/{table_id}"))
+        .fetch::<GetTableMetadataResponse>()
+        .await?
+        .columns)
+}
+
+pub struct CreateColumnRequest<'a> {
     pub table_id: &'a TableId,
     pub column_ref: RefSetter<'a, ColumnId>,
     pub body: serde_json::Value,
 }
 
-impl fmt::Debug for ColumnRequest<'_> {
+impl fmt::Debug for CreateColumnRequest<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FieldRequest")
             .field("table_id", &self.table_id)
@@ -24,7 +69,7 @@ impl fmt::Debug for ColumnRequest<'_> {
 
 pub async fn create_columns(
     client: &Client,
-    requests: Vec<ColumnRequest<'_>>,
+    requests: Vec<CreateColumnRequest<'_>>,
 ) -> anyhow::Result<()> {
     #[derive(Debug, Deserialize)]
     struct PostColumnResponse {
@@ -57,6 +102,32 @@ pub async fn create_columns(
             column_id,
             request.table_id,
         );
+    }
+
+    Ok(())
+}
+
+#[derive(Debug)]
+pub struct EditColumnRequest<'a> {
+    pub column_id: &'a ColumnId,
+    pub body: serde_json::Value,
+}
+
+pub async fn edit_columns(
+    client: &Client,
+    requests: Vec<EditColumnRequest<'_>>,
+) -> anyhow::Result<()> {
+    for request in requests {
+        client
+            .build_request_v2(
+                Method::Patch,
+                &format!("/meta/columns/{}", request.column_id),
+            )
+            .with_json(&request.body)?
+            .exec()
+            .await?;
+
+        console_log!("Created Noco column with ID `{}`", request.column_id,);
     }
 
     Ok(())
