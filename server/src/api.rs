@@ -65,7 +65,6 @@ pub enum PostRestoreBackupKind {
 pub struct PostRestoreBackupRequest {
     #[serde(rename = "type")]
     pub kind: PostRestoreBackupKind,
-    pub migration: Option<noco::Version>,
 }
 
 #[derive(Debug, Serialize)]

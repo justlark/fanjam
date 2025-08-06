@@ -3,8 +3,8 @@ use crate::env::{EnvId, EnvName};
 use crate::error::Error;
 use crate::noco::{
     self, BaseId, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-    NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, TableIds,
-    noco_migration_branch_name,
+    NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
+    NOCO_PRE_MIGRATION_BRANCH_NAME, TableIds,
 };
 use crate::{config, kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
@@ -350,18 +350,11 @@ impl Store {
         Ok(())
     }
 
-    pub async fn restore_backup(
-        &self,
-        kind: PostRestoreBackupKind,
-        version: Option<noco::Version>,
-    ) -> Result<(), Error> {
+    pub async fn restore_backup(&self, kind: PostRestoreBackupKind) -> Result<(), Error> {
         let source_branch_name = match kind {
             PostRestoreBackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
             PostRestoreBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-            PostRestoreBackupKind::Migration => match version {
-                Some(version) => noco_migration_branch_name(&version),
-                None => return Err(Error::MissingMigrationVersion),
-            },
+            PostRestoreBackupKind::Migration => NOCO_PRE_MIGRATION_BRANCH_NAME,
         };
 
         self.neon_client

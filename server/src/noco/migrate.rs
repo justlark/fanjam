@@ -13,6 +13,7 @@ use crate::neon::Client as NeonClient;
 pub const NOCO_PRE_BASE_DELETION_BRANCH_NAME: BranchName =
     BranchName::new("noco-pre-base-deletion");
 pub const NOCO_PRE_DEPLOYMENT_BRANCH_NAME: BranchName = BranchName::new("noco-pre-deployment");
+pub const NOCO_PRE_MIGRATION_BRANCH_NAME: BranchName = BranchName::new("noco-pre-migration");
 pub const NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME: BranchName =
     BranchName::new("noco-pre-migration-rollback");
 pub const NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME: BranchName =
@@ -83,6 +84,10 @@ impl<'a> Migrator<'a> {
         env_name: &EnvName,
         state: MigrationState,
     ) -> anyhow::Result<ExistingMigrationState> {
+        self.neon_client
+            .create_backup(&env_name.clone().into(), &NOCO_PRE_MIGRATION_BRANCH_NAME)
+            .await?;
+
         let (mut version, base_id) = match state {
             MigrationState::New(NewMigrationState {
                 title,

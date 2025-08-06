@@ -261,7 +261,7 @@ async fn post_restore_backup(
 ) -> Result<NoContent, ErrorResponse> {
     let store = Store::from_env_name(state.kv.clone(), env_name).await?;
 
-    store.restore_backup(body.kind, body.migration).await?;
+    store.restore_backup(body.kind).await?;
 
     Ok(NoContent)
 }
