@@ -116,6 +116,12 @@ get-app-link env:
 migrate-env env:
   ./tools/migrate-env.nu {{ env }}
 
+# roll back to a previous schema migration for an environment
+[group("manage environments")]
+[confirm("Are you sure? This will delete all changes made since the specified migration.")]
+rollback-migration env migration:
+  ./tools/rollback-migration.nu {{ env }} {{ migration }}
+
 # get the current schema version of an environment
 [group("manage environments")]
 get-schema-version env:
