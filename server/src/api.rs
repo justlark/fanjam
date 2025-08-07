@@ -130,3 +130,8 @@ pub struct GetSummaryResponse {
     pub name: Option<String>,
     pub description: Option<String>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct GetConfigResponse {
+    pub timezone: Option<String>,
+}

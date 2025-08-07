@@ -12,10 +12,10 @@ use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
-        DataResponseEnvelope, Event, File, GetCurrentMigrationResponse, GetEventsResponse,
-        GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse, Link, Page,
-        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
-        PostRestoreBackupRequest, PutTokenRequest,
+        DataResponseEnvelope, Event, File, GetConfigResponse, GetCurrentMigrationResponse,
+        GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
+        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
@@ -77,8 +77,8 @@ pub fn new(state: AppState) -> Router {
             post(post_restore_backup),
         )
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
-        .route("/admin/env/{env_name}/config", get(get_config))
-        .route("/admin/env/{env_name}/config", put(put_config))
+        .route("/admin/env/{env_name}/config", get(get_admin_config))
+        .route("/admin/env/{env_name}/config", put(put_admin_config))
         .route("/admin/config-docs", get(get_config_docs))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
@@ -86,6 +86,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
         .route("/apps/{env_id}/summary", get(get_summary))
+        .route("/apps/{env_id}/config", get(get_config))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
@@ -282,7 +283,7 @@ async fn delete_cache(
 }
 
 #[axum::debug_handler]
-async fn get_config(
+async fn get_admin_config(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<Json<Config>, ErrorResponse> {
@@ -294,7 +295,7 @@ async fn get_config(
 }
 
 #[axum::debug_handler]
-async fn put_config(
+async fn put_admin_config(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
     Json(config): Json<Config>,
@@ -425,5 +426,24 @@ async fn get_summary(
     Ok(Json(GetSummaryResponse {
         name: summary.name,
         description: summary.description,
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_config(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<Json<GetConfigResponse>, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(Json(GetConfigResponse {
+        timezone: config.timezone,
     }))
 }
