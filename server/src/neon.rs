@@ -352,39 +352,6 @@ impl Client {
         Ok(lsn)
     }
 
-    async fn get_lsn(&self, project_id: &ProjectId, branch_id: &BranchId) -> anyhow::Result<Lsn> {
-        const TEMP_ROLLBACK_CHILD_BRANCH_NAME: BranchName = BranchName::new("temp-rollback");
-
-        // Just in case deleting the branch failed at any point in the past.
-        self.delete_branch_with_name(project_id, &TEMP_ROLLBACK_CHILD_BRANCH_NAME)
-            .await?;
-
-        // There doesn't seem to be an API to get the LSN of the head of the *current* branch--only
-        // the LSN of the parent branch. So we create a temporary child branch, get the LSN of its
-        // parent, and then delete it.
-        let temp_child_branch_id = self
-            .create_branch(
-                project_id,
-                branch_id,
-                &TEMP_ROLLBACK_CHILD_BRANCH_NAME,
-                BranchType::ReadOnly,
-            )
-            .await?;
-
-        // The alternative to rolling back to an LSN would be to roll back to a timestamp.
-        // Timestamps have limited precision and require everyone agree on the exact time, which
-        // leaves open the possibility of accidentally rolling back too far or not far enough, even
-        // though in practice it would probably be good enough.
-        let lsn = self
-            .get_parent_lsn(project_id, &temp_child_branch_id)
-            .await?;
-
-        self.delete_branch(project_id, &temp_child_branch_id)
-            .await?;
-
-        Ok(lsn)
-    }
-
     #[worker::send]
     pub async fn create_backup(
         &self,
@@ -432,7 +399,7 @@ impl Client {
                 anyhow::anyhow!("no Neon branch found with name {}", &source_branch_name)
             })?;
 
-        let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
+        let source_lsn = self.get_parent_lsn(&project_id, &source_branch_id).await?;
 
         self.delete_branch_with_name(&project_id, &NOCO_PRE_MIGRATION_BRANCH_NAME)
             .await?;
@@ -473,7 +440,7 @@ impl Client {
     {
         let project_id = self.lookup_project(project_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
-        let source_lsn = self.get_lsn(&project_id, &default_branch_id).await?;
+        let source_lsn = self.get_parent_lsn(&project_id, &default_branch_id).await?;
 
         match f().await {
             Ok(result) => Ok(result),
