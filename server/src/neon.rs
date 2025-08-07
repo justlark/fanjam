@@ -10,7 +10,8 @@ use crate::{
     http::RequestBuilder,
     noco::{
         self, NOCO_PRE_BASE_DELETION_BRANCH_NAME, NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-        NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, noco_migration_branch_name,
+        NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, NOCO_PRE_MIGRATION_BRANCH_NAME,
+        noco_migration_branch_name,
     },
 };
 
@@ -433,6 +434,8 @@ impl Client {
 
         let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
 
+        self.delete_branch_with_name(&project_id, &NOCO_PRE_MIGRATION_BRANCH_NAME)
+            .await?;
         self.delete_branch_with_name(&project_id, &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME)
             .await?;
 

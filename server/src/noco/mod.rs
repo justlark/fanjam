@@ -12,6 +12,6 @@ pub use data::{
 pub use migrate::{
     ExistingMigrationState, MigrationState, Migrator, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
-    noco_migration_branch_name,
+    NOCO_PRE_MIGRATION_BRANCH_NAME, noco_migration_branch_name,
 };
 pub use migrations::{BaseId, TableIds, TableInfo, Version, list_tables};
