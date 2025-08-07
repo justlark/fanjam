@@ -1,6 +1,6 @@
 import { type Ref, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import api, { type ApiResult, type Event, type Info, type Page } from "@/utils/api";
+import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -291,6 +291,32 @@ const useRemotePages = () => {
   return { reload, clear, result: pagesRef };
 };
 
+interface StoredConfig {
+  timezone: string;
+}
+
+const configRef = ref<FetchResult<Config>>({ status: "pending" });
+
+const useRemoteConfig = () => {
+  const route = useRoute();
+  const envId = computed(() => route.params.envId as string);
+
+  const { reload, clear } = useRemoteDataInner<Config, StoredConfig>({
+    key: "config",
+    instance: envId,
+    result: configRef,
+    fetcher: () => api.getConfig(envId.value),
+    toCache: (data) => ({
+      timezone: data.timezone,
+    }),
+    fromCache: (data) => ({
+      timezone: data.timezone,
+    }),
+  });
+
+  return { reload, clear, result: configRef };
+};
+
 // We fetch *all* data from the server eagerly on first page load and when
 // `reload()` is called. This is primarily so the app works offline.
 const useRemoteData = () => {
@@ -300,14 +326,17 @@ const useRemoteData = () => {
 
   const { reload: reloadPages, clear: clearPages, result: pagesResult } = useRemotePages();
 
+  const { reload: reloadConfig, clear: clearConfig, result: configResult } = useRemoteConfig();
+
   const reload = async () => {
-    await Promise.all([reloadEvents(), reloadInfo(), reloadPages()]);
+    await Promise.all([reloadEvents(), reloadInfo(), reloadPages(), reloadConfig()]);
   };
 
   const clear = () => {
     clearEvents();
     clearInfo();
     clearPages();
+    clearConfig();
   };
 
   return {
@@ -317,11 +346,13 @@ const useRemoteData = () => {
       events: eventsResult,
       info: infoResult,
       pages: pagesResult,
+      config: configResult,
     },
     data: {
       events: unwrapFetchResult(eventsResult, []),
       info: unwrapFetchResult(infoResult, undefined),
       pages: unwrapFetchResult(pagesResult, []),
+      config: unwrapFetchResult(configResult, undefined),
     },
   };
 };

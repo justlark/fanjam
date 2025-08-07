@@ -31,6 +31,10 @@ interface RawPage {
   body: string;
 }
 
+interface RawConfig {
+  timezone: string;
+}
+
 interface Envelope<T> {
   retry_after_ms?: number;
   value: T;
@@ -71,6 +75,10 @@ export interface Info {
   websiteUrl?: string;
   links: Array<Link>;
   files: Array<File>;
+}
+
+export interface Config {
+  timezone: string;
 }
 
 export type ApiResult<T> =
@@ -205,8 +213,27 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
   };
 };
 
+const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
+  );
+
+  if (!response.ok) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawConfig: RawConfig = await response.json();
+
+  const config: Config = {
+    timezone: rawConfig.timezone,
+  };
+
+  return { ok: true, value: config };
+};
+
 export default {
   getEvents,
   getInfo,
   getPages,
+  getConfig,
 };
