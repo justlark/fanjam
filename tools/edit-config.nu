@@ -13,12 +13,11 @@ def main [env_name: string] {
 
   let editor = $env | get --optional "VISUAL" | default ($env | get --optional "EDITOR") | default "nano"
   run-external $editor $temp_file_path
-
   let edited_config = open $temp_file_path
 
   admin-api put $env_config.stage $"/admin/env/($env_name)/config" ($edited_config | to json --raw)
 
   rm --force $temp_file_path
 
-  $edited_config
+  admin-api get $env_config.stage $"/admin/env/($env_name)/config"
 }
