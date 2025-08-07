@@ -99,10 +99,10 @@ pub async fn get_id_env(kv: &KvStore, env_id: &EnvId) -> anyhow::Result<Option<E
         .map(EnvName::from);
 
     // Only the latest event ID should work. This allows us to invalidate old app links.
-    if let Some(env_name) = maybe_env_name {
-        if get_env_id(kv, &env_name).await?.as_ref() == Some(env_id) {
-            return Ok(Some(env_name));
-        }
+    if let Some(env_name) = maybe_env_name
+        && get_env_id(kv, &env_name).await?.as_ref() == Some(env_id)
+    {
+        return Ok(Some(env_name));
     }
 
     return Ok(None);

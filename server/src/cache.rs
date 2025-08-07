@@ -66,10 +66,10 @@ pub async fn if_none_match_middleware(request: Request, next: Next) -> impl Into
         .get(header::ETAG)
         .and_then(|v| v.to_str().ok());
 
-    if let (Some(request_etag), Some(response_etag)) = (request_etag, response_etag) {
-        if request_etag == response_etag {
-            return StatusCode::NOT_MODIFIED.into_response();
-        }
+    if let (Some(request_etag), Some(response_etag)) = (request_etag, response_etag)
+        && request_etag == response_etag
+    {
+        return StatusCode::NOT_MODIFIED.into_response();
     }
 
     response

@@ -1,6 +1,6 @@
 pub type RefSetter<'a, T> = Box<dyn FnOnce(T) + 'a>;
 
-pub fn set_ref<T>(value_ref: &mut Option<T>) -> RefSetter<T> {
+pub fn set_ref<T>(value_ref: &mut Option<T>) -> RefSetter<'_, T> {
     Box::new(move |id| {
         *value_ref = Some(id);
     })
