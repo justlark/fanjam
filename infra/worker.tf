@@ -57,7 +57,7 @@ resource "cloudflare_workers_secret" "upstash_endpoint" {
   account_id  = var.cloudflare_account_id
   name        = "UPSTASH_ENDPOINT"
   script_name = "sparklefish-server-${each.key}"
-  secret_text = upstash_redis_database.noco.endpoint
+  secret_text = "https://${upstash_redis_database.noco.endpoint}"
 }
 
 resource "cloudflare_workers_secret" "upstash_api_token" {
