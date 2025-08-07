@@ -4,7 +4,15 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::Method;
 
-use crate::{config, env::EnvName, http::RequestBuilder};
+use crate::{
+    config,
+    env::EnvName,
+    http::RequestBuilder,
+    noco::{
+        self, NOCO_PRE_BASE_DELETION_BRANCH_NAME, NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
+        NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, noco_migration_branch_name,
+    },
+};
 
 // An LSN (Log Sequence Number) is sort of an index into the history of a branch. It's a point we
 // can roll back to. This is a concept specific to our Postgres provider.
@@ -90,6 +98,16 @@ impl BranchType {
             BranchType::ReadWrite => "read_write",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackupKind {
+    Deletion,
+    Deployment,
+    Migration {
+        from: noco::Version,
+        to: noco::Version,
+    },
 }
 
 #[derive(Debug)]
@@ -394,24 +412,48 @@ impl Client {
     pub async fn restore_backup(
         &self,
         project_name: &ProjectName,
-        source_branch_name: &BranchName,
-        preserve_name: &BranchName,
+        backup_kind: BackupKind,
     ) -> anyhow::Result<()> {
         let project_id = self.lookup_project(project_name).await?;
+
+        let source_branch_name = match backup_kind {
+            BackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
+            BackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
+            BackupKind::Migration { to, .. } => noco_migration_branch_name(&to),
+        };
+
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
         let source_branch_id = self
-            .lookup_branch(&project_id, source_branch_name)
+            .lookup_branch(&project_id, &source_branch_name)
             .await?
             .ok_or_else(|| {
                 anyhow::anyhow!("no Neon branch found with name {}", &source_branch_name)
             })?;
+
         let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
 
-        self.delete_branch_with_name(&project_id, preserve_name)
+        self.delete_branch_with_name(&project_id, &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME)
             .await?;
-        self.restore_to_lsn(&project_id, &default_branch_id, &source_lsn, preserve_name)
-            .await?;
+
+        self.restore_to_lsn(
+            &project_id,
+            &default_branch_id,
+            &source_lsn,
+            &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
+        )
+        .await?;
+
+        if let BackupKind::Migration { from, to } = backup_kind {
+            let mut to_delete = from;
+
+            while to_delete != to {
+                self.delete_branch_with_name(&project_id, &noco_migration_branch_name(&to_delete))
+                    .await?;
+
+                to_delete = to_delete.prev();
+            }
+        }
 
         Ok(())
     }

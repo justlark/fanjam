@@ -3,11 +3,10 @@ use crate::env::{EnvId, EnvName};
 use crate::error::Error;
 use crate::noco::{
     self, BaseId, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-    NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
-    NOCO_PRE_MIGRATION_BRANCH_NAME, TableIds,
+    NOCO_PRE_DEPLOYMENT_BRANCH_NAME, TableIds,
 };
 use crate::upstash::Client as UpstashClient;
-use crate::{config, kv, url};
+use crate::{config, kv, neon, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
@@ -354,35 +353,31 @@ impl Store {
     }
 
     pub async fn restore_backup(&self, kind: PostRestoreBackupKind) -> Result<(), Error> {
-        let source_branch_name = match kind {
-            PostRestoreBackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-            PostRestoreBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-            PostRestoreBackupKind::Migration => NOCO_PRE_MIGRATION_BRANCH_NAME,
+        let backup_kind = match kind {
+            PostRestoreBackupKind::Deletion => neon::BackupKind::Deletion,
+            PostRestoreBackupKind::Deployment => neon::BackupKind::Deployment,
+            PostRestoreBackupKind::Migration => {
+                let version = kv::get_migration_version(&self.kv, &self.env_name)
+                    .await
+                    .map_err(Error::Internal)?
+                    .ok_or(Error::NoMigrations)?;
+
+                neon::BackupKind::Migration {
+                    from: version,
+                    to: version.prev(),
+                }
+            }
         };
 
         self.neon_client
-            .restore_backup(
-                &self.env_name.clone().into(),
-                &source_branch_name,
-                &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
-            )
+            .restore_backup(&self.env_name.clone().into(), backup_kind)
             .await
             .map_err(Error::Internal)?;
 
-        if kind == PostRestoreBackupKind::Migration {
-            if let Some(current_migration_version) =
-                kv::get_migration_version(&self.kv, &self.env_name)
-                    .await
-                    .map_err(Error::Internal)?
-            {
-                kv::put_migration_version(
-                    &self.kv,
-                    &self.env_name,
-                    current_migration_version.prev(),
-                )
+        if let neon::BackupKind::Migration { to, .. } = backup_kind {
+            kv::put_migration_version(&self.kv, &self.env_name, to)
                 .await
                 .map_err(Error::Internal)?;
-            }
         }
 
         // Since we're rolling back the database, we should clear the Redis cache as well so the
