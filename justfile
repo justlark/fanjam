@@ -60,38 +60,51 @@ tail-client stage:
   npx wrangler tail --env {{ stage }}
 
 # generate the configuration for an environment
-[group("manage infrastructure")]
+[group("deploy environments")]
 configure-env env stage:
   ./tools/configure-env.nu {{ env }} {{ stage}}
 
+# update environment secrets passed to the NocoDB instance
+[group("deploy environments")]
+update-secrets env:
+  ./tools/update-secrets.nu {{ env }}
+
 # create a new NocoDB instance
-[group("manage infrastructure")]
+[group("deploy environments")]
 create-env env:
   ./tools/create-fly-app.nu {{ env }}
   ./tools/update-secrets.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
   ./tools/deploy-certs.nu {{ env }}
 
-# update environment secrets passed to the NocoDB instance
-[group("manage infrastructure")]
-update-secrets env:
-  ./tools/update-secrets.nu {{ env }}
-
 # get the system user login credentials for an environment
-[group("manage infrastructure")]
+[group("manage environments")]
 get-creds env:
   ./tools/get-creds.nu {{ env }}
 
 # redeploy an existing NocoDB instance
-[group("manage environments")]
+[group("deploy environments")]
 deploy-env env:
   ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # configure an environment with a NocoDB API token
-[group("manage environments")]
+[group("initialize environments")]
 set-noco-token env:
   ./tools/set-noco-token.nu {{ env }}
+
+# create a new empty base in a NocoDB instance
+[group("initialize environments")]
+create-base env:
+  ./tools/create-noco-base.nu {{ env }}
+
+# initialize a new environment
+[group("initialize environments")]
+[confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
+init-env env:
+  ./tools/set-noco-token.nu {{ env }}
+  ./tools/create-noco-base.nu {{ env }}
+  ./tools/generate-app-link.nu {{ env }}
 
 # generate a new app link for an environment
 [group("manage environments")]
@@ -111,29 +124,21 @@ get-app-link env:
   ./tools/get-app-link.nu {{ env }}
 
 # apply any pending schema migrations to an environment
-[group("manage environments")]
+[group("manage schema migrations")]
 [confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
 migrate-env env:
   ./tools/migrate-env.nu {{ env }}
 
 # roll back to a previous schema migration for an environment
-[group("manage environments")]
+[group("manage schema migrations")]
 [confirm("Are you sure? This will delete all changes made since the last migration.")]
 rollback-migration env:
   ./tools/rollback-migration.nu {{ env }}
 
 # get the current schema version of an environment
-[group("manage environments")]
+[group("manage schema migrations")]
 get-schema-version env:
   ./tools/get-schema-version.nu {{ env }}
-
-# initialize a new environment
-[group("manage environments")]
-[confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
-init-env env:
-  ./tools/set-noco-token.nu {{ env }}
-  ./tools/create-noco-base.nu {{ env }}
-  ./tools/generate-app-link.nu {{ env }}
 
 # clear the server cache for an environment
 [group("manage environments")]
