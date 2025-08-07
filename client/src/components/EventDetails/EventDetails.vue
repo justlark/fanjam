@@ -3,6 +3,7 @@ import { computed, watchEffect, ref, useId } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
@@ -14,6 +15,7 @@ import Divider from "primevue/divider";
 const router = useRouter();
 const filterCriteria = useFilterQuery();
 const starredEvents = useStarredEvents();
+const datetimeFormats = useDatetimeFormats();
 
 const props = defineProps<{
   event: Event;
@@ -77,8 +79,8 @@ const sectionHeadingId = useId();
     <div class="px-6">
       <div class="flex justify-between items-end">
         <dl class="flex flex-col items-start gap-2">
-          <EventDetail v-if="event.startTime" icon="clock" icon-label="Time">
-            {{ localizeTimeSpan(event.startTime, event.endTime) }}
+          <EventDetail v-if="datetimeFormats && event.startTime" icon="clock" icon-label="Time">
+            {{ localizeTimeSpan(datetimeFormats, event.startTime, event.endTime) }}
           </EventDetail>
           <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts">
             Hosted by {{ event.people.join(", ") }}

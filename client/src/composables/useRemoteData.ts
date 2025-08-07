@@ -292,7 +292,7 @@ const useRemotePages = () => {
 };
 
 interface StoredConfig {
-  timezone: string;
+  timezone?: string;
 }
 
 const configRef = ref<FetchResult<Config>>({ status: "pending" });

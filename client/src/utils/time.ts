@@ -1,19 +1,18 @@
-const shortTimeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
-const shortDateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "short" });
-const shortWeekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-const longWeekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long" });
+import { type DatetimeFormats } from "@/composables/useDatetimeFormats";
+
 const daysInAWeek = 7;
 
-export const localizeTime = (time: Date) => shortTimeFormat.format(time);
+export const localizeTime = (formats: DatetimeFormats, time: Date) =>
+  formats.shortTime.format(time);
 
 // TODO: What if the start and end days are more than a week apart? Unlikely,
 // but in that case, we ought to show the full date.
-export const localizeTimeSpan = (start: Date, end: Date | undefined) => {
-  const startDay = shortWeekdayFormat.format(start);
-  const endDay = end ? shortWeekdayFormat.format(end) : undefined;
+export const localizeTimeSpan = (formats: DatetimeFormats, start: Date, end: Date | undefined) => {
+  const startDay = formats.shortWeekday.format(start);
+  const endDay = end ? formats.shortWeekday.format(end) : undefined;
 
-  const startTime = shortTimeFormat.format(start);
-  const endTime = end ? shortTimeFormat.format(end) : undefined;
+  const startTime = formats.shortTime.format(start);
+  const endTime = end ? formats.shortTime.format(end) : undefined;
 
   if (!endTime || !endDay) {
     return `${startDay} ${startTime}`;
@@ -55,7 +54,7 @@ export interface NamedDay {
   dayEnd: Date;
 }
 
-export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
+export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Array<NamedDay> => {
   if (dates.size === 0) {
     return [];
   }
@@ -73,8 +72,8 @@ export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
     const start = sortedDates[i];
 
     const dayName = rangeIsLongerThanAWeek
-      ? shortDateFormat.format(start)
-      : longWeekdayFormat.format(start);
+      ? formats.shortDate.format(start)
+      : formats.longWeekday.format(start);
 
     const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start);
 
@@ -99,6 +98,7 @@ export const datesToDayNames = (dates: Set<Date>): Array<NamedDay> => {
 };
 
 export const groupByTime = <T>(
+  formats: DatetimeFormats,
   values: Array<T>,
   getTime: (value: T) => Date,
 ): Map<string, Array<T>> => {
@@ -110,7 +110,7 @@ export const groupByTime = <T>(
 
   for (const value of sortedValues) {
     const time = getTime(value);
-    const timeString = localizeTime(time);
+    const timeString = localizeTime(formats, time);
 
     if (!grouped.has(timeString)) {
       grouped.set(timeString, []);

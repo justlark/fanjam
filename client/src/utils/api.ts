@@ -32,7 +32,7 @@ interface RawPage {
 }
 
 interface RawConfig {
-  timezone: string;
+  timezone: string | null;
 }
 
 interface Envelope<T> {
@@ -78,7 +78,7 @@ export interface Info {
 }
 
 export interface Config {
-  timezone: string;
+  timezone?: string;
 }
 
 export type ApiResult<T> =
@@ -225,7 +225,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   const rawConfig: RawConfig = await response.json();
 
   const config: Config = {
-    timezone: rawConfig.timezone,
+    timezone: rawConfig.timezone ?? undefined,
   };
 
   return { ok: true, value: config };

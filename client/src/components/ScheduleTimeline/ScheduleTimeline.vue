@@ -4,6 +4,7 @@ import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
@@ -18,6 +19,7 @@ const {
   data: { events },
   result: { events: eventsResult },
 } = useRemoteData();
+const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
 
 interface TimeSlot {
@@ -59,9 +61,15 @@ const allDates = computed(() =>
   }, new Set<Date>()),
 );
 
-const namedDays = computed(() => datesToDayNames(allDates.value));
+const namedDays = computed(() =>
+  datetimeFormats.value === undefined
+    ? undefined
+    : datesToDayNames(datetimeFormats.value, allDates.value),
+);
 
 const todayIndex = computed(() => {
+  if (namedDays.value === undefined) return undefined;
+
   const today = new Date();
   const index = namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today));
 
@@ -82,12 +90,21 @@ watchEffect(() => {
 watchEffect(() => {
   dayIndexByEventId.value = {};
 
+  if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
+
+  // The type narrowing won't carry into the closure body.
+  const datetimeFormatsValue = datetimeFormats.value;
+
   days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
     const eventsThisDay = events.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 
-    const groupedEvents = groupByTime(eventsThisDay, (event) => event.startTime);
+    const groupedEvents = groupByTime(
+      datetimeFormatsValue,
+      eventsThisDay,
+      (event) => event.startTime,
+    );
 
     for (const event of eventsThisDay) {
       dayIndexByEventId.value[event.id] = dayIndex;
@@ -117,7 +134,7 @@ const filteredTimeSlots = computed(() =>
 );
 
 const currentDayStart = computed(() => {
-  if (currentDayIndex.value === undefined) {
+  if (namedDays.value === undefined || currentDayIndex.value === undefined) {
     return undefined;
   }
 
