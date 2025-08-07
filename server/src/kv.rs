@@ -210,7 +210,7 @@ pub async fn get_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Vec<
 }
 
 #[worker::send]
-pub async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     kv.delete(&tables_key(env_name))
         .await
         .map_err(wrap_kv_err)?;

@@ -436,7 +436,7 @@ impl Store {
             .await
             .map_err(Error::Internal)?;
 
-        kv::delete_tables(&self.kv, &self.env_name)
+        kv::delete_cache(&self.kv, &self.env_name)
             .await
             .map_err(Error::Internal)?;
 
