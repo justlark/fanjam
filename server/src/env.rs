@@ -52,3 +52,13 @@ impl fmt::Display for EnvName {
         write!(f, "{}", self.0)
     }
 }
+
+// Environment-specific configuration. This should be a flat key-value map.
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Config {
+    timezone: Option<String>,
+}
+
+// Documentation for each config key in the environment-specific configuration. Keep this up to
+// date.
+pub const CONFIG_DOCS: &str = include_str!("./config_docs.json");

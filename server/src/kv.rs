@@ -3,7 +3,7 @@ use worker::kv::{KvError, KvStore};
 
 use crate::{
     config,
-    env::{EnvId, EnvName},
+    env::{Config, EnvId, EnvName},
     noco::{self, About, ApiToken, BaseId, Event, Info, Page, Summary, TableInfo},
 };
 
@@ -50,6 +50,11 @@ fn base_id_key(env_name: &EnvName) -> String {
 // The cached ID of a table in NocoDB.
 fn tables_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:tables")
+}
+
+// Environment-specific config values.
+fn env_config_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:config")
 }
 
 // The current schema migration number of an environment. This is how we know where to start when
@@ -394,4 +399,27 @@ pub async fn get_cached_summary(
         .json::<Summary>()
         .await
         .map_err(wrap_kv_err)
+}
+
+#[worker::send]
+pub async fn put_env_config(
+    kv: &KvStore,
+    env_name: &EnvName,
+    config: &Config,
+) -> anyhow::Result<()> {
+    kv.put(&env_config_key(env_name), config)
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)
+}
+
+#[worker::send]
+pub async fn get_env_config(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Config> {
+    Ok(kv
+        .get(&env_config_key(env_name))
+        .json::<Config>()
+        .await
+        .map_err(wrap_kv_err)?
+        .unwrap_or_default())
 }

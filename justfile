@@ -138,3 +138,15 @@ init-env env:
 [group("manage environments")]
 clear-cache env:
   ./tools/clear-cache.nu {{ env }}
+
+[group("configure environments")]
+describe-config stage:
+  ./tools/describe-config.nu {{ stage }}
+
+[group("configure environments")]
+get-config env:
+  ./tools/get-config.nu {{ env }}
+
+[group("configure environments")]
+edit-config env:
+  ./tools/edit-config.nu {{ env }}

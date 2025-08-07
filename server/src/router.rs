@@ -20,7 +20,7 @@ use crate::{
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
     cors::cors_layer,
-    env::{EnvId, EnvName},
+    env::{CONFIG_DOCS, Config, EnvId, EnvName},
     error::Error,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
@@ -77,6 +77,9 @@ pub fn new(state: AppState) -> Router {
             post(post_restore_backup),
         )
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
+        .route("/admin/env/{env_name}/config", get(get_config))
+        .route("/admin/env/{env_name}/config", put(put_config))
+        .route("/admin/config-docs", get(get_config_docs))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
@@ -276,6 +279,39 @@ async fn delete_cache(
         .map_err(Error::Internal)?;
 
     Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_config(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<Config>, ErrorResponse> {
+    Ok(Json(
+        kv::get_env_config(&state.kv, &env_name)
+            .await
+            .map_err(Error::Internal)?,
+    ))
+}
+
+#[axum::debug_handler]
+async fn put_config(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(config): Json<Config>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::put_env_config(&state.kv, &env_name, &config)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_config_docs() -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(serde_json::from_str::<serde_json::Value>(CONFIG_DOCS)
+        .map(Json)
+        .map_err(anyhow::Error::from)
+        .map_err(Error::Internal)?)
 }
 
 #[axum::debug_handler]

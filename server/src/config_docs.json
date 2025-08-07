@@ -1,0 +1,3 @@
+{
+  "timezone": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone."
+}
