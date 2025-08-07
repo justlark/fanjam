@@ -135,18 +135,22 @@ init-env env:
   ./tools/create-noco-base.nu {{ env }}
   ./tools/generate-app-link.nu {{ env }}
 
+# clear the server cache for an environment
 [group("manage environments")]
 clear-cache env:
   ./tools/clear-cache.nu {{ env }}
 
+# show the documentation for the environment config
 [group("configure environments")]
 describe-config stage:
   ./tools/describe-config.nu {{ stage }}
 
+# show the config for an environment
 [group("configure environments")]
 get-config env:
   ./tools/get-config.nu {{ env }}
 
+# edit the config for an environment interactively
 [group("configure environments")]
 edit-config env:
   ./tools/edit-config.nu {{ env }}
