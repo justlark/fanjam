@@ -6,7 +6,8 @@ use crate::noco::{
     NOCO_PRE_DEPLOYMENT_BRANCH_NAME, NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
     NOCO_PRE_MIGRATION_BRANCH_NAME, TableIds,
 };
-use crate::{config, kv, neon, url};
+use crate::upstash::Client as UpstashClient;
+use crate::{config, kv, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
@@ -24,6 +25,7 @@ pub struct DataResponseEnvelope<T> {
 pub struct Store {
     noco_client: NocoClient,
     neon_client: NeonClient,
+    upstash_client: UpstashClient,
     kv: KvStore,
     env_name: EnvName,
     base_id: BaseId,
@@ -214,13 +216,14 @@ impl Store {
 
         let dash_origin = url::dash_origin(&env_name).map_err(Error::Internal)?;
 
-        let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-
-        let neon_client = neon::Client::new();
+        let noco_client = NocoClient::new(dash_origin.clone(), api_token);
+        let neon_client = NeonClient::new();
+        let upstash_client = UpstashClient::new();
 
         Ok(Self {
             noco_client,
             neon_client,
+            upstash_client,
             kv,
             env_name,
             base_id,
@@ -381,6 +384,13 @@ impl Store {
                 .map_err(Error::Internal)?;
             }
         }
+
+        // Since we're rolling back the database, we should clear the Redis cache as well so the
+        // client doesn't get confused.
+        self.upstash_client
+            .unlink_keys(&format!("sparklefish:env:{}:noco:*", self.env_name))
+            .await
+            .map_err(Error::Internal)?;
 
         Ok(())
     }

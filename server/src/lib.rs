@@ -11,6 +11,7 @@ mod neon;
 mod noco;
 mod router;
 mod store;
+mod upstash;
 mod url;
 
 use router::AppState;

@@ -5,6 +5,7 @@ use worker::Env;
 
 use crate::auth;
 use crate::neon;
+use crate::upstash;
 
 #[derive(Debug)]
 struct Config {
@@ -14,6 +15,8 @@ struct Config {
     neon_api_token: neon::ApiToken,
     neon_org_id: String,
     neon_default_branch_name: String,
+    upstash_endpoint: String,
+    upstash_api_token: upstash::ApiToken,
     noco_buffer_cache_ttl_seconds: u32,
     noco_summary_cache_ttl_seconds: u32,
 }
@@ -31,6 +34,10 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
             neon_api_token: neon::ApiToken::from(env.secret("NEON_API_TOKEN")?.to_string()),
             neon_org_id: env.secret("NEON_ORG_ID")?.to_string(),
             neon_default_branch_name: env.secret("NEON_DEFAULT_BRANCH_NAME")?.to_string(),
+            upstash_endpoint: env.var("UPSTASH_ENDPOINT")?.to_string(),
+            upstash_api_token: upstash::ApiToken::from(
+                env.secret("UPSTASH_API_TOKEN")?.to_string(),
+            ),
             noco_buffer_cache_ttl_seconds: env
                 .var("NOCO_BUFFER_CACHE_TTL_SECONDS")?
                 .to_string()
@@ -71,6 +78,14 @@ pub fn neon_org_id() -> String {
 
 pub fn neon_default_branch_name() -> neon::BranchName {
     get_config().neon_default_branch_name.clone().into()
+}
+
+pub fn upstash_endpoint() -> &'static str {
+    get_config().upstash_endpoint.as_str()
+}
+
+pub fn upstash_api_token() -> upstash::ApiToken {
+    get_config().upstash_api_token.clone()
 }
 
 pub fn noco_buffer_cache_ttl() -> Duration {
