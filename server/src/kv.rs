@@ -210,6 +210,15 @@ pub async fn get_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Vec<
 }
 
 #[worker::send]
+pub async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    kv.delete(&tables_key(env_name))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
 pub async fn put_migration_version(
     kv: &KvStore,
     env_name: &EnvName,
@@ -347,6 +356,8 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
     for key in keys {
         kv.delete(&key.name).await.map_err(wrap_kv_err)?;
     }
+
+    delete_tables(kv, env_name).await?;
 
     Ok(())
 }
