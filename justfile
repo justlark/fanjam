@@ -124,19 +124,13 @@ get-app-link env:
   ./tools/get-app-link.nu {{ env }}
 
 # apply any pending schema migrations to an environment
-[group("manage schema migrations")]
+[group("manage environments")]
 [confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
 migrate-env env:
   ./tools/migrate-env.nu {{ env }}
 
-# roll back to a previous schema migration for an environment
-[group("manage schema migrations")]
-[confirm("Are you sure? This will delete all changes made since the last migration.")]
-rollback-migration env:
-  ./tools/rollback-migration.nu {{ env }}
-
 # get the current schema version of an environment
-[group("manage schema migrations")]
+[group("manage environments")]
 get-schema-version env:
   ./tools/get-schema-version.nu {{ env }}
 

@@ -4,16 +4,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::Method;
 
-use crate::{
-    config,
-    env::EnvName,
-    http::RequestBuilder,
-    noco::{
-        self, NOCO_PRE_BASE_DELETION_BRANCH_NAME, NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-        NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME, NOCO_PRE_MIGRATION_BRANCH_NAME,
-        noco_migration_branch_name,
-    },
-};
+use crate::{config, env::EnvName, http::RequestBuilder};
 
 // An LSN (Log Sequence Number) is sort of an index into the history of a branch. It's a point we
 // can roll back to. This is a concept specific to our Postgres provider.
@@ -105,10 +96,28 @@ impl BranchType {
 pub enum BackupKind {
     Deletion,
     Deployment,
-    Migration {
-        from: noco::Version,
-        to: noco::Version,
-    },
+    Migration,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackupBranch {
+    Deployment,
+    BaseDeletion,
+    Migration,
+    MigrationRollback,
+    ManualRestore,
+}
+
+impl BackupBranch {
+    pub fn name(&self) -> BranchName {
+        match self {
+            BackupBranch::Deployment => BranchName::new("noco-pre-deployment"),
+            BackupBranch::BaseDeletion => BranchName::new("noco-pre-base-deletion"),
+            BackupBranch::Migration => BranchName::new("noco-pre-migration"),
+            BackupBranch::MigrationRollback => BranchName::new("noco-pre-migration-rollback"),
+            BackupBranch::ManualRestore => BranchName::new("noco-pre-manual-restore"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -386,22 +395,41 @@ impl Client {
     }
 
     #[worker::send]
+    pub async fn delete_backup_branches(&self, project_id: &ProjectId) -> anyhow::Result<()> {
+        self.delete_branch_with_name(project_id, &BackupBranch::Deployment.name())
+            .await?;
+        self.delete_branch_with_name(project_id, &BackupBranch::BaseDeletion.name())
+            .await?;
+        self.delete_branch_with_name(project_id, &BackupBranch::Migration.name())
+            .await?;
+
+        // This one must come last, because the others may be children of it, and you cannot delete
+        // a branch with children.
+        self.delete_branch_with_name(project_id, &BackupBranch::ManualRestore.name())
+            .await?;
+
+        Ok(())
+    }
+
+    #[worker::send]
     pub async fn create_backup(
         &self,
         project_name: &ProjectName,
-        branch_name: &BranchName,
+        branch: BackupBranch,
     ) -> anyhow::Result<BranchId> {
         let project_id = self.lookup_project(project_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
-        self.delete_branch_with_name(&project_id, branch_name)
-            .await?;
+        // It's not safe to restore to, say, a pre-deployment or pre-deletion state once we've
+        // migrated or restored to a previous migration, since we won't know the current schema
+        // version.
+        self.delete_backup_branches(&project_id).await?;
 
         let backup_branch_id = self
             .create_branch(
                 &project_id,
                 &default_branch_id,
-                branch_name,
+                &branch.name(),
                 BranchType::ReadOnly,
             )
             .await?;
@@ -417,46 +445,34 @@ impl Client {
     ) -> anyhow::Result<()> {
         let project_id = self.lookup_project(project_name).await?;
 
-        let source_branch_name = match backup_kind {
-            BackupKind::Deletion => NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-            BackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
-            BackupKind::Migration { to, .. } => noco_migration_branch_name(&to),
+        let source_branch = match backup_kind {
+            BackupKind::Deletion => BackupBranch::BaseDeletion,
+            BackupKind::Deployment => BackupBranch::Deployment,
+            BackupKind::Migration => BackupBranch::Migration,
         };
 
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
         let source_branch_id = self
-            .lookup_branch(&project_id, &source_branch_name)
+            .lookup_branch(&project_id, &source_branch.name())
             .await?
             .ok_or_else(|| {
-                anyhow::anyhow!("no Neon branch found with name {}", &source_branch_name)
+                anyhow::anyhow!("no Neon branch found with name {}", &source_branch.name())
             })?;
 
         let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
 
-        self.delete_branch_with_name(&project_id, &NOCO_PRE_MIGRATION_BRANCH_NAME)
-            .await?;
-        self.delete_branch_with_name(&project_id, &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME)
-            .await?;
+        // It's not safe to restore to a pre-deployment or pre-deletion state if you've restored or
+        // migrated since, because then we don't know our current migration number.
+        self.delete_backup_branches(&project_id).await?;
 
         self.restore_to_lsn(
             &project_id,
             &default_branch_id,
             &source_lsn,
-            &NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME,
+            &BackupBranch::ManualRestore.name(),
         )
         .await?;
-
-        if let BackupKind::Migration { from, to } = backup_kind {
-            let mut to_delete = from;
-
-            while to_delete != to {
-                self.delete_branch_with_name(&project_id, &noco_migration_branch_name(&to_delete))
-                    .await?;
-
-                to_delete = to_delete.prev();
-            }
-        }
 
         Ok(())
     }
@@ -464,7 +480,7 @@ impl Client {
     pub async fn with_rollback<T, Fut, Func>(
         &self,
         project_name: &ProjectName,
-        preserve_name: &BranchName,
+        preserve_branch: &BackupBranch,
         f: Func,
     ) -> anyhow::Result<T>
     where
@@ -478,11 +494,16 @@ impl Client {
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                self.delete_branch_with_name(&project_id, preserve_name)
+                self.delete_branch_with_name(&project_id, &preserve_branch.name())
                     .await?;
 
-                self.restore_to_lsn(&project_id, &default_branch_id, &source_lsn, preserve_name)
-                    .await?;
+                self.restore_to_lsn(
+                    &project_id,
+                    &default_branch_id,
+                    &source_lsn,
+                    &preserve_branch.name(),
+                )
+                .await?;
 
                 Err(anyhow::anyhow!(err))
             }

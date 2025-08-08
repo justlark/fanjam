@@ -2,26 +2,13 @@ use std::fmt;
 
 use worker::{console_error, kv::KvStore};
 
-use crate::{env::EnvName, kv, neon::BranchName};
+use crate::{env::EnvName, kv, neon::BackupBranch};
 
 use super::{
     create_base,
     migrations::{self, BaseId, Client as NocoClient, Version},
 };
 use crate::neon::Client as NeonClient;
-
-pub const NOCO_PRE_BASE_DELETION_BRANCH_NAME: BranchName =
-    BranchName::new("noco-pre-base-deletion");
-pub const NOCO_PRE_DEPLOYMENT_BRANCH_NAME: BranchName = BranchName::new("noco-pre-deployment");
-pub const NOCO_PRE_MIGRATION_BRANCH_NAME: BranchName = BranchName::new("noco-pre-migration");
-pub const NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME: BranchName =
-    BranchName::new("noco-pre-migration-rollback");
-pub const NOCO_PRE_MANUAL_RESTORE_BRANCH_NAME: BranchName =
-    BranchName::new("noco-pre-manual-restore");
-
-pub fn noco_migration_branch_name(version: &Version) -> BranchName {
-    format!("noco-migration-{version}").into()
-}
 
 #[derive(Debug)]
 pub struct ExistingMigrationState {
@@ -84,41 +71,35 @@ impl<'a> Migrator<'a> {
         env_name: &EnvName,
         state: MigrationState,
     ) -> anyhow::Result<ExistingMigrationState> {
-        self.neon_client
-            .create_backup(&env_name.clone().into(), &NOCO_PRE_MIGRATION_BRANCH_NAME)
-            .await?;
-
         let (mut version, base_id) = match state {
             MigrationState::New(NewMigrationState {
                 title,
                 initial_user_email,
             }) => {
-                let version = migrations::Version::INITIAL;
-
                 let base_id = create_base(self.noco_client, title, initial_user_email).await?;
 
                 kv::put_base_id(self.kv, env_name, &base_id).await?;
 
-                self.neon_client
-                    .create_backup(
-                        &env_name.clone().into(),
-                        &noco_migration_branch_name(&version),
-                    )
-                    .await?;
-
-                (version, base_id)
+                (migrations::Version::INITIAL, base_id)
             }
             MigrationState::Existing(ExistingMigrationState { version, base_id }) => {
                 (version, base_id)
             }
         };
 
+        self.neon_client
+            .create_backup(
+                &env_name.clone().into(),
+                crate::neon::BackupBranch::Migration,
+            )
+            .await?;
+
         loop {
             let is_up_to_date = self
                 .neon_client
                 .with_rollback(
                     &env_name.clone().into(),
-                    &NOCO_PRE_MIGRATION_ROLLBACK_BRANCH_NAME,
+                    &BackupBranch::MigrationRollback,
                     async || {
                         match migrations::run(self.noco_client, base_id.clone(), version.next())
                             .await
@@ -146,13 +127,6 @@ impl<'a> Migrator<'a> {
             if is_up_to_date {
                 break;
             }
-
-            self.neon_client
-                .create_backup(
-                    &env_name.clone().into(),
-                    &noco_migration_branch_name(&version),
-                )
-                .await?;
         }
 
         Ok(ExistingMigrationState { base_id, version })

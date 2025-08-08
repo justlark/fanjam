@@ -1,12 +1,9 @@
-use crate::api::{PostBackupKind, PostRestoreBackupKind};
+use crate::api::PostBackupKind;
 use crate::env::{EnvId, EnvName};
 use crate::error::Error;
-use crate::noco::{
-    self, BaseId, ExistingMigrationState, MigrationState, NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-    NOCO_PRE_DEPLOYMENT_BRANCH_NAME, TableIds,
-};
-use crate::upstash::Client as UpstashClient;
-use crate::{config, kv, neon, url};
+use crate::neon::BackupBranch;
+use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
+use crate::{config, kv, url};
 use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
@@ -24,7 +21,6 @@ pub struct DataResponseEnvelope<T> {
 pub struct Store {
     noco_client: NocoClient,
     neon_client: NeonClient,
-    upstash_client: UpstashClient,
     kv: KvStore,
     env_name: EnvName,
     base_id: BaseId,
@@ -217,12 +213,10 @@ impl Store {
 
         let noco_client = NocoClient::new(dash_origin.clone(), api_token);
         let neon_client = NeonClient::new();
-        let upstash_client = UpstashClient::new();
 
         Ok(Self {
             noco_client,
             neon_client,
-            upstash_client,
             kv,
             env_name,
             base_id,
@@ -340,50 +334,12 @@ impl Store {
     }
 
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
-        let dest_branch_name = match kind {
-            PostBackupKind::Deployment => NOCO_PRE_DEPLOYMENT_BRANCH_NAME,
+        let backup_branch = match kind {
+            PostBackupKind::Deployment => BackupBranch::Deployment,
         };
 
         self.neon_client
-            .create_backup(&self.env_name.clone().into(), &dest_branch_name)
-            .await
-            .map_err(Error::Internal)?;
-
-        Ok(())
-    }
-
-    pub async fn restore_backup(&self, kind: PostRestoreBackupKind) -> Result<(), Error> {
-        let backup_kind = match kind {
-            PostRestoreBackupKind::Deletion => neon::BackupKind::Deletion,
-            PostRestoreBackupKind::Deployment => neon::BackupKind::Deployment,
-            PostRestoreBackupKind::Migration => {
-                let version = kv::get_migration_version(&self.kv, &self.env_name)
-                    .await
-                    .map_err(Error::Internal)?
-                    .ok_or(Error::NoMigrations)?;
-
-                neon::BackupKind::Migration {
-                    from: version,
-                    to: version.prev(),
-                }
-            }
-        };
-
-        self.neon_client
-            .restore_backup(&self.env_name.clone().into(), backup_kind)
-            .await
-            .map_err(Error::Internal)?;
-
-        if let neon::BackupKind::Migration { to, .. } = backup_kind {
-            kv::put_migration_version(&self.kv, &self.env_name, to)
-                .await
-                .map_err(Error::Internal)?;
-        }
-
-        // Since we're rolling back the database, we should clear the Redis cache as well so the
-        // client doesn't get confused.
-        self.upstash_client
-            .unlink_keys(&format!("sparklefish:env:{}:noco:*", self.env_name))
+            .create_backup(&self.env_name.clone().into(), backup_branch)
             .await
             .map_err(Error::Internal)?;
 
@@ -417,10 +373,7 @@ impl Store {
     pub async fn delete_base(&self) -> Result<(), Error> {
         // Back up the database in case we delete the NocoDB base accidentally.
         self.neon_client
-            .create_backup(
-                &self.env_name.clone().into(),
-                &NOCO_PRE_BASE_DELETION_BRANCH_NAME,
-            )
+            .create_backup(&self.env_name.clone().into(), BackupBranch::BaseDeletion)
             .await
             .map_err(Error::Internal)?;
 

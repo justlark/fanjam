@@ -16,10 +16,6 @@ impl Version {
     pub const fn next(self) -> Self {
         Self(self.0 + 1)
     }
-
-    pub const fn prev(self) -> Self {
-        Self(self.0 - 1)
-    }
 }
 
 impl FromStr for Version {

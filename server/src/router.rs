@@ -15,7 +15,7 @@ use crate::{
         DataResponseEnvelope, Event, File, GetConfigResponse, GetCurrentMigrationResponse,
         GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
         Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostLinkResponse, PostRestoreBackupRequest, PutTokenRequest,
+        PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
@@ -25,7 +25,7 @@ use crate::{
     kv, neon,
     noco::{self, ApiToken, MigrationState},
     store::{self, MigrationChange, Store},
-    url,
+    upstash, url,
 };
 
 //
@@ -259,13 +259,29 @@ async fn post_backup(
 
 #[axum::debug_handler]
 async fn post_restore_backup(
-    State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
     Json(body): Json<PostRestoreBackupRequest>,
 ) -> Result<NoContent, ErrorResponse> {
-    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
+    let backup_kind = match body.kind {
+        PostRestoreBackupKind::Deletion => neon::BackupKind::Deletion,
+        PostRestoreBackupKind::Deployment => neon::BackupKind::Deployment,
+        PostRestoreBackupKind::Migration => neon::BackupKind::Migration,
+    };
 
-    store.restore_backup(body.kind).await?;
+    let neon_client = neon::Client::new();
+    let upstash_client = upstash::Client::new();
+
+    neon_client
+        .restore_backup(&env_name.clone().into(), backup_kind)
+        .await
+        .map_err(Error::Internal)?;
+
+    // Since we're rolling back the database, we should clear the Redis cache as well so the
+    // client doesn't get confused.
+    upstash_client
+        .unlink_keys(&format!("sparklefish:env:{}:noco:*", env_name))
+        .await
+        .map_err(Error::Internal)?;
 
     Ok(NoContent)
 }
