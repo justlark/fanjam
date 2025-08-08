@@ -1,5 +1,5 @@
 # The NocoDB version to use for new environments.
-nocodb_version: "0.263.8"
+nocodb_version: "0.264.4"
 
 # The Fly Machine must be located as physically near the Postgres database as
 # possible to have acceptable performance. Note that Fly.io regions and Neon
