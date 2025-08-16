@@ -18,4 +18,10 @@ resource "neon_project" "env" {
     database_name = "noco"
     role_name     = "sparklefish"
   }
+
+  default_endpoint_settings {
+    autoscaling_limit_min_cu = 0.25
+    autoscaling_limit_max_cu = 0.5
+    suspend_timeout_seconds  = 300
+  }
 }
