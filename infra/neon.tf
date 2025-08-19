@@ -25,3 +25,19 @@ resource "neon_project" "env" {
     suspend_timeout_seconds  = 300
   }
 }
+
+resource "neon_database" "sparklefish" {
+  for_each   = local.environments
+  project_id = neon_project.env[each.key].id
+  branch_id  = neon_project.env[each.key].default_branch_id
+  name       = "sparklefish"
+  owner_name = neon_project.env[each.key].database_user
+}
+
+resource "neon_database" "sparklefish_shadow" {
+  for_each   = local.environments
+  project_id = neon_project.env[each.key].id
+  branch_id  = neon_project.env[each.key].default_branch_id
+  name       = "sparklefish-shadow"
+  owner_name = neon_project.env[each.key].database_user
+}
