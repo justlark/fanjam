@@ -72,6 +72,7 @@ update-secrets env:
 # create a new NocoDB instance
 [group("deploy environments")]
 create-env env:
+  ./tools/graphile-migrate.nu {{ env }} migrate
   ./tools/create-fly-app.nu {{ env }}
   ./tools/update-secrets.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
@@ -128,6 +129,11 @@ get-app-link env:
 [confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
 migrate-env env:
   ./tools/migrate-env.nu {{ env }}
+
+# run a graphile-migrate command
+[group("manage environments")]
+graphile-migrate env +params:
+  ./tools/graphile-migrate.nu {{ env }} {{ params }}
 
 # get the current schema version of an environment
 [group("manage environments")]
