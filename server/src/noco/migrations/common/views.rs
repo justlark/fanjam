@@ -98,3 +98,42 @@ pub async fn lock_views(client: &Client, views: Vec<ViewId>) -> anyhow::Result<(
 
     Ok(())
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ViewInfo {
+    pub id: ViewId,
+    pub is_default: Option<bool>,
+}
+
+#[derive(Debug)]
+pub struct ViewIds {
+    views: Vec<ViewInfo>,
+}
+
+impl From<Vec<ViewInfo>> for ViewIds {
+    fn from(views: Vec<ViewInfo>) -> Self {
+        Self { views }
+    }
+}
+
+impl ViewIds {
+    pub fn find_default(&self) -> Option<ViewId> {
+        self.views
+            .iter()
+            .find(|view| view.is_default == Some(true))
+            .map(|view| view.id.clone())
+    }
+}
+
+pub async fn list_views(client: &Client, table_id: &TableId) -> anyhow::Result<Vec<ViewInfo>> {
+    #[derive(Debug, Deserialize)]
+    struct GetViewsResponse {
+        list: Vec<ViewInfo>,
+    }
+
+    Ok(client
+        .build_request_v2(Method::Get, &format!("/meta/tables/{table_id}/views"))
+        .fetch::<GetViewsResponse>()
+        .await?
+        .list)
+}
