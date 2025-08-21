@@ -10,6 +10,7 @@ mod kv;
 mod neon;
 mod noco;
 mod router;
+mod sql;
 mod store;
 mod upstash;
 mod url;

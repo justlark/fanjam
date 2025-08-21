@@ -34,6 +34,18 @@ impl fmt::Display for Version {
     }
 }
 
+impl From<&Version> for u32 {
+    fn from(version: &Version) -> Self {
+        version.0
+    }
+}
+
+impl From<u32> for Version {
+    fn from(value: u32) -> Self {
+        Version(value)
+    }
+}
+
 pub trait Migration<'a> {
     const INDEX: Version;
 
