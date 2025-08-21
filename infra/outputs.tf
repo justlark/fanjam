@@ -41,3 +41,16 @@ output "graphile_migrate" {
   }
   sensitive = true
 }
+
+output "env_config" {
+  value = {
+    for env in keys(local.environments) : env => {
+      config_db_host     = neon_project.env[env].database_host_pooler,
+      config_db_port     = 5432,
+      config_db_name     = neon_database.sparklefish[env].name,
+      config_db_user     = neon_project.env[env].database_user,
+      config_db_password = neon_project.env[env].database_password,
+    }
+  }
+  sensitive = true
+}
