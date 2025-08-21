@@ -323,6 +323,9 @@ impl Client {
             preserve_under_name: BranchName,
         }
 
+        self.delete_branch_with_name(project_id, preserve_branch_name)
+            .await?;
+
         self.build_request(
             Method::Post,
             &format!(
