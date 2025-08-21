@@ -411,6 +411,9 @@ impl Client {
         let project_id = self.lookup_project(project_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
+        self.delete_branch_with_name(&project_id, &branch.name())
+            .await?;
+
         let backup_branch_id = self
             .create_branch(
                 &project_id,
