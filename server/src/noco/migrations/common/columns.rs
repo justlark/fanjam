@@ -12,29 +12,42 @@ pub struct ColumnInfo {
     pub id: ColumnId,
     #[serde(rename = "column_name")]
     pub name: Option<String>,
+    pub title: Option<String>,
 }
 
 pub struct ColumnIds {
     by_name: HashMap<String, ColumnId>,
+    by_title: HashMap<String, ColumnId>,
 }
 
 impl From<Vec<ColumnInfo>> for ColumnIds {
     fn from(info: Vec<ColumnInfo>) -> Self {
         Self {
             by_name: info
-                .into_iter()
-                .filter_map(|col| col.name.map(|name| (name, col.id)))
+                .iter()
+                .filter_map(|col| col.name.clone().map(|name| (name, col.id.clone())))
+                .collect(),
+            by_title: info
+                .iter()
+                .filter_map(|col| col.title.clone().map(|title| (title, col.id.clone())))
                 .collect(),
         }
     }
 }
 
 impl ColumnIds {
-    pub fn find(&self, name: &str) -> anyhow::Result<ColumnId> {
+    pub fn find_by_name(&self, name: &str) -> anyhow::Result<ColumnId> {
         self.by_name
             .get(name)
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Column `{name}` not found"))
+            .ok_or_else(|| anyhow::anyhow!("Column with column name `{name}` not found"))
+    }
+
+    pub fn find_by_title(&self, title: &str) -> anyhow::Result<ColumnId> {
+        self.by_title
+            .get(title)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Column with title `{title}` not found"))
     }
 }
 

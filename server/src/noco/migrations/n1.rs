@@ -12,7 +12,6 @@ use super::common::{
 
 pub const DATE_FORMAT: &str = "YYYY-MM-DD";
 pub const TIME_FORMAT: &str = "HH:mm";
-pub const IS_TIME_12HR: bool = true;
 
 use super::common::{self, BaseId, ColumnId, TableId, Version};
 
@@ -368,7 +367,6 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "is12hrFormat": IS_TIME_12HR
                     },
                     "rqd": true,
                 }),
@@ -384,7 +382,6 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "is12hrFormat": IS_TIME_12HR
                     }
                 }),
             },
@@ -497,7 +494,6 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "is12hrFormat": IS_TIME_12HR
                     }
                 }),
             },
@@ -512,7 +508,6 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
-                        "is12hrFormat": IS_TIME_12HR
                     }
                 }),
             },
