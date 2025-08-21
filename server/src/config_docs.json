@@ -1,3 +1,8 @@
 {
-  "timezone": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone."
+  "timezone": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone.",
+  "config_db_host": "The Postgres host for the configuration database.",
+  "config_db_port": "The Postgres port for the configuration database.",
+  "config_db_name": "The Postgres database name for the configuration database.",
+  "config_db_user": "The Postgres user for the configuration database.",
+  "config_db_password": "The Postgres password for the configuration database."
 }

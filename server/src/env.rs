@@ -57,6 +57,11 @@ impl fmt::Display for EnvName {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub timezone: Option<String>,
+    pub config_db_host: Option<String>,
+    pub config_db_port: Option<u16>,
+    pub config_db_name: Option<String>,
+    pub config_db_user: Option<String>,
+    pub config_db_password: Option<String>,
 }
 
 // Documentation for each config key in the environment-specific configuration. Keep this up to
