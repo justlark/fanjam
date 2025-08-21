@@ -403,23 +403,6 @@ impl Client {
     }
 
     #[worker::send]
-    pub async fn delete_backup_branches(&self, project_id: &ProjectId) -> anyhow::Result<()> {
-        self.delete_branch_with_name(project_id, &BackupBranch::Deployment.name())
-            .await?;
-        self.delete_branch_with_name(project_id, &BackupBranch::BaseDeletion.name())
-            .await?;
-        self.delete_branch_with_name(project_id, &BackupBranch::Migration.name())
-            .await?;
-
-        // This one must come last, because the others may be children of it, and you cannot delete
-        // a branch with children.
-        self.delete_branch_with_name(project_id, &BackupBranch::ManualRestore.name())
-            .await?;
-
-        Ok(())
-    }
-
-    #[worker::send]
     pub async fn create_backup(
         &self,
         project_name: &ProjectName,
@@ -427,11 +410,6 @@ impl Client {
     ) -> anyhow::Result<BranchId> {
         let project_id = self.lookup_project(project_name).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
-
-        // It's not safe to restore to, say, a pre-deployment or pre-deletion state once we've
-        // migrated or restored to a previous migration, since we won't know the current schema
-        // version.
-        self.delete_backup_branches(&project_id).await?;
 
         let backup_branch_id = self
             .create_branch(
@@ -469,10 +447,6 @@ impl Client {
             })?;
 
         let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
-
-        // It's not safe to restore to a pre-deployment or pre-deletion state if you've restored or
-        // migrated since, because then we don't know our current migration number.
-        self.delete_backup_branches(&project_id).await?;
 
         self.restore_to_lsn(
             &project_id,

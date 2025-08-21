@@ -291,15 +291,15 @@ async fn post_restore_backup(
     let neon_client = neon::Client::new();
     let upstash_client = upstash::Client::new();
 
-    neon_client
-        .restore_backup(&env_name.clone().into(), backup_kind)
-        .await
-        .map_err(Error::Internal)?;
-
     // Since we're rolling back the database, we should clear the Redis cache as well so the
     // client doesn't get confused.
     upstash_client
-        .unlink_keys(&format!("sparklefish:env:{}:noco:*", env_name))
+        .unlink_keys(&format!("sparklefish:env:{env_name}:noco:*"))
+        .await
+        .map_err(Error::Internal)?;
+
+    neon_client
+        .restore_backup(&env_name.clone().into(), backup_kind)
         .await
         .map_err(Error::Internal)?;
 
