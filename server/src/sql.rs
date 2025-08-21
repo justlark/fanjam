@@ -1,4 +1,4 @@
-use worker::console_error;
+use worker::{SecureTransport, Socket, console_error, postgres_tls::PassthroughTls};
 
 use crate::{
     env,
@@ -33,13 +33,15 @@ pub struct Client {
 
 impl Client {
     pub async fn connect(config: &ConnectionConfig) -> anyhow::Result<Self> {
+        let socket = Socket::builder()
+            .secure_transport(SecureTransport::StartTls)
+            .connect(&config.host, config.port)?;
+
         let (client, connection) = tokio_postgres::Config::new()
-            .host(&config.host)
-            .port(config.port)
             .dbname(&config.database)
             .user(&config.username)
             .password(&config.password)
-            .connect(tokio_postgres::NoTls)
+            .connect_raw(socket, PassthroughTls)
             .await?;
 
         wasm_bindgen_futures::spawn_local(async move {
