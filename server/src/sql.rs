@@ -103,7 +103,11 @@ impl Client {
                     WHERE
                         noco_bases.base_id = $1
                 ",
-                &[&base_id.to_string(), &u32::from(migration)],
+                &[
+                    &base_id.to_string(),
+                    &i32::try_from(u32::from(migration))
+                        .expect("migration version integer out of range"),
+                ],
             )
             .await?;
         Ok(())
@@ -131,7 +135,9 @@ impl Client {
             .await?;
 
         if let Some(row) = row {
-            Ok(row.get::<_, u32>("version").into())
+            Ok(u32::try_from(row.get::<_, i32>("version"))
+                .expect("migration version integer out of range")
+                .into())
         } else {
             Ok(Version::INITIAL)
         }
