@@ -36,6 +36,7 @@ pub struct TableIds {
     pub links: TableId,
     pub files: TableId,
     pub pages: TableId,
+    pub announcements: TableId,
 }
 
 impl TryFrom<Vec<TableInfo>> for TableIds {
@@ -69,6 +70,9 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             pages: ids
                 .remove("pages")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'pages' table in cache"))?,
+            announcements: ids
+                .remove("announcements")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'announcements' table in cache"))?,
         })
     }
 }

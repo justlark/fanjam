@@ -2,10 +2,6 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-pub const DATE_FORMAT: &str = "YYYY-MM-DD";
-pub const TIME_FORMAT: &str = "HH:mm";
-pub const IS_TIME_12HR: bool = true;
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct BaseId(String);
 
@@ -27,7 +23,7 @@ pub struct TableId(String);
 
 impl From<String> for TableId {
     fn from(value: String) -> Self {
-        TableId(value)
+        Self(value)
     }
 }
 

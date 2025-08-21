@@ -8,6 +8,8 @@ use super::{
     n2,
 };
 
+pub const DATE_FORMAT: &str = "DD MMM YYYY";
+
 pub struct Migration<'a> {
     client: &'a Client,
 }
@@ -15,15 +17,49 @@ pub struct Migration<'a> {
 impl Migration<'_> {
     async fn edit_columns(&self, table_ids: &TableIds) -> anyhow::Result<()> {
         let events_columns = ColumnIds::from(list_columns(self.client, &table_ids.events).await?);
+        let announcements_columns =
+            ColumnIds::from(list_columns(self.client, &table_ids.announcements).await?);
 
-        let start_time_column_id = events_columns.find("start_time")?;
+        let event_start_time_column_id = events_columns.find("start_time")?;
+        let event_end_time_column_id = events_columns.find("end_time")?;
+        let announcement_created_column_id = announcements_columns.find("created")?;
+        let announcement_last_edited_column_id = announcements_columns.find("last_edited")?;
 
-        let requests = vec![EditColumnRequest {
-            column_id: &start_time_column_id,
-            body: json!({
-                "rqd": false,
-            }),
-        }];
+        let requests = vec![
+            EditColumnRequest {
+                column_id: &event_start_time_column_id,
+                body: json!({
+                    "rqd": false,
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                    },
+                }),
+            },
+            EditColumnRequest {
+                column_id: &event_end_time_column_id,
+                body: json!({
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                    },
+                }),
+            },
+            EditColumnRequest {
+                column_id: &announcement_created_column_id,
+                body: json!({
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                    },
+                }),
+            },
+            EditColumnRequest {
+                column_id: &announcement_last_edited_column_id,
+                body: json!({
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                    },
+                }),
+            },
+        ];
 
         edit_columns(self.client, requests).await?;
 
