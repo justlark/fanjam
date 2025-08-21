@@ -1,6 +1,9 @@
 use serde_json::json;
 
-use crate::noco::{TableIds, list_tables};
+use crate::noco::{
+    TableIds, list_tables,
+    migrations::common::{CreateColumnRequest, create_columns, set_nop},
+};
 
 use super::{
     BaseId, Client, Version,
@@ -65,6 +68,27 @@ impl Migration<'_> {
 
         Ok(())
     }
+
+    async fn create_columns(&self, table_ids: &TableIds) -> anyhow::Result<()> {
+        let requests = vec![CreateColumnRequest {
+            table_id: &table_ids.events,
+            column_ref: set_nop(),
+            body: json!({
+                "column_name": "summary",
+                "title": "Summary",
+                "uidt": "LongText",
+                "description": "A short summary of the event.",
+                "meta": {
+                    "richMode": false,
+                },
+                "order": 2,
+            }),
+        }];
+
+        create_columns(self.client, requests).await?;
+
+        Ok(())
+    }
 }
 
 impl<'a> common::Migration<'a> for Migration<'a> {
@@ -77,6 +101,7 @@ impl<'a> common::Migration<'a> for Migration<'a> {
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {
         let tables = TableIds::try_from(list_tables(self.client, &base_id).await?)?;
         self.edit_columns(&tables).await?;
+        self.create_columns(&tables).await?;
 
         Ok(())
     }
