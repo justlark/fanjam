@@ -27,6 +27,9 @@ pub enum Error {
     #[error("The NocoDB instance is not available; it may still be starting up.")]
     NocoUnavailable,
 
+    #[error("The environment is missing required configuration.")]
+    MissingEnvConfig,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -41,6 +44,7 @@ impl Error {
             Error::MissingMigrationVersion => StatusCode::BAD_REQUEST,
             Error::NoMigrations => StatusCode::NOT_FOUND,
             Error::NocoUnavailable => StatusCode::SERVICE_UNAVAILABLE,
+            Error::MissingEnvConfig => StatusCode::INTERNAL_SERVER_ERROR,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

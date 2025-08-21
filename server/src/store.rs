@@ -4,13 +4,17 @@ use crate::error::Error;
 use crate::neon::BackupBranch;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
 use crate::{config, kv, url};
-use crate::{neon::Client as NeonClient, noco::Client as NocoClient};
+use crate::{
+    neon::Client as NeonClient,
+    noco::Client as NocoClient,
+    sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
+};
 use futures::future::{self, Either, FutureExt};
 use std::fmt;
 use std::pin::pin;
 use std::time::Duration;
 use worker::kv::KvStore;
-use worker::{Delay, console_log, console_warn};
+use worker::{Delay, console_error, console_log, console_warn};
 
 #[derive(Debug)]
 pub struct DataResponseEnvelope<T> {
@@ -21,6 +25,7 @@ pub struct DataResponseEnvelope<T> {
 pub struct Store {
     noco_client: NocoClient,
     neon_client: NeonClient,
+    db_client: DbClient,
     kv: KvStore,
     env_name: EnvName,
     base_id: BaseId,
@@ -204,7 +209,18 @@ impl Store {
             .map_err(Error::Internal)?
             .ok_or(Error::NoApiToken)?;
 
-        let base_id = kv::get_base_id(&kv, &env_name)
+        let env_config = kv::get_env_config(&kv, &env_name)
+            .await
+            .map_err(Error::Internal)?;
+
+        let db_client = DbClient::connect(
+            &Option::<DbConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+        )
+        .await
+        .map_err(Error::Internal)?;
+
+        let base_id = db_client
+            .get_base()
             .await
             .map_err(Error::Internal)?
             .ok_or(Error::NoBaseId)?;
@@ -217,6 +233,7 @@ impl Store {
         Ok(Self {
             noco_client,
             neon_client,
+            db_client,
             kv,
             env_name,
             base_id,
@@ -347,14 +364,15 @@ impl Store {
     }
 
     pub async fn migrate(&self) -> Result<MigrationChange, Error> {
-        let old_version = kv::get_migration_version(&self.kv, &self.env_name)
+        let old_version = self
+            .db_client
+            .get_current_migration()
             .await
-            .map_err(Error::Internal)?
-            .unwrap_or(noco::Version::INITIAL);
+            .map_err(Error::Internal)?;
 
         let migration_state = MigrationState::existing(old_version, self.base_id.clone());
 
-        let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &self.kv);
+        let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &self.db_client);
 
         let ExistingMigrationState {
             version: new_version,
@@ -370,6 +388,7 @@ impl Store {
         })
     }
 
+    #[worker::send]
     pub async fn delete_base(&self) -> Result<(), Error> {
         // Back up the database in case we delete the NocoDB base accidentally.
         self.neon_client
@@ -377,19 +396,34 @@ impl Store {
             .await
             .map_err(Error::Internal)?;
 
-        noco::delete_base(&self.noco_client, &self.base_id)
-            .await
-            .map_err(Error::Internal)?;
-
-        kv::delete_base_id(&self.kv, &self.env_name)
-            .await
-            .map_err(Error::Internal)?;
-
-        kv::delete_migration_version(&self.kv, &self.env_name)
-            .await
-            .map_err(Error::Internal)?;
-
+        // Do this first, in case the deletion fails and we need to roll back. Deleting the cache
+        // is non-destructive, but *not* deleting the cache after we've deleted the base would
+        // leave the environment in an inconsistent state.
         kv::delete_cache(&self.kv, &self.env_name)
+            .await
+            .map_err(Error::Internal)?;
+
+        self.neon_client
+            .with_rollback(
+                &self.env_name.clone().into(),
+                &BackupBranch::BaseDeletionRollback,
+                async || {
+                    let result = {
+                        noco::delete_base(&self.noco_client, &self.base_id).await?;
+                        self.db_client.delete_base(&self.base_id).await?;
+                        Ok(())
+                    };
+
+                    match result {
+                        Err(e) => {
+                            console_error!("{:?}", e);
+                            console_error!("Failed deleting base. Rolling back.");
+                            Err(e)
+                        }
+                        Ok(_) => Ok(()),
+                    }
+                },
+            )
             .await
             .map_err(Error::Internal)?;
 

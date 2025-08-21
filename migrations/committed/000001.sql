@@ -1,5 +1,5 @@
 --! Previous: -
---! Hash: sha1:708881ba055f9fb47676abaff1503df488472937
+--! Hash: sha1:5c92a140e01942ceed4e59f01acc3d53732cb8c2
 
 DROP TABLE IF EXISTS noco_bases CASCADE;
 
@@ -14,6 +14,9 @@ DROP TABLE IF EXISTS noco_migrations CASCADE;
 
 CREATE TABLE noco_migrations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    version integer NOT NULL UNIQUE,
-    created_at timestamp NOT NULL DEFAULT now()
+    version integer NOT NULL,
+    base uuid NOT NULL REFERENCES noco_bases (id) ON DELETE CASCADE,
+    created_at timestamp NOT NULL DEFAULT now(),
+
+    UNIQUE (version, base)
 );

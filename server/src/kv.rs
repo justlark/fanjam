@@ -4,7 +4,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     config,
     env::{Config, EnvId, EnvName},
-    noco::{self, About, ApiToken, BaseId, Event, Info, Page, Summary, TableInfo},
+    noco::{About, ApiToken, Event, Info, Page, Summary, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -42,12 +42,7 @@ fn api_token_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:api-token")
 }
 
-// The NocoDB base ID for the environment. Each NocoDB instance contains a single base.
-fn base_id_key(env_name: &EnvName) -> String {
-    format!("env:{env_name}:base-id")
-}
-
-// The cached ID of a table in NocoDB.
+// The cached IDs of the known tables in NocoDB.
 fn tables_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:tables")
 }
@@ -55,12 +50,6 @@ fn tables_key(env_name: &EnvName) -> String {
 // Environment-specific config values.
 fn env_config_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:config")
-}
-
-// The current schema migration number of an environment. This is how we know where to start when
-// applying migrations, so we don't accidentally apply the same migration twice.
-fn migration_version_key(env_name: &EnvName) -> String {
-    format!("env:{env_name}:migration")
 }
 
 // We cache responses from the upstream NocoDB server to reduce the load on it.
@@ -160,36 +149,6 @@ pub async fn get_api_token(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<O
 }
 
 #[worker::send]
-pub async fn put_base_id(kv: &KvStore, env_name: &EnvName, base_id: &BaseId) -> anyhow::Result<()> {
-    kv.put(&base_id_key(env_name), base_id.to_string())
-        .map_err(wrap_kv_err)?
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn get_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<BaseId>> {
-    Ok(kv
-        .get(&base_id_key(env_name))
-        .text()
-        .await
-        .map_err(wrap_kv_err)?
-        .map(BaseId::from))
-}
-
-#[worker::send]
-pub async fn delete_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
-    kv.delete(&base_id_key(env_name))
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
 pub async fn put_tables(
     kv: &KvStore,
     env_name: &EnvName,
@@ -217,43 +176,6 @@ pub async fn get_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Vec<
 #[worker::send]
 async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     kv.delete(&tables_key(env_name))
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn put_migration_version(
-    kv: &KvStore,
-    env_name: &EnvName,
-    version: noco::Version,
-) -> anyhow::Result<()> {
-    kv.put(&migration_version_key(env_name), version.to_string())
-        .map_err(wrap_kv_err)?
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn get_migration_version(
-    kv: &KvStore,
-    env_name: &EnvName,
-) -> anyhow::Result<Option<noco::Version>> {
-    kv.get(&migration_version_key(env_name))
-        .text()
-        .await
-        .map_err(wrap_kv_err)?
-        .map(|s| s.parse())
-        .transpose()
-}
-
-#[worker::send]
-pub async fn delete_migration_version(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
-    kv.delete(&migration_version_key(env_name))
         .await
         .map_err(wrap_kv_err)?;
 

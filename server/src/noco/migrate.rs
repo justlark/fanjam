@@ -1,14 +1,13 @@
-use std::fmt;
+use worker::console_error;
 
-use worker::{console_error, kv::KvStore};
-
-use crate::{env::EnvName, kv, neon::BackupBranch};
+use crate::{env::EnvName, neon::BackupBranch};
 
 use super::{
     create_base,
     migrations::{self, BaseId, Client as NocoClient, Version},
 };
 use crate::neon::Client as NeonClient;
+use crate::sql::Client as DbClient;
 
 #[derive(Debug)]
 pub struct ExistingMigrationState {
@@ -41,27 +40,23 @@ impl MigrationState {
     }
 }
 
+#[derive(Debug)]
 pub struct Migrator<'a> {
     noco_client: &'a NocoClient,
     neon_client: &'a NeonClient,
-    kv: &'a KvStore,
-}
-
-impl fmt::Debug for Migrator<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Migrator")
-            .field("noco_client", self.noco_client)
-            .field("neon_client", self.neon_client)
-            .finish_non_exhaustive()
-    }
+    db_client: &'a DbClient,
 }
 
 impl<'a> Migrator<'a> {
-    pub fn new(noco_client: &'a NocoClient, neon_client: &'a NeonClient, kv: &'a KvStore) -> Self {
+    pub fn new(
+        noco_client: &'a NocoClient,
+        neon_client: &'a NeonClient,
+        db_client: &'a DbClient,
+    ) -> Self {
         Self {
             noco_client,
             neon_client,
-            kv,
+            db_client,
         }
     }
 
@@ -76,9 +71,19 @@ impl<'a> Migrator<'a> {
                 title,
                 initial_user_email,
             }) => {
-                let base_id = create_base(self.noco_client, title, initial_user_email).await?;
-
-                kv::put_base_id(self.kv, env_name, &base_id).await?;
+                let base_id = self
+                    .neon_client
+                    .with_rollback(
+                        &env_name.clone().into(),
+                        &BackupBranch::BaseCreationRollback,
+                        async || {
+                            let base_id =
+                                create_base(self.noco_client, title, initial_user_email).await?;
+                            self.db_client.set_base(&base_id).await?;
+                            Ok(base_id)
+                        },
+                    )
+                    .await?;
 
                 (migrations::Version::INITIAL, base_id)
             }
@@ -117,7 +122,7 @@ impl<'a> Migrator<'a> {
 
                         version = version.next();
 
-                        kv::put_migration_version(self.kv, env_name, version).await?;
+                        self.db_client.set_migration(&base_id, &version).await?;
 
                         Ok(false)
                     },

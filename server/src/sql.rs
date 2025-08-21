@@ -32,7 +32,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect(config: &ConnectionConfig) -> Result<Self, tokio_postgres::Error> {
+    pub async fn connect(config: &ConnectionConfig) -> anyhow::Result<Self> {
         let (client, connection) = tokio_postgres::Config::new()
             .host(&config.host)
             .port(config.port)
@@ -77,21 +77,53 @@ impl Client {
         }
     }
 
-    pub async fn set_migration(&self, migration: &Version) -> anyhow::Result<()> {
+    pub async fn delete_base(&self, base_id: &BaseId) -> anyhow::Result<()> {
         self.client
             .execute(
-                "INSERT INTO noco_migrations (version) VALUES ($1)",
-                &[&u32::from(migration)],
+                "DELETE FROM noco_bases WHERE base_id = $1",
+                &[&base_id.to_string()],
             )
             .await?;
         Ok(())
     }
 
-    pub async fn get_migration(&self) -> anyhow::Result<Version> {
+    pub async fn set_migration(&self, base_id: &BaseId, migration: &Version) -> anyhow::Result<()> {
+        self.client
+            .execute(
+                "
+                    INSERT INTO
+                        noco_migrations (base, version)
+                    SELECT
+                        noco_bases.id,
+                        $2
+                    FROM
+                        noco_bases
+                    WHERE
+                        noco_bases.base_id = $1
+                ",
+                &[&base_id.to_string(), &u32::from(migration)],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_current_migration(&self) -> anyhow::Result<Version> {
         let row = self
             .client
             .query_opt(
-                "SELECT version FROM noco_migrations ORDER BY version DESC LIMIT 1",
+                "
+                    SELECT
+                        noco_migrations.version
+                    FROM
+                        noco_migrations
+                    JOIN
+                        noco_bases ON noco_migrations.base = noco_bases.id
+                    ORDER BY
+                        noco_bases.sequence DESC,
+                        noco_migrations.version DESC
+                    LIMIT
+                        1
+                ",
                 &[],
             )
             .await?;

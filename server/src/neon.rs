@@ -102,9 +102,11 @@ pub enum BackupKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackupBranch {
     Deployment,
-    BaseDeletion,
     Migration,
+    BaseDeletion,
     MigrationRollback,
+    BaseDeletionRollback,
+    BaseCreationRollback,
     ManualRestore,
 }
 
@@ -115,6 +117,12 @@ impl BackupBranch {
             BackupBranch::BaseDeletion => BranchName::new("noco-pre-base-deletion"),
             BackupBranch::Migration => BranchName::new("noco-pre-migration"),
             BackupBranch::MigrationRollback => BranchName::new("noco-pre-migration-rollback"),
+            BackupBranch::BaseDeletionRollback => {
+                BranchName::new("noco-pre-base-deletion-rollback")
+            }
+            BackupBranch::BaseCreationRollback => {
+                BranchName::new("noco-pre-base-creation-rollback")
+            }
             BackupBranch::ManualRestore => BranchName::new("noco-pre-manual-restore"),
         }
     }

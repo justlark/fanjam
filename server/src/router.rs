@@ -24,6 +24,7 @@ use crate::{
     error::Error,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
+    sql,
     store::{self, MigrationChange, Store},
     upstash, url,
 };
@@ -161,12 +162,19 @@ async fn post_base(
 
     let dash_origin = url::dash_origin(&env_name).map_err(Error::Internal)?;
 
-    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
-    let neon_client = neon::Client::new();
-
-    let existing_base_id = kv::get_base_id(&state.kv, &env_name)
+    let env_config = kv::get_env_config(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?;
+
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+    let neon_client = neon::Client::new();
+    let db_client = sql::Client::connect(
+        &Option::<sql::ConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+    )
+    .await
+    .map_err(Error::Internal)?;
+
+    let existing_base_id = db_client.get_base().await.map_err(Error::Internal)?;
 
     if let Some(base_id) = existing_base_id {
         let base_exists_in_noco = noco::check_base_exists(&noco_client, &base_id)
@@ -176,14 +184,16 @@ async fn post_base(
         if base_exists_in_noco {
             Err(Error::BaseAlreadyExists)?;
         } else {
-            // The NocoDB base ID was stored in KV, but the base no longer exists in NocoDB. This
-            // could happen if the base is deleted manually by the system user (as opposed to via
-            // this admin API), or if the environment was completely destroyed and recreated.
+            // The NocoDB base ID was stored in the config database, but the base no longer exists
+            // in NocoDB. This could happen if the base is deleted manually by the system user (as
+            // opposed to via this admin API), or if the environment was completely destroyed and
+            // recreated.
             console_log!(
                 "The NocoDB base was deleted externally. Updating the backend state to match."
             );
 
-            kv::delete_base_id(&state.kv, &env_name)
+            db_client
+                .delete_base(&base_id)
                 .await
                 .map_err(Error::Internal)?;
         }
@@ -191,7 +201,7 @@ async fn post_base(
 
     let migration_state = MigrationState::new(body.title, body.email);
 
-    let migrator = noco::Migrator::new(&noco_client, &neon_client, &state.kv);
+    let migrator = noco::Migrator::new(&noco_client, &neon_client, &db_client);
 
     migrator
         .migrate(&env_name, migration_state)
@@ -236,10 +246,20 @@ async fn get_current_migration(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<Json<GetCurrentMigrationResponse>, ErrorResponse> {
-    let version = kv::get_migration_version(&state.kv, &env_name)
+    let env_config = kv::get_env_config(&state.kv, &env_name)
         .await
-        .map_err(Error::Internal)?
-        .unwrap_or(noco::Version::INITIAL);
+        .map_err(Error::Internal)?;
+
+    let db_client = sql::Client::connect(
+        &Option::<sql::ConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+    )
+    .await
+    .map_err(Error::Internal)?;
+
+    let version = db_client
+        .get_current_migration()
+        .await
+        .map_err(Error::Internal)?;
 
     Ok(Json(GetCurrentMigrationResponse { version }))
 }
