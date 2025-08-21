@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 source ./config.nu
+source ./http.nu
 
 def push_fly_secrets [env_name: string] {
   let noco_secrets = terraform -chdir=./infra/ output -json noco_secrets | from json | get $env_name
