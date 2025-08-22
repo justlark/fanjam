@@ -1,6 +1,6 @@
 use worker::console_error;
 
-use crate::{env::EnvName, neon::BackupBranch};
+use crate::env::EnvName;
 
 use super::{
     create_base,
@@ -73,16 +73,12 @@ impl<'a> Migrator<'a> {
             }) => {
                 let base_id = self
                     .neon_client
-                    .with_rollback(
-                        &env_name.clone().into(),
-                        &BackupBranch::BaseCreationRollback,
-                        async || {
-                            let base_id =
-                                create_base(self.noco_client, title, initial_user_email).await?;
-                            self.db_client.set_base(&base_id).await?;
-                            Ok(base_id)
-                        },
-                    )
+                    .with_rollback(&env_name.clone().into(), async || {
+                        let base_id =
+                            create_base(self.noco_client, title, initial_user_email).await?;
+                        self.db_client.set_base(&base_id).await?;
+                        Ok(base_id)
+                    })
                     .await?;
 
                 (migrations::Version::INITIAL, base_id)
@@ -92,41 +88,34 @@ impl<'a> Migrator<'a> {
             }
         };
 
+        let project_id = self
+            .neon_client
+            .lookup_project(&env_name.clone().into())
+            .await?;
+
         self.neon_client
-            .create_backup(
-                &env_name.clone().into(),
-                crate::neon::BackupBranch::Migration,
-            )
+            .create_backup(&project_id, crate::neon::BackupSnapshot::Migration)
             .await?;
 
         loop {
             let is_up_to_date = self
                 .neon_client
-                .with_rollback(
-                    &env_name.clone().into(),
-                    &BackupBranch::MigrationRollback,
-                    async || {
-                        match migrations::run(self.noco_client, base_id.clone(), version.next())
-                            .await
-                        {
-                            Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
-                            Err(error) => {
-                                console_error!(
-                                    "Migration {} failed. Rolling back.",
-                                    version.next()
-                                );
-                                return Err(error);
-                            }
-                            _ => {}
+                .with_rollback(&env_name.clone().into(), async || {
+                    match migrations::run(self.noco_client, base_id.clone(), version.next()).await {
+                        Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
+                        Err(error) => {
+                            console_error!("Migration {} failed. Rolling back.", version.next());
+                            return Err(error);
                         }
+                        _ => {}
+                    }
 
-                        version = version.next();
+                    version = version.next();
 
-                        self.db_client.set_migration(&base_id, &version).await?;
+                    self.db_client.set_migration(&base_id, &version).await?;
 
-                        Ok(false)
-                    },
-                )
+                    Ok(false)
+                })
                 .await?;
 
             if is_up_to_date {

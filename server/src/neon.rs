@@ -46,15 +46,14 @@ impl From<EnvName> for ProjectName {
 #[serde(transparent)]
 pub struct BranchId(String);
 
+// A point-in-time snapshot of a branch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SnapshotId(String);
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BranchName(Cow<'static, str>);
-
-impl BranchName {
-    pub const fn new(name: &'static str) -> Self {
-        Self(Cow::Borrowed(name))
-    }
-}
 
 impl fmt::Display for BranchName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -68,19 +67,25 @@ impl From<String> for BranchName {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BranchType {
-    ReadOnly,
-    #[allow(unused)]
-    ReadWrite,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SnapshotName(Cow<'static, str>);
+
+impl SnapshotName {
+    pub const fn new(name: &'static str) -> Self {
+        Self(Cow::Borrowed(name))
+    }
 }
 
-impl BranchType {
-    fn as_api(&self) -> &str {
-        match self {
-            BranchType::ReadOnly => "read_only",
-            BranchType::ReadWrite => "read_write",
-        }
+impl fmt::Display for SnapshotName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for SnapshotName {
+    fn from(snapshot_name: String) -> Self {
+        Self(Cow::Owned(snapshot_name))
     }
 }
 
@@ -92,32 +97,22 @@ pub enum BackupKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BackupBranch {
+pub enum BackupSnapshot {
     Checkpoint,
     Deployment,
     Migration,
     BaseDeletion,
-    MigrationRollback,
-    BaseDeletionRollback,
-    BaseCreationRollback,
     ManualRestore,
 }
 
-impl BackupBranch {
-    pub fn name(&self) -> BranchName {
+impl BackupSnapshot {
+    pub fn name(&self) -> SnapshotName {
         match self {
-            BackupBranch::Checkpoint => BranchName::new("noco-checkpoint"),
-            BackupBranch::Deployment => BranchName::new("noco-pre-deployment"),
-            BackupBranch::BaseDeletion => BranchName::new("noco-pre-base-deletion"),
-            BackupBranch::Migration => BranchName::new("noco-pre-migration"),
-            BackupBranch::MigrationRollback => BranchName::new("noco-pre-migration-rollback"),
-            BackupBranch::BaseDeletionRollback => {
-                BranchName::new("noco-pre-base-deletion-rollback")
-            }
-            BackupBranch::BaseCreationRollback => {
-                BranchName::new("noco-pre-base-creation-rollback")
-            }
-            BackupBranch::ManualRestore => BranchName::new("noco-pre-manual-restore"),
+            BackupSnapshot::Checkpoint => SnapshotName::new("noco-checkpoint"),
+            BackupSnapshot::Deployment => SnapshotName::new("noco-pre-deployment"),
+            BackupSnapshot::BaseDeletion => SnapshotName::new("noco-pre-base-deletion"),
+            BackupSnapshot::Migration => SnapshotName::new("noco-pre-migration"),
+            BackupSnapshot::ManualRestore => SnapshotName::new("noco-pre-manual-restore"),
         }
     }
 }
@@ -147,7 +142,7 @@ impl Client {
             ))
     }
 
-    async fn lookup_project(&self, project_name: &ProjectName) -> anyhow::Result<ProjectId> {
+    pub async fn lookup_project(&self, project_name: &ProjectName) -> anyhow::Result<ProjectId> {
         #[derive(Debug, Deserialize)]
         struct GetProjectListResponse {
             projects: Vec<GetProjectResponse>,
@@ -177,60 +172,19 @@ impl Client {
         Ok(project_id)
     }
 
-    async fn create_branch(
+    async fn delete_snapshot(
         &self,
         project_id: &ProjectId,
-        parent_id: &BranchId,
-        branch_name: &BranchName,
-        branch_type: BranchType,
-    ) -> anyhow::Result<BranchId> {
-        #[derive(Debug, Serialize)]
-        struct BranchRequestObj {
-            name: BranchName,
-            parent_id: BranchId,
-        }
+        snapshot_id: &SnapshotId,
+    ) -> anyhow::Result<()> {
+        self.build_request(
+            Method::Delete,
+            &format!("/projects/{}/snapshots/{}", &project_id.0, &snapshot_id.0),
+        )?
+        .exec()
+        .await?;
 
-        #[derive(Debug, Serialize)]
-        struct EndpointRequestObj {
-            r#type: String,
-        }
-
-        #[derive(Debug, Serialize)]
-        struct PostBranchRequest {
-            branch: BranchRequestObj,
-            endpoints: Vec<EndpointRequestObj>,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct BranchResponseObj {
-            id: BranchId,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct PostBranchResponse {
-            branch: BranchResponseObj,
-        }
-
-        let branch_id = self
-            .build_request(
-                Method::Post,
-                &format!("/projects/{}/branches", project_id.0),
-            )?
-            .with_json(&PostBranchRequest {
-                branch: BranchRequestObj {
-                    name: branch_name.clone(),
-                    parent_id: parent_id.clone(),
-                },
-                endpoints: vec![EndpointRequestObj {
-                    r#type: branch_type.as_api().to_string(),
-                }],
-            })?
-            .fetch::<PostBranchResponse>()
-            .await?
-            .branch
-            .id;
-
-        Ok(branch_id)
+        Ok(())
     }
 
     async fn delete_branch(
@@ -244,6 +198,41 @@ impl Client {
         )?
         .exec()
         .await?;
+
+        Ok(())
+    }
+
+    async fn delete_snapshot_restore_branches(
+        &self,
+        project_id: &ProjectId,
+    ) -> anyhow::Result<()> {
+        #[derive(Debug, Deserialize)]
+        struct GetBranchListResponse {
+            branches: Vec<GetBranchResponse>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GetBranchResponse {
+            id: BranchId,
+            restored_from: Option<SnapshotId>,
+            default: bool,
+        }
+
+        let branch_ids = self
+            .build_request(
+                Method::Get,
+                &format!("/projects/{}/branches", &project_id.0),
+            )?
+            .fetch::<GetBranchListResponse>()
+            .await?
+            .branches
+            .into_iter()
+            .filter(|branch| branch.restored_from.is_some() && !branch.default)
+            .map(|branch| branch.id);
+
+        for branch_id in branch_ids {
+            self.delete_branch(project_id, &branch_id).await?;
+        }
 
         Ok(())
     }
@@ -280,15 +269,46 @@ impl Client {
         Ok(branch_id)
     }
 
-    async fn delete_branch_with_name(
+    async fn lookup_snapshot(
         &self,
         project_id: &ProjectId,
-        branch_name: &BranchName,
-    ) -> anyhow::Result<()> {
-        let branch_id = self.lookup_branch(project_id, branch_name).await?;
+        snapshot_name: &SnapshotName,
+    ) -> anyhow::Result<Option<SnapshotId>> {
+        #[derive(Debug, Deserialize)]
+        struct GetSnapshotListResponse {
+            snapshots: Vec<GetSnapshotResponse>,
+        }
 
-        if let Some(branch_id) = branch_id {
-            self.delete_branch(project_id, &branch_id).await?;
+        #[derive(Debug, Deserialize)]
+        struct GetSnapshotResponse {
+            id: SnapshotId,
+            name: SnapshotName,
+        }
+
+        let snapshot_id = self
+            .build_request(
+                Method::Get,
+                &format!("/projects/{}/snapshots", &project_id.0),
+            )?
+            .fetch::<GetSnapshotListResponse>()
+            .await?
+            .snapshots
+            .into_iter()
+            .find(|snapshot| snapshot_name == &snapshot.name)
+            .map(|snapshot| snapshot.id);
+
+        Ok(snapshot_id)
+    }
+
+    async fn delete_snapshot_with_name(
+        &self,
+        project_id: &ProjectId,
+        snapshot_name: &SnapshotName,
+    ) -> anyhow::Result<()> {
+        let snapshot_id = self.lookup_snapshot(project_id, snapshot_name).await?;
+
+        if let Some(snapshot_id) = snapshot_id {
+            self.delete_snapshot(project_id, &snapshot_id).await?;
         }
 
         Ok(())
@@ -303,26 +323,27 @@ impl Client {
             })
     }
 
-    async fn update_branch(
+    async fn restore_to_snapshot(
         &self,
         project_id: &ProjectId,
-        branch_id: &BranchId,
-        new_name: &BranchName,
-        is_protected: bool,
+        branch: &BranchId,
+        to: &SnapshotId,
     ) -> anyhow::Result<()> {
         #[derive(Debug, Serialize)]
-        struct PatchBranchRequest {
-            name: BranchName,
-            protected: bool,
+        struct PostRestoreSnapshotRequest {
+            target_branch_id: BranchId,
+            finalize_restore: bool,
         }
 
+        self.delete_snapshot_restore_branches(project_id).await?;
+
         self.build_request(
-            Method::Patch,
-            &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0,),
+            Method::Post,
+            &format!("/projects/{}/snapshots/{}/restore", &project_id.0, &to.0,),
         )?
-        .with_json(&PatchBranchRequest {
-            name: new_name.clone(),
-            protected: is_protected,
+        .with_json(&PostRestoreSnapshotRequest {
+            target_branch_id: branch.clone(),
+            finalize_restore: true,
         })?
         .exec()
         .await?;
@@ -330,103 +351,54 @@ impl Client {
         Ok(())
     }
 
-    async fn restore_to_branch(
-        &self,
-        project_id: &ProjectId,
-        to: &BranchId,
-        preserve_branch_name: &BranchName,
-    ) -> anyhow::Result<()> {
-        let default_branch_id = self.lookup_default_branch(project_id).await?;
-        let default_branch_name = config::neon_default_branch_name();
-
-        // We kinda just need to hope that all these operations succeed, otherwise the Neon project
-        // will be left in a weird state.
-
-        self.build_request(
-            Method::Post,
-            &format!(
-                "/projects/{}/branches/{}/set_as_default",
-                &project_id.0, &to.0,
-            ),
-        )?
-        .exec()
-        .await?;
-
-        self.delete_branch_with_name(project_id, preserve_branch_name)
-            .await?;
-
-        self.update_branch(project_id, &default_branch_id, preserve_branch_name, false)
-            .await?;
-
-        self.update_branch(project_id, to, &default_branch_name, true)
-            .await?;
-
-        // Otherwise the next time we call this method to restore the default branch, it would fail
-        // because you cannot delete a branch with child branches.
-        self.delete_child_branches(project_id, &default_branch_id)
-            .await?;
-
-        Ok(())
-    }
-
-    async fn delete_child_branches(
-        &self,
-        project_id: &ProjectId,
-        parent_id: &BranchId,
-    ) -> anyhow::Result<()> {
-        #[derive(Debug, Deserialize)]
-        struct BranchResponseObj {
-            id: BranchId,
-            parent_id: BranchId,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct GetBranchesResponse {
-            branches: Vec<BranchResponseObj>,
-        }
-
-        let child_branch_ids = self
-            .build_request(
-                Method::Get,
-                &format!("/projects/{}/branches", &project_id.0),
-            )?
-            .fetch::<GetBranchesResponse>()
-            .await?
-            .branches
-            .into_iter()
-            .filter(|branch| &branch.parent_id == parent_id)
-            .map(|branch| branch.id)
-            .collect::<Vec<_>>();
-
-        for child_branch_id in child_branch_ids {
-            self.delete_branch(project_id, &child_branch_id).await?;
-        }
-
-        Ok(())
-    }
-
-    #[worker::send]
     pub async fn create_backup(
         &self,
-        project_name: &ProjectName,
-        branch: BackupBranch,
-    ) -> anyhow::Result<BranchId> {
-        let project_id = self.lookup_project(project_name).await?;
-        let default_branch_id = self.lookup_default_branch(&project_id).await?;
+        project_id: &ProjectId,
+        snapshot: BackupSnapshot,
+    ) -> anyhow::Result<SnapshotId> {
+        let default_branch_id = self.lookup_default_branch(project_id).await?;
 
-        self.delete_branch_with_name(&project_id, &branch.name())
+        self.delete_snapshot_with_name(project_id, &snapshot.name())
             .await?;
 
-        let backup_branch_id = self
-            .create_branch(
-                &project_id,
-                &default_branch_id,
-                &branch.name(),
-                BranchType::ReadOnly,
-            )
+        let backup_snapshot_id = self
+            .create_snapshot(project_id, &default_branch_id, &snapshot.name())
             .await?;
 
-        Ok(backup_branch_id)
+        Ok(backup_snapshot_id)
+    }
+
+    async fn create_snapshot(
+        &self,
+        project_id: &ProjectId,
+        branch: &BranchId,
+        name: &SnapshotName,
+    ) -> anyhow::Result<SnapshotId> {
+        #[derive(Debug, Deserialize)]
+        struct SnapshotResponseObj {
+            id: SnapshotId,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct PostSnapshotResponse {
+            snapshot: SnapshotResponseObj,
+        }
+
+        let snapshot_id = self
+            .build_request(
+                Method::Post,
+                &format!(
+                    "/projects/{}/branches/{}/snapshot",
+                    &project_id.0, &branch.0
+                ),
+            )?
+            .with_param("name", &name.to_string())
+            .fetch::<PostSnapshotResponse>()
+            .await?
+            .snapshot
+            .id;
+
+        Ok(snapshot_id)
     }
 
     #[worker::send]
@@ -436,26 +408,29 @@ impl Client {
         backup_kind: BackupKind,
     ) -> anyhow::Result<()> {
         let project_id = self.lookup_project(project_name).await?;
+        let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
-        let source_branch = match backup_kind {
-            BackupKind::Deletion => BackupBranch::BaseDeletion,
-            BackupKind::Deployment => BackupBranch::Deployment,
-            BackupKind::Migration => BackupBranch::Migration,
+        let source_snapshot = match backup_kind {
+            BackupKind::Deletion => BackupSnapshot::BaseDeletion,
+            BackupKind::Deployment => BackupSnapshot::Deployment,
+            BackupKind::Migration => BackupSnapshot::Migration,
         };
 
-        let source_branch_id = self
-            .lookup_branch(&project_id, &source_branch.name())
+        self.create_backup(&project_id, BackupSnapshot::ManualRestore)
+            .await?;
+
+        let source_snapshot_id = self
+            .lookup_snapshot(&project_id, &source_snapshot.name())
             .await?
             .ok_or_else(|| {
-                anyhow::anyhow!("no Neon branch found with name {}", &source_branch.name())
+                anyhow::anyhow!(
+                    "no Neon snapshot found with name {}",
+                    &source_snapshot.name()
+                )
             })?;
 
-        self.restore_to_branch(
-            &project_id,
-            &source_branch_id,
-            &BackupBranch::ManualRestore.name(),
-        )
-        .await?;
+        self.restore_to_snapshot(&project_id, &default_branch_id, &source_snapshot_id)
+            .await?;
 
         Ok(())
     }
@@ -463,7 +438,6 @@ impl Client {
     pub async fn with_rollback<T, Fut, Func>(
         &self,
         project_name: &ProjectName,
-        preserve_branch: &BackupBranch,
         f: Func,
     ) -> anyhow::Result<T>
     where
@@ -471,14 +445,16 @@ impl Client {
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(project_name).await?;
-        let backup_branch_id = self
-            .create_backup(project_name, BackupBranch::Checkpoint)
+        let default_branch_id = self.lookup_default_branch(&project_id).await?;
+
+        let backup_snapshot_id = self
+            .create_backup(&project_id, BackupSnapshot::Checkpoint)
             .await?;
 
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                self.restore_to_branch(&project_id, &backup_branch_id, &preserve_branch.name())
+                self.restore_to_snapshot(&project_id, &default_branch_id, &backup_snapshot_id)
                     .await?;
 
                 Err(anyhow::anyhow!(err))

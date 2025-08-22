@@ -1,7 +1,7 @@
 use crate::api::PostBackupKind;
 use crate::env::{EnvId, EnvName};
 use crate::error::Error;
-use crate::neon::BackupBranch;
+use crate::neon::BackupSnapshot;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
 use crate::{config, kv, url};
 use crate::{
@@ -350,13 +350,20 @@ impl Store {
         Ok(summary)
     }
 
+    #[worker::send]
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
         let backup_branch = match kind {
-            PostBackupKind::Deployment => BackupBranch::Deployment,
+            PostBackupKind::Deployment => BackupSnapshot::Deployment,
         };
 
+        let project_id = self
+            .neon_client
+            .lookup_project(&self.env_name.clone().into())
+            .await
+            .map_err(Error::Internal)?;
+
         self.neon_client
-            .create_backup(&self.env_name.clone().into(), backup_branch)
+            .create_backup(&project_id, backup_branch)
             .await
             .map_err(Error::Internal)?;
 
@@ -390,9 +397,15 @@ impl Store {
 
     #[worker::send]
     pub async fn delete_base(&self) -> Result<(), Error> {
+        let project_id = self
+            .neon_client
+            .lookup_project(&self.env_name.clone().into())
+            .await
+            .map_err(Error::Internal)?;
+
         // Back up the database in case we delete the NocoDB base accidentally.
         self.neon_client
-            .create_backup(&self.env_name.clone().into(), BackupBranch::BaseDeletion)
+            .create_backup(&project_id, BackupSnapshot::BaseDeletion)
             .await
             .map_err(Error::Internal)?;
 
@@ -404,26 +417,22 @@ impl Store {
             .map_err(Error::Internal)?;
 
         self.neon_client
-            .with_rollback(
-                &self.env_name.clone().into(),
-                &BackupBranch::BaseDeletionRollback,
-                async || {
-                    let result = {
-                        noco::delete_base(&self.noco_client, &self.base_id).await?;
-                        self.db_client.delete_base(&self.base_id).await?;
-                        Ok(())
-                    };
+            .with_rollback(&self.env_name.clone().into(), async || {
+                let result = {
+                    noco::delete_base(&self.noco_client, &self.base_id).await?;
+                    self.db_client.delete_base(&self.base_id).await?;
+                    Ok(())
+                };
 
-                    match result {
-                        Err(e) => {
-                            console_error!("{:?}", e);
-                            console_error!("Failed deleting base. Rolling back.");
-                            Err(e)
-                        }
-                        Ok(_) => Ok(()),
+                match result {
+                    Err(e) => {
+                        console_error!("{:?}", e);
+                        console_error!("Failed deleting base. Rolling back.");
+                        Err(e)
                     }
-                },
-            )
+                    Ok(_) => Ok(()),
+                }
+            })
             .await
             .map_err(Error::Internal)?;
 
