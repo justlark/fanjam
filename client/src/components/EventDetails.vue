@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watchEffect, ref, useId } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -8,9 +8,9 @@ import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import * as commonmark from "commonmark";
-import CategoryLabel from "./CategoryLabel.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
+import TagBar from "./TagBar.vue";
 
 const router = useRouter();
 const filterCriteria = useFilterQuery();
@@ -101,37 +101,12 @@ const sectionHeadingId = useId();
           @click="toggleStarred()"
         />
       </div>
-      <div v-if="event.category || event.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
-        <RouterLink
-          v-if="event.category"
-          :to="{
-            name: 'schedule',
-            params: { dayIndex: props.day },
-            query: toFilterQueryParams({
-              categories: [event.category],
-            }),
-          }"
-        >
-          <CategoryLabel
-            :title="event.category"
-            :all-categories="props.allCategories"
-            display="active"
-          />
-        </RouterLink>
-        <RouterLink
-          v-for="tag in event.tags"
-          :key="tag"
-          :to="{
-            name: 'schedule',
-            params: { dayIndex: props.day },
-            query: toFilterQueryParams({
-              tags: [tag],
-            }),
-          }"
-        >
-          <CategoryLabel :title="tag" display="active" />
-        </RouterLink>
-      </div>
+      <TagBar
+        :day="props.day"
+        :category="event.category"
+        :tags="event.tags"
+        :all-categories="props.allCategories"
+      />
       <Divider />
       <article
         id="document"

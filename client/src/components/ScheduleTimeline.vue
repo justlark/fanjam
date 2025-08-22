@@ -12,6 +12,7 @@ import SimpleIcon from "./SimpleIcon.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";
+import EventSummaryDrawer from "./EventSummaryDrawer.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -21,6 +22,21 @@ const {
 } = useRemoteData();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
+
+const focusedEventId = defineModel<string | undefined>("focused");
+const eventSummaryIsVisible = ref(false);
+
+watch(focusedEventId, (newEventId, oldEventId) => {
+  if (oldEventId === undefined && newEventId !== undefined) {
+    eventSummaryIsVisible.value = true;
+  }
+});
+
+watch(eventSummaryIsVisible, (newIsVisible, oldIsVisible) => {
+  if (oldIsVisible && !newIsVisible) {
+    focusedEventId.value = undefined;
+  }
+});
 
 interface TimeSlot {
   localizedTime: string;
@@ -202,6 +218,7 @@ watch(
     <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-6">
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"
+        v-model:focused="focusedEventId"
         :key="index"
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
@@ -214,5 +231,11 @@ watch(
     <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
       No events
     </div>
+    <EventSummaryDrawer
+      v-model:visible="eventSummaryIsVisible"
+      :event="events.find((event) => event.id === focusedEventId)"
+      :day="currentDayIndex"
+      :all-categories="allCategories"
+    />
   </div>
 </template>

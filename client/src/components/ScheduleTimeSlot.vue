@@ -10,6 +10,8 @@ import useStarredEvents from "@/composables/useStarredEvents";
 
 const filterCriteria = useFilterQuery();
 
+const focusedEventId = defineModel<string | undefined>("focused");
+
 const props = defineProps<{
   localizedTime: string;
   events: Array<Event>;
@@ -58,6 +60,7 @@ const isStarred = (eventId: string) => starredEvents.value && starredEvents.valu
     <ul class="flex flex-wrap gap-3">
       <li v-for="event in props.events" :key="event.id">
         <RouterLink
+          class="hidden lg:inline"
           :to="{
             name: 'event',
             params: { eventId: event.id },
@@ -73,6 +76,15 @@ const isStarred = (eventId: string) => starredEvents.value && starredEvents.valu
             :all-categories="props.allCategories"
           />
         </RouterLink>
+        <button @click="focusedEventId = event.id" class="lg:hidden cursor-pointer">
+          <CategoryLabel
+            :title="event.name"
+            :icon="isStarred(event.id) ? 'star-fill' : undefined"
+            display="active"
+            :category="event.category"
+            :all-categories="props.allCategories"
+          />
+        </button>
       </li>
     </ul>
   </section>
