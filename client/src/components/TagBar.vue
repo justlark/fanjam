@@ -12,7 +12,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div v-if="props.category || props.tags.length > 0" class="mt-4 flex flex-wrap gap-3">
+  <div v-if="props.category || props.tags.length > 0" class="flex flex-wrap gap-3">
     <RouterLink
       v-if="props.category"
       :to="{
