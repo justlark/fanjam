@@ -24,7 +24,7 @@ def generate-fly-config [env_name: string, fly_app: string] {
     http_service: {
       internal_port: 8080,
       force_https: true,
-      auto_stop_machines: "suspend",
+      auto_stop_machines: true,
       auto_start_machines: true,
       min_machines_running: 0,
       processes: ["app"],
