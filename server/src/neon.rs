@@ -6,14 +6,6 @@ use worker::Method;
 
 use crate::{config, env::EnvName, http::RequestBuilder};
 
-// An LSN (Log Sequence Number) is sort of an index into the history of a branch. It's a point we
-// can roll back to. This is a concept specific to our Postgres provider.
-//
-// https://neon.tech/docs/reference/glossary#lsn
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(transparent)]
-struct Lsn(String);
-
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
 
@@ -50,7 +42,7 @@ impl From<EnvName> for ProjectName {
 // provider.
 //
 // https://neon.tech/docs/reference/glossary#branch
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BranchId(String);
 
@@ -101,6 +93,7 @@ pub enum BackupKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackupBranch {
+    Checkpoint,
     Deployment,
     Migration,
     BaseDeletion,
@@ -113,6 +106,7 @@ pub enum BackupBranch {
 impl BackupBranch {
     pub fn name(&self) -> BranchName {
         match self {
+            BackupBranch::Checkpoint => BranchName::new("noco-checkpoint"),
             BackupBranch::Deployment => BranchName::new("noco-pre-deployment"),
             BackupBranch::BaseDeletion => BranchName::new("noco-pre-base-deletion"),
             BackupBranch::Migration => BranchName::new("noco-pre-migration"),
@@ -309,34 +303,26 @@ impl Client {
             })
     }
 
-    async fn restore_to_lsn(
+    async fn update_branch(
         &self,
         project_id: &ProjectId,
         branch_id: &BranchId,
-        source_lsn: &Lsn,
-        preserve_branch_name: &BranchName,
+        new_name: &BranchName,
+        is_protected: bool,
     ) -> anyhow::Result<()> {
         #[derive(Debug, Serialize)]
-        struct PostRestoreRequest {
-            source_branch_id: String,
-            source_lsn: String,
-            preserve_under_name: BranchName,
+        struct PatchBranchRequest {
+            name: BranchName,
+            protected: bool,
         }
 
-        self.delete_branch_with_name(project_id, preserve_branch_name)
-            .await?;
-
         self.build_request(
-            Method::Post,
-            &format!(
-                "/projects/{}/branches/{}/restore",
-                &project_id.0, &branch_id.0,
-            ),
+            Method::Patch,
+            &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0,),
         )?
-        .with_json(&PostRestoreRequest {
-            source_branch_id: branch_id.0.clone(),
-            source_lsn: source_lsn.0.clone(),
-            preserve_under_name: preserve_branch_name.clone(),
+        .with_json(&PatchBranchRequest {
+            name: new_name.clone(),
+            protected: is_protected,
         })?
         .exec()
         .await?;
@@ -344,65 +330,79 @@ impl Client {
         Ok(())
     }
 
-    async fn get_parent_lsn(
+    async fn restore_to_branch(
         &self,
         project_id: &ProjectId,
-        branch_id: &BranchId,
-    ) -> anyhow::Result<Lsn> {
-        #[derive(Debug, Deserialize)]
-        struct BranchResponseObj {
-            parent_lsn: Lsn,
-        }
+        to: &BranchId,
+        preserve_branch_name: &BranchName,
+    ) -> anyhow::Result<()> {
+        let default_branch_id = self.lookup_default_branch(project_id).await?;
+        let default_branch_name = config::neon_default_branch_name();
 
-        #[derive(Debug, Deserialize)]
-        struct GetBranchResponse {
-            branch: BranchResponseObj,
-        }
+        // We kinda just need to hope that all these operations succeed, otherwise the Neon project
+        // will be left in a weird state.
 
-        let lsn = self
-            .build_request(
-                Method::Get,
-                &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0,),
-            )?
-            .fetch::<GetBranchResponse>()
-            .await?
-            .branch
-            .parent_lsn;
+        self.build_request(
+            Method::Post,
+            &format!(
+                "/projects/{}/branches/{}/set_as_default",
+                &project_id.0, &to.0,
+            ),
+        )?
+        .exec()
+        .await?;
 
-        Ok(lsn)
+        self.delete_branch_with_name(project_id, preserve_branch_name)
+            .await?;
+
+        self.update_branch(project_id, &default_branch_id, preserve_branch_name, false)
+            .await?;
+
+        self.update_branch(project_id, to, &default_branch_name, true)
+            .await?;
+
+        // Otherwise the next time we call this method to restore the default branch, it would fail
+        // because you cannot delete a branch with child branches.
+        self.delete_child_branches(project_id, &default_branch_id)
+            .await?;
+
+        Ok(())
     }
 
-    async fn get_lsn(&self, project_id: &ProjectId, branch_id: &BranchId) -> anyhow::Result<Lsn> {
-        const TEMP_ROLLBACK_CHILD_BRANCH_NAME: BranchName = BranchName::new("temp-rollback");
+    async fn delete_child_branches(
+        &self,
+        project_id: &ProjectId,
+        parent_id: &BranchId,
+    ) -> anyhow::Result<()> {
+        #[derive(Debug, Deserialize)]
+        struct BranchResponseObj {
+            id: BranchId,
+            parent_id: BranchId,
+        }
 
-        // Just in case deleting the branch failed at any point in the past.
-        self.delete_branch_with_name(project_id, &TEMP_ROLLBACK_CHILD_BRANCH_NAME)
-            .await?;
+        #[derive(Debug, Deserialize)]
+        struct GetBranchesResponse {
+            branches: Vec<BranchResponseObj>,
+        }
 
-        // There doesn't seem to be an API to get the LSN of the head of the *current* branch--only
-        // the LSN of the parent branch. So we create a temporary child branch, get the LSN of its
-        // parent, and then delete it.
-        let temp_child_branch_id = self
-            .create_branch(
-                project_id,
-                branch_id,
-                &TEMP_ROLLBACK_CHILD_BRANCH_NAME,
-                BranchType::ReadOnly,
-            )
-            .await?;
+        let child_branch_ids = self
+            .build_request(
+                Method::Get,
+                &format!("/projects/{}/branches", &project_id.0),
+            )?
+            .fetch::<GetBranchesResponse>()
+            .await?
+            .branches
+            .into_iter()
+            .filter(|branch| &branch.parent_id == parent_id)
+            .map(|branch| branch.id)
+            .collect::<Vec<_>>();
 
-        // The alternative to rolling back to an LSN would be to roll back to a timestamp.
-        // Timestamps have limited precision and require everyone agree on the exact time, which
-        // leaves open the possibility of accidentally rolling back too far or not far enough, even
-        // though in practice it would probably be good enough.
-        let lsn = self
-            .get_parent_lsn(project_id, &temp_child_branch_id)
-            .await?;
+        for child_branch_id in child_branch_ids {
+            self.delete_branch(project_id, &child_branch_id).await?;
+        }
 
-        self.delete_branch(project_id, &temp_child_branch_id)
-            .await?;
-
-        Ok(lsn)
+        Ok(())
     }
 
     #[worker::send]
@@ -443,8 +443,6 @@ impl Client {
             BackupKind::Migration => BackupBranch::Migration,
         };
 
-        let default_branch_id = self.lookup_default_branch(&project_id).await?;
-
         let source_branch_id = self
             .lookup_branch(&project_id, &source_branch.name())
             .await?
@@ -452,12 +450,9 @@ impl Client {
                 anyhow::anyhow!("no Neon branch found with name {}", &source_branch.name())
             })?;
 
-        let source_lsn = self.get_lsn(&project_id, &source_branch_id).await?;
-
-        self.restore_to_lsn(
+        self.restore_to_branch(
             &project_id,
-            &default_branch_id,
-            &source_lsn,
+            &source_branch_id,
             &BackupBranch::ManualRestore.name(),
         )
         .await?;
@@ -476,22 +471,15 @@ impl Client {
         Func: FnOnce() -> Fut,
     {
         let project_id = self.lookup_project(project_name).await?;
-        let default_branch_id = self.lookup_default_branch(&project_id).await?;
-        let source_lsn = self.get_lsn(&project_id, &default_branch_id).await?;
+        let backup_branch_id = self
+            .create_backup(project_name, BackupBranch::Checkpoint)
+            .await?;
 
         match f().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                self.delete_branch_with_name(&project_id, &preserve_branch.name())
+                self.restore_to_branch(&project_id, &backup_branch_id, &preserve_branch.name())
                     .await?;
-
-                self.restore_to_lsn(
-                    &project_id,
-                    &default_branch_id,
-                    &source_lsn,
-                    &preserve_branch.name(),
-                )
-                .await?;
 
                 Err(anyhow::anyhow!(err))
             }
