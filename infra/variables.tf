@@ -41,3 +41,25 @@ variable "upstash_account_email" {
   type        = string
   description = "Upstash account email"
 }
+
+variable "smtp_host" {
+  type        = string
+  description = "SMTP host"
+}
+
+variable "smtp_port" {
+  type        = string
+  description = "SMTP port"
+}
+
+variable "smtp_username" {
+  type        = string
+  description = "SMTP username"
+  sensitive   = true
+}
+
+variable "smtp_password" {
+  type        = string
+  description = "SMTP password"
+  sensitive   = true
+}

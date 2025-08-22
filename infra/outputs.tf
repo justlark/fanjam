@@ -19,6 +19,13 @@ output "noco_secrets" {
       # token for the sparklefish backend. After that, we shouldn't need it
       # again.
       NC_ADMIN_PASSWORD = random_password.noco_admin_password[env].result
+
+      NC_SMTP_FROM                = "notifications@fanjam.live"
+      NC_SMTP_HOST                = var.smtp_host
+      NC_SMTP_PORT                = var.smtp_port
+      NC_SMTP_USERNAME            = var.smtp_username
+      NC_SMTP_PASSWORD            = var.smtp_password
+      NC_SMTP_REJECT_UNAUTHORIZED = "true"
     }
   }
   sensitive = true
