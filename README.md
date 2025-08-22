@@ -18,7 +18,7 @@ and that information is shared with attendees in real time via a web app.
 - The Redis provider for NocoDB is [Upstash](https://upstash.com/).
 - The object storage provider for NocoDB is [Cloudflare
   R2](https://developers.cloudflare.com/r2/).
-- The SMTP provider for NocoDB is [Mailgun](https://www.mailgun.com/).
+- The SMTP provider for NocoDB is [MailerSend](https://mailersend.com).
 
 FanJam is single-tenant, meaning we have a separate NocoDB instance, Postgres
 cluster, and object storage bucket per tenant environment. All environments
