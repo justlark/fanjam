@@ -1,6 +1,7 @@
 interface RawEvent {
   id: string;
   name: string;
+  summary: string | null;
   description: string | null;
   start_time: string;
   end_time: string | null;
@@ -123,6 +124,7 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
   const events: Array<Event> = rawEvents.value.events.map((event) => ({
     id: event.id,
     name: event.name,
+    summary: event.summary ?? undefined,
     description: event.description ?? undefined,
     startTime: new Date(event.start_time),
     endTime: event.end_time ? new Date(event.end_time) : undefined,

@@ -152,6 +152,7 @@ const useRemoteDataInner = <T, S>({
 interface StoredEvent {
   id: string;
   name: string;
+  summary?: string;
   description?: string;
   start_time: string;
   end_time?: string;
@@ -177,6 +178,7 @@ const useRemoteEvents = () => {
       data.map((event) => ({
         id: event.id,
         name: event.name,
+        summary: event.summary,
         description: event.description,
         start_time: event.startTime.toISOString(),
         end_time: event.endTime ? event.endTime.toISOString() : undefined,
@@ -189,6 +191,7 @@ const useRemoteEvents = () => {
       data.map((event) => ({
         id: event.id,
         name: event.name,
+        summary: event.summary,
         description: event.description,
         startTime: new Date(event.start_time),
         endTime: event.end_time ? new Date(event.end_time) : undefined,
