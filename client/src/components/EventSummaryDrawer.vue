@@ -8,7 +8,7 @@ const isVisible = defineModel<boolean>("visible", {
 });
 
 const props = defineProps<{
-  event: Event;
+  event?: Event;
   day: number;
   allCategories: Array<string>;
 }>();
@@ -18,6 +18,7 @@ const props = defineProps<{
   <Drawer v-model:visible="isVisible" :dismissable="false" :modal="false" position="bottom">
     <template #header>
       <TagBar
+        v-if="props.event"
         :day="props.day"
         :category="props.event.category"
         :tags="props.event.tags"

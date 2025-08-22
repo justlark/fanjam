@@ -24,6 +24,12 @@ const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
 
 const focusedEventId = defineModel<string | undefined>("focused");
+const focusedEvent = computed(() =>
+  focusedEventId.value
+    ? events.value.find((event) => event.id === focusedEventId.value)
+    : undefined,
+);
+
 const eventSummaryIsVisible = ref(false);
 
 watch(focusedEventId, (newEventId, oldEventId) => {
@@ -232,8 +238,9 @@ watch(
       No events
     </div>
     <EventSummaryDrawer
+      v-if="currentDayIndex !== undefined"
       v-model:visible="eventSummaryIsVisible"
-      :event="events.find((event) => event.id === focusedEventId)"
+      :event="focusedEvent"
       :day="currentDayIndex"
       :all-categories="allCategories"
     />
