@@ -83,7 +83,7 @@ const clearTag = (tag: string) => {
     <template v-for="(tag, index) in criteria.tags" :key="index">
       <span class="mx-2 italic" v-if="index != 0">or</span>
       <button :aria-label="`Clear: ${tag}`" class="cursor-pointer" @click="clearTag(tag)">
-        <CategoryLabel class="my-1" size="xs" :title="tag" display="active" />
+        <CategoryLabel class="my-1" size="xs" icon="x-lg" :title="tag" display="active" />
       </button>
     </template>
     <span v-if="hasMultipleTags && (onlyStarred || hasCategories || hasSearch)" class="ms-1"
