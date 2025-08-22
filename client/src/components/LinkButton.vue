@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import { RouterLink } from "vue-router";
 
 export type LinkTarget =

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type FilterCriteria } from "@/composables/useFilterQuery";
-import CategoryLabel from "@/components/system/CategoryLabel.vue";
+import CategoryLabel from "./CategoryLabel.vue";
 import Tag from "primevue/tag";
 
 const props = defineProps<{

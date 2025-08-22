@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import LinkButton from "@/components/system/LinkButton.vue";
+import LinkButton from "./LinkButton.vue";
 
 const props = defineProps<{
   links: Array<{ name: string; url: string }>;

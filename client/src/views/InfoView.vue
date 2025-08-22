@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SiteNav from "@/components/SiteNav";
-import InfoPage from "@/components/InfoPage";
+import SiteNav from "@/components/SiteNav.vue";
+import InfoPage from "@/components/InfoPage.vue";
 </script>
 
 <template>

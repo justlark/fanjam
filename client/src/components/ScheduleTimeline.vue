@@ -8,7 +8,7 @@ import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, useId } from "vue";
 import useFilterQuery from "@/composables/useFilterQuery";
-import CategoryLabel from "@/components/system/CategoryLabel.vue";
+import CategoryLabel from "./CategoryLabel.vue";
 import ToggleSwitch from "primevue/toggleswitch";
 
 const criteria = useFilterQuery();

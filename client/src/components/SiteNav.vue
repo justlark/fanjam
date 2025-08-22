@@ -2,11 +2,11 @@
 import { ref, computed, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Divider from "primevue/divider";
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
-import IconButton from "@/components/system/IconButton.vue";
-import AppUpdater from "@/components/SiteNav/AppUpdater.vue";
+import IconButton from "./IconButton.vue";
+import AppUpdater from "./AppUpdater.vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 

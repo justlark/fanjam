@@ -13,7 +13,7 @@ import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
-import IconButton from "@/components/system/IconButton.vue";
+import IconButton from "./IconButton.vue";
 import Button from "primevue/button";
 import FilterMenu from "./FilterMenu.vue";
 

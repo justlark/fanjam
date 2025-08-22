@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SiteNav from "@/components/SiteNav";
-import ScheduleTimeline from "@/components/ScheduleTimeline";
+import SiteNav from "@/components/SiteNav.vue";
+import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 </script>
 
 <template>

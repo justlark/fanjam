@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import IconButton from "@/components/system/IconButton.vue";
+import IconButton from "./IconButton.vue";
 
 const currentDayIndex = defineModel<number>("day", { required: true });
 

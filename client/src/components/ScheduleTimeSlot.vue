@@ -4,7 +4,7 @@ import Divider from "primevue/divider";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import { dateIsBetween } from "@/utils/time";
-import CategoryLabel from "@/components/system/CategoryLabel.vue";
+import CategoryLabel from "./CategoryLabel.vue";
 import { RouterLink } from "vue-router";
 import useStarredEvents from "@/composables/useStarredEvents";
 

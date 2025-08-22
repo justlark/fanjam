@@ -8,8 +8,8 @@ import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import * as commonmark from "commonmark";
-import CategoryLabel from "@/components/system/CategoryLabel.vue";
-import IconButton from "@/components/system/IconButton.vue";
+import CategoryLabel from "./CategoryLabel.vue";
+import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 
 const router = useRouter();

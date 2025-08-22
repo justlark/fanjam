@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import LinksList from "./LinksList.vue";
 
 const {

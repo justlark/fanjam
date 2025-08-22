@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SimpleIcon from "@/components/system/SimpleIcon.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 
 const props = defineProps<{
   icon: string;

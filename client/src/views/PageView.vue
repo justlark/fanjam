@@ -3,8 +3,8 @@ import { useId, computed, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import * as commonmark from "commonmark";
-import SiteNav from "@/components/SiteNav";
-import IconButton from "@/components/system/IconButton.vue";
+import SiteNav from "@/components/SiteNav.vue";
+import IconButton from "@/components/IconButton.vue";
 
 const route = useRoute();
 const router = useRouter();

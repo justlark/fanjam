@@ -2,10 +2,10 @@
 import { ref, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
-import SiteNav from "@/components/SiteNav";
+import SiteNav from "@/components/SiteNav.vue";
 import Divider from "primevue/divider";
-import ScheduleTimeline from "@/components/ScheduleTimeline";
-import EventDetails from "@/components/EventDetails";
+import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
+import EventDetails from "@/components/EventDetails.vue";
 
 const route = useRoute();
 const router = useRouter();
