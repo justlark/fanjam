@@ -1,0 +1,48 @@
+client: Browser
+organizer: Browser
+admin: Admin Tools
+
+cf: Cloudflare {
+  client: Client Worker
+  server: Server Worker
+  cdn: CDN
+  kv: Clouflare KV
+  r2: Cloudflare R2
+}
+
+fly: Fly.io {
+  noco: NocoDB
+}
+
+neon: Neon {
+  pg: Postgres Cluster {
+    noco: NocoDB DB
+    worker: Worker DB
+  }
+}
+
+upstash: Upstash {
+  redis: Redis DB
+}
+
+mailersend: MailerSend {
+  smtp: SMTP
+}
+
+cf.client <- client
+cf.cdn <- cf.client
+
+cf.server <- client
+cf.server <- admin
+cf.kv <- cf.server
+
+fly.noco -> cf.r2
+fly.noco <- cf.server
+fly.noco <- organizer
+
+neon.pg.noco <- fly.noco
+neon.pg.worker <- cf.server
+
+upstash.redis <- fly.noco
+
+mailersend.smtp <- fly.noco

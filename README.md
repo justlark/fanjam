@@ -6,6 +6,10 @@ and that information is shared with attendees in real time via a web app.
 
 ## Architecture
 
+You can find an architecture diagram at
+[./docs/architecture.txt](./docs/architecture.txt). This diagram is rendered
+using [D2](https://d2lang.com/); the source is [here](./docs/architecture.d2).
+
 - The client is written in Vue and TypeScript and hosted on [Cloudflare
   Workers](https://developers.cloudflare.com/workers/).
 - The backend is a serverless function written in Rust and hosted on Cloudflare
