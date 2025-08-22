@@ -1,5 +1,7 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, fmt, iter};
 
+use axum::http::StatusCode;
+use rand::Rng;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::Method;
@@ -103,9 +105,12 @@ pub enum BackupSnapshot {
     Migration,
     BaseDeletion,
     ManualRestore,
+    Archived,
 }
 
 impl BackupSnapshot {
+    const ARCHIVED_PREFIX: &'static str = "noco-archived-";
+
     pub fn name(&self) -> SnapshotName {
         match self {
             BackupSnapshot::Checkpoint => SnapshotName::new("noco-checkpoint"),
@@ -113,6 +118,22 @@ impl BackupSnapshot {
             BackupSnapshot::BaseDeletion => SnapshotName::new("noco-pre-base-deletion"),
             BackupSnapshot::Migration => SnapshotName::new("noco-pre-migration"),
             BackupSnapshot::ManualRestore => SnapshotName::new("noco-pre-manual-restore"),
+            BackupSnapshot::Archived => {
+                const LEN: usize = 4;
+                const POOL: &str = "0123456789";
+
+                let mut rng = rand::rng();
+
+                let prefix = Self::ARCHIVED_PREFIX;
+                let suffix = iter::repeat_with(|| {
+                    let idx = rng.random_range(0..POOL.len());
+                    POOL.chars().nth(idx).unwrap()
+                })
+                .take(LEN)
+                .collect::<String>();
+
+                SnapshotName(Cow::Owned(format!("{prefix}{suffix}")))
+            }
         }
     }
 }
@@ -172,7 +193,7 @@ impl Client {
         Ok(project_id)
     }
 
-    async fn delete_snapshot(
+    async fn try_delete_snapshot(
         &self,
         project_id: &ProjectId,
         snapshot_id: &SnapshotId,
@@ -181,6 +202,7 @@ impl Client {
             Method::Delete,
             &format!("/projects/{}/snapshots/{}", &project_id.0, &snapshot_id.0),
         )?
+        .allow_status(StatusCode::BAD_REQUEST)
         .exec()
         .await?;
 
@@ -202,10 +224,7 @@ impl Client {
         Ok(())
     }
 
-    async fn delete_snapshot_restore_branches(
-        &self,
-        project_id: &ProjectId,
-    ) -> anyhow::Result<()> {
+    async fn delete_snapshot_restore_branches(&self, project_id: &ProjectId) -> anyhow::Result<()> {
         #[derive(Debug, Deserialize)]
         struct GetBranchListResponse {
             branches: Vec<GetBranchResponse>,
@@ -300,7 +319,51 @@ impl Client {
         Ok(snapshot_id)
     }
 
-    async fn delete_snapshot_with_name(
+    async fn list_archived_snapshots(
+        &self,
+        project_id: &ProjectId,
+    ) -> anyhow::Result<Vec<SnapshotId>> {
+        #[derive(Debug, Deserialize)]
+        struct GetSnapshotListResponse {
+            snapshots: Vec<GetSnapshotResponse>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GetSnapshotResponse {
+            id: SnapshotId,
+            name: SnapshotName,
+        }
+
+        let snapshot_ids = self
+            .build_request(
+                Method::Get,
+                &format!("/projects/{}/snapshots", &project_id.0),
+            )?
+            .fetch::<GetSnapshotListResponse>()
+            .await?
+            .snapshots
+            .into_iter()
+            .filter(|snapshot| snapshot.name.0.starts_with(BackupSnapshot::ARCHIVED_PREFIX))
+            .map(|snapshot| snapshot.id)
+            .collect();
+
+        Ok(snapshot_ids)
+    }
+
+    async fn garbage_collect_archived_snapshots(
+        &self,
+        project_id: &ProjectId,
+    ) -> anyhow::Result<()> {
+        let archived_snapshots = self.list_archived_snapshots(project_id).await?;
+
+        for snapshot_id in archived_snapshots {
+            self.try_delete_snapshot(project_id, &snapshot_id).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn soft_delete_snapshot_with_name(
         &self,
         project_id: &ProjectId,
         snapshot_name: &SnapshotName,
@@ -308,7 +371,8 @@ impl Client {
         let snapshot_id = self.lookup_snapshot(project_id, snapshot_name).await?;
 
         if let Some(snapshot_id) = snapshot_id {
-            self.delete_snapshot(project_id, &snapshot_id).await?;
+            self.rename_snapshot(project_id, &snapshot_id, &BackupSnapshot::Archived.name())
+                .await?;
         }
 
         Ok(())
@@ -321,6 +385,37 @@ impl Client {
             .ok_or_else(|| {
                 anyhow::anyhow!("No Neon branch found with name {}", &default_branch_name)
             })
+    }
+
+    async fn rename_snapshot(
+        &self,
+        project_id: &ProjectId,
+        snapshot_id: &SnapshotId,
+        new_name: &SnapshotName,
+    ) -> anyhow::Result<()> {
+        #[derive(Debug, Serialize)]
+        struct PatchSnapshotRequest {
+            snapshot: SnapshotRequestObj,
+        }
+
+        #[derive(Debug, Serialize)]
+        struct SnapshotRequestObj {
+            name: SnapshotName,
+        }
+
+        self.build_request(
+            Method::Patch,
+            &format!("/projects/{}/snapshots/{}", &project_id.0, &snapshot_id.0),
+        )?
+        .with_json(&PatchSnapshotRequest {
+            snapshot: SnapshotRequestObj {
+                name: new_name.clone(),
+            },
+        })?
+        .exec()
+        .await?;
+
+        Ok(())
     }
 
     async fn restore_to_snapshot(
@@ -358,8 +453,10 @@ impl Client {
     ) -> anyhow::Result<SnapshotId> {
         let default_branch_id = self.lookup_default_branch(project_id).await?;
 
-        self.delete_snapshot_with_name(project_id, &snapshot.name())
+        self.soft_delete_snapshot_with_name(project_id, &snapshot.name())
             .await?;
+
+        self.garbage_collect_archived_snapshots(project_id).await?;
 
         let backup_snapshot_id = self
             .create_snapshot(project_id, &default_branch_id, &snapshot.name())
