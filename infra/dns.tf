@@ -40,25 +40,30 @@ resource "cloudflare_record" "apex_txt_spf" {
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "TXT"
   name    = "@"
-  content = "v=spf1 include:simplelogin.co ~all"
+  content = "v=spf1 include:_spf.mailersend.net include:simplelogin.co ~all"
   proxied = false
 }
 
 resource "cloudflare_record" "apex_cname_dkim" {
   for_each = {
-    record1 = {
+    simplelogin1 = {
       name  = "dkim._domainkey"
       value = "dkim._domainkey.simplelogin.co."
     }
 
-    record2 = {
+    simplelogin2 = {
       name  = "dkim02._domainkey"
       value = "dkim02._domainkey.simplelogin.co."
     }
 
-    record3 = {
+    simplelogin3 = {
       name  = "dkim03._domainkey"
       value = "dkim03._domainkey.simplelogin.co."
+    }
+
+    mailersend1 = {
+      name  = "mlsend2._domainkey"
+      value = "mlsend2._domainkey.mailersend.net"
     }
   }
 
@@ -66,6 +71,14 @@ resource "cloudflare_record" "apex_cname_dkim" {
   type    = "CNAME"
   name    = each.value.name
   content = each.value.value
+  proxied = false
+}
+
+resource "cloudflare_record" "mta_cname" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  type    = "CNAME"
+  name    = "mta"
+  content = "mailersend.net"
   proxied = false
 }
 
