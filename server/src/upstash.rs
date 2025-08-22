@@ -1,7 +1,7 @@
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 
-use crate::{config, http::RequestBuilder};
+use crate::{config, env::EnvName, http::RequestBuilder};
 
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
@@ -58,8 +58,7 @@ impl Client {
             .map(|response| response.result)
     }
 
-    #[worker::send]
-    pub async fn unlink_keys(&self, pattern: &str) -> anyhow::Result<()> {
+    async fn unlink_keys(&self, pattern: &str) -> anyhow::Result<()> {
         let mut next_cursor = String::from("0");
 
         type ScanResponse = (String, Vec<String>);
@@ -85,5 +84,11 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    #[worker::send]
+    pub async fn unlink_noco_keys(&self, env_name: &EnvName) -> anyhow::Result<()> {
+        self.unlink_keys(&format!("sparklefish:env:{env_name}:noco:*"))
+            .await
     }
 }

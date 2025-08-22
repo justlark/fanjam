@@ -294,7 +294,7 @@ async fn post_restore_backup(
     // Since we're rolling back the database, we should clear the Redis cache as well so the
     // client doesn't get confused.
     upstash_client
-        .unlink_keys(&format!("sparklefish:env:{env_name}:noco:*"))
+        .unlink_noco_keys(&env_name)
         .await
         .map_err(Error::Internal)?;
 

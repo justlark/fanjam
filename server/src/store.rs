@@ -417,7 +417,7 @@ impl Store {
             .map_err(Error::Internal)?;
 
         self.neon_client
-            .with_rollback(&self.env_name.clone().into(), async || {
+            .with_rollback(&self.env_name, async || {
                 let result = {
                     noco::delete_base(&self.noco_client, &self.base_id).await?;
                     self.db_client.delete_base(&self.base_id).await?;

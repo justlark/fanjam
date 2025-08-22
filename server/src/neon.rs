@@ -6,7 +6,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use worker::Method;
 
-use crate::{config, env::EnvName, http::RequestBuilder};
+use crate::{config, env::EnvName, http::RequestBuilder, upstash};
 
 #[derive(Debug, Clone)]
 pub struct ApiToken(SecretString);
@@ -534,14 +534,14 @@ impl Client {
 
     pub async fn with_rollback<T, Fut, Func>(
         &self,
-        project_name: &ProjectName,
+        env_name: &EnvName,
         f: Func,
     ) -> anyhow::Result<T>
     where
         Fut: Future<Output = anyhow::Result<T>>,
         Func: FnOnce() -> Fut,
     {
-        let project_id = self.lookup_project(project_name).await?;
+        let project_id = self.lookup_project(&env_name.clone().into()).await?;
         let default_branch_id = self.lookup_default_branch(&project_id).await?;
 
         let backup_snapshot_id = self
@@ -553,6 +553,11 @@ impl Client {
             Err(err) => {
                 self.restore_to_snapshot(&project_id, &default_branch_id, &backup_snapshot_id)
                     .await?;
+
+                // Since we're rolling back the database, we should clear the Redis cache as well
+                // so the client doesn't get confused.
+                let upstash_client = upstash::Client::new();
+                upstash_client.unlink_noco_keys(env_name).await?;
 
                 Err(anyhow::anyhow!(err))
             }

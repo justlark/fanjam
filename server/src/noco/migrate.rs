@@ -73,7 +73,7 @@ impl<'a> Migrator<'a> {
             }) => {
                 let base_id = self
                     .neon_client
-                    .with_rollback(&env_name.clone().into(), async || {
+                    .with_rollback(env_name, async || {
                         let base_id =
                             create_base(self.noco_client, title, initial_user_email).await?;
                         self.db_client.set_base(&base_id).await?;
@@ -100,7 +100,7 @@ impl<'a> Migrator<'a> {
         loop {
             let is_up_to_date = self
                 .neon_client
-                .with_rollback(&env_name.clone().into(), async || {
+                .with_rollback(env_name, async || {
                     match migrations::run(self.noco_client, base_id.clone(), version.next()).await {
                         Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
                         Err(error) => {
