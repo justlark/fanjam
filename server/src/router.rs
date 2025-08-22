@@ -371,6 +371,7 @@ async fn get_events(
                 .map(|event| Event {
                     id: event.id,
                     name: event.name,
+                    summary: event.summary,
                     description: event.description,
                     start_time: event.start_time,
                     end_time: event.end_time,

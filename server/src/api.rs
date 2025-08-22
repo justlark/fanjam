@@ -77,6 +77,7 @@ pub struct DataResponseEnvelope<T> {
 pub struct Event {
     pub id: String,
     pub name: String,
+    pub summary: Option<String>,
     pub description: Option<String>,
     pub start_time: String,
     pub end_time: Option<String>,

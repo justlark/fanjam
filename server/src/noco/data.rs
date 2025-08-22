@@ -67,6 +67,8 @@ struct EventResponse {
     pub id: u32,
     #[serde(rename = "Event Name")]
     pub name: String,
+    #[serde(rename = "Summary")]
+    pub summary: Option<String>,
     #[serde(rename = "Description")]
     pub description: Option<String>,
     #[serde(rename = "Start Time")]
@@ -161,6 +163,7 @@ struct PageResponse {
 pub struct Event {
     pub id: String,
     pub name: String,
+    pub summary: Option<String>,
     pub description: Option<String>,
     pub start_time: String,
     pub end_time: Option<String>,
@@ -236,6 +239,7 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
         .map(|r| Event {
             id: r.id.to_string(),
             name: r.name,
+            summary: r.summary,
             description: r.description,
             start_time: r.start_time.unwrap(),
             end_time: r.end_time,
