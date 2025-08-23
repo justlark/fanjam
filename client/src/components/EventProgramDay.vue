@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, useId } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import IconButton from "./IconButton.vue";
 import { type Event } from "@/utils/api";
@@ -12,12 +12,14 @@ const props = defineProps<{
   events: Array<Event>;
   allCategories: Array<string>;
 }>();
+
+const sectionHeading = useId();
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <section class="flex flex-col gap-2" :aria-labelledby="sectionHeading">
     <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-bold">{{ props.dayName }}</h2>
+      <h2 :id="sectionHeading" class="text-2xl font-bold">{{ props.dayName }}</h2>
       <IconButton
         size="sm"
         :label="expanded ? 'Collapse All' : 'Expand All'"
@@ -36,5 +38,5 @@ const props = defineProps<{
         />
       </div>
     </div>
-  </div>
+  </section>
 </template>
