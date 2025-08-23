@@ -244,6 +244,7 @@ watch(
       No events
     </div>
     <EventSummaryDrawer
+      class="lg:!hidden"
       v-if="currentDayIndex !== undefined"
       v-model:visible="eventSummaryIsVisible"
       :event="focusedEvent"
