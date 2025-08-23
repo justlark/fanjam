@@ -20,6 +20,16 @@ interface Day {
 const days = ref<Array<Day>>([]);
 const datetimeFormats = useDatetimeFormats();
 
+const allCategories = computed(() =>
+  events.value.reduce<Array<string>>((set, event) => {
+    if (event.category && !set.includes(event.category)) {
+      set.push(event.category);
+    }
+
+    return set;
+  }, []),
+);
+
 const allDates = computed(() =>
   events.value.reduce((set, event) => {
     set.add(event.startTime);
@@ -65,6 +75,8 @@ watchEffect(() => {
         :key="index"
         :day-name="day.dayName"
         :events="day.events"
+        :day-index="index"
+        :all-categories="allCategories"
       />
     </div>
   </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Panel from "primevue/panel";
+import TagBar from "./TagBar.vue";
 import * as commonmark from "commonmark";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
@@ -9,6 +10,8 @@ import { localizeTimeSpan } from "@/utils/time";
 const props = defineProps<{
   expand: boolean;
   event: Event;
+  dayIndex: number;
+  allCategories: Array<string>;
 }>();
 
 const datetimeFormats = useDatetimeFormats();
@@ -41,11 +44,21 @@ const eventNameHeadingId = useId();
         }}</span>
       </div>
     </template>
-    <article
-      id="document"
-      v-if="descriptionHtml"
-      v-html="descriptionHtml"
-      :aria-labelledby="eventNameHeadingId"
-    ></article>
+    <div class="flex flex-col gap-4 mt-4">
+      <TagBar
+        size="sm"
+        :day="props.dayIndex"
+        :category="props.event.category"
+        :tags="props.event.tags"
+        :all-categories="props.allCategories"
+      />
+      <article
+        id="document"
+        class="*:first:mt-0 *:last:mb-0"
+        v-if="descriptionHtml"
+        v-html="descriptionHtml"
+        :aria-labelledby="eventNameHeadingId"
+      ></article>
+    </div>
   </Panel>
 </template>

@@ -8,7 +8,9 @@ const expanded = ref(false);
 
 const props = defineProps<{
   dayName: string;
+  dayIndex: number;
   events: Array<Event>;
+  allCategories: Array<string>;
 }>();
 </script>
 
@@ -26,7 +28,12 @@ const props = defineProps<{
     </div>
     <div class="flex flex-col gap-4">
       <div v-for="event in props.events" :key="event.id">
-        <EventProgramDescription :event="event" :expand="expanded" />
+        <EventProgramDescription
+          :event="event"
+          :day-index="props.dayIndex"
+          :expand="expanded"
+          :all-categories="allCategories"
+        />
       </div>
     </div>
   </div>
