@@ -5,6 +5,7 @@ import { toFilterQueryParams } from "@/composables/useFilterQuery";
 
 const props = defineProps<{
   day: number;
+  size?: "xs" | "sm" | "md" | "lg";
   category?: string;
   tags: Array<string>;
   allCategories: Array<string>;
@@ -25,6 +26,7 @@ const props = defineProps<{
     >
       <CategoryLabel
         :title="props.category"
+        :size="props.size"
         :all-categories="props.allCategories"
         display="active"
       />
@@ -40,7 +42,7 @@ const props = defineProps<{
         }),
       }"
     >
-      <CategoryLabel :title="tag" display="active" />
+      <CategoryLabel :title="tag" :size="props.size" display="active" />
     </RouterLink>
   </div>
 </template>

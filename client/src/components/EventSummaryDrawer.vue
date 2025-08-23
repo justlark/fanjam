@@ -29,7 +29,7 @@ const props = defineProps<{
     <template #container="{ closeCallback }">
       <div class="flex flex-col mx-4 overflow-auto">
         <div class="sticky top-0 py-3 bg-surface-100 dark:bg-surface-900 flex gap-2 items-center">
-          <div class="text-xl font-bold me-auto" v-if="props.event">
+          <div class="text-lg font-bold me-auto" v-if="props.event">
             {{ props.event.name }}
           </div>
           <RouterLink
@@ -47,6 +47,7 @@ const props = defineProps<{
         <TagBar
           class="mb-2"
           v-if="props.event"
+          size="sm"
           :day="props.day"
           :category="props.event.category"
           :tags="props.event.tags"
