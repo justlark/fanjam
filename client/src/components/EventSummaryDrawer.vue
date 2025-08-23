@@ -29,9 +29,9 @@ const props = defineProps<{
     <template #container="{ closeCallback }">
       <div class="flex flex-col mx-4 mt-4 overflow-auto">
         <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-center">
-          <div class="text-lg font-bold me-auto" v-if="props.event">
+          <h2 class="text-lg font-bold me-auto" v-if="props.event">
             {{ props.event.name }}
-          </div>
+          </h2>
           <RouterLink
             v-if="props.event"
             :to="{

@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import("../views/ScheduleView.vue"),
     },
     {
+      path: "/app/:envId/program",
+      name: "program",
+      component: () => import("../views/ProgramView.vue"),
+    },
+    {
       path: "/app/:envId/events/:eventId",
       name: "event",
       component: () => import("../views/EventView.vue"),

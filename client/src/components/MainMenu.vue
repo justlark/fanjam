@@ -10,6 +10,7 @@ import MainMenuItem from "./MainMenuItem.vue";
       to="schedule"
       :active-routes="['schedule', 'event']"
     />
+    <MainMenuItem icon="bi bi-book" label="Program" to="program" :active-routes="['program']" />
     <MainMenuItem
       icon="bi bi-info-circle"
       label="Info"
