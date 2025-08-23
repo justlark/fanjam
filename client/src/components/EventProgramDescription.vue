@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import Panel from "primevue/panel";
+import IconButton from "./IconButton.vue";
 import TagBar from "./TagBar.vue";
 import * as commonmark from "commonmark";
+import { RouterLink } from "vue-router";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
-import { computed, useId } from "vue";
+import { computed, watchEffect, ref, useId } from "vue";
 import { localizeTimeSpan } from "@/utils/time";
 
 const props = defineProps<{
@@ -15,6 +18,23 @@ const props = defineProps<{
 }>();
 
 const datetimeFormats = useDatetimeFormats();
+const starredEvents = useStarredEvents();
+
+const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
+
+watchEffect(() => {
+  starredEvents.value = Array.from(starredEventsSet.value);
+});
+
+const isStarred = computed(() => starredEventsSet.value.has(props.event.id));
+
+const toggleStarred = () => {
+  if (isStarred.value) {
+    starredEventsSet.value.delete(props.event.id);
+  } else {
+    starredEventsSet.value.add(props.event.id);
+  }
+};
 
 const mdReader = new commonmark.Parser({ smart: true });
 const mdWriter = new commonmark.HtmlRenderer({ safe: true });
@@ -32,9 +52,8 @@ const eventNameHeadingId = useId();
   <Panel
     :toggleable="event.description !== undefined"
     :collapsed="!props.expand"
-    pt:header:class="!py-0"
-    pt:content:class="!pb-0"
-    pt:root:class="!py-4"
+    pt:content:class="!pb-2"
+    pt:footer:class="!pb-2"
   >
     <template #header>
       <div class="flex flex-col">
@@ -44,7 +63,7 @@ const eventNameHeadingId = useId();
         }}</span>
       </div>
     </template>
-    <div class="flex flex-col gap-4 mt-4">
+    <div class="flex flex-col gap-4 mt-2">
       <TagBar
         size="sm"
         :day="props.dayIndex"
@@ -60,5 +79,24 @@ const eventNameHeadingId = useId();
         :aria-labelledby="eventNameHeadingId"
       ></article>
     </div>
+    <template #footer>
+      <div class="flex items-center justify-evenly gap-2">
+        <IconButton
+          :icon="isStarred ? 'star-fill' : 'star'"
+          label="Star"
+          :show-label="true"
+          size="sm"
+          @click="toggleStarred"
+        />
+        <RouterLink
+          :to="{
+            name: 'event',
+            params: { eventId: props.event.id },
+          }"
+        >
+          <IconButton icon="arrows-angle-expand" label="Open" :show-label="true" size="sm" />
+        </RouterLink>
+      </div>
+    </template>
   </Panel>
 </template>
