@@ -33,9 +33,10 @@ const props = defineProps<{
             {{ props.event.name }}
           </div>
           <RouterLink
+            v-if="props.event"
             :to="{
               name: 'event',
-              params: { eventId: event.id },
+              params: { eventId: props.event.id },
               query: toFilterQueryParams(filterCriteria),
             }"
           >

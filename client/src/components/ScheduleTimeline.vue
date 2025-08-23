@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, computed, watch, watchEffect } from "vue";
+import { ref, toRef, computed, watch, watchEffect, onMounted } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
@@ -29,6 +29,12 @@ const focusedEvent = computed(() =>
     ? events.value.find((event) => event.id === focusedEventId.value)
     : undefined,
 );
+
+onMounted(() => {
+  if (history.state.focusedEventId !== undefined) {
+    focusedEventId.value = history.state.focusedEventId;
+  }
+});
 
 const eventSummaryIsVisible = ref(false);
 

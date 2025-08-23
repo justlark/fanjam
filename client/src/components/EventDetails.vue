@@ -39,6 +39,7 @@ const back = async () => {
     name: "schedule",
     params: { dayIndex: props.day },
     query: toFilterQueryParams(filterCriteria),
+    state: { focusedEventId: event.value.id },
   });
 };
 
