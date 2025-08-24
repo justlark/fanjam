@@ -2,6 +2,7 @@
 import { computed, watchEffect, ref } from "vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
+import { getSoredCategories } from "@/utils/tags";
 import ProgressSpinner from "primevue/progressspinner";
 import EventProgramDay from "./EventProgramDay.vue";
 import { datesToDayNames, dateIsBetween } from "@/utils/time";
@@ -20,15 +21,7 @@ interface Day {
 const days = ref<Array<Day>>([]);
 const datetimeFormats = useDatetimeFormats();
 
-const allCategories = computed(() =>
-  events.value.reduce<Array<string>>((set, event) => {
-    if (event.category && !set.includes(event.category)) {
-      set.push(event.category);
-    }
-
-    return set;
-  }, []),
-);
+const allCategories = getSoredCategories(events);
 
 const allDates = computed(() =>
   events.value.reduce((set, event) => {

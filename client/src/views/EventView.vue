@@ -2,6 +2,7 @@
 import { ref, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
+import { getSortedCategories } from "@/utils/tags";
 import SiteNav from "@/components/SiteNav.vue";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
@@ -16,15 +17,7 @@ const {
 const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref(0);
 
-const allCategories = computed(() =>
-  events.value.reduce<Array<string>>((set, event) => {
-    if (event.category && !set.includes(event.category)) {
-      set.push(event.category);
-    }
-
-    return set;
-  }, []),
-);
+const allCategories = getSortedCategories(events.value);
 
 const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
 
