@@ -97,7 +97,6 @@ const sectionHeadingId = useId();
       </div>
       <TagBar
         class="mt-4"
-        :day="props.day"
         :category="event.category"
         :tags="event.tags"
         :all-categories="props.allCategories"

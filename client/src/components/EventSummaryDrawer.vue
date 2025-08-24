@@ -48,7 +48,6 @@ const props = defineProps<{
           class="mb-2"
           v-if="props.event"
           size="sm"
-          :day="props.day"
           :category="props.event.category"
           :tags="props.event.tags"
           :all-categories="props.allCategories"

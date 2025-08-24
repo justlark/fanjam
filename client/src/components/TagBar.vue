@@ -4,7 +4,6 @@ import CategoryLabel from "./CategoryLabel.vue";
 import { toFilterQueryParams } from "@/composables/useFilterQuery";
 
 const props = defineProps<{
-  day: number;
   size?: "xs" | "sm" | "md" | "lg";
   category?: string;
   tags: Array<string>;
@@ -17,8 +16,6 @@ const props = defineProps<{
     <RouterLink
       v-if="props.category"
       :to="{
-        name: 'schedule',
-        params: { dayIndex: props.day },
         query: toFilterQueryParams({
           categories: [props.category],
         }),
@@ -35,8 +32,6 @@ const props = defineProps<{
       v-for="tag in props.tags"
       :key="tag"
       :to="{
-        name: 'schedule',
-        params: { dayIndex: props.day },
         query: toFilterQueryParams({
           tags: [tag],
         }),

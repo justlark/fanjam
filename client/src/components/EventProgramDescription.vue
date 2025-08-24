@@ -66,7 +66,6 @@ const eventNameHeadingId = useId();
     <div class="flex flex-col gap-4 mt-2">
       <TagBar
         size="sm"
-        :day="props.dayIndex"
         :category="props.event.category"
         :tags="props.event.tags"
         :all-categories="props.allCategories"
