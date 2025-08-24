@@ -2,7 +2,6 @@
 import { computed, watchEffect, ref, useId } from "vue";
 import { useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
-import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
@@ -13,7 +12,6 @@ import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 
 const router = useRouter();
-const filterCriteria = useFilterQuery();
 const starredEvents = useStarredEvents();
 const datetimeFormats = useDatetimeFormats();
 
@@ -34,13 +32,8 @@ const descriptionHtml = computed(() => {
   return mdWriter.render(parsed);
 });
 
-const back = async () => {
-  await router.push({
-    name: "schedule",
-    params: { dayIndex: props.day },
-    query: toFilterQueryParams(filterCriteria),
-    state: { focusedEventId: event.value.id },
-  });
+const back = () => {
+  router.back();
 };
 
 const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
