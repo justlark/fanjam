@@ -227,7 +227,10 @@ watch(
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div v-if="filteredTimeSlots.length > 0" class="flex flex-col gap-6">
+    <div
+      v-if="filteredTimeSlots.length > 0"
+      :class="{ flex: true, 'flex-col': true, 'gap-6': true, 'mb-[15rem]': eventSummaryIsVisible }"
+    >
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in filteredTimeSlots"
         v-model:focused="focusedEventId"
