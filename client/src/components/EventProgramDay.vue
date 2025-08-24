@@ -21,6 +21,7 @@ const sectionHeading = useId();
     <div class="flex items-center justify-between">
       <h2 :id="sectionHeading" class="text-2xl font-bold">{{ props.dayName }}</h2>
       <IconButton
+        v-if="events.length > 0"
         size="sm"
         :label="expanded ? 'Collapse All' : 'Expand All'"
         :show-label="true"
@@ -28,7 +29,7 @@ const sectionHeading = useId();
         @click="expanded = !expanded"
       />
     </div>
-    <div class="flex flex-col gap-4">
+    <div v-if="events.length > 0" class="flex flex-col gap-4">
       <div v-for="event in props.events" :key="event.id">
         <EventProgramDescription
           :event="event"
@@ -37,6 +38,9 @@ const sectionHeading = useId();
           :all-categories="allCategories"
         />
       </div>
+    </div>
+    <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400">
+      No events
     </div>
   </section>
 </template>

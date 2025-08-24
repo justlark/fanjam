@@ -2,9 +2,12 @@
 import { computed, watchEffect, ref } from "vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
-import { getSoredCategories } from "@/utils/tags";
+import { getSortedCategories } from "@/utils/tags";
+import useFilterQuery from "@/composables/useFilterQuery";
 import ProgressSpinner from "primevue/progressspinner";
+import SimpleIcon from "./SimpleIcon.vue";
 import EventProgramDay from "./EventProgramDay.vue";
+import ScheduleHeader from "./ScheduleHeader.vue";
 import { datesToDayNames, dateIsBetween } from "@/utils/time";
 import { type Event } from "@/utils/api";
 
@@ -19,9 +22,11 @@ interface Day {
 }
 
 const days = ref<Array<Day>>([]);
+const filterCriteria = useFilterQuery();
+const filteredEventIds = ref<Array<string>>();
 const datetimeFormats = useDatetimeFormats();
 
-const allCategories = getSoredCategories(events);
+const allCategories = getSortedCategories(events.value);
 
 const allDates = computed(() =>
   events.value.reduce((set, event) => {
@@ -41,11 +46,23 @@ const namedDays = computed(() =>
     : datesToDayNames(datetimeFormats.value, allDates.value),
 );
 
+const filteredEventIdsSet = computed(() =>
+  filteredEventIds.value !== undefined ? new Set(filteredEventIds.value) : undefined,
+);
+
+const filteredEvents = computed(() =>
+  events.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+);
+
+const isFilteringPastEvents = computed(() => {
+  return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
+});
+
 watchEffect(() => {
   if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
 
   days.value = namedDays.value.map(({ dayName, dayStart, dayEnd }) => {
-    const eventsThisDay = events.value.filter((event) =>
+    const eventsThisDay = filteredEvents.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 
@@ -59,6 +76,11 @@ watchEffect(() => {
 
 <template>
   <div class="flex flex-col gap-4 h-full">
+    <ScheduleHeader v-model:ids="filteredEventIds" />
+    <span class="text-muted-color flex gap-2 justify-center" v-if="isFilteringPastEvents">
+      <SimpleIcon class="text-lg" icon="eye-slash-fill" />
+      <span class="italic">past events hidden</span>
+    </span>
     <div class="m-auto" v-if="eventsResult.status === 'pending'">
       <ProgressSpinner />
     </div>
