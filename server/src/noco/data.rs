@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use axum::http::StatusCode;
+use chrono::DateTime;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use worker::{Method, console_warn};
 
@@ -235,7 +236,29 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
         // more flexibility in how they plan the schedule. However, events without a start time
         // will not be returned to the client, because it's not obvious how the client should
         // display them in the schedule view.
-        .filter(|r| r.start_time.is_some())
+        //
+        // Similarly, we filter out events where the end time comes before the start time, because
+        // it's not obvious how the client should display them.
+        .filter(|r| match r {
+            EventResponse {
+                start_time: Some(start_time),
+                end_time: Some(end_time),
+                ..
+            } => match (
+                DateTime::parse_from_rfc3339(start_time),
+                DateTime::parse_from_rfc3339(end_time),
+            ) {
+                (Ok(start_time), Ok(end_time)) => start_time <= end_time,
+                _ => false,
+            },
+            EventResponse {
+                start_time: Some(_),
+                ..
+            } => true,
+            EventResponse {
+                start_time: None, ..
+            } => false,
+        })
         .map(|r| Event {
             id: r.id.to_string(),
             name: r.name,

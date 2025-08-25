@@ -40,3 +40,4 @@ tokio-postgres = { version = "0.7.13", default-features = false, features = [
   "js",
 ] }
 wasm-bindgen-futures = "0.4.50"
+chrono = "0.4.41"
