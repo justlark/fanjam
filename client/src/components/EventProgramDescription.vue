@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Panel from "primevue/panel";
 import IconButton from "./IconButton.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import TagBar from "./TagBar.vue";
 import * as commonmark from "commonmark";
 import { RouterLink } from "vue-router";
@@ -57,7 +58,10 @@ const eventNameHeadingId = useId();
   >
     <template #header>
       <div class="flex flex-col">
-        <h3 class="text-lg font-bold" :id="eventNameHeadingId">{{ props.event.name }}</h3>
+        <span>
+          <SimpleIcon v-if="isStarred" icon="star-fill" label="Star" class="me-2" />
+          <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">{{ props.event.name }}</h3>
+        </span>
         <span class="text-muted-color" v-if="datetimeFormats !== undefined">{{
           localizeTimeSpan(datetimeFormats, props.event.startTime, props.event.endTime)
         }}</span>
