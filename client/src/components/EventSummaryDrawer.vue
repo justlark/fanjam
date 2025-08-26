@@ -38,6 +38,7 @@ const props = defineProps<{
               name: 'event',
               params: { eventId: props.event.id },
               query: toFilterQueryParams(filterCriteria),
+              state: { from: 'schedule' },
             }"
           >
             <IconButton size="md" icon="arrows-angle-expand" label="Expand" />
