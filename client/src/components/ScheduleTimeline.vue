@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, computed, watch, watchEffect, onMounted } from "vue";
+import { ref, onMounted, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";

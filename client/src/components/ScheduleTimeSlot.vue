@@ -65,6 +65,7 @@ const isStarred = (eventId: string) => starredEvents.value && starredEvents.valu
             name: 'event',
             params: { eventId: event.id },
             query: toFilterQueryParams(filterCriteria),
+            state: { from: 'schedule' },
           }"
           :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
         >

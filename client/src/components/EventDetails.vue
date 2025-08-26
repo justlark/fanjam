@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, watchEffect, ref, useId } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
+import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import * as commonmark from "commonmark";
@@ -11,14 +12,15 @@ import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 
-const router = useRouter();
 const starredEvents = useStarredEvents();
 const datetimeFormats = useDatetimeFormats();
+const filterCriteria = useFilterQuery();
 
 const props = defineProps<{
   event: Event;
   day: number;
   allCategories: Array<string>;
+  from: "schedule" | "program" | undefined;
 }>();
 
 const event = computed(() => props.event);
@@ -31,10 +33,6 @@ const descriptionHtml = computed(() => {
   const parsed = mdReader.parse(event.value.description);
   return mdWriter.render(parsed);
 });
-
-const back = () => {
-  router.back();
-};
 
 const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
 
@@ -59,8 +57,17 @@ const sectionHeadingId = useId();
   <section :aria-labelledby="sectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <span class="flex items-center">
-        <IconButton class="lg:!hidden" icon="chevron-left" label="Back" @click="back()" />
-        <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" @click="back()" />
+        <RouterLink
+          v-if="props.from !== undefined"
+          :to="{
+            name: props.from,
+            params: props.from === 'schedule' ? { dayIndex: props.day } : {},
+            query: toFilterQueryParams(filterCriteria),
+          }"
+        >
+          <IconButton class="lg:!hidden" icon="chevron-left" label="Back" />
+          <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" />
+        </RouterLink>
         <IconButton
           class="hidden lg:block"
           label="Star"

@@ -10,6 +10,7 @@ import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
 import { computed, watchEffect, ref, useId } from "vue";
 import { localizeTimeSpan } from "@/utils/time";
+import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 
 const props = defineProps<{
   expand: boolean;
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const datetimeFormats = useDatetimeFormats();
 const starredEvents = useStarredEvents();
+const filterCriteria = useFilterQuery();
 
 const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
 
@@ -95,6 +97,8 @@ const eventNameHeadingId = useId();
           :to="{
             name: 'event',
             params: { eventId: props.event.id },
+            state: { from: 'program' },
+            query: toFilterQueryParams(filterCriteria),
           }"
         >
           <IconButton icon="arrows-angle-expand" label="Open" :show-label="true" size="sm" />

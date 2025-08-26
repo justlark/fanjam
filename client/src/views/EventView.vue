@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed } from "vue";
+import { ref, watchEffect, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import SiteNav from "@/components/SiteNav.vue";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
+import EventProgram from "@/components/EventProgram.vue";
 import EventDetails from "@/components/EventDetails.vue";
 
 const route = useRoute();
@@ -21,6 +22,8 @@ const allCategories = getSortedCategories(events.value);
 
 const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
 
+const from = ref<"schedule" | "program">();
+
 watchEffect(async () => {
   // If the event does not (or no longer) exists, redirect to the schedule view.
   if (!thisEvent.value) {
@@ -29,13 +32,24 @@ watchEffect(async () => {
     });
   }
 });
+
+onMounted(() => {
+  if (history.state.from !== undefined) {
+    from.value = history.state.from;
+  }
+});
 </script>
 
 <template>
   <SiteNav>
     <div class="flex h-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
-        <ScheduleTimeline class="p-6 grow" v-model:day="currentDayIndex" />
+        <ScheduleTimeline
+          v-if="from === 'schedule'"
+          class="p-6 grow"
+          v-model:day="currentDayIndex"
+        />
+        <EventProgram v-if="from === 'program'" class="p-6 grow max-w-240" />
         <Divider layout="vertical" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
@@ -45,6 +59,7 @@ watchEffect(async () => {
           :event="thisEvent"
           :day="currentDayIndex"
           :all-categories="allCategories"
+          :from="from"
         />
       </div>
     </div>
