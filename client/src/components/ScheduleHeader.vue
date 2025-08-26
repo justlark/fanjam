@@ -125,9 +125,7 @@ watchEffect(() => {
   }
 
   if (filterCriteria.hideNotStarred) {
-    filteredEvents = filteredEvents.filter(
-      (event) => starredEvents.value === undefined || starredEvents.value.includes(event.id),
-    );
+    filteredEvents = filteredEvents.filter((event) => starredEvents.value.has(event.id));
   }
 
   eventIds.value = filteredEvents.map((event) => event.id);

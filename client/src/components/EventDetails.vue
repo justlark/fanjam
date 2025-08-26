@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect, ref, useId } from "vue";
+import { computed, useId } from "vue";
 import { RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -34,19 +34,13 @@ const descriptionHtml = computed(() => {
   return mdWriter.render(parsed);
 });
 
-const starredEventsSet = ref<Set<string>>(new Set(starredEvents.value));
-
-watchEffect(() => {
-  starredEvents.value = Array.from(starredEventsSet.value);
-});
-
-const isStarred = computed(() => starredEventsSet.value.has(event.value.id));
+const isStarred = computed(() => starredEvents.value.has(event.value.id));
 
 const toggleStarred = () => {
   if (isStarred.value) {
-    starredEventsSet.value.delete(event.value.id);
+    starredEvents.value.delete(event.value.id);
   } else {
-    starredEventsSet.value.add(event.value.id);
+    starredEvents.value.add(event.value.id);
   }
 };
 

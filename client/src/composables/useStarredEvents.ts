@@ -2,6 +2,7 @@ import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 
 const starredEvents = ref<Array<string>>();
+const starredEventsSet = ref<Set<string>>(new Set());
 
 const useStarredEvents = () => {
   const route = useRoute();
@@ -14,11 +15,14 @@ const useStarredEvents = () => {
       if (storedValue) {
         try {
           starredEvents.value = JSON.parse(storedValue);
+          starredEventsSet.value = new Set(starredEvents.value);
         } catch {
           starredEvents.value = [];
+          starredEventsSet.value.clear();
         }
       } else {
         starredEvents.value = [];
+        starredEventsSet.value.clear();
       }
 
       return;
@@ -27,7 +31,11 @@ const useStarredEvents = () => {
     localStorage.setItem(storageKey.value, JSON.stringify(starredEvents.value));
   });
 
-  return starredEvents;
+  watchEffect(() => {
+    starredEvents.value = Array.from(starredEventsSet.value);
+  });
+
+  return starredEventsSet;
 };
 
 export default useStarredEvents;

@@ -33,7 +33,7 @@ const isCurrentTimeSlot = computed(() => {
   return dateIsBetween(now, firstEventStartTime, lastEventEndTime);
 });
 
-const isStarred = (eventId: string) => starredEvents.value && starredEvents.value.includes(eventId);
+const isStarred = (eventId: string) => starredEvents.value.has(eventId);
 </script>
 
 <template>
