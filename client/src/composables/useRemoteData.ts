@@ -2,7 +2,6 @@ import {
   type Ref,
   type MaybeRefOrGetter,
   type Reactive,
-  toRef,
   toValue,
   reactive,
   provide,
@@ -43,6 +42,8 @@ const fetchResultStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
 ): Readonly<Ref<FetchResult<unknown>["status"]>> => computed(() => result.value.status);
 
+// Feed the `input` array into the `output` array in chunks, yielding to the
+// browser to render one chunk at a time.
 const lazyRenderArray = <T>(
   input: MaybeRefOrGetter<FetchResult<Array<T>>>,
   output: Reactive<Array<T>>,
