@@ -1,5 +1,9 @@
 import {
   type Ref,
+  type MaybeRefOrGetter,
+  type Reactive,
+  toRef,
+  toValue,
   reactive,
   provide,
   onMounted,
@@ -7,7 +11,6 @@ import {
   inject,
   ref,
   computed,
-  watchEffect,
   watch,
 } from "vue";
 import { useRoute } from "vue-router";
@@ -39,6 +42,36 @@ function unwrapFetchResult<T>(
 const fetchResultStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
 ): Readonly<Ref<FetchResult<unknown>["status"]>> => computed(() => result.value.status);
+
+const lazyRenderArray = <T>(
+  input: MaybeRefOrGetter<FetchResult<Array<T>>>,
+  output: Reactive<Array<T>>,
+  chunkSize: number,
+) => {
+  const renderChunk = () => {
+    const value = toValue(input);
+
+    if (value.status !== "success" || output.length >= value.value.length) {
+      return;
+    }
+
+    const next = value.value.slice(output.length, output.length + chunkSize);
+    (output as Array<T>).push(...next);
+
+    requestAnimationFrame(renderChunk);
+  };
+
+  onMounted(() => {
+    watch(
+      input,
+      () => {
+        output.length = 0;
+        requestAnimationFrame(renderChunk);
+      },
+      { immediate: true },
+    );
+  });
+};
 
 const setResultIfModified = <T>(
   result: Ref<FetchResult<T>>,
@@ -187,8 +220,6 @@ const useRemoteEvents = () => {
   const envId = computed(() => route.params.envId as string);
   const storedValue: StoredValue<unknown> | undefined = getItem("events");
 
-  const data = reactive<Array<Event>>([]);
-
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: envId,
@@ -222,26 +253,8 @@ const useRemoteEvents = () => {
       })),
   });
 
-  const renderChunk = () => {
-    if (eventsRef.value.status !== "success" || data.length >= eventsRef.value.value.length) {
-      return;
-    }
-
-    const next = eventsRef.value.value.slice(data.length, data.length + 5);
-    data.push(...next);
-
-    requestAnimationFrame(renderChunk);
-  };
-
-  onMounted(() => {
-    watch(
-      eventsRef,
-      () => {
-        requestAnimationFrame(renderChunk);
-      },
-      { immediate: true },
-    );
-  });
+  const data = reactive<Array<Event>>([]);
+  lazyRenderArray(eventsRef, data, 5);
 
   return {
     reload,
