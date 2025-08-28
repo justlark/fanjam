@@ -146,9 +146,10 @@ const useRemoteDataInner = <T, S>({
 
     setResultIfModified(result, value, toCache);
 
+    // Once the cached data has been loaded, refetch the latest data in the
+    // background.
     void reload();
 
-    // Refetch the data when the user refreshes the page.
     watch(instance, reload);
   });
 

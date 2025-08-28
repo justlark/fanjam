@@ -6,7 +6,8 @@
   "scripts": {
     "dev:test": "vite --mode test",
     "dev:prod": "vite --mode prod",
-    "preview": "npm run build && wrangler dev",
+    "preview:test": "npm run build:test && wrangler dev",
+    "preview:prod": "npm run build:prod && wrangler dev",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "cf-typegen": "wrangler types",
