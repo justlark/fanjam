@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, computed } from "vue";
+import { useId, type DeepReadonly, computed } from "vue";
 import Divider from "primevue/divider";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
@@ -14,7 +14,7 @@ const focusedEventId = defineModel<string | undefined>("focused");
 
 const props = defineProps<{
   localizedTime: string;
-  events: Array<Event>;
+  events: Array<DeepReadonly<Event>>;
   allCategories: Array<string>;
 }>();
 

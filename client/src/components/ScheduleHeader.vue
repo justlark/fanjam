@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef, ref, computed, watchEffect, useId } from "vue";
+import { toRef, ref, computed, watchEffect, type DeepReadonly, useId } from "vue";
 import flexsearch from "flexsearch";
 import useRemoteData from "@/composables/useRemoteData";
 import useStarredEvents from "@/composables/useStarredEvents";
@@ -56,8 +56,8 @@ const allTags = computed(() =>
   }, []),
 );
 
-const eventsById = computed<Map<string, Event>>(() => {
-  const map = new Map<string, Event>();
+const eventsById = computed<Map<string, DeepReadonly<Event>>>(() => {
+  const map = new Map<string, DeepReadonly<Event>>();
 
   for (const event of events) {
     map.set(event.id, event);

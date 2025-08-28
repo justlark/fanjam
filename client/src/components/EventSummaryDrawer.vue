@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { type DeepReadonly } from "vue";
 import { type Event } from "@/utils/api";
 import TagBar from "./TagBar.vue";
 import Drawer from "primevue/drawer";
@@ -12,7 +13,7 @@ const isVisible = defineModel<boolean>("visible", {
 const filterCriteria = useFilterQuery();
 
 const props = defineProps<{
-  event?: Event;
+  event?: DeepReadonly<Event>;
   day: number;
   allCategories: Array<string>;
 }>();

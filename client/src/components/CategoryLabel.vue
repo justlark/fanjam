@@ -9,7 +9,7 @@ const props = defineProps<{
   icon?: string;
   size?: "xs" | "sm" | "md" | "lg";
   category?: string;
-  allCategories?: Array<string>;
+  allCategories?: ReadonlyArray<string>;
 }>();
 
 const allCategories = computed(() => props.allCategories ?? []);

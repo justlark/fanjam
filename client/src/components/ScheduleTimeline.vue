@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, toRef, computed, watch, watchEffect } from "vue";
+import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
@@ -18,7 +18,7 @@ const route = useRoute();
 const router = useRouter();
 const {
   data: { events },
-  result: { events: eventsResult },
+  status: { events: eventsStatus },
 } = useRemoteData();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
@@ -50,7 +50,7 @@ watch(eventSummaryIsVisible, (newIsVisible, oldIsVisible) => {
 
 interface TimeSlot {
   localizedTime: string;
-  events: Array<Event>;
+  events: Array<DeepReadonly<Event>>;
 }
 
 interface Day {
@@ -238,7 +238,7 @@ watch(
         :all-categories="allCategories"
       />
     </div>
-    <div class="m-auto" v-else-if="eventsResult.status === 'pending'">
+    <div class="m-auto" v-else-if="eventsStatus === 'pending'">
       <ProgressSpinner />
     </div>
     <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">

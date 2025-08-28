@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from "vue";
+import { ref, type DeepReadonly, useId } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import IconButton from "./IconButton.vue";
 import { type Event } from "@/utils/api";
@@ -9,7 +9,7 @@ const expanded = ref(false);
 const props = defineProps<{
   dayName: string;
   dayIndex: number;
-  events: Array<Event>;
+  events: ReadonlyArray<DeepReadonly<Event>>;
   allCategories: Array<string>;
 }>();
 

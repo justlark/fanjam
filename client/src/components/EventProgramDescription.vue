@@ -8,15 +8,15 @@ import { RouterLink } from "vue-router";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
 import { type Event } from "@/utils/api";
-import { computed, useId } from "vue";
+import { computed, type DeepReadonly, useId } from "vue";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 
 const props = defineProps<{
   expand: boolean;
-  event: Event;
+  event: DeepReadonly<Event>;
   dayIndex: number;
-  allCategories: Array<string>;
+  allCategories: ReadonlyArray<string>;
 }>();
 
 const datetimeFormats = useDatetimeFormats();

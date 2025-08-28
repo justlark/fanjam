@@ -16,7 +16,7 @@ const {
 const pageId = computed(() => route.params.pageId as string);
 
 const page = computed(() => {
-  return pages.value.find((p) => p.id === pageId.value);
+  return pages.find((p) => p.id === pageId.value);
 });
 
 watchEffect(async () => {

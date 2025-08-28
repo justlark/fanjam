@@ -39,7 +39,7 @@ const allPaletteColors = [
 // and we choose random colors by popping them off the palette in order,
 // cycling through if we run out.
 
-const deterministicRandomColor = (seed: string, bank: Array<string>) => {
+const deterministicRandomColor = (seed: string, bank: ReadonlyArray<string>) => {
   const allHashes = bank.map(djb2Hash);
   allHashes.sort();
 
@@ -49,17 +49,17 @@ const deterministicRandomColor = (seed: string, bank: Array<string>) => {
   return allPaletteColors[index % allPaletteColors.length];
 };
 
-export const newFgColor = (seed: string, bank: Array<string>, colorValue: number) => {
+export const newFgColor = (seed: string, bank: ReadonlyArray<string>, colorValue: number) => {
   const color = deterministicRandomColor(seed, bank);
   return `text-${color}-${colorValue.toString()}`;
 };
 
-export const newBgColor = (seed: string, bank: Array<string>, colorValue: number) => {
+export const newBgColor = (seed: string, bank: ReadonlyArray<string>, colorValue: number) => {
   const color = deterministicRandomColor(seed, bank);
   return `bg-${color}-${colorValue.toString()}`;
 };
 
-export const newOutlineColor = (seed: string, bank: Array<string>, colorValue: number) => {
+export const newOutlineColor = (seed: string, bank: ReadonlyArray<string>, colorValue: number) => {
   const color = deterministicRandomColor(seed, bank);
   return `outline-${color}-${colorValue.toString()}`;
 };

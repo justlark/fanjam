@@ -6,8 +6,8 @@ import { toFilterQueryParams } from "@/composables/useFilterQuery";
 const props = defineProps<{
   size?: "xs" | "sm" | "md" | "lg";
   category?: string;
-  tags: Array<string>;
-  allCategories: Array<string>;
+  tags: ReadonlyArray<string>;
+  allCategories: ReadonlyArray<string>;
 }>();
 </script>
 

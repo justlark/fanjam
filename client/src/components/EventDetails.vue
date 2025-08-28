@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from "vue";
+import { computed, type DeepReadonly, useId } from "vue";
 import { RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -17,7 +17,7 @@ const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
 
 const props = defineProps<{
-  event: Event;
+  event: DeepReadonly<Event>;
   day: number;
   allCategories: Array<string>;
   from: "schedule" | "program" | undefined;

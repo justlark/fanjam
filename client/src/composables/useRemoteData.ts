@@ -2,7 +2,9 @@ import {
   type Ref,
   type MaybeRefOrGetter,
   type Reactive,
+  type DeepReadonly,
   toValue,
+  toRef,
   reactive,
   provide,
   onMounted,
@@ -26,19 +28,13 @@ interface StoredValue<T> {
   value: T;
 }
 
-function unwrapFetchResult<T>(
+const unwrapFetchValue = <T>(
   result: Readonly<Ref<FetchResult<T>>>,
-  defaultValue: T,
-): Readonly<Ref<T>>;
+): Readonly<Ref<T | undefined>> => {
+  return computed(() => (result.value.status === "success" ? result.value.value : undefined));
+};
 
-function unwrapFetchResult<T>(
-  result: Readonly<Ref<FetchResult<T>>>,
-  defaultValue?: T,
-): Readonly<Ref<T | undefined>> {
-  return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
-}
-
-const fetchResultStatus = (
+const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
 ): Readonly<Ref<FetchResult<unknown>["status"]>> => computed(() => result.value.status);
 
@@ -201,6 +197,13 @@ const useRemoteDataInner = <T, S>({
   return { reload, clear };
 };
 
+type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
+  data: T;
+  status: Readonly<Ref<FetchResult<unknown>["status"]>>;
+  reload: () => Promise<void>;
+  clear: () => void;
+};
+
 interface StoredEvent {
   id: string;
   name: string;
@@ -216,16 +219,16 @@ interface StoredEvent {
 
 const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
-const useRemoteEvents = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+const useRemoteEvents: DataSource<Readonly<Reactive<Array<DeepReadonly<Event>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("events");
 
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
-    instance: envId,
+    instance: toRef(envId),
     result: eventsRef,
-    fetcher: () => api.getEvents(envId.value, storedValue?.etag),
+    fetcher: () => api.getEvents(toValue(envId), storedValue?.etag),
     toCache: (data) =>
       data.map((event) => ({
         id: event.id,
@@ -260,9 +263,8 @@ const useRemoteEvents = () => {
   return {
     reload,
     clear,
-    status: fetchResultStatus(eventsRef),
+    status: unwrapFetchStatus(eventsRef),
     data: readonly(data),
-    result: eventsRef,
   };
 };
 
@@ -283,16 +285,16 @@ interface StoredInfo {
 
 const infoRef = ref<FetchResult<Info>>({ status: "pending" });
 
-const useRemoteInfo = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("info");
 
   const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
-    instance: envId,
+    instance: toRef(envId),
     result: infoRef,
-    fetcher: () => api.getInfo(envId.value, storedValue?.etag),
+    fetcher: () => api.getInfo(toValue(envId), storedValue?.etag),
     toCache: (data) => ({
       name: data.name,
       description: data.description,
@@ -317,7 +319,12 @@ const useRemoteInfo = () => {
     }),
   });
 
-  return { reload, clear, result: infoRef };
+  return {
+    reload,
+    clear,
+    status: unwrapFetchStatus(infoRef),
+    data: unwrapFetchValue(infoRef),
+  };
 };
 
 interface StoredPage {
@@ -328,16 +335,16 @@ interface StoredPage {
 
 const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
 
-const useRemotePages = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+const useRemotePages: DataSource<Readonly<Reactive<Array<Page>>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("pages");
 
   const { reload, clear } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
     key: "pages",
-    instance: envId,
+    instance: toRef(envId),
     result: pagesRef,
-    fetcher: () => api.getPages(envId.value, storedValue?.etag),
+    fetcher: () => api.getPages(toValue(envId), storedValue?.etag),
     toCache: (data) =>
       data.map((page) => ({
         id: page.id,
@@ -352,7 +359,10 @@ const useRemotePages = () => {
       })),
   });
 
-  return { reload, clear, result: pagesRef };
+  const data = reactive<Array<Page>>([]);
+  lazyRenderArray(pagesRef, data, 5);
+
+  return { reload, clear, status: unwrapFetchStatus(pagesRef), data: readonly(data) };
 };
 
 interface StoredConfig {
@@ -361,15 +371,14 @@ interface StoredConfig {
 
 const configRef = ref<FetchResult<Config>>({ status: "pending" });
 
-const useRemoteConfig = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
-
+const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
   const { reload, clear } = useRemoteDataInner<Config, StoredConfig>({
     key: "config",
-    instance: envId,
+    instance: toRef(envId),
     result: configRef,
-    fetcher: () => api.getConfig(envId.value),
+    fetcher: () => api.getConfig(toValue(envId)),
     toCache: (data) => ({
       timezone: data.timezone,
     }),
@@ -378,51 +387,61 @@ const useRemoteConfig = () => {
     }),
   });
 
-  return { reload, clear, result: configRef };
+  return {
+    reload,
+    clear,
+    data: unwrapFetchValue(configRef),
+    status: unwrapFetchStatus(configRef),
+  };
+};
+
+const dataSources = {
+  events: useRemoteEvents,
+  info: useRemoteInfo,
+  pages: useRemotePages,
+  config: useRemoteConfig,
+} as const;
+
+type CombinedDataSource = () => {
+  data: {
+    [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["data"];
+  };
+  status: {
+    [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["status"];
+  };
+  reload: () => Promise<void>;
+  clear: () => void;
 };
 
 // We fetch *all* data from the server eagerly on first page load and when
 // `reload()` is called. This is primarily so the app works offline.
-const useRemoteData = () => {
-  const {
-    reload: reloadEvents,
-    clear: clearEvents,
-    data: eventsData,
-    result: eventsResult,
-  } = useRemoteEvents();
+const useRemoteData: CombinedDataSource = () => {
+  const route = useRoute();
+  const envId = computed(() => route.params.envId as string);
 
-  const { reload: reloadInfo, clear: clearInfo, result: infoResult } = useRemoteInfo();
-
-  const { reload: reloadPages, clear: clearPages, result: pagesResult } = useRemotePages();
-
-  const { reload: reloadConfig, clear: clearConfig, result: configResult } = useRemoteConfig();
+  const dataSourceResponses = Object.fromEntries(
+    Object.entries(dataSources).map(([key, ds]) => [key, ds(envId)]),
+  );
 
   const reload = async () => {
-    await Promise.all([reloadEvents(), reloadInfo(), reloadPages(), reloadConfig()]);
+    await Promise.all(Object.values(dataSourceResponses).map((ds) => ds.reload()));
   };
 
   const clear = () => {
-    clearEvents();
-    clearInfo();
-    clearPages();
-    clearConfig();
+    for (const ds of Object.values(dataSourceResponses)) {
+      ds.clear();
+    }
   };
 
   return {
     reload,
     clear,
-    result: {
-      events: eventsResult,
-      info: infoResult,
-      pages: pagesResult,
-      config: configResult,
-    },
-    data: {
-      events: eventsData,
-      info: unwrapFetchResult(infoResult, undefined),
-      pages: unwrapFetchResult(pagesResult, []),
-      config: unwrapFetchResult(configResult, undefined),
-    },
+    status: Object.fromEntries(
+      Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.status]),
+    ) as ReturnType<CombinedDataSource>["status"],
+    data: Object.fromEntries(
+      Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.data]),
+    ) as ReturnType<CombinedDataSource>["data"],
   };
 };
 

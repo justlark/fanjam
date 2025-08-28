@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect, ref } from "vue";
+import { computed, type DeepReadonly, watchEffect, ref } from "vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
@@ -13,12 +13,12 @@ import { type Event } from "@/utils/api";
 
 const {
   data: { events },
-  result: { events: eventsResult },
+  status: { events: eventsStatus },
 } = useRemoteData();
 
 interface Day {
   dayName: string;
-  events: Array<Event>;
+  events: Array<DeepReadonly<Event>>;
 }
 
 const days = ref<Array<Day>>([]);
@@ -81,7 +81,7 @@ watchEffect(() => {
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div class="m-auto" v-if="eventsResult.status === 'pending'">
+    <div class="m-auto" v-if="eventsStatus === 'pending'">
       <ProgressSpinner />
     </div>
     <div class="flex flex-col gap-8" v-else>

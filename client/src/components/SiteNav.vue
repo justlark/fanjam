@@ -20,7 +20,7 @@ const toggleMenuDrawer = () => {
 
 const {
   data: { info },
-  result: { info: infoResult },
+  status: { info: infoStatus },
   reload,
 } = useRemoteData();
 
@@ -57,10 +57,7 @@ const headerHeadingId = useId();
 
 <template>
   <div class="flex flex-col min-h-screen">
-    <div
-      v-if="infoResult.status === 'error' && infoResult.code === 404"
-      class="flex flex-col justify-center items-center grow"
-    >
+    <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow">
       <SimpleIcon
         icon="exclamation-circle"
         class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
