@@ -43,10 +43,10 @@ const showFilterDescription = computed(
 
 const eventIds = defineModel<Array<string>>("ids");
 
-const allCategories = computed(() => getSortedCategories(events.value));
+const allCategories = computed(() => getSortedCategories(events));
 
 const allTags = computed(() =>
-  events.value.reduce<Array<string>>((set, event) => {
+  events.reduce<Array<string>>((set, event) => {
     for (const tag of event.tags) {
       if (!set.includes(tag)) {
         set.push(tag);
@@ -59,7 +59,7 @@ const allTags = computed(() =>
 const eventsById = computed<Map<string, Event>>(() => {
   const map = new Map<string, Event>();
 
-  for (const event of events.value) {
+  for (const event of events) {
     map.set(event.id, event);
   }
 
@@ -79,7 +79,7 @@ const searchIndex = new flexsearch.Document({
 const showFilterMenu = ref(false);
 
 watchEffect(() => {
-  for (const event of events.value) {
+  for (const event of events) {
     searchIndex.add({
       id: event.id,
       name: event.name,
@@ -96,7 +96,7 @@ const filterTags = computed(() => new Set(filterCriteria.tags));
 const filterCategories = computed(() => new Set(filterCriteria.categories));
 
 watchEffect(() => {
-  let filteredEvents = [...events.value];
+  let filteredEvents = [...events];
 
   if (searchText.value.length > 0) {
     const results = searchIndex.search(searchText.value);

@@ -26,10 +26,10 @@ const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
 const datetimeFormats = useDatetimeFormats();
 
-const allCategories = computed(() => getSortedCategories(events.value));
+const allCategories = computed(() => getSortedCategories(events));
 
 const allDates = computed(() =>
-  events.value.reduce((set, event) => {
+  events.reduce((set, event) => {
     set.add(event.startTime);
 
     if (event.endTime) {
@@ -51,11 +51,11 @@ const filteredEventIdsSet = computed(() =>
 );
 
 const filteredEvents = computed(() =>
-  events.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+  events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
 );
 
 const isFilteringPastEvents = computed(() => {
-  return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
+  return filterCriteria.hidePastEvents && filteredEvents.value.length < events.length;
 });
 
 watchEffect(() => {

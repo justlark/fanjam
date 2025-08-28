@@ -25,9 +25,7 @@ const filterCriteria = useFilterQuery();
 
 const focusedEventId = defineModel<string | undefined>("focused");
 const focusedEvent = computed(() =>
-  focusedEventId.value
-    ? events.value.find((event) => event.id === focusedEventId.value)
-    : undefined,
+  focusedEventId.value ? events.find((event) => event.id === focusedEventId.value) : undefined,
 );
 
 onMounted(() => {
@@ -75,10 +73,10 @@ const currentDayTimeSlots = computed(() => {
 });
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
-const allCategories = computed(() => getSortedCategories(events.value));
+const allCategories = computed(() => getSortedCategories(events));
 
 const allDates = computed(() =>
-  events.value.reduce((set, event) => {
+  events.reduce((set, event) => {
     set.add(event.startTime);
 
     if (event.endTime) {
@@ -124,7 +122,7 @@ watchEffect(() => {
   const datetimeFormatsValue = datetimeFormats.value;
 
   days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
-    const eventsThisDay = events.value.filter((event) =>
+    const eventsThisDay = events.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 

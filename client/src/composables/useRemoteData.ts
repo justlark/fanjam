@@ -1,4 +1,15 @@
-import { type Ref, provide, onMounted, inject, ref, computed, watch } from "vue";
+import {
+  type Ref,
+  reactive,
+  provide,
+  onMounted,
+  readonly,
+  inject,
+  ref,
+  computed,
+  watchEffect,
+  watch,
+} from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
 
@@ -25,6 +36,10 @@ function unwrapFetchResult<T>(
   return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
 }
 
+const fetchResultStatus = (
+  result: Readonly<Ref<FetchResult<unknown>>>,
+): Readonly<Ref<FetchResult<unknown>["status"]>> => computed(() => result.value.status);
+
 const setResultIfModified = <T>(
   result: Ref<FetchResult<T>>,
   value: T,
@@ -34,7 +49,6 @@ const setResultIfModified = <T>(
     result.value.status !== "success" ||
     JSON.stringify(serialize(result.value.value)) !== JSON.stringify(serialize(value))
   ) {
-    console.log("result.value = …");
     result.value = { status: "success", value };
   }
 };
@@ -75,7 +89,6 @@ const useRemoteDataInner = <T, S>({
 } => {
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
-    console.log("reload");
     const fetchApiResult = await fetcher();
     const fetchResult: FetchResult<T> = fetchApiResult.ok
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
@@ -123,8 +136,6 @@ const useRemoteDataInner = <T, S>({
   };
 
   onMounted(() => {
-    console.log("onMounted");
-
     const storedValue = getItem<S>(key);
 
     if (!storedValue || storedValue.instance !== instance.value) {
@@ -176,6 +187,8 @@ const useRemoteEvents = () => {
   const envId = computed(() => route.params.envId as string);
   const storedValue: StoredValue<unknown> | undefined = getItem("events");
 
+  const data = reactive<Array<Event>>([]);
+
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: envId,
@@ -209,7 +222,34 @@ const useRemoteEvents = () => {
       })),
   });
 
-  return { reload, clear, result: eventsRef };
+  const renderChunk = () => {
+    if (eventsRef.value.status !== "success" || data.length >= eventsRef.value.value.length) {
+      return;
+    }
+
+    const next = eventsRef.value.value.slice(data.length, data.length + 5);
+    data.push(...next);
+
+    requestAnimationFrame(renderChunk);
+  };
+
+  onMounted(() => {
+    watch(
+      eventsRef,
+      () => {
+        requestAnimationFrame(renderChunk);
+      },
+      { immediate: true },
+    );
+  });
+
+  return {
+    reload,
+    clear,
+    status: fetchResultStatus(eventsRef),
+    data: readonly(data),
+    result: eventsRef,
+  };
 };
 
 interface StoredInfo {
@@ -330,7 +370,12 @@ const useRemoteConfig = () => {
 // We fetch *all* data from the server eagerly on first page load and when
 // `reload()` is called. This is primarily so the app works offline.
 const useRemoteData = () => {
-  const { reload: reloadEvents, clear: clearEvents, result: eventsResult } = useRemoteEvents();
+  const {
+    reload: reloadEvents,
+    clear: clearEvents,
+    data: eventsData,
+    result: eventsResult,
+  } = useRemoteEvents();
 
   const { reload: reloadInfo, clear: clearInfo, result: infoResult } = useRemoteInfo();
 
@@ -359,7 +404,7 @@ const useRemoteData = () => {
       config: configResult,
     },
     data: {
-      events: unwrapFetchResult(eventsResult, []),
+      events: eventsData,
       info: unwrapFetchResult(infoResult, undefined),
       pages: unwrapFetchResult(pagesResult, []),
       config: unwrapFetchResult(configResult, undefined),

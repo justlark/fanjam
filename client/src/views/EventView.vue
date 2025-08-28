@@ -18,9 +18,9 @@ const {
 const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref(0);
 
-const allCategories = getSortedCategories(events.value);
+const allCategories = computed(() => getSortedCategories(events));
 
-const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
+const thisEvent = computed(() => events.find((event) => event.id === eventId.value));
 
 const from = ref<"schedule" | "program">();
 
