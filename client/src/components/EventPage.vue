@@ -34,7 +34,7 @@ onMounted(() => {
 
 <template>
   <div class="flex h-full">
-    <div v-if="thisEvent" class="flex">
+    <div v-if="thisEvent" class="flex w-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
         <ScheduleTimeline
           v-if="from === 'schedule'"
@@ -44,7 +44,7 @@ onMounted(() => {
         <EventProgram v-if="from === 'program'" class="p-6 grow max-w-240" />
         <Divider layout="vertical" />
       </div>
-      <div v-if="thisEvent" class="flex basis-1/2 grow lg:grow-0 shrink-0">
+      <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
         <EventDetails
           class="grow"
           :event="thisEvent"
