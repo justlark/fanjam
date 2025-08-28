@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import PageRoot from "@/components/PageRoot.vue";
+import AppRoot from "@/components/AppRoot.vue";
 import InfoPage from "@/components/InfoPage.vue";
 </script>
 
 <template>
-  <PageRoot>
+  <AppRoot>
     <InfoPage />
-  </PageRoot>
+  </AppRoot>
 </template>

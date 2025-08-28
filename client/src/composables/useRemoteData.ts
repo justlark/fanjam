@@ -452,10 +452,10 @@ export const provideRemoteData = () => {
 };
 
 const injectRemoteData = () => {
-  const data = inject<ReturnType<typeof useRemoteData>>(remoteDataKey);
+  const data = inject<ReturnType<CombinedDataSource>>(remoteDataKey);
 
   if (!data) {
-    throw new Error("Views must be wrapped in a <PageRoot></PageRoot>.");
+    throw new Error("Views must be wrapped in a <AppRoot></AppRoot>.");
   }
 
   return data;

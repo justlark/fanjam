@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import PageRoot from "@/components/PageRoot.vue";
+import AppRoot from "@/components/AppRoot.vue";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 </script>
 
 <template>
-  <PageRoot>
+  <AppRoot>
     <div class="flex justify-center h-full">
       <ScheduleTimeline class="p-6 grow max-w-240" />
     </div>
-  </PageRoot>
+  </AppRoot>
 </template>
