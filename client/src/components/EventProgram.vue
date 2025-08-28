@@ -26,7 +26,7 @@ const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
 const datetimeFormats = useDatetimeFormats();
 
-const allCategories = getSortedCategories(events.value);
+const allCategories = computed(() => getSortedCategories(events.value));
 
 const allDates = computed(() =>
   events.value.reduce((set, event) => {
