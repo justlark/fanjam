@@ -1,4 +1,4 @@
-import { type Ref, provide, inject, ref, computed, watchEffect } from "vue";
+import { type Ref, provide, nextTick, onMounted, inject, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
 
@@ -24,6 +24,20 @@ function unwrapFetchResult<T>(
 ): Readonly<Ref<T | undefined>> {
   return computed(() => (result.value.status === "success" ? result.value.value : defaultValue));
 }
+
+const setResultIfModified = <T>(
+  result: Ref<FetchResult<T>>,
+  value: T,
+  serialize: (data: T) => unknown,
+) => {
+  if (
+    result.value.status !== "success" ||
+    JSON.stringify(serialize(result.value.value)) !== JSON.stringify(serialize(value))
+  ) {
+    console.log("result.value = …");
+    result.value = { status: "success", value };
+  }
+};
 
 const storageKey = (key: string): string => `store:${key}`;
 
@@ -71,9 +85,9 @@ const useRemoteDataInner = <T, S>({
     if (fetchResult.status === "error" && fetchResult.code === 304 && storedValue !== undefined) {
       // If the server returns a 304 Not Modified, we can just keep displaying
       // the data we already have cached locally.
-      result.value = { status: "success", value: fromCache(storedValue.value) };
+      setResultIfModified(result, fromCache(storedValue.value), toCache);
     } else if (fetchResult.status === "success") {
-      result.value = { status: "success", value: fetchResult.value };
+      setResultIfModified(result, fetchResult.value, toCache);
 
       // We use the browser local storage to cut down on the initial page load
       // time and to allow the app to function offline.
@@ -107,30 +121,33 @@ const useRemoteDataInner = <T, S>({
     removeItem(key);
   };
 
-  watchEffect(async () => {
-    const storedValue = getItem<S>(key);
+  onMounted(() => {
+    console.log("onMounted");
+    watchEffect(async () => {
+      const storedValue = getItem<S>(key);
 
-    if (!storedValue || storedValue.instance !== instance.value) {
-      // Fetch the data on the initial page load, before it's cached locally.
+      if (!storedValue || storedValue.instance !== instance.value) {
+        // Fetch the data on the initial page load, before it's cached locally.
+        await reload();
+        return;
+      }
+
+      let value;
+
+      try {
+        value = fromCache(storedValue.value);
+      } catch {
+        // This can happen if the shape of the cached data has changed and we
+        // need to clear it and re-fetch from the server.
+        await reload();
+        return;
+      }
+
+      setResultIfModified(result, value, toCache);
+
+      // Refetch the data when the user refreshes the page.
       await reload();
-      return;
-    }
-
-    let value;
-
-    try {
-      value = fromCache(storedValue.value);
-    } catch {
-      // This can happen if the shape of the cached data has changed and we
-      // need to clear it and re-fetch from the server.
-      await reload();
-      return;
-    }
-
-    result.value = { status: "success", value };
-
-    // Refetch the data when the user refreshes the page.
-    await reload();
+    });
   });
 
   return { reload, clear };
