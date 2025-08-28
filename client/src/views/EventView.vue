@@ -3,7 +3,7 @@ import { ref, watchEffect, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
-import SiteNav from "@/components/SiteNav.vue";
+import PageRoot from "@/components/PageRoot.vue";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 import EventProgram from "@/components/EventProgram.vue";
@@ -41,7 +41,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <SiteNav>
+  <PageRoot>
     <div class="flex h-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
         <ScheduleTimeline
@@ -63,5 +63,5 @@ onMounted(() => {
         />
       </div>
     </div>
-  </SiteNav>
+  </PageRoot>
 </template>

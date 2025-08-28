@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import SiteNav from "@/components/SiteNav.vue";
+import PageRoot from "@/components/PageRoot.vue";
 import InfoPage from "@/components/InfoPage.vue";
 </script>
 
 <template>
-  <SiteNav>
+  <PageRoot>
     <InfoPage />
-  </SiteNav>
+  </PageRoot>
 </template>

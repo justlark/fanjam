@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import SiteNav from "@/components/SiteNav.vue";
+import PageRoot from "@/components/PageRoot.vue";
 import EventProgram from "@/components/EventProgram.vue";
 </script>
 
 <template>
-  <SiteNav>
+  <PageRoot>
     <div class="flex justify-center h-full">
       <EventProgram class="p-6 grow max-w-240" />
     </div>
-  </SiteNav>
+  </PageRoot>
 </template>

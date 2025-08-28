@@ -1,4 +1,4 @@
-import { type Ref, ref, computed, watchEffect } from "vue";
+import { type Ref, provide, inject, ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
 
@@ -38,17 +38,6 @@ const getItem = <T>(key: string): StoredValue<T> | undefined => {
 
 const removeItem = (key: string): void => {
   localStorage.removeItem(storageKey(key));
-};
-
-const hasLoaded = new Set<string>();
-
-const ifNotLoaded = (key: string, func: () => Promise<void>): Promise<void> => {
-  if (hasLoaded.has(key)) {
-    return Promise.resolve();
-  }
-
-  hasLoaded.add(key);
-  return func();
 };
 
 const useRemoteDataInner = <T, S>({
@@ -122,10 +111,8 @@ const useRemoteDataInner = <T, S>({
     const storedValue = getItem<S>(key);
 
     if (!storedValue || storedValue.instance !== instance.value) {
-      // Fetch the data exactly once on the initial page load, before it's
-      // cached locally.
-      await ifNotLoaded(key, reload);
-
+      // Fetch the data on the initial page load, before it's cached locally.
+      await reload();
       return;
     }
 
@@ -142,8 +129,8 @@ const useRemoteDataInner = <T, S>({
 
     result.value = { status: "success", value };
 
-    // Refetch the data exactly once when the user refreshes the page.
-    await ifNotLoaded(key, reload);
+    // Refetch the data when the user refreshes the page.
+    await reload();
   });
 
   return { reload, clear };
@@ -360,4 +347,20 @@ const useRemoteData = () => {
   };
 };
 
-export default useRemoteData;
+const remoteDataKey = Symbol("data");
+
+export const provideRemoteData = () => {
+  provide(remoteDataKey, useRemoteData());
+};
+
+const injectRemoteData = () => {
+  const data = inject<ReturnType<typeof useRemoteData>>(remoteDataKey);
+
+  if (!data) {
+    throw new Error("Views must be wrapped in a <PageRoot></PageRoot>.");
+  }
+
+  return data;
+};
+
+export default injectRemoteData;
