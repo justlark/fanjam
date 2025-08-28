@@ -1,4 +1,4 @@
-import { type Ref, provide, nextTick, onMounted, inject, ref, computed, watchEffect } from "vue";
+import { type Ref, provide, onMounted, inject, ref, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
 
@@ -75,6 +75,7 @@ const useRemoteDataInner = <T, S>({
 } => {
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
+    console.log("reload");
     const fetchApiResult = await fetcher();
     const fetchResult: FetchResult<T> = fetchApiResult.ok
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
@@ -123,31 +124,32 @@ const useRemoteDataInner = <T, S>({
 
   onMounted(() => {
     console.log("onMounted");
-    watchEffect(async () => {
-      const storedValue = getItem<S>(key);
 
-      if (!storedValue || storedValue.instance !== instance.value) {
-        // Fetch the data on the initial page load, before it's cached locally.
-        await reload();
-        return;
-      }
+    const storedValue = getItem<S>(key);
 
-      let value;
+    if (!storedValue || storedValue.instance !== instance.value) {
+      // Fetch the data on the initial page load, before it's cached locally.
+      void reload();
+      return;
+    }
 
-      try {
-        value = fromCache(storedValue.value);
-      } catch {
-        // This can happen if the shape of the cached data has changed and we
-        // need to clear it and re-fetch from the server.
-        await reload();
-        return;
-      }
+    let value;
 
-      setResultIfModified(result, value, toCache);
+    try {
+      value = fromCache(storedValue.value);
+    } catch {
+      // This can happen if the shape of the cached data has changed and we
+      // need to clear it and re-fetch from the server.
+      void reload();
+      return;
+    }
 
-      // Refetch the data when the user refreshes the page.
-      await reload();
-    });
+    setResultIfModified(result, value, toCache);
+
+    void reload();
+
+    // Refetch the data when the user refreshes the page.
+    watch(instance, reload);
   });
 
   return { reload, clear };
