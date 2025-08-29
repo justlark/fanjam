@@ -67,10 +67,11 @@ Secrets for OpenTofu are stored in the repo encrypted with maintainers' SSH
 keys via [SOPS](https://getsops.io/) and [age](https://age-encryption.org/).
 
 To deploy infrastructure, you'll first need your SSH key authorized by adding
-it to [./infra/.sops.yaml](./infra/.sops.yaml) and running this command:
+it to [./infra/.sops.yaml](./infra/.sops.yaml) and running these commands:
 
 ```
-just sops updatekeys ./infra/secrets.enc.yaml
+just sops updatekeys ./secrets.enc.yaml
+just sops updatekeys ./env.enc.yaml
 ```
 
 Once your key is authorized, set the env var `SOPS_AGE_SSH_PRIVATE_KEY_FILE` to
@@ -87,7 +88,7 @@ just tofu plan
 You can edit secret OpenTofu variables interactively like this:
 
 ```
-just sops edit secrets.enc.yaml
+just sops edit ./secrets.enc.yaml
 ```
 
 You can edit plaintext OpenTofu variables by editing
@@ -96,7 +97,7 @@ You can edit plaintext OpenTofu variables by editing
 You can set additional secret env vars to be passed to OpenTofu like this:
 
 ```
-just sops edit env.enc.yaml
+just sops edit ./env.enc.yaml
 ```
 
 These additional env vars are used to configure the Postgres state backend.
