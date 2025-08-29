@@ -4,6 +4,8 @@ source ./config.nu
 source ./http.nu
 
 def push_fly_secrets [env_name: string] {
+  get-tofu-env | load-env
+
   let noco_secrets = tofu -chdir=./infra/ output -json noco_secrets | from json | get $env_name
   let noco_secret_pairs = $noco_secrets | transpose name value | each {|secret| $"($secret.name)=($secret.value)" }
 
