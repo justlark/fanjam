@@ -3,7 +3,7 @@ import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect 
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
-import useFilterQuery from "@/composables/useFilterQuery";
+import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
@@ -209,17 +209,20 @@ watchEffect(async () => {
   if (currentDayIndex.value === 0) {
     await router.push({
       params: { dayIndex: "" },
+      query: toFilterQueryParams(filterCriteria),
     });
     return;
   }
 
   await router.push({
     params: { dayIndex: currentDayIndex.value },
+    query: toFilterQueryParams(filterCriteria),
   });
 });
 
 watchEffect(() => {
-  if (eventsStatus.value === "success" && filteredTimeSlots.value.length === 0) {
+  // This day does not exist.
+  if (eventsStatus.value === "success" && currentDayTimeSlots.value.length === 0) {
     currentDayIndex.value = 0;
   }
 });
