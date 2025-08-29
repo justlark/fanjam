@@ -84,11 +84,22 @@ To run `tofu` commands with the secrets pulled into your environment, use the
 just tofu plan
 ```
 
-You can edit OpenTofu secrets interactively like this:
+You can edit secret OpenTofu variables interactively like this:
 
 ```
 just sops edit secrets.enc.yaml
 ```
+
+You can edit plaintext OpenTofu variables by editing
+[./infra/vars.yaml](./infra/vars.yaml).
+
+You can set additional secret env vars to be passed to OpenTofu like this:
+
+```
+just sops edit env.enc.yaml
+```
+
+These additional env vars are used to configure the Postgres state backend.
 
 ## Deployment
 
