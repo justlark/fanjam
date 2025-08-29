@@ -115,7 +115,7 @@ just configure-env foo prod
 This will generate some files, which can be edited as necessary. Check them
 into the repo.
 
-Deploy the supporting infrastructure using Terraform.
+Deploy the supporting infrastructure using OpenTofu.
 
 ```
 just tofu plan
