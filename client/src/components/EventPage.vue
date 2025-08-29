@@ -46,6 +46,7 @@ onMounted(() => {
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
         <EventDetails
+          v-if="currentDayIndex"
           class="grow"
           :event="thisEvent"
           :day="currentDayIndex"
