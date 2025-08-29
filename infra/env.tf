@@ -4,6 +4,8 @@ locals {
   environments = {
     for env_file in fileset("${path.module}/environments", "*/env.yaml") : dirname(env_file) => yamldecode(file("${path.module}/environments/${env_file}"))
   }
+
+  globals = yamldecode(file("${path.module}/config.yaml"))
 }
 
 resource "random_password" "noco_admin_password" {

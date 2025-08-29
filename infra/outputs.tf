@@ -1,6 +1,8 @@
+# Not all of these env vars are secrets, but it's easier to combine them into
+# one output.
 output "noco_secrets" {
   value = {
-    for env in keys(local.environments) : env => {
+    for env, config in local.environments : env => {
       # The `ssl=true` param is important.
       NC_DB = "pg://${neon_project.env[env].database_host_pooler}:5432?u=${neon_project.env[env].database_user}&p=${neon_project.env[env].database_password}&d=${neon_project.env[env].database_name}&ssl=true"
 
@@ -14,18 +16,31 @@ output "noco_secrets" {
       # between environments.
       NC_S3_ACCESS_KEY    = var.cloudflare_r2_access_key_id
       NC_S3_ACCESS_SECRET = var.cloudflare_r2_secret_access_key
+      NC_S3_ENDPOINT      = "https://${local.globals.cloudflare_account_id}.r2.cloudflarestorage.com/sparklefish-noco-${env}"
+      NC_S3_BUCKET_NAME   = "sparklefish-noco-${env}"
+      NC_S3_REGION        = "auto"
 
       # Users are never given this password. We need it to generate an API
       # token for the sparklefish backend. After that, we shouldn't need it
       # again.
       NC_ADMIN_PASSWORD = random_password.noco_admin_password[env].result
 
-      NC_SMTP_FROM                = "notifications@fanjam.live"
+      # There is additionally a `NC_SMTP_SECURE` env var that defaults to
+      # `false`, but I wasn't able to get it working with MailerSend.
+      NC_SMTP_FROM                = local.globals.notifications_email
       NC_SMTP_HOST                = var.smtp_host
       NC_SMTP_PORT                = var.smtp_port
       NC_SMTP_USERNAME            = var.smtp_username
       NC_SMTP_PASSWORD            = var.smtp_password
       NC_SMTP_REJECT_UNAUTHORIZED = "true"
+
+      # This is important so that different NocoDB instances can share a Redis
+      # database, saving us on infra costs.
+      NC_CACHE_PREFIX = "sparklefish:env:${env}:noco"
+
+      NC_PUBLIC_URL         = "https://${config.app_domain}.${data.cloudflare_zone.site.name}"
+      NC_ADMIN_EMAIL        = local.globals.admin_email
+      NC_INVITE_ONLY_SIGNUP = "true"
     }
   }
   sensitive = true

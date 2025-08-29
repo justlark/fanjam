@@ -113,8 +113,8 @@ new version and are confident it's stable, update the `fly.yaml` of all the
 environments you want to upgrade, then redeploy them. Production environments
 should always be pinned to a specific version, not `latest`.
 
-Finally, update the [config.yaml](./config.yaml) with the latest version tag
-(not `latest`).
+Finally, update the [config.yaml](./infra/config.yaml) with the latest version
+tag (not `latest`).
 
 ## Copyright
 

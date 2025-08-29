@@ -1,6 +1,6 @@
 def get-global-config [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "config.yaml"
+  let config_path = $repo_path | path join "infra" "config.yaml"
   return (open $config_path)
 }
 

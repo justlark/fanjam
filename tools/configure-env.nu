@@ -2,24 +2,14 @@
 
 source ./config.nu
 
-def generate-fly-config [env_name: string, fly_app: string] {
+def generate-fly-config [fly_app: string] {
   let config = get-global-config
-  let bucket = $"sparklefish-noco-($env_name)"
 
   {
     app: $fly_app,
     primary_region: $config.default_fly_region,
     build: {
       image: $"nocodb/nocodb:($config.nocodb_version)",
-    },
-    env: {
-      NC_PUBLIC_URL: $"https://($env_name).($config.app_base_domain)",
-      NC_S3_BUCKET_NAME: $bucket,
-      NC_S3_REGION: "auto",
-      NC_S3_ENDPOINT: $"https://($config.cloudflare_account_id).r2.cloudflarestorage.com/($bucket)",
-      NC_INVITE_ONLY_SIGNUP: "true",
-      NC_ADMIN_EMAIL: ($config.admin_email),
-      NC_CACHE_PREFIX: $"sparklefish:env:($env_name):noco"
     },
     http_service: {
       internal_port: 8080,
@@ -73,5 +63,5 @@ def main [env_name: string, stage: string] {
   mkdir $env_path
 
   $env_config | to yaml | save --force $env_file
-  generate-fly-config $env_name $fly_app_name | to yaml | save --force $fly_file
+  generate-fly-config $fly_app_name | to yaml | save --force $fly_file
 }
