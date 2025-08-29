@@ -1,5 +1,14 @@
 <script setup lang="ts">
+import { ref, onMounted } from "vue";
 import MainMenuItem from "./MainMenuItem.vue";
+
+const fromRoute = ref<string>("schedule");
+
+onMounted(() => {
+  if (history.state.from !== undefined) {
+    fromRoute.value = history.state.from;
+  }
+});
 </script>
 
 <template>
@@ -8,14 +17,23 @@ import MainMenuItem from "./MainMenuItem.vue";
       icon="bi bi-calendar-event"
       label="Schedule"
       to="schedule"
-      :active-routes="['schedule', 'event']"
+      :is-active="
+        (route) => route.name === 'schedule' || (route.name === 'event' && fromRoute === 'schedule')
+      "
     />
-    <MainMenuItem icon="bi bi-book" label="Program" to="program" :active-routes="['program']" />
+    <MainMenuItem
+      icon="bi bi-book"
+      label="Program"
+      to="program"
+      :is-active="
+        (route) => route.name === 'program' || (route.name === 'event' && fromRoute === 'program')
+      "
+    />
     <MainMenuItem
       icon="bi bi-info-circle"
       label="Info"
       to="info"
-      :active-routes="['info', 'page']"
+      :is-active="(route) => route.name === 'info' || route.name === 'page'"
     />
   </nav>
 </template>

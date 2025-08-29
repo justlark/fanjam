@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { useRoute } from "vue-router";
+import { computed } from "vue";
+import { useRoute, type RouteLocationNormalizedLoadedGeneric } from "vue-router";
 
 import Button from "primevue/button";
 import { RouterLink } from "vue-router";
 
 const props = defineProps<{
   to: string;
-  activeRoutes: Array<string | symbol>;
   label: string;
   icon: string;
+  isActive?: (route: RouteLocationNormalizedLoadedGeneric) => boolean;
 }>();
 
 const route = useRoute();
+
+const isRouteActive = computed(() => {
+  if (props.isActive) {
+    return props.isActive(route);
+  } else {
+    return route.name === props.to;
+  }
+});
 </script>
 
 <template>
@@ -21,7 +30,7 @@ const route = useRoute();
     :to="{ name: props.to }"
     :icon="props.icon"
     :label="props.label"
-    :variant="route.name && activeRoutes.includes(route.name) ? undefined : 'outlined'"
+    :variant="isRouteActive ? undefined : 'outlined'"
     size="large"
   />
 </template>
