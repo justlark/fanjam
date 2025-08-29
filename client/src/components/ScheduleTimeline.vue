@@ -109,7 +109,7 @@ const todayIndex = computed(() => {
 
 watchEffect(() => {
   if (currentDayIndex.value === undefined) {
-    currentDayIndex.value = todayIndex.value ?? 0;
+    currentDayIndex.value = todayIndex.value;
   }
 });
 
@@ -174,19 +174,6 @@ const isDayFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && currentDayStart.value < new Date();
 });
 
-watchEffect(async () => {
-  if (route.name !== "schedule") {
-    return;
-  }
-
-  await router.push({
-    name: "schedule",
-    // Don't show the page number on the first page.
-    params: { dayIndex: currentDayIndex.value },
-    query: toFilterQueryParams(filterCriteria),
-  });
-});
-
 // Do not fire when the query params change. Otherwise, if the user is viewing
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
@@ -195,21 +182,41 @@ watch(
   () => {
     if (route.name === "schedule") {
       if (!route.params.dayIndex) {
+        currentDayIndex.value = 0;
         return;
       }
 
       // Handle the page number in the path being out of range or not a number.
       const parsed = parseInt(route.params.dayIndex as string, 10);
       currentDayIndex.value =
-        isNaN(parsed) || parsed < 0 || parsed >= days.value.length ? 0 : parsed;
+        isNaN(parsed) || parsed < 0 || parsed >= days.value.length ? undefined : parsed;
     } else if (route.name === "event") {
       currentDayIndex.value = route.params.eventId
-        ? (dayIndexByEventId.value[route.params.eventId as string] ?? 0)
-        : 0;
+        ? dayIndexByEventId.value[route.params.eventId as string]
+        : undefined;
     }
   },
   { immediate: true },
 );
+
+watchEffect(async () => {
+  if (route.name !== "schedule" || currentDayIndex.value === undefined) {
+    return;
+  }
+
+  // If the current day index is 0 (this is the first day of the con), omit it
+  // from the URL.
+  if (currentDayIndex.value === 0) {
+    await router.push({
+      params: { dayIndex: "" },
+    });
+    return;
+  }
+
+  await router.push({
+    params: { dayIndex: currentDayIndex.value },
+  });
+});
 </script>
 
 <template>

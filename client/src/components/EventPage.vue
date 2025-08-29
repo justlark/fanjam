@@ -15,7 +15,7 @@ const {
 } = useRemoteData();
 
 const eventId = computed(() => route.params.eventId as string);
-const currentDayIndex = ref(0);
+const currentDayIndex = ref<number>();
 
 const allCategories = computed(() => getSortedCategories(events));
 
