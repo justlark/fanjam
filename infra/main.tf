@@ -16,15 +16,6 @@ terraform {
     }
   }
 
-  cloud {
-    organization = "sparklefish"
-    hostname     = "app.terraform.io"
-
-    workspaces {
-      name = "sparklefish"
-    }
-  }
-
   backend "pg" {}
 }
 

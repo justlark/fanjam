@@ -14,6 +14,8 @@ def push_fly_secrets [env_name: string] {
 }
 
 def push_env_secrets [env_name: string] {
+  get-tofu-env | load-env
+
   let new_env_secrets = tofu -chdir=./infra/ output -json env_config | from json | get $env_name
   let env_config = get-env-config $env_name
 
