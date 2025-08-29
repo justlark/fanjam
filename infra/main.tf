@@ -24,6 +24,8 @@ terraform {
       name = "sparklefish"
     }
   }
+
+  backend "pg" {}
 }
 
 provider "cloudflare" {

@@ -5,7 +5,7 @@ source ./config.nu
 def main [env_name: string] {
   let config = get-global-config
 
-  let all_secrets = terraform -chdir=./infra/ output -json noco_secrets | from json
+  let all_secrets = tofu -chdir=./infra/ output -json noco_secrets | from json
   let env_secrets = $all_secrets | get $env_name
   let admin_password = $env_secrets | get "NC_ADMIN_PASSWORD"
 

@@ -1,3 +1,5 @@
+set dotenv-load
+
 # list recipes
 default:
   @just --list
@@ -159,3 +161,15 @@ get-config env:
 [group("configure environments")]
 edit-config env:
   ./tools/edit-config.nu {{ env }}
+
+# run an OpenTofu command
+[group("manage infrastructure")]
+[working-directory: "./infra/"]
+tofu *args:
+  ../tools/run-tofu.nu {{ args }}
+
+# run a SOPS command
+[group("manage infrastructure")]
+[working-directory: "./infra/"]
+sops *args:
+  sops {{ args }}

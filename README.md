@@ -47,7 +47,9 @@ To deploy the app, you'll additionally need to install:
 
 - [Nu](https://www.nushell.sh/book/installation.html)
 - [flyctl](https://fly.io/docs/flyctl/install/)
-- [Terraform](https://developer.hashicorp.com/terraform/install)
+- [OpenTofu](https://opentofu.org/docs/intro/install/)
+- [SOPS](https://getsops.io/)
+- [age](https://age-encryption.org/)
 
 You can use `just` to build and deploy the app. Run `just` to see a list of
 recipes.
@@ -58,6 +60,35 @@ that accept an `env` accept the name of a tenant environment.
 
 This project is referred to by the codename "sparklefish" throughout the
 codebase and infrastructure.
+
+## OpenTofu
+
+Secrets for OpenTofu are stored in the repo encrypted with maintainers' SSH
+keys via [SOPS](https://getsops.io/) and [age](https://age-encryption.org/).
+
+To deploy infrastructure, you'll first need your SSH key authorized by adding
+it to [./infra/.sops.yaml](./infra/.sops.yaml) and running this command:
+
+```
+just sops updatekeys ./infra/secrets.enc.yaml
+```
+
+Once your key is authorized, set the env var `SOPS_AGE_SSH_PRIVATE_KEY_FILE` to
+the path of your private SSH key. You can put this in a `./.env` file in the
+root of the repo; it will be ignored by git.
+
+To run `tofu` commands with the secrets pulled into your environment, use the
+`just` recipe:
+
+```
+just tofu plan
+```
+
+You can edit OpenTofu secrets interactively like this:
+
+```
+just sops edit secrets.enc.yaml
+```
 
 ## Deployment
 
@@ -76,9 +107,8 @@ into the repo.
 Deploy the supporting infrastructure using Terraform.
 
 ```
-cd ./infra/
-terraform plan
-terraform apply
+just tofu plan
+just tofu apply
 ```
 
 Create a new NocoDB instance.
