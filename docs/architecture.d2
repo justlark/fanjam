@@ -1,32 +1,32 @@
-client: Browser
-organizer: Browser
-admin: Admin Tools
+client: Browser {shape: person}
+organizer: Browser {shape: person}
+admin: Admin Tools {shape: person}
 
 cf: Cloudflare {
-  client: Client Worker
-  server: Server Worker
-  cdn: CDN
-  kv: Clouflare KV
-  r2: Cloudflare R2
+  client: Client Worker {shape: queue}
+  server: Server Worker {shape: queue}
+  cdn: CDN {shape: cloud}
+  kv: Clouflare KV {shape: cylinder}
+  r2: Cloudflare R2 {shape: cylinder}
 }
 
 fly: Fly.io {
-  noco: NocoDB
+  noco: NocoDB {shape: queue}
 }
 
 neon: Neon {
   pg: Postgres Cluster {
-    noco: NocoDB DB
-    worker: Worker DB
+    noco: NocoDB DB {shape: cylinder}
+    worker: Worker DB {shape: cylinder}
   }
 }
 
 upstash: Upstash {
-  redis: Redis DB
+  redis: Redis DB {shape: cylinder}
 }
 
 mailersend: MailerSend {
-  smtp: SMTP
+  smtp: SMTP {shape: cloud}
 }
 
 cf.client <- client
