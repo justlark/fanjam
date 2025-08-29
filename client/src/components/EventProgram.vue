@@ -4,7 +4,6 @@ import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
-import ProgressSpinner from "primevue/progressspinner";
 import SimpleIcon from "./SimpleIcon.vue";
 import EventProgramDay from "./EventProgramDay.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
@@ -13,7 +12,6 @@ import { type Event } from "@/utils/api";
 
 const {
   data: { events },
-  status: { events: eventsStatus },
 } = useRemoteData();
 
 interface Day {
@@ -81,9 +79,6 @@ watchEffect(() => {
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div class="m-auto" v-if="eventsStatus === 'pending'">
-      <ProgressSpinner />
-    </div>
     <div class="flex flex-col gap-8" v-else>
       <EventProgramDay
         v-for="(day, index) in days"
