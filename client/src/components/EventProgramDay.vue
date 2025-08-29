@@ -10,6 +10,7 @@ const props = defineProps<{
   dayName: string;
   dayIndex: number;
   events: ReadonlyArray<DeepReadonly<Event>>;
+  focusedEventId?: string;
   allCategories: Array<string>;
 }>();
 
@@ -34,7 +35,7 @@ const sectionHeading = useId();
         <EventProgramDescription
           :event="event"
           :day-index="props.dayIndex"
-          :expand="expanded"
+          :expand="expanded || event.id === props.focusedEventId"
           :all-categories="allCategories"
         />
       </div>

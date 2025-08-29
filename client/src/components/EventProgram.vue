@@ -19,6 +19,10 @@ interface Day {
   events: Array<DeepReadonly<Event>>;
 }
 
+const props = defineProps<{
+  focusedEventId?: string;
+}>();
+
 const days = ref<Array<Day>>([]);
 const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
@@ -85,6 +89,7 @@ watchEffect(() => {
         :key="index"
         :day-name="day.dayName"
         :events="day.events"
+        :focused-event-id="props.focusedEventId"
         :day-index="index"
         :all-categories="allCategories"
       />

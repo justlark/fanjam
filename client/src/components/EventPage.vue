@@ -49,7 +49,11 @@ onMounted(() => {
           class="p-6 grow"
           v-model:day="currentDayIndex"
         />
-        <EventProgram v-if="from === 'program'" class="p-6 grow max-w-240" />
+        <EventProgram
+          v-if="from === 'program'"
+          class="p-6 grow max-w-240"
+          :focused-event-id="eventId"
+        />
         <Divider layout="vertical" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
