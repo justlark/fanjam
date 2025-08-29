@@ -47,7 +47,7 @@ const eventNameHeadingId = useId();
 
 <template>
   <Panel
-    :toggleable="event.description !== undefined"
+    :toggleable="true"
     :collapsed="!props.expand"
     pt:content:class="!pb-2"
     pt:footer:class="!pb-2"
