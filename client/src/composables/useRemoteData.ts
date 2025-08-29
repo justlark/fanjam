@@ -22,6 +22,8 @@ export type FetchResult<T> =
   | { status: "pending" }
   | { status: "error"; code: number };
 
+type FetchStatus = FetchResult<unknown>["status"];
+
 interface StoredValue<T> {
   instance: string;
   etag?: string;
@@ -36,19 +38,29 @@ const unwrapFetchValue = <T>(
 
 const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
-): Readonly<Ref<FetchResult<unknown>["status"]>> => computed(() => result.value.status);
+): Readonly<Ref<FetchStatus>> => computed(() => result.value.status);
 
 // Feed the `input` array into the `output` array in chunks, yielding to the
-// browser to render one chunk at a time.
+// browser to render one chunk at a time. This also returns a `status` ref,
+// which it will set to `pending` while rendering chunks, `success` once all
+// chunks have been rendered, or `error` if the input has an `error` status.
 const lazyRenderArray = <T>(
   input: MaybeRefOrGetter<FetchResult<Array<T>>>,
   output: Reactive<Array<T>>,
   chunkSize: number,
-) => {
+): Readonly<Ref<FetchStatus>> => {
+  const status = ref<FetchStatus>("pending");
+
   const renderChunk = () => {
     const value = toValue(input);
 
-    if (value.status !== "success" || output.length >= value.value.length) {
+    if (value.status !== "success") {
+      status.value = value.status;
+      return;
+    }
+
+    if (output.length >= value.value.length) {
+      status.value = "success";
       return;
     }
 
@@ -68,6 +80,8 @@ const lazyRenderArray = <T>(
       { immediate: true },
     );
   });
+
+  return status;
 };
 
 const setResultIfModified = <T>(
@@ -199,7 +213,7 @@ const useRemoteDataInner = <T, S>({
 
 type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
   data: T;
-  status: Readonly<Ref<FetchResult<unknown>["status"]>>;
+  status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
   clear: () => void;
 };
@@ -258,12 +272,12 @@ const useRemoteEvents: DataSource<Readonly<Reactive<Array<DeepReadonly<Event>>>>
   });
 
   const data = reactive<Array<Event>>([]);
-  lazyRenderArray(eventsRef, data, 5);
+  const status = lazyRenderArray(eventsRef, data, 5);
 
   return {
     reload,
     clear,
-    status: unwrapFetchStatus(eventsRef),
+    status,
     data: readonly(data),
   };
 };
@@ -360,9 +374,9 @@ const useRemotePages: DataSource<Readonly<Reactive<Array<Page>>>> = (
   });
 
   const data = reactive<Array<Page>>([]);
-  lazyRenderArray(pagesRef, data, 5);
+  const status = lazyRenderArray(pagesRef, data, 5);
 
-  return { reload, clear, status: unwrapFetchStatus(pagesRef), data: readonly(data) };
+  return { reload, clear, status, data: readonly(data) };
 };
 
 interface StoredConfig {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, watchEffect, onMounted, computed } from "vue";
 import ProgressSpinner from "primevue/progressspinner";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import Divider from "primevue/divider";
@@ -10,8 +10,10 @@ import EventProgram from "@/components/EventProgram.vue";
 import EventDetails from "@/components/EventDetails.vue";
 
 const route = useRoute();
+const router = useRouter();
 const {
   data: { events },
+  status: { events: eventsStatus },
 } = useRemoteData();
 
 const eventId = computed(() => route.params.eventId as string);
@@ -29,6 +31,12 @@ onMounted(() => {
   } else {
     from.value = history.state.from;
   }
+
+  watchEffect(async () => {
+    if (eventsStatus.value === "success" && thisEvent.value === undefined) {
+      await router.push({ name: from.value });
+    }
+  });
 });
 </script>
 

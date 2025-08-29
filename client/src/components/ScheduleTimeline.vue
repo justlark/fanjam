@@ -217,6 +217,12 @@ watchEffect(async () => {
     params: { dayIndex: currentDayIndex.value },
   });
 });
+
+watchEffect(() => {
+  if (eventsStatus.value === "success" && filteredTimeSlots.value.length === 0) {
+    currentDayIndex.value = 0;
+  }
+});
 </script>
 
 <template>

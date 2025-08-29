@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, computed } from "vue";
+import { useId, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import ProgressSpinner from "primevue/progressspinner";
@@ -11,6 +11,7 @@ const router = useRouter();
 
 const {
   data: { pages },
+  status: { pages: pagesStatus },
 } = useRemoteData();
 
 const pageId = computed(() => route.params.pageId as string);
@@ -33,6 +34,12 @@ const back = async () => {
     name: "info",
   });
 };
+
+watchEffect(async () => {
+  if (pagesStatus.value === "success" && !page.value) {
+    await back();
+  }
+});
 
 const pageHeadingId = useId();
 </script>
