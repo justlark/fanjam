@@ -6,19 +6,22 @@ and that information is shared with attendees in real time via a web app.
 
 ## Architecture
 
-You can find an architecture diagram at
-[./docs/architecture.txt](./docs/architecture.txt). This diagram is rendered
-using [D2](https://d2lang.com/); the source is [here](./docs/architecture.d2).
+See the [architecture diagram](./docs/architecture.svg). This diagram is
+rendered using the [D2](https://d2lang.com/) diagramming language; the source
+is [here](./docs/architecture.d2).
 
 - The client is written in Vue and TypeScript and hosted on [Cloudflare
   Workers](https://developers.cloudflare.com/workers/).
+- There is a serverless function written in TypeScript and hosted on Cloudflare
+  Workers which sits in front of the CDN to serve headers and dynamic metadata.
 - The backend is a serverless function written in Rust and hosted on Cloudflare
   Workers.
-- The storage provider for the backend is [Cloudflare Workers
-  KV](https://developers.cloudflare.com/kv/).
+- The storage providers for the backend are [Cloudflare Workers
+  KV](https://developers.cloudflare.com/kv/) and [Neon
+  Postgres](https://neon.tech).
 - The database and interface for con organizers is provided by a
   [NocoDB](https://nocodb.com/) instance hosted on [Fly.io](https://fly.io/).
-- The Postgres provider for NocoDB is [Neon](https://neon.tech).
+- The Postgres provider for NocoDB is Neon.
 - The Redis provider for NocoDB is [Upstash](https://upstash.com/).
 - The object storage provider for NocoDB is [Cloudflare
   R2](https://developers.cloudflare.com/r2/).
