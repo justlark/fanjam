@@ -35,7 +35,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "just run-client",
+    command: "npm run --prefix ../client/ dev:test",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
   },

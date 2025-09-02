@@ -9,6 +9,11 @@ default:
 _install-client:
   npm install
 
+# install npm dependencies for Playwright
+[working-directory: "./playwright/"]
+_install-playwright:
+  npm install
+
 # run the client locally
 [working-directory: "./client/"]
 [group("test locally")]
@@ -183,5 +188,5 @@ start-playwright:
 # run Playwright tests against a local instance of the app
 [group("run playwright")]
 [working-directory: "./playwright/"]
-run-playwright *args:
+run-playwright *args: _install-playwright
   PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test {{ args }}
