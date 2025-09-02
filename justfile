@@ -183,11 +183,5 @@ start-playwright:
 # run Playwright tests against a local instance of the app
 [group("run playwright")]
 [working-directory: "./playwright/"]
-run-playwright-local *args:
-  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test --config playwright.config.local.ts {{ args }}
-
-# run Playwright tests against a remote instance of the app
-[group("run playwright")]
-[working-directory: "./playwright/"]
-run-playwright-remote *args:
-  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test --config playwright.config.remote.ts {{ args }}
+run-playwright *args:
+  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test {{ args }}
