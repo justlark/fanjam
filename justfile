@@ -173,3 +173,21 @@ tofu *args:
 [working-directory: "./infra/"]
 sops *args:
   sops {{ args }}
+
+# run the Playwright server in a container
+[group("run playwright")]
+[working-directory: "./playwright/"]
+start-playwright:
+  podman run --add-host=hostmachine:host-gateway -p 3000:3000 --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c "npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0"
+
+# run Playwright tests against a local instance of the app
+[group("run playwright")]
+[working-directory: "./playwright/"]
+run-playwright-local *args:
+  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test --config playwright.config.local.ts {{ args }}
+
+# run Playwright tests against a remote instance of the app
+[group("run playwright")]
+[working-directory: "./playwright/"]
+run-playwright-remote *args:
+  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test --config playwright.config.remote.ts {{ args }}

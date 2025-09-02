@@ -75,7 +75,9 @@ const headerHeadingId = useId();
             <span class="lg:hidden">
               <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
             </span>
-            <h1 :id="headerHeadingId" class="text-xl lg:text-2xl">{{ conName }}</h1>
+            <h1 :id="headerHeadingId" class="text-xl lg:text-2xl" data-testid="site-nav-heading">
+              {{ conName }}
+            </h1>
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
