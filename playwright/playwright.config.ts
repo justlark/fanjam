@@ -31,11 +31,11 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: "http://hostmachine:5173/app/823685",
+    baseURL: `http://${process.env.CI ? 'localhost' : 'hostmachine'}:5173/app/823685`,
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run --prefix ../client/ dev:test",
+    command: process.env.CI ? "npm run --prefix ../client/ dev:test" : "just run-client",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
   },
