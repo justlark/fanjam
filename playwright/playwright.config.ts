@@ -9,17 +9,16 @@ export default defineConfig({
   reporter: "html",
   projects: [
     {
-      name: "chromium",
+      name: "Chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-
     {
-      name: "firefox",
+      name: "Firefox",
       use: { ...devices["Desktop Firefox"] },
     },
 
     {
-      name: "webkit",
+      name: "WebKit",
       use: { ...devices["Desktop Safari"] },
     },
     {
