@@ -1,5 +1,7 @@
 # FanJam
 
+🚧 This repo is under construction 🚧
+
 FanJam is a free event planning app for conventions. Con organizers have a
 dashboard where they can schedule panels, assign rooms, and make announcements,
 and that information is shared with attendees in real time via a web app.
