@@ -9,25 +9,19 @@ export default defineConfig({
   reporter: "html",
   projects: [
     {
-      name: "Chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...devices["Desktop Firefox"],
+        ...devices["Desktop Safari"],
+      },
     },
     {
-      name: "Firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-
-    {
-      name: "WebKit",
-      use: { ...devices["Desktop Safari"] },
-    },
-    {
-      name: "Mobile Chrome",
-      use: { ...devices["Pixel 5"] },
-    },
-    {
-      name: "Mobile Safari",
-      use: { ...devices["iPhone 12"] },
+      name: "mobile",
+      use: {
+        ...devices["Pixel 5"],
+        ...devices["iPhone 12"],
+      },
     },
   ],
   use: {

@@ -3,7 +3,7 @@ import { mockApiInfo } from './mock';
 
 test.describe("site header", () => {
   test.beforeEach(async ({ page }) => {
-    mockApiInfo(page, {
+    await mockApiInfo(page, {
       name: "My Con",
     });
   });

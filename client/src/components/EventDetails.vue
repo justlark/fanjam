@@ -66,6 +66,10 @@ const sectionHeadingId = useId();
           class="hidden lg:block"
           label="Star"
           :icon="isStarred ? 'star-fill' : 'star'"
+          :button-props="{
+            'aria-pressed': isStarred,
+            'data-testid': 'event-details-star-toggle-button',
+          }"
           @click="toggleStarred()"
         />
       </span>
@@ -92,6 +96,8 @@ const sectionHeadingId = useId();
           inactive-variant="filled"
           :button-props="{
             raised: true,
+            'aria-pressed': isStarred,
+            'data-testid': 'event-details-star-toggle-button',
           }"
           @click="toggleStarred()"
         />

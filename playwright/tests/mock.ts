@@ -1,5 +1,9 @@
 import { Page } from "@playwright/test";
 
+const newRandomId = () => Math.random().toString(10).substring(2, 6);
+
+export const stub = {};
+
 export const mockApi = async (page: Page, endpoint: string, body: unknown) => {
   const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
 
@@ -15,9 +19,7 @@ export const mockApi = async (page: Page, endpoint: string, body: unknown) => {
   });
 }
 
-export interface MockApiInfo extends Record<string, unknown> { }
-
-export const mockApiInfo = async (page: Page, info: MockApiInfo) => {
+export const mockApiInfo = async (page: Page, info: Record<string, unknown>) => {
   return mockApi(page, "/info", {
     name: null,
     description: null,
@@ -28,13 +30,13 @@ export const mockApiInfo = async (page: Page, info: MockApiInfo) => {
   });
 };
 
-export interface MockApiEvent extends Record<string, unknown> {
-  id: string;
-  name: string;
-  start_time: string;
-}
+const randomMinimalEvent = () => ({
+  id: newRandomId(),
+  name: "Test Event",
+  start_time: new Date().toISOString(),
+});
 
-export const mockApiEvents = async (page: Page, events: Array<MockApiEvent>) => {
+export const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>) => {
   return mockApi(page, "/events", {
     events: events.map((event) => ({
       summary: null,
@@ -44,20 +46,22 @@ export const mockApiEvents = async (page: Page, events: Array<MockApiEvent>) => 
       people: [],
       category: null,
       tags: [],
+      ...randomMinimalEvent(),
       ...event,
     })),
   });
 };
 
-export interface MockApiPage extends Record<string, unknown> {
-  id: string;
-}
+const randomMinimalPage = () => ({
+  id: newRandomId(),
+});
 
-export const mockApiPages = async (page: Page, pages: Array<MockApiPage>) => {
+export const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) => {
   return mockApi(page, "/pages", {
     pages: pages.map((page) => ({
       title: "",
       body: "",
+      ...randomMinimalPage(),
       ...page,
     })),
   });

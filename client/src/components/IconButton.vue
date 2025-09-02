@@ -67,7 +67,6 @@ const variant = computed(() => {
         :pt:icon="`!${iconSizeClass}`"
         :pt:label="`!${textSizeClass} ml-1`"
         :variant="variant"
-        :aria-pressed="props.active ?? false"
         size="large"
         :aria-label="props.label"
         rounded

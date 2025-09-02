@@ -68,6 +68,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
             state: { from: 'schedule' },
           }"
           :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
+          data-testid="schedule-event-link"
         >
           <CategoryLabel
             :title="event.name"
