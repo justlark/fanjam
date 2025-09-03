@@ -101,7 +101,7 @@ test.describe("filtering events", () => {
 
       await expect(events).toHaveCount(0);
     })
-    test("search by event name", async ({ page }) => {
+    test("search by event name", async () => {
       await search("Event 1");
 
       await expect(events).toHaveText("Test Event 1");
@@ -111,7 +111,7 @@ test.describe("filtering events", () => {
       await expect(events).toHaveCount(0);
     });
 
-    test("search by event location", async ({ page }) => {
+    test("search by event location", async () => {
       await search("Apple");
 
       await expect(events).toHaveText("Test Event 1");
@@ -121,7 +121,7 @@ test.describe("filtering events", () => {
       await expect(events).toHaveCount(0);
     });
 
-    test("search by person", async ({ page }) => {
+    test("search by person", async () => {
       await search("Ash");
 
       await expect(events).toHaveText("Test Event 2");
