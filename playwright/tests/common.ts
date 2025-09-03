@@ -80,3 +80,9 @@ export const mockApi = async (path: Page, data: { info?: Record<string, unknown>
 
 export const isDesktop = () => test.info().project.name === "desktop";
 export const isMobile = () => test.info().project.name === "mobile";
+
+export const hoursFromNow = (hours: number) => {
+  const newDate = new Date();
+  newDate.setHours(newDate.getHours() + hours);
+  return newDate;
+}

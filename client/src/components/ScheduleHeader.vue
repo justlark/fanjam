@@ -167,6 +167,7 @@ const filterMenuId = useId();
         :button-props="{
           'aria-controls': filterMenuId,
           'aria-expanded': showFilterMenu,
+          'data-testid': 'filter-menu-button',
         }"
       />
     </div>

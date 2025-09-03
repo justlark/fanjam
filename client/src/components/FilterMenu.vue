@@ -54,6 +54,7 @@ const hideNotStarredLabelId = useId();
         :id="hidePastEventsToggleId"
         :aria-labelledby="hidePastEventsLabelId"
         v-model="criteria.hidePastEvents"
+        pt:input:data-testid="hide-past-events-button"
       />
       <label :id="hidePastEventsLabelId" :for="hidePastEventsToggleId">Hide past events</label>
     </span>
