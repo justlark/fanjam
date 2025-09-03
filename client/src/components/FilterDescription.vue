@@ -37,7 +37,7 @@ const clearTag = (tag: string) => {
 </script>
 
 <template>
-  <span>
+  <span data-testid="filter-description">
     <span class="font-bold me-2 block md:inline">Only showing:</span>
     <span v-if="onlyStarred">
       <button aria-label="Clear: Starred Only" class="cursor-pointer" @click="clearStarred()">

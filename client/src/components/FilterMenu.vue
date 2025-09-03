@@ -63,6 +63,7 @@ const hideNotStarredLabelId = useId();
         :id="hideNotStarredToggleId"
         :aria-labelledby="hideNotStarredLabelId"
         v-model="criteria.hideNotStarred"
+        pt:input:data-testid="hide-not-starred-events-button"
       />
       <label :id="hideNotStarredLabelId" :for="hideNotStarredToggleId">Only starred events</label>
     </span>

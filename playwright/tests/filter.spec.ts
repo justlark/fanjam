@@ -31,11 +31,25 @@ test.describe("filtering events", () => {
 
   test.describe("in the schedule view", () => {
     let events: Locator;
+    let filterMenuButton: Locator;
+    let categoryFilterList: Locator;
+    let tagFilterList: Locator;
+    let searchInput: Locator;
 
     test.beforeEach(async ({ page }) => {
       await page.goto("schedule");
+
       events = page.getByTestId("schedule-event-link").filter({ visible: true });
+      filterMenuButton = page.getByTestId("filter-menu-button");
+      categoryFilterList = page.getByTestId("category-filter-list");
+      tagFilterList = page.getByTestId("tag-filter-list");
+      searchInput = page.getByTestId("filter-search-input");
     });
+
+    const toggleFilterMenu = () => filterMenuButton.click();
+    const toggleCategory = (category: string) => categoryFilterList.getByRole("button", { name: category }).click();
+    const toggleTag = (tag: string) => tagFilterList.getByRole("button", { name: tag }).click();
+    const search = (text: string) => searchInput.fill(text);
 
     test("hide past events", async ({ page }) => {
       const pastEvent = events.filter({ hasText: "Test Event 1" });
@@ -47,7 +61,7 @@ test.describe("filtering events", () => {
       await expect(futureEvent).toHaveCount(1);
       await expect(hiddenNotice).toBeHidden();
 
-      await page.getByTestId("filter-menu-button").click();
+      await toggleFilterMenu();
       await hidePastEventsButton.click();
 
       await expect(pastEvent).toHaveCount(0);
@@ -61,65 +75,78 @@ test.describe("filtering events", () => {
       await expect(hiddenNotice).toBeHidden();
     });
 
-    test("filter by category", async ({ page }) => {
-      const categoryFilterList = page.getByTestId("category-filter-list");
-
-      await page.getByTestId("filter-menu-button").click();
-      await categoryFilterList.getByRole("button", { name: "Category 1" }).click();
+    test("filter by category", async () => {
+      await toggleFilterMenu();
+      await toggleCategory("Category 1");
 
       await expect(events).toHaveCount(1);
       await expect(events).toHaveText("Test Event 1");
 
-      await categoryFilterList.getByRole("button", { name: "Category 2" }).click();
+      await toggleCategory("Category 2");
 
       await expect(events).toHaveCount(2);
     })
 
-    test("filter by tag", async ({ page }) => {
-      const categoryFilterList = page.getByTestId("category-filter-list");
-      const tagFilterList = page.getByTestId("tag-filter-list");
+    test("filter by tag", async () => {
+      await toggleFilterMenu();
 
-      await page.getByTestId("filter-menu-button").click();
-
-      await categoryFilterList.getByRole("button", { name: "Category 1" }).click();
-      await tagFilterList.getByRole("button", { name: "Tag 1" }).click();
+      await toggleCategory("Category 1");
+      await toggleTag("Tag 1");
 
       await expect(events).toHaveCount(1);
       await expect(events).toHaveText("Test Event 1");
 
-      await tagFilterList.getByRole("button", { name: "Tag 1" }).click();
-      await tagFilterList.getByRole("button", { name: "Tag 3" }).click();
+      await toggleTag("Tag 1");
+      await toggleTag("Tag 3");
 
       await expect(events).toHaveCount(0);
     })
     test("search by event name", async ({ page }) => {
-      await page.getByTestId("filter-search-input").fill("Event 1");
+      await search("Event 1");
 
       await expect(events).toHaveText("Test Event 1");
 
-      await page.getByTestId("filter-search-input").fill("Event 9999");
+      await search("Event 9999");
 
       await expect(events).toHaveCount(0);
     });
 
     test("search by event location", async ({ page }) => {
-      await page.getByTestId("filter-search-input").fill("Apple");
+      await search("Apple");
 
       await expect(events).toHaveText("Test Event 1");
 
-      await page.getByTestId("filter-search-input").fill("Banana");
+      await search("Banana");
 
       await expect(events).toHaveCount(0);
     });
 
     test("search by person", async ({ page }) => {
-      await page.getByTestId("filter-search-input").fill("Ash");
+      await search("Ash");
 
       await expect(events).toHaveText("Test Event 2");
 
-      await page.getByTestId("filter-search-input").fill("Kit");
+      await search("Kit");
 
       await expect(events).toHaveCount(0);
+    });
+
+    test("filter description", async ({ page }) => {
+      const filterDescription = page.getByTestId("filter-description");
+      const hideNotStarredEventsButton = page.getByTestId("hide-not-starred-events-button");
+
+      await toggleFilterMenu();
+
+      await hideNotStarredEventsButton.click();
+      await toggleCategory("Category 1");
+      await toggleCategory("Category 2");
+      await toggleTag("Tag 1");
+      await toggleTag("Tag 2");
+      await search("foo");
+
+      await toggleFilterMenu();
+
+      await expect(filterDescription).toHaveText(["Only showing:", "Starred", "and", "(", "Category 1", "or", "Category 2", ")", "and", "(", "Tag 1", "or", "Tag 2", ")", "and", "\"foo\""].join(""));
     });
   });
 });
