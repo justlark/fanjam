@@ -146,6 +146,7 @@ const filterMenuId = useId();
               class="w-full"
               placeholder="Search…"
               aria-label="Search"
+              pt:root:data-testid="filter-search-input"
             />
           </IconField>
           <InputGroupAddon>
