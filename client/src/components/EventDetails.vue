@@ -75,7 +75,7 @@ const sectionHeadingId = useId();
           :icon="isStarred ? 'star-fill' : 'star'"
           :button-props="{
             'aria-pressed': isStarred,
-            'data-testid': 'event-details-star-toggle-button',
+            'data-testid': 'event-details-star-button',
           }"
           @click="toggleStarred()"
         />
@@ -104,7 +104,7 @@ const sectionHeadingId = useId();
           :button-props="{
             raised: true,
             'aria-pressed': isStarred,
-            'data-testid': 'event-details-star-toggle-button',
+            'data-testid': 'event-details-star-button',
           }"
           @click="toggleStarred()"
         />

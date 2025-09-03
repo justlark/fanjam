@@ -49,14 +49,17 @@ const eventNameHeadingId = useId();
   <Panel
     :toggleable="true"
     :collapsed="!props.expand"
-    pt:content:class="!pb-2"
-    pt:footer:class="!pb-2"
+    pt:content="!pb-2"
+    pt:footer="!pb-2"
+    pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>
       <div class="flex flex-col">
-        <span>
-          <SimpleIcon v-if="isStarred" icon="star-fill" label="Star" class="me-2" />
-          <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">{{ props.event.name }}</h3>
+        <span data-testid="program-event-name">
+          <SimpleIcon v-if="isStarred" icon="star-fill" label="Starred:" class="me-2" />
+          <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">
+            {{ props.event.name }}
+          </h3>
         </span>
         <span class="text-muted-color" v-if="datetimeFormats !== undefined">{{
           localizeTimeSpan(datetimeFormats, props.event.startTime, props.event.endTime)
@@ -86,6 +89,10 @@ const eventNameHeadingId = useId();
           :show-label="true"
           size="sm"
           @click="toggleStarred"
+          :button-props="{
+            'aria-pressed': isStarred ? 'true' : 'false',
+            'data-testid': 'program-event-star-button',
+          }"
         />
         <RouterLink
           :to="{
