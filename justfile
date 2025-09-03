@@ -183,10 +183,10 @@ sops *args:
 [group("run playwright")]
 [working-directory: "./playwright/"]
 start-playwright:
-  podman run --add-host=hostmachine:host-gateway -p 3000:3000 --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c "npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0"
+  podman run --add-host=hostmachine:host-gateway -p 3001:3000 --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c "npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0"
 
 # run Playwright tests against a local instance of the app
 [group("run playwright")]
 [working-directory: "./playwright/"]
 run-playwright *args: _install-playwright
-  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3000/ npx playwright test {{ args }}
+  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3001/ npx playwright test {{ args }}
