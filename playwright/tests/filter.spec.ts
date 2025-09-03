@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { mockApi, hoursFromNow } from './common';
 
-test.describe("starring events", () => {
+test.describe("filtering events", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page, {
       events: [
@@ -10,16 +10,16 @@ test.describe("starring events", () => {
           name: "Test Event 1",
           category: "Category 1",
           tags: ["Tag 1", "Tag 2"],
-          startTime: hoursFromNow(-2).toISOString(),
-          endTime: hoursFromNow(-1).toISOString(),
+          start_time: hoursFromNow(-2).toISOString(),
+          end_time: hoursFromNow(-1).toISOString(),
         },
         {
           id: "2",
           name: "Test Event 2",
           category: "Category 2",
           tags: ["Tag 2", "Tag 3"],
-          startTime: hoursFromNow(1).toISOString(),
-          endTime: hoursFromNow(2).toISOString(),
+          start_time: hoursFromNow(1).toISOString(),
+          end_time: hoursFromNow(2).toISOString(),
         },
       ]
     });
@@ -29,20 +29,25 @@ test.describe("starring events", () => {
     await page.goto("schedule");
 
     const pastEvent = page.getByTestId("schedule-event-link").filter({ visible: true, hasText: "Test Event 1" });
-    expect(pastEvent).toHaveCount(1);
-
     const futureEvent = page.getByTestId("schedule-event-link").filter({ visible: true, hasText: "Test Event 2" });
-    expect(futureEvent).toHaveCount(1);
+    const hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
+    const hidePastEventsButton = page.getByTestId("hide-past-events-button");
+
+    await expect(pastEvent).toHaveCount(1);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(hiddenNotice).toBeHidden();
 
     await page.getByTestId("filter-menu-button").click();
-    await page.getByTestId("hide-past-events-button").click();
+    await hidePastEventsButton.click();
 
-    expect(pastEvent).toHaveCount(0);
-    expect(futureEvent).toHaveCount(1);
+    await expect(pastEvent).toHaveCount(0);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(hiddenNotice).toBeVisible();
 
-    await page.getByTestId("hide-past-events-button").click();
+    await hidePastEventsButton.click();
 
-    expect(pastEvent).toHaveCount(1);
-    expect(futureEvent).toHaveCount(1);
+    await expect(pastEvent).toHaveCount(1);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(hiddenNotice).toBeHidden();
   });
 });

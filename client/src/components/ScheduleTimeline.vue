@@ -237,7 +237,11 @@ watchEffect(() => {
       :day-names="dayNames"
       :today-index="todayIndex"
     />
-    <span class="text-muted-color flex gap-2 justify-center" v-if="isDayFilteringPastEvents">
+    <span
+      class="text-muted-color flex gap-2 justify-center"
+      v-if="isDayFilteringPastEvents"
+      data-testid="schedule-past-events-hidden-notice"
+    >
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
