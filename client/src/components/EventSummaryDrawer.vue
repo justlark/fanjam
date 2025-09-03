@@ -42,7 +42,14 @@ const props = defineProps<{
               state: { from: 'schedule' },
             }"
           >
-            <IconButton size="md" icon="arrows-angle-expand" label="Expand" />
+            <IconButton
+              size="md"
+              icon="arrows-angle-expand"
+              label="Expand"
+              :button-props="{
+                'data-testid': 'event-summary-drawer-expand-button',
+              }"
+            />
           </RouterLink>
           <IconButton size="md" icon="x-lg" label="Close" @click="closeCallback" />
         </div>

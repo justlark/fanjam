@@ -59,7 +59,14 @@ const sectionHeadingId = useId();
             query: toFilterQueryParams(filterCriteria),
           }"
         >
-          <IconButton class="lg:!hidden" icon="chevron-left" label="Back" />
+          <IconButton
+            class="lg:!hidden"
+            icon="chevron-left"
+            label="Back"
+            :button-props="{
+              'data-testid': 'event-details-back-button',
+            }"
+          />
           <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" />
         </RouterLink>
         <IconButton

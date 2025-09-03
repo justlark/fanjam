@@ -78,7 +78,12 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
             :all-categories="props.allCategories"
           />
         </RouterLink>
-        <button @click="focusedEventId = event.id" class="lg:hidden cursor-pointer">
+        <button
+          @click="focusedEventId = event.id"
+          class="lg:hidden cursor-pointer"
+          :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
+          data-testid="schedule-event-link"
+        >
           <CategoryLabel
             :title="event.name"
             :icon="isStarred(event.id) ? 'star-fill' : undefined"
