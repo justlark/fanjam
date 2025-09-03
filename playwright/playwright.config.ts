@@ -25,7 +25,7 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: `http://${process.env.CI ? 'localhost' : 'hostmachine'}:5173/app/823685`,
+    baseURL: `http://${process.env.CI ? 'localhost' : 'hostmachine'}:5173/app/000000/`,
     trace: "on-first-retry",
   },
   webServer: {
