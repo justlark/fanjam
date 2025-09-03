@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { mockApiEvents, stub } from './mock';
+import { mockApi, stub } from './mock';
 
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
-    await mockApiEvents(page, [stub]);
+    await mockApi(page, { events: [stub] });
   });
 
   test.describe("star button on event page toggles link in schedule view", () => {

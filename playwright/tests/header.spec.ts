@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { mockApiInfo } from './mock';
+import { mockApi } from './mock';
 
 test.describe("site header", () => {
   test.beforeEach(async ({ page }) => {
-    await mockApiInfo(page, {
-      name: "My Con",
+    await mockApi(page, {
+      info: {
+        name: "My Con",
+      },
     });
   });
 
