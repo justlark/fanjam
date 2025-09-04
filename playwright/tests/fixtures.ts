@@ -78,8 +78,8 @@ export class StarredEvents {
 
   async set(eventIds: Array<string>) {
     this.page.evaluate(
-      (envId) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)),
-      this.envId,
+      ([envId, eventIds]) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)),
+      [this.envId, eventIds],
     );
   }
 }

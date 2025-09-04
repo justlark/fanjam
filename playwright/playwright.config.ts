@@ -6,7 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  reporter: [["html", { open: "never" }]],
   projects: [
     {
       name: "desktop",
@@ -25,7 +25,7 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: `http://${process.env.CI ? 'localhost' : 'hostmachine'}:5173/app/000000/`,
+    baseURL: `http://${process.env.CI ? "localhost" : "hostmachine"}:5173/app/000000/`,
     trace: "on-first-retry",
   },
   webServer: {
