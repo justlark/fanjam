@@ -1,5 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { mockApi, envId, isMobile } from './common';
+
+const getStarredEvents = async (page: Page) => {
+  const rawJson = await page.evaluate((envId) => localStorage.getItem(`starred:${envId}`), envId)
+  return rawJson ? JSON.parse(rawJson) : [];
+};
 
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
@@ -20,8 +25,8 @@ test.describe("starring events", () => {
     await starButton.click();
     await expect(starButton).toHaveAttribute("aria-pressed", "true");
 
-    const actualStarredEvents = await page.evaluate((envId) => localStorage.getItem(`starred:${envId}`), envId);
-    expect(actualStarredEvents).toEqual(JSON.stringify(["123"]));
+    const actualStarredEvents = await getStarredEvents(page);
+    expect(actualStarredEvents).toEqual(["123"]);
 
     if (isMobile()) {
       await page.getByTestId("event-details-back-button").click();
@@ -40,8 +45,8 @@ test.describe("starring events", () => {
     await starButton.click();
     await expect(starButton).toHaveAttribute("aria-pressed", "true");
 
-    const actualStarredEvents = await page.evaluate((envId) => localStorage.getItem(`starred:${envId}`), envId);
-    expect(actualStarredEvents).toEqual(JSON.stringify(["123"]));
+    const actualStarredEvents = await getStarredEvents(page);
+    expect(actualStarredEvents).toEqual(["123"]);
 
     await expect(page.getByTestId("program-event-name").first()).toHaveText(/^Starred:/);
   })
