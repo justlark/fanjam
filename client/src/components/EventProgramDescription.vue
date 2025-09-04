@@ -103,7 +103,15 @@ const eventNameHeadingId = useId();
             query: toFilterQueryParams(filterCriteria),
           }"
         >
-          <IconButton icon="arrows-angle-expand" label="Open" :show-label="true" size="sm" />
+          <IconButton
+            icon="arrows-angle-expand"
+            label="Open"
+            :show-label="true"
+            size="sm"
+            :button-props="{
+              'data-testid': 'program-event-details-button',
+            }"
+          />
         </RouterLink>
       </div>
     </template>

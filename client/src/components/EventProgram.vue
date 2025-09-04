@@ -79,11 +79,15 @@ watchEffect(() => {
 <template>
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="filteredEventIds" />
-    <span class="text-muted-color flex gap-2 justify-center" v-if="isFilteringPastEvents">
+    <span
+      class="text-muted-color flex gap-2 justify-center"
+      v-if="isFilteringPastEvents"
+      data-testid="program-past-events-hidden-notice"
+    >
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div class="flex flex-col gap-8" v-else>
+    <div class="flex flex-col gap-8">
       <EventProgramDay
         v-for="(day, index) in days"
         :key="index"

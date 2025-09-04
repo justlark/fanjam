@@ -95,11 +95,15 @@ export class EventDetailsPage {
 
 export class ProgramPage {
   private readonly page: Page;
+  readonly eventNames: Locator;
   readonly starButton: Locator;
+  readonly hiddenNotice: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.eventNames = page.getByTestId("program-event-name").filter({ visible: true });
     this.starButton = page.getByTestId("program-event-star-button").filter({ visible: true });
+    this.hiddenNotice = page.getByTestId("program-past-events-hidden-notice");
   }
 
   async goto() {
@@ -109,8 +113,16 @@ export class ProgramPage {
   async toggleEventExpanded(eventName: string) {
     await this.page
       .getByTestId("program-event")
-      .filter({ hasText: eventName })
+      .filter({ has: this.page.getByTestId("program-event-name").filter({ hasText: eventName }) })
       .getByTestId("program-event-expand-button")
+      .click();
+  }
+
+  async openEventDetailsPage(eventName: string) {
+    await this.page
+      .getByTestId("program-event")
+      .filter({ has: this.page.getByTestId("program-event-name").filter({ hasText: eventName }) })
+      .getByTestId("program-event-details-button")
       .click();
   }
 
