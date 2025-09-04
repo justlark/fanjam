@@ -9,7 +9,9 @@ type Fixtures = {
 
 export const test = base.extend<Fixtures>({
   filterMenu: async ({ page }, use) => {
-    await use(new FilterMenu(page));
+    const filterMenu = new FilterMenu(page);
+    await use(filterMenu);
+    await filterMenu.clear();
   },
 
   schedulePage: async ({ page }, use) => {

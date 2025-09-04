@@ -43,6 +43,10 @@ export class FilterMenu {
   async search(text: string) {
     await this.searchInput.fill(text);
   }
+
+  async clear() {
+    await this.searchInput.clear();
+  }
 }
 
 export class SchedulePage {
