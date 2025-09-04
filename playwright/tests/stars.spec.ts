@@ -1,59 +1,66 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, isMobile } from "./common";
-import { StarredEvents } from "./fixtures";
+import { mockApi } from "./common";
+import { EventDetailsPage, ProgramPage, SchedulePage, StarredEvents } from "./fixtures";
 
 type Fixtures = {
   starredEvents: StarredEvents;
+  eventPage: EventDetailsPage;
+  programPage: ProgramPage;
+  schedulePage: SchedulePage;
 };
 
 export const test = base.extend<Fixtures>({
   starredEvents: async ({ page }, use) => {
     await use(new StarredEvents(page));
   },
+
+  eventPage: async ({ page }, use) => {
+    await use(new EventDetailsPage(page));
+  },
+
+  programPage: async ({ page }, use) => {
+    await use(new ProgramPage(page));
+  },
+
+  schedulePage: async ({ page }, use) => {
+    await use(new SchedulePage(page));
+  },
 });
 
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
-    await mockApi(page, { events: [{ id: "123" }] });
+    await mockApi(page, { events: [{ id: "1", name: "Test Event" }] });
   });
 
-  test("star button in event page", async ({ starredEvents, page }) => {
-    await page.goto("schedule");
+  test("star button in event page", async ({ starredEvents, eventPage, schedulePage }) => {
+    await schedulePage.goto();
 
-    await page.getByTestId("schedule-event-link").filter({ visible: true }).first().click();
+    await schedulePage.openEventDetailsPage("Test Event");
 
-    if (isMobile()) {
-      await page.getByTestId("event-summary-drawer-expand-button").click();
-    }
+    await expect(eventPage.starButton).toHaveAttribute("aria-pressed", "false");
+    await eventPage.toggleStar();
+    await expect(eventPage.starButton).toHaveAttribute("aria-pressed", "true");
 
-    const starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
-    await expect(starButton).toHaveAttribute("aria-pressed", "false");
-    await starButton.click();
-    await expect(starButton).toHaveAttribute("aria-pressed", "true");
+    expect(await starredEvents.get()).toEqual(["1"]);
 
-    expect(await starredEvents.get()).toEqual(["123"]);
+    await eventPage.navigateBack();
 
-    if (isMobile()) {
-      await page.getByTestId("event-details-back-button").click();
-    }
-
-    await expect(
-      page.getByTestId("schedule-event-link").filter({ visible: true }).first(),
-    ).toHaveAccessibleName(/^Starred:/);
+    await expect(schedulePage.events.filter({ hasText: "Test Event" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
   });
 
-  test("star button in program view", async ({ page, starredEvents }) => {
-    await page.goto("program");
+  test("star button in program view", async ({ programPage, starredEvents }) => {
+    await programPage.goto();
 
-    await page.getByTestId("program-event-expand-button").first().click();
+    await programPage.toggleEventExpanded("Test Event");
 
-    const starButton = page.getByTestId("program-event-star-button").first();
-    await expect(starButton).toHaveAttribute("aria-pressed", "false");
-    await starButton.click();
-    await expect(starButton).toHaveAttribute("aria-pressed", "true");
+    await expect(programPage.starButton).toHaveAttribute("aria-pressed", "false");
+    await programPage.toggleStar();
+    await expect(programPage.starButton).toHaveAttribute("aria-pressed", "true");
 
-    expect(await starredEvents.get()).toEqual(["123"]);
+    expect(await starredEvents.get()).toEqual(["1"]);
 
-    await expect(page.getByTestId("program-event-name").first()).toHaveText(/^Starred:/);
+    await expect(programPage.eventName("Test Event")).toHaveText(/^Starred:/);
   });
 });

@@ -51,6 +51,7 @@ const eventNameHeadingId = useId();
     :collapsed="!props.expand"
     pt:content="!pb-2"
     pt:footer="!pb-2"
+    pt:root:data-testid="program-event"
     pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>

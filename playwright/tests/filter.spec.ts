@@ -48,8 +48,8 @@ test.describe("filtering events", () => {
   });
 
   test.describe("in the schedule view", () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto("schedule");
+    test.beforeEach(async ({ schedulePage }) => {
+      await schedulePage.goto();
     });
 
     test("hide past events", async ({ filterMenu, schedulePage }) => {

@@ -67,7 +67,14 @@ const sectionHeadingId = useId();
               'data-testid': 'event-details-back-button',
             }"
           />
-          <IconButton class="!hidden lg:!block" icon="x-lg" label="Close" />
+          <IconButton
+            class="!hidden lg:!block"
+            icon="x-lg"
+            label="Close"
+            :button-props="{
+              'data-testid': 'event-details-back-button',
+            }"
+          />
         </RouterLink>
         <IconButton
           class="hidden lg:block"

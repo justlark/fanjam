@@ -1,5 +1,5 @@
 import { type Locator, type Page } from "@playwright/test";
-import { envId } from "./common";
+import { envId, isMobile } from "./common";
 
 export class FilterMenu {
   private readonly filterMenuButton: Locator;
@@ -50,12 +50,76 @@ export class FilterMenu {
 }
 
 export class SchedulePage {
+  private readonly page: Page;
   readonly events: Locator;
   readonly hiddenNotice: Locator;
+  private readonly eventSummaryDrawer: Locator;
 
   constructor(page: Page) {
+    this.page = page;
     this.events = page.getByTestId("schedule-event-link").filter({ visible: true });
     this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
+    this.eventSummaryDrawer = page.getByTestId("event-summary-drawer-expand-button");
+  }
+
+  async goto() {
+    await this.page.goto("schedule");
+  }
+
+  async openEventDetailsPage(eventName: string) {
+    await this.events.filter({ hasText: eventName }).first().click();
+
+    if (isMobile()) {
+      await this.eventSummaryDrawer.click();
+    }
+  }
+}
+
+export class EventDetailsPage {
+  readonly starButton: Locator;
+  private readonly backButton: Locator;
+
+  constructor(page: Page) {
+    this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
+    this.backButton = page.getByTestId("event-details-back-button").filter({ visible: true });
+  }
+
+  async toggleStar() {
+    await this.starButton.click();
+  }
+
+  async navigateBack() {
+    await this.backButton.click();
+  }
+}
+
+export class ProgramPage {
+  private readonly page: Page;
+  readonly starButton: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.starButton = page.getByTestId("program-event-star-button").filter({ visible: true });
+  }
+
+  async goto() {
+    await this.page.goto("program");
+  }
+
+  async toggleEventExpanded(eventName: string) {
+    await this.page
+      .getByTestId("program-event")
+      .filter({ hasText: eventName })
+      .getByTestId("program-event-expand-button")
+      .click();
+  }
+
+  eventName(eventName: string): Locator {
+    return this.page.getByTestId("program-event-name").filter({ hasText: eventName });
+  }
+
+  async toggleStar() {
+    await this.starButton.click();
   }
 }
 
