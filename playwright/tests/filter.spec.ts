@@ -1,6 +1,6 @@
-import { test as base, expect, type Page } from '@playwright/test';
-import { mockApi, envId, hoursFromNow } from './common';
-import { FilterMenu, SchedulePage } from './fixtures';
+import { test as base, expect } from "@playwright/test";
+import { mockApi, hoursFromNow } from "./common";
+import { FilterMenu, SchedulePage } from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
@@ -41,7 +41,7 @@ test.describe("filtering events", () => {
           start_time: hoursFromNow(1).toISOString(),
           end_time: hoursFromNow(2).toISOString(),
         },
-      ]
+      ],
     });
   });
 
@@ -72,8 +72,7 @@ test.describe("filtering events", () => {
       await expect(schedulePage.hiddenNotice).toBeHidden();
     });
 
-    test("only show starred events", async () => {
-    });
+    test("only show starred events", async () => {});
 
     test("filter by category", async ({ filterMenu, schedulePage }) => {
       await filterMenu.toggleOpen();
@@ -85,7 +84,7 @@ test.describe("filtering events", () => {
       await filterMenu.toggleCategory("Category 2");
 
       await expect(schedulePage.events).toHaveCount(2);
-    })
+    });
 
     test("filter by tag", async ({ filterMenu, schedulePage }) => {
       await filterMenu.toggleOpen();
@@ -100,7 +99,7 @@ test.describe("filtering events", () => {
       await filterMenu.toggleTag("Tag 3");
 
       await expect(schedulePage.events).toHaveCount(0);
-    })
+    });
     test("search by event name", async ({ filterMenu, schedulePage }) => {
       await filterMenu.search("Event 1");
 
@@ -143,7 +142,26 @@ test.describe("filtering events", () => {
 
       await filterMenu.toggleOpen();
 
-      await expect(filterMenu.description).toHaveText(["Only showing:", "Starred", "and", "(", "Category 1", "or", "Category 2", ")", "and", "(", "Tag 1", "or", "Tag 2", ")", "and", "\"foo\""].join(""));
+      await expect(filterMenu.description).toHaveText(
+        [
+          "Only showing:",
+          "Starred",
+          "and",
+          "(",
+          "Category 1",
+          "or",
+          "Category 2",
+          ")",
+          "and",
+          "(",
+          "Tag 1",
+          "or",
+          "Tag 2",
+          ")",
+          "and",
+          '"foo"',
+        ].join(""),
+      );
     });
   });
 });

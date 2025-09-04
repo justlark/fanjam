@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { mockApi } from './common';
+import { test, expect } from "@playwright/test";
+import { mockApi } from "./common";
 
 test.describe("site header", () => {
   test.beforeEach(async ({ page }) => {

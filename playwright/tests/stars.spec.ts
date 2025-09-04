@@ -1,6 +1,6 @@
-import { test as base, expect } from '@playwright/test';
-import { mockApi, isMobile } from './common';
-import { StarredEvents } from './fixtures';
+import { test as base, expect } from "@playwright/test";
+import { mockApi, isMobile } from "./common";
+import { StarredEvents } from "./fixtures";
 
 type Fixtures = {
   starredEvents: StarredEvents;
@@ -37,8 +37,10 @@ test.describe("starring events", () => {
       await page.getByTestId("event-details-back-button").click();
     }
 
-    await expect(page.getByTestId("schedule-event-link").filter({ visible: true }).first()).toHaveAccessibleName(/^Starred:/);
-  })
+    await expect(
+      page.getByTestId("schedule-event-link").filter({ visible: true }).first(),
+    ).toHaveAccessibleName(/^Starred:/);
+  });
 
   test("star button in program view", async ({ page, starredEvents }) => {
     await page.goto("program");
@@ -53,5 +55,5 @@ test.describe("starring events", () => {
     expect(await starredEvents.get()).toEqual(["123"]);
 
     await expect(page.getByTestId("program-event-name").first()).toHaveText(/^Starred:/);
-  })
+  });
 });

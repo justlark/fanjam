@@ -65,11 +65,17 @@ export class StarredEvents {
   }
 
   async get(): Promise<Array<string>> {
-    const rawJson = await this.page.evaluate((envId) => localStorage.getItem(`starred:${envId}`), this.envId)
+    const rawJson = await this.page.evaluate(
+      (envId) => localStorage.getItem(`starred:${envId}`),
+      this.envId,
+    );
     return rawJson ? JSON.parse(rawJson) : [];
   }
 
   async set(eventIds: Array<string>) {
-    this.page.evaluate((envId) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)), this.envId);
+    this.page.evaluate(
+      (envId) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)),
+      this.envId,
+    );
   }
 }
