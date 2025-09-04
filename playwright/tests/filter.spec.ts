@@ -1,10 +1,11 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, hoursFromNow } from "./common";
-import { FilterMenu, SchedulePage } from "./fixtures";
+import { EventDetailsPage, FilterMenu, SchedulePage } from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
   schedulePage: SchedulePage;
+  eventPage: EventDetailsPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -16,6 +17,10 @@ export const test = base.extend<Fixtures>({
 
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
+  },
+
+  eventPage: async ({ page }, use) => {
+    await use(new EventDetailsPage(page));
   },
 });
 
@@ -74,7 +79,17 @@ test.describe("filtering events", () => {
       await expect(schedulePage.hiddenNotice).toBeHidden();
     });
 
-    test("only show starred events", async () => {});
+    test("only show starred events", async ({ filterMenu, schedulePage, eventPage }) => {
+      await schedulePage.openEventDetailsPage("Test Event 2");
+      await eventPage.toggleStar();
+      await eventPage.navigateBack();
+
+      await filterMenu.toggleOpen();
+      await filterMenu.toggleHideNotStarredEvents();
+      await filterMenu.toggleOpen();
+
+      await expect(schedulePage.events).toHaveText("Test Event 2");
+    });
 
     test("filter by category", async ({ filterMenu, schedulePage }) => {
       await filterMenu.toggleOpen();
