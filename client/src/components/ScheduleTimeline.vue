@@ -256,6 +256,7 @@ watchEffect(() => {
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
         :all-categories="allCategories"
+        data-testid="schedule-time-slot"
       />
     </div>
     <div class="m-auto" v-else-if="eventsStatus === 'pending'">

@@ -150,6 +150,7 @@ test.describe("filtering events", () => {
 
         await expect(events).toHaveCount(0);
       });
+
       test("search by event name", async ({ filterMenu, schedulePage, programPage }) => {
         const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
 

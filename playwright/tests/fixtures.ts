@@ -51,15 +51,17 @@ export class FilterMenu {
 
 export class SchedulePage {
   private readonly page: Page;
-  readonly events: Locator;
-  readonly hiddenNotice: Locator;
   private readonly eventSummaryDrawer: Locator;
+  readonly events: Locator;
+  readonly timeSlots: Locator;
+  readonly hiddenNotice: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.events = page.getByTestId("schedule-event-link").filter({ visible: true });
-    this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
     this.eventSummaryDrawer = page.getByTestId("event-summary-drawer-expand-button");
+    this.events = page.getByTestId("schedule-event-link").filter({ visible: true });
+    this.timeSlots = page.getByTestId("schedule-time-slot").filter({ visible: true });
+    this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
   }
 
   async goto() {

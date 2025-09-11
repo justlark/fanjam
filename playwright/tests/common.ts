@@ -88,8 +88,15 @@ export const mockApi = async (
 export const isDesktop = () => test.info().project.name === "desktop";
 export const isMobile = () => test.info().project.name === "mobile";
 
+// Make sure all tests have a common definition of "now".
+const now = new Date();
+
 export const hoursFromNow = (hours: number) => {
-  const newDate = new Date();
+  const newDate = new Date(now);
   newDate.setHours(newDate.getHours() + hours);
   return newDate;
+};
+
+export const daysFromNow = (days: number) => {
+  return hoursFromNow(days * 24);
 };
