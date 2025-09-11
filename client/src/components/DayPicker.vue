@@ -39,18 +39,27 @@ const selectToday = () => {
         :active="currentDayIndex === props.todayIndex"
         v-if="props.todayIndex !== undefined"
         @click="selectToday"
+        :button-props="{
+          'data-testid': 'schedule-today-button',
+        }"
       />
       <IconButton
         icon="chevron-left"
         label="Previous"
         :disabled="currentDayIndex === 0"
         @click="selectPrevDay"
+        :button-props="{
+          'data-testid': 'schedule-prev-day-button',
+        }"
       />
       <IconButton
         icon="chevron-right"
         label="Next"
         :disabled="currentDayIndex === props.dayNames.length - 1"
         @click="selectNextDay"
+        :button-props="{
+          'data-testid': 'schedule-next-day-button',
+        }"
       />
     </span>
   </nav>

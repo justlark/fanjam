@@ -108,12 +108,6 @@ const todayIndex = computed(() => {
 });
 
 watchEffect(() => {
-  if (currentDayIndex.value === undefined) {
-    currentDayIndex.value = todayIndex.value;
-  }
-});
-
-watchEffect(() => {
   dayIndexByEventId.value = {};
 
   if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
@@ -178,12 +172,16 @@ const isDayFilteringPastEvents = computed(() => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  [toRef(route, "path"), dayIndexByEventId],
+  [toRef(route, "path"), dayIndexByEventId, todayIndex],
   () => {
     if (route.name === "schedule") {
       if (!route.params.dayIndex) {
-        currentDayIndex.value = 0;
-        return;
+        if (currentDayIndex.value === undefined) {
+          currentDayIndex.value = todayIndex.value ?? 0;
+          return;
+        } else {
+          currentDayIndex.value = 0;
+        }
       }
 
       // Handle the page number in the path being out of range or not a number.

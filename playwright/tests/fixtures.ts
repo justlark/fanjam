@@ -55,6 +55,7 @@ export class SchedulePage {
   readonly events: Locator;
   readonly timeSlots: Locator;
   readonly hiddenNotice: Locator;
+  readonly todayButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -62,6 +63,7 @@ export class SchedulePage {
     this.events = page.getByTestId("schedule-event-link").filter({ visible: true });
     this.timeSlots = page.getByTestId("schedule-time-slot").filter({ visible: true });
     this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
+    this.todayButton = page.getByTestId("schedule-today-button");
   }
 
   async goto() {
@@ -74,6 +76,18 @@ export class SchedulePage {
     if (isMobile()) {
       await this.eventSummaryDrawer.click();
     }
+  }
+
+  async toNextDay() {
+    await this.page.getByTestId("schedule-next-day-button").click();
+  }
+
+  async toPrevDay() {
+    await this.page.getByTestId("schedule-prev-day-button").click();
+  }
+
+  async toToday() {
+    await this.todayButton.click();
   }
 }
 
