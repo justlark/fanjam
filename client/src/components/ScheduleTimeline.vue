@@ -175,19 +175,14 @@ watch(
   [toRef(route, "path"), dayIndexByEventId, todayIndex],
   () => {
     if (route.name === "schedule") {
-      if (!route.params.dayIndex) {
-        if (currentDayIndex.value === undefined) {
-          currentDayIndex.value = todayIndex.value ?? 0;
-          return;
-        } else {
-          currentDayIndex.value = 0;
-        }
+      if (route.params.dayIndex) {
+        // Handle the page number in the path being out of range or not a number.
+        const parsed = parseInt(route.params.dayIndex as string, 10);
+        currentDayIndex.value =
+          isNaN(parsed) || parsed < 0 || parsed >= days.value.length + 1 ? undefined : parsed - 1;
+      } else if (currentDayIndex.value === undefined && todayIndex.value !== undefined) {
+        currentDayIndex.value = todayIndex.value;
       }
-
-      // Handle the page number in the path being out of range or not a number.
-      const parsed = parseInt(route.params.dayIndex as string, 10);
-      currentDayIndex.value =
-        isNaN(parsed) || parsed < 0 || parsed >= days.value.length ? undefined : parsed;
     } else if (route.name === "event") {
       currentDayIndex.value = route.params.eventId
         ? dayIndexByEventId.value[route.params.eventId as string]
@@ -202,18 +197,10 @@ watchEffect(async () => {
     return;
   }
 
-  // If the current day index is 0 (this is the first day of the con), omit it
-  // from the URL.
-  if (currentDayIndex.value === 0) {
-    await router.push({
-      params: { dayIndex: "" },
-      query: toFilterQueryParams(filterCriteria),
-    });
-    return;
-  }
-
+  // The day number we show in the URL 1-based, whereas our internal index is
+  // 0-based.
   await router.push({
-    params: { dayIndex: currentDayIndex.value },
+    params: { dayIndex: currentDayIndex.value + 1 },
     query: toFilterQueryParams(filterCriteria),
   });
 });
