@@ -12,7 +12,7 @@ export const test = base.extend<Fixtures>({
   },
 });
 
-test.describe("a multi-day event in the schedule", () => {
+test.describe("a multi-day schedule", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page, {
       events: [
