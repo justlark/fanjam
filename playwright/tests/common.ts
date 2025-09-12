@@ -72,17 +72,25 @@ const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) =
   return data;
 };
 
+const mockApiConfig = async (page: Page, config: Record<string, unknown>) => {
+  await mockApiResponse(page, "/config", config);
+
+  return config;
+};
+
 export const mockApi = async (
   path: Page,
   data: {
     info?: Record<string, unknown>;
     events?: Array<Record<string, unknown>>;
     pages?: Array<Record<string, unknown>>;
+    config?: Record<string, unknown>;
   },
 ) => ({
   info: await mockApiInfo(path, data.info ?? {}),
   events: await mockApiEvents(path, data.events ?? []),
   pages: await mockApiPages(path, data.pages ?? []),
+  config: await mockApiConfig(path, data.config ?? {}),
 });
 
 export const isDesktop = () => test.info().project.name === "desktop";

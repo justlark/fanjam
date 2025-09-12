@@ -36,7 +36,7 @@ const selectToday = () => {
         label="Today"
         :show-label="true"
         size="sm"
-        :active="currentDayIndex === props.todayIndex"
+        :disabled="currentDayIndex === props.todayIndex"
         v-if="props.todayIndex !== undefined"
         @click="selectToday"
         :button-props="{
