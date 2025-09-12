@@ -66,8 +66,8 @@ export class SchedulePage {
     this.todayButton = page.getByTestId("schedule-today-button");
   }
 
-  async goto() {
-    await this.page.goto("schedule");
+  async goto(day?: number | string) {
+    await this.page.goto(day === undefined ? "schedule" : `schedule/${day}`);
   }
 
   async openEventDetailsPage(eventName: string) {

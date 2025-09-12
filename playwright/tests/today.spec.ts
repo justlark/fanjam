@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { SchedulePage } from "./fixtures";
-import { daysFromNow, hoursFromNow, mockApi } from "./common";
+import { hoursFromNow, mockApi } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
@@ -12,14 +12,14 @@ export const test = base.extend<Fixtures>({
   },
 });
 
-test.describe("a multi-day event", () => {
+test.describe("a multi-day event in the schedule", () => {
   test.beforeEach(async ({ page }) => {
-    mockApi(page, {
+    await mockApi(page, {
       events: [
         {
           name: "Yesterday Event",
-          start_time: hoursFromNow(-24).toISOString(),
-          end_time: hoursFromNow(-23).toISOString(),
+          start_time: hoursFromNow(-25).toISOString(),
+          end_time: hoursFromNow(-24).toISOString(),
         },
         {
           name: "Today Event",
@@ -40,6 +40,45 @@ test.describe("a multi-day event", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
+  });
+
+  test("navigating to a day explicitly does not take you to the current day", async ({
+    schedulePage,
+  }) => {
+    await schedulePage.goto(1);
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Yesterday Event");
+
+    await schedulePage.goto(3);
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Tomorrow Event");
+  });
+
+  test("navigating to day 0 takes you to the first day", async ({ page, schedulePage }) => {
+    await schedulePage.goto(0);
+    await expect(page).toHaveURL(new RegExp("/schedule/1$"));
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Yesterday Event");
+  });
+
+  test("navigating to a day out of bounds takes you to the first day", async ({
+    page,
+    schedulePage,
+  }) => {
+    await schedulePage.goto(999);
+    await expect(page).toHaveURL(new RegExp("/schedule/1$"));
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Yesterday Event");
+  });
+
+  test("navigating to an invalid URL takes you to the first day", async ({
+    page,
+    schedulePage,
+  }) => {
+    await schedulePage.goto("foo");
+    await expect(page).toHaveURL(new RegExp("/schedule/1$"));
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Yesterday Event");
   });
 
   test("pressing the Today button brings you back to the current day", async ({ schedulePage }) => {
