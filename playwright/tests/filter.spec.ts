@@ -220,6 +220,26 @@ test.describe("filtering events", () => {
           ].join(""),
         );
       });
+
+      test("clearing categories and tags from the filter description", async ({ filterMenu, schedulePage, programPage }) => {
+        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+
+        await filterMenu.toggleOpen();
+
+        await filterMenu.toggleCategory("Category 1");
+        await filterMenu.toggleTag("Tag 1");
+
+        await filterMenu.toggleOpen();
+
+        await expect(events).toHaveCount(1);
+        await expect(events).toHaveText("Test Event 1");
+
+        await filterMenu.clearCategoryOrTag("Category 1");
+        await filterMenu.clearCategoryOrTag("Tag 1");
+
+        await expect(events).toHaveCount(2);
+        await expect(filterMenu.description).not.toBeVisible();
+      });
     });
   }
 

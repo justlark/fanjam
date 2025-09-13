@@ -44,6 +44,10 @@ export class FilterMenu {
     await this.searchInput.fill(text);
   }
 
+  async clearCategoryOrTag(name: string) {
+    await this.description.getByRole("button").filter({ hasText: name }).click();
+  }
+
   async clear() {
     await this.searchInput.clear();
   }
