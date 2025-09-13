@@ -121,6 +121,10 @@ const sectionHeadingId = useId();
         :category="event.category"
         :tags="event.tags"
         :all-categories="props.allCategories"
+        :to="{
+          name: props.from,
+          params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+        }"
       />
       <Divider />
       <article

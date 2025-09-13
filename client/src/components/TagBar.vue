@@ -8,6 +8,7 @@ const props = defineProps<{
   category?: string;
   tags: ReadonlyArray<string>;
   allCategories: ReadonlyArray<string>;
+  to?: RouteLocationAsRelativeGeneric;
 }>();
 </script>
 
@@ -16,10 +17,12 @@ const props = defineProps<{
     <RouterLink
       v-if="props.category"
       :to="{
+        ...props.to,
         query: toFilterQueryParams({
           categories: [props.category],
         }),
       }"
+      data-testid="tagbar-category-link"
     >
       <CategoryLabel
         :title="props.category"
@@ -32,10 +35,12 @@ const props = defineProps<{
       v-for="tag in props.tags"
       :key="tag"
       :to="{
+        ...props.to,
         query: toFilterQueryParams({
           tags: [tag],
         }),
       }"
+      data-testid="tagbar-tag-link"
     >
       <CategoryLabel :title="tag" :size="props.size" display="active" />
     </RouterLink>

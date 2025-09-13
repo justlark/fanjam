@@ -96,12 +96,16 @@ export class SchedulePage {
 }
 
 export class EventDetailsPage {
-  readonly starButton: Locator;
   private readonly backButton: Locator;
+  private readonly tagbarCategoryLink: Locator;
+  private readonly tagbarTagLinks: Locator;
+  readonly starButton: Locator;
 
   constructor(page: Page) {
-    this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
     this.backButton = page.getByTestId("event-details-back-button").filter({ visible: true });
+    this.tagbarCategoryLink = page.getByTestId("tagbar-category-link").filter({ visible: true });
+    this.tagbarTagLinks = page.getByTestId("tagbar-tag-link").filter({ visible: true });
+    this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
   }
 
   async toggleStar() {
@@ -110,6 +114,14 @@ export class EventDetailsPage {
 
   async navigateBack() {
     await this.backButton.click();
+  }
+
+  async filterByCategory(name: string) {
+    await this.tagbarCategoryLink.filter({ hasText: name }).click();
+  }
+
+  async filterByTag(name: string) {
+    await this.tagbarTagLinks.filter({ hasText: name }).click();
   }
 }
 

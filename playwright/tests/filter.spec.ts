@@ -222,4 +222,21 @@ test.describe("filtering events", () => {
       });
     });
   }
+
+  test("filter by category or tag from event page", async ({ schedulePage, eventPage }) => {
+    await schedulePage.goto();
+
+    await schedulePage.openEventDetailsPage("Test Event 1");
+    await eventPage.filterByCategory("Category 1");
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Test Event 1");
+
+    await schedulePage.openEventDetailsPage("Test Event 1");
+    await eventPage.filterByTag("Tag 2");
+
+    await expect(schedulePage.events).toHaveCount(2);
+    await expect(schedulePage.events.nth(0)).toHaveText("Test Event 1");
+    await expect(schedulePage.events.nth(1)).toHaveText("Test Event 2");
+  });
 });
