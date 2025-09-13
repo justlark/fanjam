@@ -1,14 +1,18 @@
 import { test as base, expect } from "@playwright/test";
-import { SchedulePage } from "./fixtures";
+import { EventDetailsPage, SchedulePage } from "./fixtures";
 import { hoursFromNow, mockApi } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
+  eventPage: EventDetailsPage;
 };
 
 export const test = base.extend<Fixtures>({
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
+  },
+  eventPage: async ({ page }, use) => {
+    await use(new EventDetailsPage(page));
   },
 });
 
@@ -110,5 +114,33 @@ test.describe("a multi-day schedule", () => {
 
     await schedulePage.toPrevDay();
     await expect(schedulePage.todayButton).toBeDisabled();
+  });
+
+  test("back button from event page returns to that event's day in the schedule", async ({
+    eventPage,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+
+    await schedulePage.toPrevDay();
+    await schedulePage.openEventDetailsPage("Yesterday Event");
+    await eventPage.navigateBack();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Yesterday Event");
+
+    await schedulePage.toToday();
+    await schedulePage.openEventDetailsPage("Today Event");
+    await eventPage.navigateBack();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Today Event");
+
+    await schedulePage.toNextDay();
+    await schedulePage.openEventDetailsPage("Tomorrow Event");
+    await eventPage.navigateBack();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Tomorrow Event");
   });
 });

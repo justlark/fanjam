@@ -55,7 +55,7 @@ const sectionHeadingId = useId();
           v-if="props.from !== undefined"
           :to="{
             name: props.from,
-            params: props.from === 'schedule' ? { dayIndex: props.day } : {},
+            params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
             query: toFilterQueryParams(filterCriteria),
           }"
         >

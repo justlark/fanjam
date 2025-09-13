@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { SchedulePage } from "./fixtures";
+import { EventDetailsPage, SchedulePage } from "./fixtures";
 import { hoursFromNow, mockApi } from "./common";
 
 type Fixtures = {
