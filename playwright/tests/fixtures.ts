@@ -56,6 +56,8 @@ export class SchedulePage {
   readonly timeSlots: Locator;
   readonly hiddenNotice: Locator;
   readonly todayButton: Locator;
+  readonly prevDayButton: Locator;
+  readonly nextDayButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -64,6 +66,8 @@ export class SchedulePage {
     this.timeSlots = page.getByTestId("schedule-time-slot").filter({ visible: true });
     this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
     this.todayButton = page.getByTestId("schedule-today-button");
+    this.prevDayButton = page.getByTestId("schedule-prev-day-button");
+    this.nextDayButton = page.getByTestId("schedule-next-day-button");
   }
 
   async goto(day?: number | string) {
@@ -79,11 +83,11 @@ export class SchedulePage {
   }
 
   async toNextDay() {
-    await this.page.getByTestId("schedule-next-day-button").click();
+    await this.nextDayButton.click();
   }
 
   async toPrevDay() {
-    await this.page.getByTestId("schedule-prev-day-button").click();
+    await this.prevDayButton.click();
   }
 
   async toToday() {

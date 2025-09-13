@@ -143,4 +143,22 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Tomorrow Event");
   });
+
+  test("does not allow navigating before the first day or past the last day", async ({
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+
+    await schedulePage.toPrevDay();
+    await expect(schedulePage.prevDayButton).toBeDisabled();
+    await expect(schedulePage.nextDayButton).toBeEnabled();
+
+    await schedulePage.toToday();
+    await expect(schedulePage.prevDayButton).toBeEnabled();
+    await expect(schedulePage.nextDayButton).toBeEnabled();
+
+    await schedulePage.toNextDay();
+    await expect(schedulePage.prevDayButton).toBeEnabled();
+    await expect(schedulePage.nextDayButton).toBeDisabled();
+  });
 });
