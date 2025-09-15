@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterLink } from "vue-router";
+import { RouterLink, type RouteLocationAsRelativeGeneric } from "vue-router";
 import CategoryLabel from "./CategoryLabel.vue";
 import { toFilterQueryParams } from "@/composables/useFilterQuery";
 
