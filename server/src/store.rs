@@ -54,27 +54,30 @@ const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 // TLDR: We're using aggressive caching to create an eventually consistent system that maximizes
 // availability while allowing the NocoDB instance to shut itself off when not in use.
 //
-// There are two caches, which we'll call the "cache" and the "store". The cache has a short TTL
-// and is used to reduce the load on the NocoDB instance, which is slower and more expensive than
-// this worker. Data we fetch from NocoDB is put into the cache, where it expires after *n*
-// seconds. Requests that come in from the client during that time will get the cached data. This
-// means that NocoDB will only get hit at most every *n* seconds, and data returned to the client
-// will only be stale by at most *n* seconds.
+// The cache has a short TTL and is used to reduce the load on the NocoDB instance, which is slower
+// and more expensive than this worker. Data we fetch from NocoDB is put into the cache, where it
+// expires after *n* milliseconds. Requests that come in from the client during that time will get
+// the cached data. This means that NocoDB will only get hit at most every *n* milliseconds, and
+// data returned to the client will only be stale by at most *n* milliseconds.
 //
-// Whenever we fetch data from NocoDB, we also put it into the store, where it does not expire. The
-// purpose of the store is to handle the specific case where the NocoDB instance is temporarily
-// unavailable, but the cache is empty. This may happen fairly often, because if the Fly Machine
+// Rather than tell the KV store to expire the keys after *n* milliseconds, we store the expiration
+// date alongside the data. This is for two reasons: 1) the KV store we're using only supports a
+// minimum TTL of 60 seconds, which is too long for our purposes; and 2) we want to keep stale data
+// in the cache until fresh data is fetched from upstream, as will be explained below.
+//
+// The purpose of keeping stale data in the cache is to handle the specific case where the NocoDB
+// instance is temporarily unavailable. This may happen fairly often, because if the Fly Machine
 // shuts itself off (which it is configured to do, to save money), it takes about 10 seconds to
 // start back up, and during that time it will not respond to requests.
 //
-// Whenever the worker responds to a request with data from the store, it includes a directive for
-// the client to retry the request after a short delay, by which point the NocoDB instance is
-// hopefully online. This saves the user from a 10+ second loading spinner while the NocoDB
-// instance starts up.
+// Whenever the worker responds to a request with expired data from the cache, it includes a
+// directive for the client to retry the request after a short delay, by which point the NocoDB
+// instance is hopefully online. This saves the user from a 10+ second loading spinner while the
+// NocoDB instance starts up.
 //
-// We can't make any guarantees about how stale the data in the store is, but it's not particularly
-// important, because that data will only be shown to the user for a few seconds until the client
-// is able to fetch the latest data from NocoDB.
+// We can't make any guarantees about how stale the data in the cache might be, but it's not
+// particularly important, because that data will only be shown to the user for a few seconds until
+// the client is able to fetch the latest data from NocoDB.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -82,8 +85,6 @@ macro_rules! get_data {
         get_api_fn: $get_api_fn:path,
         get_cached_fn: $get_cached_fn:path,
         put_cached_fn: $put_cached_fn:path,
-        get_stored_fn: $get_stored_fn:path,
-        put_stored_fn: $put_stored_fn:path,
         err_msg_key: $err_msg_key:expr,
     } => {
         #[worker::send]
@@ -92,11 +93,11 @@ macro_rules! get_data {
                 // When the value is fetched from this cache, we do not instruct the client to
                 // retry the request. This data will always be reasonably fresh, and instructing
                 // the client to retry the request would get it stuck in a refresh loop.
-                Ok(Some(value)) => {
+                Ok(Some(value)) if !value.expired => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
-                    return Ok(DataResponseEnvelope { value, retry_after: None });
+                    return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
                 },
-                Ok(None) => {
+                Ok(_) => {
                     console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
                 }
                 Err(e) => {
@@ -172,20 +173,17 @@ macro_rules! get_data {
                         console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
                     }
 
-                    console_log!("Storing latest {} from NocoDB.", $err_msg_key);
-                    if let Err(e) = $put_stored_fn(&self.kv, &self.env_name, &value).await {
-                        console_warn!("Failed putting {} in store: {}", $err_msg_key, e);
-                    }
-
                     Ok(DataResponseEnvelope { value, retry_after: None })
                 },
                 None => {
                     console_log!("NocoDB is unavailable, fetching stale data if available.");
 
-                    match $get_stored_fn(&self.kv, &self.env_name).await {
+                    match $get_cached_fn(&self.kv, &self.env_name).await {
                         Ok(Some(value)) => {
+                            // Return the cached data whether or not it has expired, because we
+                            // have nothing better to send the client right now.
                             console_log!("Returning stale {} from store.", $err_msg_key);
-                            Ok(DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
+                            Ok(DataResponseEnvelope { value: value.value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
                         }
                         Ok(None) => {
                             console_warn!("No cached or stored {} found.", $err_msg_key);
@@ -279,8 +277,6 @@ impl Store {
         get_api_fn: noco::get_events,
         get_cached_fn: kv::get_cached_events,
         put_cached_fn: kv::put_cached_events,
-        get_stored_fn: kv::get_stored_events,
-        put_stored_fn: kv::put_stored_events,
         err_msg_key: "events",
     }
 
@@ -290,8 +286,6 @@ impl Store {
         get_api_fn: noco::get_info,
         get_cached_fn: kv::get_cached_info,
         put_cached_fn: kv::put_cached_info,
-        get_stored_fn: kv::get_stored_info,
-        put_stored_fn: kv::put_stored_info,
         err_msg_key: "info",
     }
 
@@ -301,8 +295,6 @@ impl Store {
         get_api_fn: noco::get_pages,
         get_cached_fn: kv::get_cached_pages,
         put_cached_fn: kv::put_cached_pages,
-        get_stored_fn: kv::get_stored_pages,
-        put_stored_fn: kv::put_stored_pages,
         err_msg_key: "pages",
     }
 
@@ -312,8 +304,6 @@ impl Store {
         get_api_fn: noco::get_about,
         get_cached_fn: kv::get_cached_about,
         put_cached_fn: kv::put_cached_about,
-        get_stored_fn: kv::get_stored_about,
-        put_stored_fn: kv::put_stored_about,
         err_msg_key: "about",
     }
 

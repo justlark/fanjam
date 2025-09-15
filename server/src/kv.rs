@@ -1,4 +1,6 @@
 use secrecy::ExposeSecret;
+use serde::{Deserialize, Serialize};
+use worker::Date;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
@@ -6,6 +8,29 @@ use crate::{
     env::{Config, EnvId, EnvName},
     noco::{About, ApiToken, Event, Info, Page, Summary, TableInfo},
 };
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CacheValue<T> {
+    pub value: T,
+    pub expires: u64,
+}
+
+#[derive(Debug)]
+pub struct CachedValue<T> {
+    pub value: T,
+    pub expired: bool,
+}
+
+impl<T> From<CacheValue<T>> for CachedValue<T> {
+    fn from(cache_value: CacheValue<T>) -> Self {
+        let now = Date::now().as_millis();
+
+        Self {
+            value: cache_value.value,
+            expired: cache_value.expires < now,
+        }
+    }
+}
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
     anyhow::Error::msg(err.to_string())
@@ -62,15 +87,6 @@ concat_key_fn!(info_cache_key, cache_key_prefix, "info");
 concat_key_fn!(pages_cache_key, cache_key_prefix, "pages");
 concat_key_fn!(about_cache_key, cache_key_prefix, "about");
 concat_key_fn!(summary_cache_key, cache_key_prefix, "summary");
-
-fn store_key_prefix(env_name: &EnvName) -> String {
-    format!("env:{env_name}:store:")
-}
-
-concat_key_fn!(events_store_key, store_key_prefix, "events");
-concat_key_fn!(info_store_key, store_key_prefix, "info");
-concat_key_fn!(pages_store_key, store_key_prefix, "pages");
-concat_key_fn!(about_store_key, store_key_prefix, "about");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -186,16 +202,20 @@ macro_rules! put_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
         pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
-            let ttl = config::noco_buffer_cache_ttl();
+            let env_config = get_env_config(kv, env_name).await?;
 
-            if ttl.is_zero() {
-                // If the TTL is zero, we have nothing to cache and can just return silently.
-                return Ok(());
-            }
+            let now = Date::now().as_millis();
+            let ttl = env_config
+                .cache_ttl
+                .unwrap_or(config::noco_default_buffer_cache_ttl().as_millis() as u64);
 
-            kv.put(&$key_fn(env_name), value)
+            let cache_value = CacheValue {
+                value,
+                expires: now + ttl,
+            };
+
+            kv.put(&$key_fn(env_name), cache_value)
                 .map_err(wrap_kv_err)?
-                .expiration_ttl(ttl.as_secs())
                 .execute()
                 .await
                 .map_err(wrap_kv_err)?;
@@ -213,11 +233,15 @@ put_cache_fn!(put_cached_about, about_cache_key, &About);
 macro_rules! get_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
-        pub async fn $name(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<$type>> {
+        pub async fn $name(
+            kv: &KvStore,
+            env_name: &EnvName,
+        ) -> anyhow::Result<Option<CachedValue<$type>>> {
             kv.get(&$key_fn(env_name))
-                .json::<$type>()
+                .json::<CacheValue<$type>>()
                 .await
                 .map_err(wrap_kv_err)
+                .map(|option| option.map(Into::into))
         }
     };
 }
@@ -226,37 +250,6 @@ get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
 get_cache_fn!(get_cached_info, info_cache_key, Info);
 get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
 get_cache_fn!(get_cached_about, about_cache_key, About);
-
-macro_rules! put_store_fn {
-    ($name:ident, $key_fn:expr, $type:ty) => {
-        #[worker::send]
-        pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
-            kv.put(&$key_fn(env_name), value)
-                .map_err(wrap_kv_err)?
-                .execute()
-                .await
-                .map_err(wrap_kv_err)?;
-
-            Ok(())
-        }
-    };
-}
-
-put_store_fn!(put_stored_events, events_store_key, &[Event]);
-put_store_fn!(put_stored_info, info_store_key, &Info);
-put_store_fn!(put_stored_pages, pages_store_key, &[Page]);
-put_store_fn!(put_stored_about, about_store_key, &About);
-
-macro_rules! get_store_fn {
-    ($name:ident, $key_fn:expr, $type:ty) => {
-        get_cache_fn!($name, $key_fn, $type);
-    };
-}
-
-get_store_fn!(get_stored_events, events_store_key, Vec<Event>);
-get_store_fn!(get_stored_info, info_store_key, Info);
-get_store_fn!(get_stored_pages, pages_store_key, Vec<Page>);
-get_store_fn!(get_stored_about, about_store_key, About);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
@@ -270,17 +263,7 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
         .map_err(wrap_kv_err)?
         .keys;
 
-    let store_keys = kv
-        .list()
-        .prefix(store_key_prefix(env_name))
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?
-        .keys;
-
-    let keys = cache_keys.into_iter().chain(store_keys.into_iter());
-
-    for key in keys {
+    for key in cache_keys {
         kv.delete(&key.name).await.map_err(wrap_kv_err)?;
     }
 

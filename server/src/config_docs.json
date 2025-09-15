@@ -1,5 +1,6 @@
 {
   "timezone": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone.",
+  "cache_ttl": "The time-to-live (TTL) for data cached at the edge, in milliseconds.",
   "config_db_host": "The Postgres host for the configuration database.",
   "config_db_port": "The Postgres port for the configuration database.",
   "config_db_name": "The Postgres database name for the configuration database.",

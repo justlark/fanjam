@@ -17,7 +17,7 @@ struct Config {
     neon_default_branch_name: String,
     upstash_endpoint: String,
     upstash_api_token: upstash::ApiToken,
-    noco_buffer_cache_ttl_seconds: u32,
+    noco_default_buffer_cache_ttl_seconds: u32,
     noco_summary_cache_ttl_seconds: u32,
 }
 
@@ -38,8 +38,8 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
             upstash_api_token: upstash::ApiToken::from(
                 env.secret("UPSTASH_API_TOKEN")?.to_string(),
             ),
-            noco_buffer_cache_ttl_seconds: env
-                .var("NOCO_BUFFER_CACHE_TTL_SECONDS")?
+            noco_default_buffer_cache_ttl_seconds: env
+                .var("NOCO_DEFAULT_BUFFER_CACHE_TTL_MILLIS")?
                 .to_string()
                 .parse()?,
             noco_summary_cache_ttl_seconds: env
@@ -88,8 +88,8 @@ pub fn upstash_api_token() -> upstash::ApiToken {
     get_config().upstash_api_token.clone()
 }
 
-pub fn noco_buffer_cache_ttl() -> Duration {
-    Duration::from_secs(get_config().noco_buffer_cache_ttl_seconds.into())
+pub fn noco_default_buffer_cache_ttl() -> Duration {
+    Duration::from_millis(get_config().noco_default_buffer_cache_ttl_seconds.into())
 }
 
 pub fn noco_summary_cache_ttl() -> Duration {
