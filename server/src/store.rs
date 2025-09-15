@@ -98,7 +98,7 @@ macro_rules! get_data {
                     return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
                 },
                 Ok(_) => {
-                    console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
+                    console_log!("No fresh cached {} found, fetching from NocoDB.", $err_msg_key);
                 }
                 Err(e) => {
                     console_warn!("Failed to get {} from cache: {}", $err_msg_key, e);
@@ -182,11 +182,11 @@ macro_rules! get_data {
                         Ok(Some(value)) => {
                             // Return the cached data whether or not it has expired, because we
                             // have nothing better to send the client right now.
-                            console_log!("Returning stale {} from store.", $err_msg_key);
+                            console_log!("Returning stale {} from cache.", $err_msg_key);
                             Ok(DataResponseEnvelope { value: value.value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
                         }
                         Ok(None) => {
-                            console_warn!("No cached or stored {} found.", $err_msg_key);
+                            console_warn!("No stale cached {} found.", $err_msg_key);
                             Err(Error::NocoUnavailable)
                         }
                         Err(e) => {
