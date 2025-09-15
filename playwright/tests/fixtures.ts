@@ -55,7 +55,6 @@ export class FilterMenu {
 
 export class SchedulePage {
   private readonly page: Page;
-  private readonly eventSummaryDrawer: Locator;
   readonly events: Locator;
   readonly timeSlots: Locator;
   readonly hiddenNotice: Locator;
@@ -65,7 +64,6 @@ export class SchedulePage {
 
   constructor(page: Page) {
     this.page = page;
-    this.eventSummaryDrawer = page.getByTestId("event-summary-drawer-expand-button");
     this.events = page.getByTestId("schedule-event-link").filter({ visible: true });
     this.timeSlots = page.getByTestId("schedule-time-slot").filter({ visible: true });
     this.hiddenNotice = page.getByTestId("schedule-past-events-hidden-notice");
@@ -79,10 +77,16 @@ export class SchedulePage {
   }
 
   async openEventDetailsPage(eventName: string) {
-    await this.events.filter({ hasText: eventName }).first().click();
+    await this.events.filter({ hasText: eventName }).click();
 
     if (isMobile()) {
-      await this.eventSummaryDrawer.click();
+      await new EventSummaryDrawer(this.page).openEventDetailsPage();
+    }
+  }
+
+  async openEventSummaryDrawer(eventName: string) {
+    if (isMobile()) {
+      await this.events.filter({ hasText: eventName }).click();
     }
   }
 
@@ -96,6 +100,42 @@ export class SchedulePage {
 
   async toToday() {
     await this.todayButton.click();
+  }
+}
+
+export class EventSummaryDrawer {
+  private readonly eventSummaryDrawer: Locator;
+  private readonly eventSummaryDrawerCloseButton: Locator;
+  private readonly eventSummaryDrawerExpandButton: Locator;
+  private readonly tagbarCategoryLink: Locator;
+  private readonly tagbarTagLinks: Locator;
+
+  constructor(page: Page) {
+    this.eventSummaryDrawer = page.getByTestId("event-summary-drawer").filter({ visible: true });
+    this.eventSummaryDrawerCloseButton = this.eventSummaryDrawer.getByLabel("Close");
+    this.eventSummaryDrawerExpandButton = this.eventSummaryDrawer.getByLabel("Expand");
+    this.tagbarCategoryLink = this.eventSummaryDrawer
+      .getByTestId("tagbar-category-link")
+      .filter({ visible: true });
+    this.tagbarTagLinks = this.eventSummaryDrawer
+      .getByTestId("tagbar-tag-link")
+      .filter({ visible: true });
+  }
+
+  async close() {
+    await this.eventSummaryDrawerCloseButton.click();
+  }
+
+  async openEventDetailsPage() {
+    await this.eventSummaryDrawerExpandButton.click();
+  }
+
+  async filterByCategory(name: string) {
+    await this.tagbarCategoryLink.filter({ hasText: name }).click();
+  }
+
+  async filterByTag(name: string) {
+    await this.tagbarTagLinks.filter({ hasText: name }).click();
   }
 }
 

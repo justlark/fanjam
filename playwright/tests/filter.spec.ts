@@ -1,12 +1,13 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, hoursFromNow } from "./common";
-import { EventDetailsPage, FilterMenu, ProgramPage, SchedulePage } from "./fixtures";
+import { mockApi, hoursFromNow, isMobile } from "./common";
+import { EventDetailsPage, FilterMenu, EventSummaryDrawer, ProgramPage, SchedulePage } from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
   schedulePage: SchedulePage;
   programPage: ProgramPage;
   eventPage: EventDetailsPage;
+  summaryDrawer: EventSummaryDrawer;
 };
 
 export const test = base.extend<Fixtures>({
@@ -26,6 +27,10 @@ export const test = base.extend<Fixtures>({
 
   eventPage: async ({ page }, use) => {
     await use(new EventDetailsPage(page));
+  },
+
+  summaryDrawer: async ({ page }, use) => {
+    await use(new EventSummaryDrawer(page));
   },
 });
 
@@ -254,6 +259,31 @@ test.describe("filtering events", () => {
 
     await schedulePage.openEventDetailsPage("Test Event 1");
     await eventPage.filterByTag("Tag 2");
+
+    await expect(schedulePage.events).toHaveCount(2);
+    await expect(schedulePage.events.nth(0)).toHaveText("Test Event 1");
+    await expect(schedulePage.events.nth(1)).toHaveText("Test Event 2");
+  });
+
+  test("filter by category or tag from event summary drawer", async ({ schedulePage, summaryDrawer }) => {
+    if (!isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+
+    await schedulePage.openEventSummaryDrawer("Test Event 1");
+    await summaryDrawer.filterByCategory("Category 1");
+
+    await summaryDrawer.close();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Test Event 1");
+
+    await schedulePage.openEventSummaryDrawer("Test Event 1");
+    await summaryDrawer.filterByTag("Tag 2");
+
+    await summaryDrawer.close();
 
     await expect(schedulePage.events).toHaveCount(2);
     await expect(schedulePage.events.nth(0)).toHaveText("Test Event 1");

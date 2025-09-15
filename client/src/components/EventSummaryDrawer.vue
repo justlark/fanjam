@@ -28,7 +28,7 @@ const props = defineProps<{
     position="bottom"
   >
     <template #container="{ closeCallback }">
-      <div class="flex flex-col mx-4 mt-4 overflow-auto">
+      <div class="flex flex-col mx-4 mt-4 overflow-auto" data-testid="event-summary-drawer">
         <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-center">
           <h2 class="text-lg font-bold me-auto" v-if="props.event">
             {{ props.event.name }}
@@ -42,14 +42,7 @@ const props = defineProps<{
               state: { from: 'schedule' },
             }"
           >
-            <IconButton
-              size="md"
-              icon="arrows-angle-expand"
-              label="Expand"
-              :button-props="{
-                'data-testid': 'event-summary-drawer-expand-button',
-              }"
-            />
+            <IconButton size="md" icon="arrows-angle-expand" label="Expand" />
           </RouterLink>
           <IconButton size="md" icon="x-lg" label="Close" @click="closeCallback" />
         </div>
