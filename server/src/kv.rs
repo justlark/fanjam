@@ -10,26 +10,14 @@ use crate::{
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-struct CacheValue<T> {
-    pub value: T,
-    pub expires: u64,
+struct CacheMetadata {
+    pub expires: Option<u64>,
 }
 
 #[derive(Debug)]
 pub struct CachedValue<T> {
     pub value: T,
     pub expired: bool,
-}
-
-impl<T> From<CacheValue<T>> for CachedValue<T> {
-    fn from(cache_value: CacheValue<T>) -> Self {
-        let now = Date::now().as_millis();
-
-        Self {
-            value: cache_value.value,
-            expired: cache_value.expires < now,
-        }
-    }
 }
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -209,12 +197,11 @@ macro_rules! put_cache_fn {
                 .cache_ttl
                 .unwrap_or(config::noco_default_buffer_cache_ttl().as_millis() as u64);
 
-            let cache_value = CacheValue {
-                value,
-                expires: now + ttl,
-            };
-
-            kv.put(&$key_fn(env_name), cache_value)
+            kv.put(&$key_fn(env_name), value)
+                .map_err(wrap_kv_err)?
+                .metadata(CacheMetadata {
+                    expires: Some(now + ttl),
+                })
                 .map_err(wrap_kv_err)?
                 .execute()
                 .await
@@ -237,11 +224,25 @@ macro_rules! get_cache_fn {
             kv: &KvStore,
             env_name: &EnvName,
         ) -> anyhow::Result<Option<CachedValue<$type>>> {
-            kv.get(&$key_fn(env_name))
-                .json::<CacheValue<$type>>()
+            let (value, metadata) = kv
+                .get(&$key_fn(env_name))
+                .json_with_metadata::<$type, CacheMetadata>()
                 .await
-                .map_err(wrap_kv_err)
-                .map(|option| option.map(Into::into))
+                .map_err(wrap_kv_err)?;
+
+            if let Some(value) = value {
+                let now = Date::now().as_millis();
+                let expired = match metadata {
+                    Some(CacheMetadata {
+                        expires: Some(expires),
+                    }) => expires <= now,
+                    _ => true,
+                };
+
+                Ok(Some(CachedValue { value, expired }))
+            } else {
+                Ok(None)
+            }
         }
     };
 }
