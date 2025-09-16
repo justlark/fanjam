@@ -127,14 +127,14 @@ const sectionHeadingId = useId();
         }"
       />
       <Divider />
-      <article
-        id="document"
-        v-if="descriptionHtml"
-        v-html="descriptionHtml"
-        :aria-labelledby="sectionHeadingId"
-        class="my-4"
-      ></article>
-      <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
+      <article id="document" :aria-labelledby="sectionHeadingId" class="my-4">
+        <p v-if="event.summary">{{ event.summary }}</p>
+        <div v-if="descriptionHtml" v-html="descriptionHtml" />
+      </article>
+      <div
+        v-if="!event.summary && !descriptionHtml"
+        class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8"
+      >
         <span>No description</span>
       </div>
     </div>
