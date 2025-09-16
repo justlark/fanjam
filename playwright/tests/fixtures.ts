@@ -112,8 +112,12 @@ export class EventSummaryDrawer {
 
   constructor(page: Page) {
     this.eventSummaryDrawer = page.getByTestId("event-summary-drawer").filter({ visible: true });
-    this.eventSummaryDrawerCloseButton = this.eventSummaryDrawer.getByLabel("Close");
-    this.eventSummaryDrawerExpandButton = this.eventSummaryDrawer.getByLabel("Expand");
+    this.eventSummaryDrawerCloseButton = this.eventSummaryDrawer.getByTestId(
+      "event-summary-close-button",
+    );
+    this.eventSummaryDrawerExpandButton = this.eventSummaryDrawer.getByTestId(
+      "event-summary-show-more-button",
+    );
     this.tagbarCategoryLink = this.eventSummaryDrawer
       .getByTestId("tagbar-category-link")
       .filter({ visible: true });

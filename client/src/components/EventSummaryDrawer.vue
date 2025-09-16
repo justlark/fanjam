@@ -4,6 +4,7 @@ import { type Event } from "@/utils/api";
 import TagBar from "./TagBar.vue";
 import Drawer from "primevue/drawer";
 import IconButton from "./IconButton.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 
 const isVisible = defineModel<boolean>("visible", {
@@ -28,23 +29,18 @@ const props = defineProps<{
     position="bottom"
   >
     <template #container="{ closeCallback }">
-      <div class="flex flex-col mx-4 mt-4 overflow-auto" data-testid="event-summary-drawer">
+      <div class="flex flex-col mx-4 mt-4 overflow-auto h-full" data-testid="event-summary-drawer">
         <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-center">
           <h2 class="text-lg font-bold me-auto" v-if="props.event">
             {{ props.event.name }}
           </h2>
-          <RouterLink
-            v-if="props.event"
-            :to="{
-              name: 'event',
-              params: { eventId: props.event.id },
-              query: toFilterQueryParams(filterCriteria),
-              state: { from: 'schedule' },
-            }"
-          >
-            <IconButton size="md" icon="arrows-angle-expand" label="Expand" />
-          </RouterLink>
-          <IconButton size="md" icon="x-lg" label="Close" @click="closeCallback" />
+          <IconButton
+            size="md"
+            icon="x-lg"
+            label="Close"
+            @click="closeCallback"
+            :button-props="{ 'data-testid': 'event-summary-close-button' }"
+          />
         </div>
         <TagBar
           class="mb-2"
@@ -54,8 +50,29 @@ const props = defineProps<{
           :tags="props.event.tags"
           :all-categories="props.allCategories"
         />
-        <div v-if="props.event?.summary">
-          {{ props.event.summary }}
+        <div class="h-full">
+          <div v-if="props.event?.summary">
+            {{ props.event.summary }}
+          </div>
+        </div>
+        <div
+          class="sticky bottom-0 pt-8 flex items-center justify-center bg-linear-to-b from-transparent dark:to-surface-900 to-white"
+        >
+          <RouterLink
+            v-if="props.event"
+            :to="{
+              name: 'event',
+              params: { eventId: props.event.id },
+              query: toFilterQueryParams(filterCriteria),
+              state: { from: 'schedule' },
+            }"
+            data-testid="event-summary-show-more-button"
+          >
+            <div class="mb-2 flex gap-1">
+              <SimpleIcon class="text-lg" icon="caret-down-fill" />
+              <span>Show more</span>
+            </div>
+          </RouterLink>
         </div>
       </div>
     </template>
