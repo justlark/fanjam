@@ -28,6 +28,7 @@ const sectionHeading = useId();
         :show-label="true"
         :icon="expanded ? 'arrows-collapse' : 'arrows-expand'"
         @click="expanded = !expanded"
+        :button-props="{ 'data-testid': 'program-day-expand-button' }"
       />
     </div>
     <div v-if="events.length > 0" class="flex flex-col gap-4">
