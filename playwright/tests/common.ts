@@ -39,7 +39,7 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
   const data = events.map((event) => ({
     id: newRandomId(),
     name: "Test Event",
-    start_time: new Date().toISOString(),
+    start_time: NOW.toISOString(),
     summary: null,
     description: null,
     end_time: null,
@@ -79,7 +79,7 @@ const mockApiConfig = async (page: Page, config: Record<string, unknown>) => {
 };
 
 export const mockApi = async (
-  path: Page,
+  page: Page,
   data: {
     info?: Record<string, unknown>;
     events?: Array<Record<string, unknown>>;
@@ -87,24 +87,23 @@ export const mockApi = async (
     config?: Record<string, unknown>;
   },
 ) => ({
-  info: await mockApiInfo(path, data.info ?? {}),
-  events: await mockApiEvents(path, data.events ?? []),
-  pages: await mockApiPages(path, data.pages ?? []),
-  config: await mockApiConfig(path, data.config ?? {}),
+  info: await mockApiInfo(page, data.info ?? {}),
+  events: await mockApiEvents(page, data.events ?? []),
+  pages: await mockApiPages(page, data.pages ?? []),
+  config: await mockApiConfig(page, data.config ?? {}),
 });
 
 export const isDesktop = () => test.info().project.name === "desktop";
 export const isMobile = () => test.info().project.name === "mobile";
 
-// Make sure all tests have a common definition of "now".
-const now = new Date();
+const NOW = new Date("2025-09-01T09:00:00Z");
 
-export const hoursFromNow = (hours: number) => {
-  const newDate = new Date(now);
+export const hoursFromNow = (hours: number): Date => {
+  const newDate = new Date(NOW);
   newDate.setHours(newDate.getHours() + hours);
   return newDate;
 };
 
-export const daysFromNow = (days: number) => {
-  return hoursFromNow(days * 24);
+export const mockTime = async (page: Page) => {
+  await page.clock.setFixedTime(NOW);
 };

@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { EventDetailsPage, SchedulePage } from "./fixtures";
-import { hoursFromNow, mockApi } from "./common";
+import { hoursFromNow, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
@@ -18,6 +18,8 @@ export const test = base.extend<Fixtures>({
 
 test.describe("a multi-day schedule", () => {
   test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+
     await mockApi(page, {
       events: [
         {

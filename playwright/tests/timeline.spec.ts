@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
-import { EventDetailsPage, SchedulePage } from "./fixtures";
-import { hoursFromNow, mockApi } from "./common";
+import { SchedulePage } from "./fixtures";
+import { hoursFromNow, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
@@ -13,6 +13,10 @@ export const test = base.extend<Fixtures>({
 });
 
 test.describe("the schedule timeline view", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+  });
+
   test("groups non-overlapping events in different time slots", async ({ page, schedulePage }) => {
     await mockApi(page, {
       events: [
@@ -79,18 +83,18 @@ test.describe("the schedule timeline view", () => {
       events: [
         {
           name: "Event 1",
-          start_time: "2025-09-01T09:00:00Z",
-          end_time: "2025-09-01T11:00:00Z",
+          start_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(2).toISOString(),
         },
         {
           name: "Event 2",
-          start_time: "2025-09-01T10:00:00Z",
-          end_time: "2025-09-01T12:00:00Z",
+          start_time: hoursFromNow(1).toISOString(),
+          end_time: hoursFromNow(3).toISOString(),
         },
         {
           name: "Event 3",
-          start_time: "2025-09-01T11:00:00Z",
-          end_time: "2025-09-01T13:00:00Z",
+          start_time: hoursFromNow(2).toISOString(),
+          end_time: hoursFromNow(4).toISOString(),
         },
       ],
     });
@@ -110,23 +114,23 @@ test.describe("the schedule timeline view", () => {
       events: [
         {
           name: "Event 1",
-          start_time: "2025-09-01T09:00:00Z",
-          end_time: "2025-09-01T11:00:00Z",
+          start_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(2).toISOString(),
         },
         {
           name: "Event 2",
-          start_time: "2025-09-01T09:00:00Z",
-          end_time: "2025-09-01T10:00:00Z",
+          start_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(1).toISOString(),
         },
         {
           name: "Event 3",
-          start_time: "2025-09-01T10:00:00Z",
-          end_time: "2025-09-01T12:00:00Z",
+          start_time: hoursFromNow(1).toISOString(),
+          end_time: hoursFromNow(3).toISOString(),
         },
         {
           name: "Event 4",
-          start_time: "2025-09-01T11:00:00Z",
-          end_time: "2025-09-01T13:00:00Z",
+          start_time: hoursFromNow(2).toISOString(),
+          end_time: hoursFromNow(4).toISOString(),
         },
       ],
     });

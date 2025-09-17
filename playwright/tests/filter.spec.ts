@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, hoursFromNow, isMobile } from "./common";
-import { EventDetailsPage, FilterMenu, EventSummaryDrawer, ProgramPage, SchedulePage } from "./fixtures";
+import { mockApi, isMobile, hoursFromNow, mockTime } from "./common";
+import { EventDetailsPage, FilterMenu, EventSummaryDrawer, ProgramPage, SchedulePage, } from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
@@ -36,6 +36,8 @@ export const test = base.extend<Fixtures>({
 
 test.describe("filtering events", () => {
   test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+
     await mockApi(page, {
       events: [
         {
@@ -64,7 +66,9 @@ test.describe("filtering events", () => {
 
   for (const route of ["schedule", "program"] as const) {
     test.describe(`in the ${route} view`, () => {
-      test.beforeEach(async ({ schedulePage, programPage }) => {
+      test.beforeEach(async ({ page, schedulePage, programPage }) => {
+        await mockTime(page);
+
         if (route === "schedule") {
           await schedulePage.goto();
         } else if (route === "program") {
