@@ -6,6 +6,7 @@
   "scripts": {
     "dev:test": "vite --mode test",
     "dev:prod": "vite --mode prod",
+    "dev:playwright": "vite --mode playwright",
     "preview:test": "npm run build:test && wrangler dev",
     "preview:prod": "npm run build:prod && wrangler dev",
     "type-check": "vue-tsc --build",

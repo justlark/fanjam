@@ -11,7 +11,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
-    vueDevTools(),
+    // The Vue dev tools can interfere with Playwright tests by intercepting
+    // clicks that happen near it.
+    ...[mode === "playwright" ? [] : [vueDevTools()]],
     cloudflare(),
     tailwindcss(),
     // This plugin installs a service worker to allow this app to work offline.
