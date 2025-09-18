@@ -144,6 +144,8 @@ struct FileResponse {
 
 #[derive(Debug, Deserialize)]
 struct FileBodyResponse {
+    #[serde(rename = "title")]
+    pub title: String,
     #[serde(rename = "mimetype")]
     pub media_type: String,
     #[serde(rename = "signedUrl")]
@@ -158,6 +160,22 @@ struct PageResponse {
     pub title: String,
     #[serde(rename = "Page Body")]
     pub body: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AnnouncementResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Title")]
+    pub title: String,
+    #[serde(rename = "Announcement")]
+    pub body: String,
+    #[serde(rename = "Files")]
+    pub files: Vec<FileBodyResponse>,
+    #[serde(rename = "Created")]
+    pub creatd_at: String,
+    #[serde(rename = "Last Edited")]
+    pub updated_at: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -206,6 +224,16 @@ pub struct Page {
     pub id: String,
     pub title: String,
     pub body: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Announcement {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub files: Vec<File>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -354,6 +382,35 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
             id: r.id.to_string(),
             title: r.title,
             body: r.body,
+        })
+        .collect())
+}
+
+#[worker::send]
+pub async fn get_announcements(
+    client: &Client,
+    table_ids: &TableIds,
+) -> anyhow::Result<Vec<Announcement>> {
+    let page_records =
+        list_records::<AnnouncementResponse>(client, &table_ids.announcements).await?;
+
+    Ok(page_records
+        .into_iter()
+        .map(|a| Announcement {
+            id: a.id.to_string(),
+            title: a.title,
+            body: a.body,
+            files: a
+                .files
+                .into_iter()
+                .map(|f| File {
+                    name: f.title,
+                    media_type: f.media_type,
+                    signed_url: f.signed_url,
+                })
+                .collect(),
+            created_at: a.creatd_at,
+            updated_at: a.updated_at,
         })
         .collect())
 }

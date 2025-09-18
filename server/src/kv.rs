@@ -6,7 +6,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     config,
     env::{Config, EnvId, EnvName},
-    noco::{About, ApiToken, Event, Info, Page, Summary, TableInfo},
+    noco::{About, Announcement, ApiToken, Event, Info, Page, Summary, TableInfo},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,6 +73,7 @@ fn cache_key_prefix(env_name: &EnvName) -> String {
 concat_key_fn!(events_cache_key, cache_key_prefix, "events");
 concat_key_fn!(info_cache_key, cache_key_prefix, "info");
 concat_key_fn!(pages_cache_key, cache_key_prefix, "pages");
+concat_key_fn!(announcements_cache_key, cache_key_prefix, "announcements");
 concat_key_fn!(about_cache_key, cache_key_prefix, "about");
 concat_key_fn!(summary_cache_key, cache_key_prefix, "summary");
 
@@ -215,6 +216,7 @@ macro_rules! put_cache_fn {
 put_cache_fn!(put_cached_events, events_cache_key, &[Event]);
 put_cache_fn!(put_cached_info, info_cache_key, &Info);
 put_cache_fn!(put_cached_pages, pages_cache_key, &[Page]);
+put_cache_fn!(put_cached_announcements, pages_cache_key, &[Announcement]);
 put_cache_fn!(put_cached_about, about_cache_key, &About);
 
 macro_rules! get_cache_fn {
@@ -250,6 +252,11 @@ macro_rules! get_cache_fn {
 get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
 get_cache_fn!(get_cached_info, info_cache_key, Info);
 get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
+get_cache_fn!(
+    get_cached_announcements,
+    announcements_cache_key,
+    Vec<Announcement>
+);
 get_cache_fn!(get_cached_about, about_cache_key, About);
 
 #[worker::send]

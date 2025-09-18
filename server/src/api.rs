@@ -115,6 +115,21 @@ pub struct GetInfoResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub struct Announcement {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub attachments: Vec<File>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAnnouncementsResponse {
+    pub announcements: Vec<Announcement>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Page {
     pub id: String,
     pub title: String,

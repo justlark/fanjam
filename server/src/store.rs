@@ -299,6 +299,15 @@ impl Store {
     }
 
     get_data! {
+        fn_name: get_announcements,
+        type_name: Vec<noco::Announcement>,
+        get_api_fn: noco::get_announcements,
+        get_cached_fn: kv::get_cached_announcements,
+        put_cached_fn: kv::put_cached_announcements,
+        err_msg_key: "announcements",
+    }
+
+    get_data! {
         fn_name: get_about,
         type_name: noco::About,
         get_api_fn: noco::get_about,

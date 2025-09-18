@@ -12,10 +12,11 @@ use worker::{console_log, kv::KvStore};
 
 use crate::{
     api::{
-        DataResponseEnvelope, Event, File, GetConfigResponse, GetCurrentMigrationResponse,
-        GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
-        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostLinkResponse, PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
+        Announcement, DataResponseEnvelope, Event, File, GetAnnouncementsResponse,
+        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
+        GetLinkResponse, GetPagesResponse, GetSummaryResponse, Link, Page,
+        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
@@ -86,6 +87,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/events", get(get_events))
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
+        .route("/apps/{env_id}/announcements", get(get_announcements))
         .route("/apps/{env_id}/summary", get(get_summary))
         .route("/apps/{env_id}/config", get(get_config))
         .layer(middleware::from_fn(if_none_match_middleware))
@@ -445,6 +447,44 @@ async fn get_pages(
                     id: page.id,
                     title: page.title,
                     body: page.body,
+                })
+                .collect::<Vec<_>>(),
+        },
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_announcements(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<EtagJson<DataResponseEnvelope<GetAnnouncementsResponse>>, ErrorResponse> {
+    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+
+    let store::DataResponseEnvelope {
+        retry_after,
+        value: announcements,
+    } = store.get_announcements().await?;
+
+    Ok(EtagJson(DataResponseEnvelope {
+        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
+        value: GetAnnouncementsResponse {
+            announcements: announcements
+                .into_iter()
+                .map(|announcement| Announcement {
+                    id: announcement.id,
+                    title: announcement.title,
+                    body: announcement.body,
+                    attachments: announcement
+                        .files
+                        .into_iter()
+                        .map(|file| File {
+                            name: file.name,
+                            media_type: file.media_type,
+                            signed_url: file.signed_url,
+                        })
+                        .collect::<Vec<_>>(),
+                    created_at: announcement.created_at,
+                    updated_at: announcement.updated_at,
                 })
                 .collect::<Vec<_>>(),
         },
