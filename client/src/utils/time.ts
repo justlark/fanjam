@@ -30,6 +30,10 @@ export const dateIsBetween = (date: Date, start: Date, end: Date): boolean => {
   return date >= start && date <= end;
 };
 
+export const timeIsNearlyEqual = (a: Date, b: Date, thresholdMillis = 1000): boolean => {
+  return Math.abs(a.valueOf() - b.valueOf()) <= thresholdMillis;
+};
+
 const dateRange = (dates: Set<Date>): { start: Date; end: Date } => {
   const sortedDates = [...dates];
   sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
