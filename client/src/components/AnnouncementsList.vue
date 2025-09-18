@@ -1,71 +1,14 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useRemoteData from "@/composables/useRemoteData";
 import { localizeDatetime } from "@/utils/time";
-import { type Announcement } from "@/utils/api";
 
 const datetimeFormats = useDatetimeFormats();
 
-const announcements = ref<Array<Announcement>>([
-  {
-    id: "1",
-    title: "Elevator Maintenance",
-    body: "Elevators are down for maintenance!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    title: "Dealers' Den Is Now Open",
-    body: "Come check it out!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    title: "Fursuit Dance Competition Is Starting Soon",
-    body: "Come check it out!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]);
+const {
+  data: { announcements },
+} = useRemoteData();
 </script>
 
 <template>

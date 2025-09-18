@@ -216,7 +216,11 @@ macro_rules! put_cache_fn {
 put_cache_fn!(put_cached_events, events_cache_key, &[Event]);
 put_cache_fn!(put_cached_info, info_cache_key, &Info);
 put_cache_fn!(put_cached_pages, pages_cache_key, &[Page]);
-put_cache_fn!(put_cached_announcements, pages_cache_key, &[Announcement]);
+put_cache_fn!(
+    put_cached_announcements,
+    announcements_cache_key,
+    &[Announcement]
+);
 put_cache_fn!(put_cached_about, about_cache_key, &About);
 
 macro_rules! get_cache_fn {

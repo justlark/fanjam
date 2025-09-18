@@ -84,17 +84,11 @@ export interface Page {
   body: string;
 }
 
-export interface Attachment {
-  fileName: string;
-  mediaType: string;
-  signedUrl: string;
-}
-
 export interface Announcement {
   id: string;
   title: string;
   body: string;
-  attachments: Array<Attachment>;
+  attachments: Array<File>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -265,20 +259,23 @@ const getAnnouncements = async (
     return { ok: false, code: response.status };
   }
 
-  const rawPages: Envelope<{ announcements: Array<RawAnnouncement> }> = await response.json();
+  const rawAnnouncements: Envelope<{ announcements: Array<RawAnnouncement> }> =
+    await response.json();
 
-  const announcements: Array<Announcement> = rawPages.value.announcements.map((announcement) => ({
-    id: announcement.id,
-    title: announcement.title,
-    body: announcement.body,
-    attachments: announcement.attachments.map((attachment) => ({
-      fileName: attachment.name,
-      mediaType: attachment.media_type,
-      signedUrl: attachment.signed_url,
-    })),
-    createdAt: new Date(announcement.created_at),
-    updatedAt: new Date(announcement.updated_at),
-  }));
+  const announcements: Array<Announcement> = rawAnnouncements.value.announcements.map(
+    (announcement) => ({
+      id: announcement.id,
+      title: announcement.title,
+      body: announcement.body,
+      attachments: announcement.attachments.map((attachment) => ({
+        name: attachment.name,
+        mediaType: attachment.media_type,
+        signedUrl: attachment.signed_url,
+      })),
+      createdAt: new Date(announcement.created_at),
+      updatedAt: new Date(announcement.updated_at),
+    }),
+  );
 
   return {
     ok: true,

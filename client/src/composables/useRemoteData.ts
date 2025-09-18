@@ -407,40 +407,40 @@ const useRemoteAnnouncements: DataSource<Readonly<Reactive<Array<DeepReadonly<An
   const storedValue: StoredValue<unknown> | undefined = getItem("announcements");
 
   const { reload, clear } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>({
-    key: "pages",
+    key: "announcements",
     instance: toRef(envId),
     result: announcementsRef,
     fetcher: () => api.getAnnouncements(toValue(envId), storedValue?.etag),
     toCache: (data) =>
-      data.map((page) => ({
-        id: page.id,
-        title: page.title,
-        body: page.body,
-        attachments: page.attachments.map((attachment) => ({
-          name: attachment.fileName,
+      data.map((announcement) => ({
+        id: announcement.id,
+        title: announcement.title,
+        body: announcement.body,
+        attachments: announcement.attachments.map((attachment) => ({
+          name: attachment.name,
           media_type: attachment.mediaType,
           signed_url: attachment.signedUrl,
         })),
-        created_at: page.createdAt.toISOString(),
-        updated_at: page.updatedAt.toISOString(),
+        created_at: announcement.createdAt.toISOString(),
+        updated_at: announcement.updatedAt.toISOString(),
       })),
     fromCache: (data) =>
-      data.map((page) => ({
-        id: page.id,
-        title: page.title,
-        body: page.body,
-        attachments: page.attachments.map((attachment) => ({
-          fileName: attachment.name,
+      data.map((announcement) => ({
+        id: announcement.id,
+        title: announcement.title,
+        body: announcement.body,
+        attachments: announcement.attachments.map((attachment) => ({
+          name: attachment.name,
           mediaType: attachment.media_type,
           signedUrl: attachment.signed_url,
         })),
-        createdAt: new Date(page.created_at),
-        updatedAt: new Date(page.updated_at),
+        createdAt: new Date(announcement.created_at),
+        updatedAt: new Date(announcement.updated_at),
       })),
   });
 
   const data = reactive<Array<Announcement>>([]);
-  const status = lazyRenderArray(pagesRef, data, 5);
+  const status = lazyRenderArray(announcementsRef, data, 5);
 
   return { reload, clear, status, data: readonly(data) };
 };

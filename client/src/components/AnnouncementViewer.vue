@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, useId, watchEffect, computed } from "vue";
+import { useId, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import useRemoteData from "@/composables/useRemoteData";
 import IconButton from "./IconButton.vue";
 import ProgressSpinner from "primevue/progressspinner";
+import LinksList from "./LinksList.vue";
 import EventDetail from "./EventDetail.vue";
-import { type Announcement } from "@/utils/api";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { localizeDatetime, timeIsNearlyEqual } from "@/utils/time";
 import * as commonmark from "commonmark";
@@ -13,70 +14,15 @@ const route = useRoute();
 const router = useRouter();
 const datetimeFormats = useDatetimeFormats();
 
-const announcements = ref<Array<Announcement>>([
-  {
-    id: "1",
-    title: "Elevator Maintenance",
-    body: "Elevators are down for maintenance!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date("2025-09-01T09:00:00Z"),
-    updatedAt: new Date("2025-09-01T09:05:00Z"),
-  },
-  {
-    id: "2",
-    title: "Dealers' Den Is Now Open",
-    body: "Come check it out!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    title: "Fursuit Dance Competition Is Starting Soon",
-    body: "Come check it out!",
-    attachments: [
-      {
-        fileName: "README.md",
-        mediaType: "text/markdown",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
-      },
-      {
-        fileName: "LICENSE",
-        mediaType: "text/plain",
-        signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
-      },
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]);
+const {
+  data: { announcements },
+  status: { announcements: announcementsStatus },
+} = useRemoteData();
 
 const announcementId = computed(() => route.params.announcementId as string);
 
 const announcement = computed(() => {
-  return announcements.value.find((p) => p.id === announcementId.value);
+  return announcements.find((p) => p.id === announcementId.value);
 });
 
 const mdReader = new commonmark.Parser({ smart: true });
@@ -95,10 +41,9 @@ const back = async () => {
 };
 
 watchEffect(async () => {
-  // TODO: Implement
-  // if (announcementsStatus.value === "success" && !page.value) {
-  //   await back();
-  // }
+  if (announcementsStatus.value === "success" && !announcement.value) {
+    await back();
+  }
 });
 
 const announcementHeadingId = useId();
@@ -111,28 +56,43 @@ const announcementHeadingId = useId();
         <IconButton icon="chevron-left" label="Back" @click="back()" />
         <h2 :id="announcementHeadingId" class="text-xl font-bold">{{ announcement.title }}</h2>
       </div>
-      <div v-if="datetimeFormats" class="px-6">
-        <dl>
-          <EventDetail class="text-muted-color" icon="clock" size="sm">
-            <span>Posted </span>
-            <time>
-              {{ localizeDatetime(datetimeFormats, announcement.createdAt) }}
-            </time>
-          </EventDetail>
-          <EventDetail
-            v-if="!timeIsNearlyEqual(announcement.createdAt, announcement.updatedAt)"
-            class="text-muted-color"
-            icon="arrow-clockwise"
-            size="sm"
-          >
-            <span>Updated </span>
-            <time class="text-muted-color">
-              {{ localizeDatetime(datetimeFormats, announcement.updatedAt) }}
-            </time>
-          </EventDetail>
-        </dl>
+      <div class="px-6">
+        <div v-if="datetimeFormats" class="">
+          <dl>
+            <EventDetail class="text-muted-color" icon="clock" size="sm">
+              <span>Posted </span>
+              <time>
+                {{ localizeDatetime(datetimeFormats, announcement.createdAt) }}
+              </time>
+            </EventDetail>
+            <EventDetail
+              v-if="!timeIsNearlyEqual(announcement.createdAt, announcement.updatedAt)"
+              class="text-muted-color"
+              icon="arrow-clockwise"
+              size="sm"
+            >
+              <span>Updated </span>
+              <time class="text-muted-color">
+                {{ localizeDatetime(datetimeFormats, announcement.updatedAt) }}
+              </time>
+            </EventDetail>
+          </dl>
+        </div>
+        <div id="document" v-if="bodyHtml" v-html="bodyHtml"></div>
+        <div
+          v-else-if="announcement.attachments.length === 0"
+          class="text-center text-lg italic text-muted-color mt-8"
+        >
+          No details provided
+        </div>
+        <LinksList
+          class="max-w-140 w-full mx-auto mt-6"
+          v-if="announcement.attachments.length > 0"
+          :links="[]"
+          :files="[...announcement.attachments]"
+          :pages="[]"
+        />
       </div>
-      <div class="px-6" id="document" v-if="bodyHtml" v-html="bodyHtml"></div>
     </article>
     <div v-else class="flex items-center h-full">
       <ProgressSpinner />
