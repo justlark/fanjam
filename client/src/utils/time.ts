@@ -5,6 +5,9 @@ const daysInAWeek = 7;
 export const localizeTime = (formats: DatetimeFormats, time: Date) =>
   formats.shortTime.format(time);
 
+export const localizeDatetime = (formats: DatetimeFormats, datetime: Date) =>
+  formats.shortDatetime.format(datetime);
+
 // TODO: What if the start and end days are more than a week apart? Unlikely,
 // but in that case, we ought to show the full date.
 export const localizeTimeSpan = (formats: DatetimeFormats, start: Date, end: Date | undefined) => {

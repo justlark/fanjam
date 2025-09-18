@@ -30,6 +30,12 @@ onMounted(() => {
       "
     />
     <MainMenuItem
+      icon="bi bi-megaphone"
+      label="Announcements"
+      to="announcements"
+      :is-active="(route) => route.name === 'announcement' || route.name === 'announcements'"
+    />
+    <MainMenuItem
       icon="bi bi-info-circle"
       label="Info"
       to="info"

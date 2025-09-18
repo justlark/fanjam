@@ -25,14 +25,24 @@ const router = createRouter({
       component: () => import("../views/ProgramView.vue"),
     },
     {
-      path: "/app/:envId/events/:eventId",
-      name: "event",
-      component: () => import("../views/EventView.vue"),
+      path: "/app/:envId/announcements",
+      name: "announcements",
+      component: () => import("../views/AnnouncementsView.vue"),
     },
     {
       path: "/app/:envId/info",
       name: "info",
       component: () => import("../views/InfoView.vue"),
+    },
+    {
+      path: "/app/:envId/announcements/:announcementId",
+      name: "announcement",
+      component: () => import("../views/AnnouncementView.vue"),
+    },
+    {
+      path: "/app/:envId/events/:eventId",
+      name: "event",
+      component: () => import("../views/EventView.vue"),
     },
     {
       path: "/app/:envId/pages/:pageId",

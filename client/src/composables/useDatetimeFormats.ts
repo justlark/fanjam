@@ -5,6 +5,7 @@ import useRemoteData from "@/composables/useRemoteData";
 export interface DatetimeFormats {
   shortTime: Intl.DateTimeFormat;
   shortDate: Intl.DateTimeFormat;
+  shortDatetime: Intl.DateTimeFormat;
   shortWeekday: Intl.DateTimeFormat;
   longWeekday: Intl.DateTimeFormat;
 }
@@ -24,6 +25,11 @@ const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
       }),
       shortDate: new Intl.DateTimeFormat(undefined, {
         dateStyle: "short",
+        timeZone: config.value?.timezone,
+      }),
+      shortDatetime: new Intl.DateTimeFormat(undefined, {
+        timeStyle: "short",
+        dateStyle: "medium",
         timeZone: config.value?.timezone,
       }),
       shortWeekday: new Intl.DateTimeFormat(undefined, {
