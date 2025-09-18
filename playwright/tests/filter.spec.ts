@@ -110,13 +110,12 @@ test.describe("filtering events", () => {
       }) => {
         if (route === "schedule") {
           await schedulePage.openEventDetailsPage("Test Event 2");
+          await eventPage.toggleStar();
+          await eventPage.navigateBack();
         } else if (route === "program") {
           await programPage.toggleEventExpanded("Test Event 2");
-          await programPage.openEventDetailsPage("Test Event 2");
+          await programPage.toggleStar();
         }
-
-        await eventPage.toggleStar();
-        await eventPage.navigateBack();
 
         await filterMenu.toggleOpen();
         await filterMenu.toggleHideNotStarredEvents();
