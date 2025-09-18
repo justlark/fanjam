@@ -32,6 +32,19 @@ interface RawPage {
   body: string;
 }
 
+interface RawAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  attachments: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+}
+
 interface RawConfig {
   timezone: string | null;
 }
@@ -73,6 +86,7 @@ export interface Page {
 
 export interface Attachment {
   fileName: string;
+  mediaType: string;
   signedUrl: string;
 }
 
@@ -230,6 +244,49 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
   };
 };
 
+const getAnnouncements = async (
+  envId: string,
+  etag?: string,
+): Promise<ApiResult<Array<Announcement>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+              "If-None-Match": etag,
+            }
+          : {}),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawPages: Envelope<{ announcements: Array<RawAnnouncement> }> = await response.json();
+
+  const announcements: Array<Announcement> = rawPages.value.announcements.map((announcement) => ({
+    id: announcement.id,
+    title: announcement.title,
+    body: announcement.body,
+    attachments: announcement.attachments.map((attachment) => ({
+      fileName: attachment.name,
+      mediaType: attachment.media_type,
+      signedUrl: attachment.signed_url,
+    })),
+    createdAt: new Date(announcement.created_at),
+    updatedAt: new Date(announcement.updated_at),
+  }));
+
+  return {
+    ok: true,
+    value: announcements,
+    etag: response.headers.get("ETag") ?? undefined,
+  };
+};
+
 const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
@@ -252,5 +309,6 @@ export default {
   getEvents,
   getInfo,
   getPages,
+  getAnnouncements,
   getConfig,
 };

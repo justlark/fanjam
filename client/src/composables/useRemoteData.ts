@@ -15,7 +15,14 @@ import {
   watch,
 } from "vue";
 import { useRoute } from "vue-router";
-import api, { type ApiResult, type Config, type Event, type Info, type Page } from "@/utils/api";
+import api, {
+  type Announcement,
+  type ApiResult,
+  type Config,
+  type Event,
+  type Info,
+  type Page,
+} from "@/utils/api";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -379,6 +386,65 @@ const useRemotePages: DataSource<Readonly<Reactive<Array<Page>>>> = (
   return { reload, clear, status, data: readonly(data) };
 };
 
+interface StoredAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  attachments: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+}
+
+const announcementsRef = ref<FetchResult<Array<Announcement>>>({ status: "pending" });
+
+const useRemoteAnnouncements: DataSource<Readonly<Reactive<Array<DeepReadonly<Announcement>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
+  const storedValue: StoredValue<unknown> | undefined = getItem("announcements");
+
+  const { reload, clear } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>({
+    key: "pages",
+    instance: toRef(envId),
+    result: announcementsRef,
+    fetcher: () => api.getAnnouncements(toValue(envId), storedValue?.etag),
+    toCache: (data) =>
+      data.map((page) => ({
+        id: page.id,
+        title: page.title,
+        body: page.body,
+        attachments: page.attachments.map((attachment) => ({
+          name: attachment.fileName,
+          media_type: attachment.mediaType,
+          signed_url: attachment.signedUrl,
+        })),
+        created_at: page.createdAt.toISOString(),
+        updated_at: page.updatedAt.toISOString(),
+      })),
+    fromCache: (data) =>
+      data.map((page) => ({
+        id: page.id,
+        title: page.title,
+        body: page.body,
+        attachments: page.attachments.map((attachment) => ({
+          fileName: attachment.name,
+          mediaType: attachment.media_type,
+          signedUrl: attachment.signed_url,
+        })),
+        createdAt: new Date(page.created_at),
+        updatedAt: new Date(page.updated_at),
+      })),
+  });
+
+  const data = reactive<Array<Announcement>>([]);
+  const status = lazyRenderArray(pagesRef, data, 5);
+
+  return { reload, clear, status, data: readonly(data) };
+};
+
 interface StoredConfig {
   timezone?: string;
 }
@@ -413,6 +479,7 @@ const dataSources = {
   events: useRemoteEvents,
   info: useRemoteInfo,
   pages: useRemotePages,
+  announcements: useRemoteAnnouncements,
   config: useRemoteConfig,
 } as const;
 

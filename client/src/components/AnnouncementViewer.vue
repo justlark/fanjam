@@ -21,10 +21,12 @@ const announcements = ref<Array<Announcement>>([
     attachments: [
       {
         fileName: "README.md",
+        mediaType: "text/markdown",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
       },
       {
         fileName: "LICENSE",
+        mediaType: "text/plain",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
       },
     ],
@@ -38,10 +40,12 @@ const announcements = ref<Array<Announcement>>([
     attachments: [
       {
         fileName: "README.md",
+        mediaType: "text/markdown",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
       },
       {
         fileName: "LICENSE",
+        mediaType: "text/plain",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
       },
     ],
@@ -55,10 +59,12 @@ const announcements = ref<Array<Announcement>>([
     attachments: [
       {
         fileName: "README.md",
+        mediaType: "text/markdown",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/README.md",
       },
       {
         fileName: "LICENSE",
+        mediaType: "text/plain",
         signedUrl: "https://raw.githubusercontent.com/justlark/fanjam/refs/heads/main/LICENSE",
       },
     ],
