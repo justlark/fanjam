@@ -60,13 +60,33 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
 const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) => {
   const data = pages.map((page) => ({
     id: newRandomId(),
-    title: "",
+    title: "Test Page",
     body: "",
     ...page,
   }));
 
   await mockApiResponse(page, "/pages", {
     pages: data,
+  });
+
+  return data;
+};
+
+const mockApiAnnouncements = async (page: Page, announcements: Array<Record<string, unknown>>) => {
+  const now = NOW.toISOString();
+
+  const data = announcements.map((page) => ({
+    id: newRandomId(),
+    title: "Test Announcement",
+    body: "",
+    attachments: [],
+    created_at: now,
+    updated_at: now,
+    ...page,
+  }));
+
+  await mockApiResponse(page, "/announcements", {
+    announcements: data,
   });
 
   return data;
@@ -84,12 +104,14 @@ export const mockApi = async (
     info?: Record<string, unknown>;
     events?: Array<Record<string, unknown>>;
     pages?: Array<Record<string, unknown>>;
+    announcements?: Array<Record<string, unknown>>;
     config?: Record<string, unknown>;
   },
 ) => ({
   info: await mockApiInfo(page, data.info ?? {}),
   events: await mockApiEvents(page, data.events ?? []),
   pages: await mockApiPages(page, data.pages ?? []),
+  announcements: await mockApiAnnouncements(page, data.announcements ?? []),
   config: await mockApiConfig(page, data.config ?? {}),
 });
 

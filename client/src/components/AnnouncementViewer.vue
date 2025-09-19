@@ -53,13 +53,23 @@ const announcementHeadingId = useId();
   <div class="h-full">
     <article class="max-w-200 mx-auto" v-if="announcement" :aria-labelledby="announcementHeadingId">
       <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
-        <IconButton icon="chevron-left" label="Back" @click="back()" />
+        <IconButton
+          icon="chevron-left"
+          label="Back"
+          @click="back()"
+          :button-props="{ 'data-testid': 'announcement-back-button' }"
+        />
         <h2 :id="announcementHeadingId" class="text-xl font-bold">{{ announcement.title }}</h2>
       </div>
       <div class="px-6">
         <div v-if="datetimeFormats" class="">
           <dl>
-            <EventDetail class="text-muted-color" icon="clock" size="sm">
+            <EventDetail
+              class="text-muted-color"
+              icon="clock"
+              size="sm"
+              data-testid="announcement-created-time"
+            >
               <span>Posted </span>
               <time>
                 {{ localizeDatetime(datetimeFormats, announcement.createdAt) }}
@@ -70,6 +80,7 @@ const announcementHeadingId = useId();
               class="text-muted-color"
               icon="arrow-clockwise"
               size="sm"
+              data-testid="announcement-updated-time"
             >
               <span>Updated </span>
               <time class="text-muted-color">
@@ -78,10 +89,15 @@ const announcementHeadingId = useId();
             </EventDetail>
           </dl>
         </div>
-        <div id="document" v-if="bodyHtml" v-html="bodyHtml"></div>
+        <div
+          id="document"
+          v-if="bodyHtml && announcement?.body.trim() !== ''"
+          v-html="bodyHtml"
+        ></div>
         <div
           v-else-if="announcement.attachments.length === 0"
           class="text-center text-lg italic text-muted-color mt-8"
+          data-testid="announcement-no-details-notice"
         >
           No details provided
         </div>
@@ -91,6 +107,7 @@ const announcementHeadingId = useId();
           :links="[]"
           :files="[...announcement.attachments]"
           :pages="[]"
+          data-testid="announcement-attachments-list"
         />
       </div>
     </article>

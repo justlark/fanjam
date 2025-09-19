@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
@@ -9,6 +10,16 @@ const datetimeFormats = useDatetimeFormats();
 const {
   data: { announcements },
 } = useRemoteData();
+
+const filteredAnnouncements = computed(() => {
+  const withTitle = announcements.filter((announcement) => announcement.title.trim() !== "");
+
+  withTitle.sort((a, b) => {
+    return b.updatedAt.valueOf() - a.updatedAt.valueOf();
+  });
+
+  return withTitle;
+});
 </script>
 
 <template>
@@ -16,11 +27,12 @@ const {
     <div class="flex flex-col items-center gap-4">
       <h1 class="text-3xl">Announcements</h1>
     </div>
-    <div v-if="announcements.length > 0" class="flex flex-col gap-4">
+    <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4">
       <RouterLink
-        v-for="announcement of announcements"
+        v-for="announcement of filteredAnnouncements"
         :key="announcement.id"
         :to="{ name: 'announcement', params: { announcementId: announcement.id } }"
+        data-testid="announcement-link"
       >
         <div
           class="flex items-center gap-6 text-left border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 mx-auto max-w-160 hover:*:decoration-2"

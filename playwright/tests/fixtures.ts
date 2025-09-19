@@ -247,3 +247,35 @@ export class StarredEvents {
     );
   }
 }
+
+export class AnnouncementsPage {
+  private readonly page: Page;
+  private readonly backButton: Locator;
+  readonly link: Locator;
+  readonly noDetailsNotice: Locator;
+  readonly createdTime: Locator;
+  readonly updatedTime: Locator;
+  readonly attachmentsList: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.link = page.getByTestId("announcement-link").filter({ visible: true });
+    this.createdTime = page.getByTestId("announcement-created-time");
+    this.updatedTime = page.getByTestId("announcement-updated-time");
+    this.noDetailsNotice = page.getByTestId("announcement-no-details-notice");
+    this.attachmentsList = page.getByTestId("announcement-attachments-list");
+    this.backButton = page.getByTestId("announcement-back-button");
+  }
+
+  async goto() {
+    await this.page.goto("announcements");
+  }
+
+  async openDetails(index: number) {
+    await this.link.nth(index).click();
+  }
+
+  async navigateBack() {
+    await this.backButton.click();
+  }
+}
