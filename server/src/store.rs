@@ -13,7 +13,7 @@ use futures::future::{self, Either, FutureExt};
 use std::collections::HashSet;
 use std::fmt;
 use std::pin::pin;
-use std::sync::{LazyLock, RwLock};
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use worker::kv::KvStore;
 use worker::{Delay, console_error, console_log, console_warn};
@@ -59,8 +59,7 @@ const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 // solution; this lock is per-isolate, so if the worker is scaled up to multiple isolates, each
 // isolate could still end up making a request to NocoDB. However, this is a significant reduction
 // in the number of requests that could be made, and should be sufficient for now.
-static CACHE_LOCK: LazyLock<RwLock<HashSet<String>>> =
-    LazyLock::new(|| RwLock::new(HashSet::new()));
+static CACHE_LOCK: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
@@ -114,32 +113,20 @@ macro_rules! get_data {
                     return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
                 },
                 Ok(Some(value)) => {
-                    // If another request is already refreshing the cache, we should just return
-                    // the stale value rather than overload the upstream NocoDB instance with
-                    // requests.
-                    {
-                        let refreshing_keys = CACHE_LOCK.read().unwrap();
-                        let is_refreshing = refreshing_keys.contains(&cache_key);
+                    // The cache has expired. However, if another request is already refreshing the
+                    // cache, we should just return the stale value rather than overload the
+                    // upstream NocoDB instance with requests.
+                    let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
+                    let is_refreshing = refreshing_keys.contains(&cache_key);
 
-                        if is_refreshing {
-                            console_log!("Cache already being refreshed by this isolate; returning cached {}; skipping NocoDB.", $err_msg_key);
-                            return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
-                        }
+                    if is_refreshing {
+                        console_log!("Cache already being refreshed by this isolate; returning cached {}; skipping NocoDB.", $err_msg_key);
+                        return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
                     }
 
-                    // To avoid a data race, we need to check *again* whether the cache is
-                    // currently being refreshed once we acquire an exclusive lock.
-                    {
-                        let mut refreshing_keys = CACHE_LOCK.write().unwrap();
-                        let is_refreshing = refreshing_keys.contains(&cache_key);
-
-                        if is_refreshing {
-                            console_log!("Cache already being refreshed by this isolate; returning cached {}; skipping NocoDB.", $err_msg_key);
-                            return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
-                        }
-
-                        refreshing_keys.insert(cache_key.clone());
-                    }
+                    // We're the first ones (in this isolate) to notice that the cache has expired,
+                    // so we will acquire a lock and refresh it.
+                    refreshing_keys.insert(cache_key.clone());
 
                     console_log!("Cached {} expired, fetching from NocoDB.", $err_msg_key);
                 },
@@ -256,7 +243,7 @@ macro_rules! get_data {
             // unconditionally, so an error doesn't result in the lock never being released.
             // Worst-case, the lock will implicitly be released when the isolate is evicted.
             {
-                let mut refreshing_keys = CACHE_LOCK.write().unwrap();
+                let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
                 refreshing_keys.remove(&cache_key);
             }
 
