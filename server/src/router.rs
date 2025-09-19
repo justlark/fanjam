@@ -414,6 +414,7 @@ async fn get_info(
                 })
                 .collect::<Vec<_>>(),
             files: info
+                .about
                 .files
                 .into_iter()
                 .map(|file| File {

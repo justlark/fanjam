@@ -124,6 +124,8 @@ struct AboutResponse {
     pub description: Option<String>,
     #[serde(rename = "Website")]
     pub website_url: Option<String>,
+    #[serde(rename = "Files")]
+    pub files: Option<Vec<FileBodyResponse>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,14 +134,6 @@ struct LinkResponse {
     pub name: String,
     #[serde(rename = "URL")]
     pub url: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct FileResponse {
-    #[serde(rename = "File Name")]
-    pub name: String,
-    #[serde(rename = "File")]
-    pub files: Vec<FileBodyResponse>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -159,7 +153,7 @@ struct PageResponse {
     #[serde(rename = "Page Title")]
     pub title: String,
     #[serde(rename = "Page Body")]
-    pub body: String,
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -197,6 +191,7 @@ pub struct About {
     pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
+    pub files: Vec<File>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -209,7 +204,6 @@ pub struct Link {
 pub struct Info {
     pub about: About,
     pub links: Vec<Link>,
-    pub files: Vec<File>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -319,6 +313,16 @@ pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<
             name: Some(r.name),
             description: r.description,
             website_url: r.website_url,
+            files: r
+                .files
+                .unwrap_or_default()
+                .into_iter()
+                .map(|f| File {
+                    name: f.title,
+                    media_type: f.media_type,
+                    signed_url: f.signed_url,
+                })
+                .collect(),
         })
         .unwrap_or_default())
 }
@@ -335,41 +339,12 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
         .collect())
 }
 
-async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<File>> {
-    let file_records = list_records::<FileResponse>(client, &table_ids.files).await?;
-
-    let mut results = Vec::new();
-
-    for record in file_records {
-        let first_file = match record.files.as_slice() {
-            [file] => file,
-            // If multiple files were uploaded in this record, only include the first one.
-            // TODO: Change this behavior to be less confusing for users.
-            [file, ..] => file,
-            [] => continue,
-        };
-
-        results.push(File {
-            name: record.name.clone(),
-            media_type: first_file.media_type.clone(),
-            signed_url: first_file.signed_url.clone(),
-        });
-    }
-
-    Ok(results)
-}
-
 #[worker::send]
 pub async fn get_info(client: &Client, table_ids: &TableIds) -> anyhow::Result<Info> {
     let about = get_about(client, table_ids).await?;
     let links = get_links(client, table_ids).await?;
-    let files = get_files(client, table_ids).await?;
 
-    Ok(Info {
-        about,
-        links,
-        files,
-    })
+    Ok(Info { about, links })
 }
 
 #[worker::send]
@@ -381,7 +356,7 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
         .map(|r| Page {
             id: r.id.to_string(),
             title: r.title,
-            body: r.body,
+            body: r.body.unwrap_or_default(),
         })
         .collect())
 }
