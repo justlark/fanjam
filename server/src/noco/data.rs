@@ -169,7 +169,7 @@ struct AnnouncementResponse {
     #[serde(rename = "Title")]
     pub title: String,
     #[serde(rename = "Announcement")]
-    pub body: String,
+    pub body: Option<String>,
     #[serde(rename = "Files")]
     pub files: Option<Vec<FileBodyResponse>>,
     #[serde(rename = "Created")]
@@ -399,7 +399,7 @@ pub async fn get_announcements(
         .map(|a| Announcement {
             id: a.id.to_string(),
             title: a.title,
-            body: a.body,
+            body: a.body.unwrap_or_default(),
             files: a
                 .files
                 .unwrap_or_default()
