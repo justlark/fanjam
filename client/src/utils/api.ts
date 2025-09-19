@@ -30,6 +30,11 @@ interface RawPage {
   id: string;
   title: string;
   body: string;
+  files: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
 }
 
 interface RawAnnouncement {
@@ -82,6 +87,7 @@ export interface Page {
   id: string;
   title: string;
   body: string;
+  files: Array<File>;
 }
 
 export interface Announcement {
@@ -229,6 +235,11 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     id: page.id,
     title: page.title,
     body: page.body,
+    files: page.files.map((file) => ({
+      name: file.name,
+      mediaType: file.media_type,
+      signedUrl: file.signed_url,
+    })),
   }));
 
   return {

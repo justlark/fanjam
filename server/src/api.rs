@@ -134,6 +134,7 @@ pub struct Page {
     pub id: String,
     pub title: String,
     pub body: String,
+    pub files: Vec<File>,
 }
 
 #[derive(Debug, Serialize)]

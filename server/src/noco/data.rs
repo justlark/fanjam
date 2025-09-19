@@ -154,6 +154,8 @@ struct PageResponse {
     pub title: String,
     #[serde(rename = "Page Body")]
     pub body: Option<String>,
+    #[serde(rename = "Files")]
+    pub files: Option<Vec<FileBodyResponse>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -218,6 +220,7 @@ pub struct Page {
     pub id: String,
     pub title: String,
     pub body: String,
+    pub files: Vec<File>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -357,6 +360,16 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
             id: r.id.to_string(),
             title: r.title,
             body: r.body.unwrap_or_default(),
+            files: r
+                .files
+                .unwrap_or_default()
+                .into_iter()
+                .map(|f| File {
+                    name: f.title,
+                    media_type: f.media_type,
+                    signed_url: f.signed_url,
+                })
+                .collect(),
         })
         .collect())
 }

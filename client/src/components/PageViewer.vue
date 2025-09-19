@@ -3,6 +3,7 @@ import { useId, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import ProgressSpinner from "primevue/progressspinner";
+import LinksList from "@/components/LinksList.vue";
 import * as commonmark from "commonmark";
 import IconButton from "@/components/IconButton.vue";
 
@@ -51,7 +52,22 @@ const pageHeadingId = useId();
         <IconButton icon="chevron-left" label="Back" @click="back()" />
         <h2 :id="pageHeadingId" class="text-xl font-bold">{{ page.title }}</h2>
       </div>
-      <div class="px-6" id="document" v-if="bodyHtml" v-html="bodyHtml"></div>
+      <div class="px-6">
+        <div id="document" v-if="bodyHtml && page?.body.trim() !== ''" v-html="bodyHtml"></div>
+        <div
+          v-else-if="page.files.length === 0"
+          class="text-center text-lg italic text-muted-color mt-8"
+        >
+          No details provided
+        </div>
+        <LinksList
+          class="max-w-140 w-full mx-auto mt-6"
+          v-if="page.files.length > 0"
+          :links="[]"
+          :files="[...page.files]"
+          :pages="[]"
+        />
+      </div>
     </article>
     <div v-else class="flex items-center h-full">
       <ProgressSpinner />

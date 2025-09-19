@@ -448,6 +448,15 @@ async fn get_pages(
                     id: page.id,
                     title: page.title,
                     body: page.body,
+                    files: page
+                        .files
+                        .into_iter()
+                        .map(|file| File {
+                            name: file.name,
+                            media_type: file.media_type,
+                            signed_url: file.signed_url,
+                        })
+                        .collect::<Vec<_>>(),
                 })
                 .collect::<Vec<_>>(),
         },

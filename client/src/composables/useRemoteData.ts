@@ -352,11 +352,16 @@ interface StoredPage {
   id: string;
   title: string;
   body: string;
+  files: Array<{
+    name: string;
+    media_type: string;
+    signed_url: string;
+  }>;
 }
 
 const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
 
-const useRemotePages: DataSource<Readonly<Reactive<Array<Page>>>> = (
+const useRemotePages: DataSource<Readonly<Reactive<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("pages");
@@ -371,12 +376,22 @@ const useRemotePages: DataSource<Readonly<Reactive<Array<Page>>>> = (
         id: page.id,
         title: page.title,
         body: page.body,
+        files: page.files.map((file) => ({
+          name: file.name,
+          media_type: file.mediaType,
+          signed_url: file.signedUrl,
+        })),
       })),
     fromCache: (data) =>
       data.map((page) => ({
         id: page.id,
         title: page.title,
         body: page.body,
+        files: page.files.map((file) => ({
+          name: file.name,
+          mediaType: file.media_type,
+          signedUrl: file.signed_url,
+        })),
       })),
   });
 
