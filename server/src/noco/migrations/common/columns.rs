@@ -140,7 +140,20 @@ pub async fn edit_columns(
             .exec()
             .await?;
 
-        console_log!("Created Noco column with ID `{}`", request.column_id,);
+        console_log!("Edited Noco column with ID `{}`", request.column_id,);
+    }
+
+    Ok(())
+}
+
+pub async fn delete_columns(client: &Client, column_ids: &[ColumnId]) -> anyhow::Result<()> {
+    for column_id in column_ids {
+        client
+            .build_request_v2(Method::Delete, &format!("/meta/columns/{}", column_id))
+            .exec()
+            .await?;
+
+        console_log!("Deleted Noco column with ID `{}`", column_id,);
     }
 
     Ok(())

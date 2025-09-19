@@ -122,3 +122,16 @@ pub async fn create_tables(
 
     Ok(())
 }
+
+pub async fn delete_tables(client: &Client, table_ids: &[&TableId]) -> anyhow::Result<()> {
+    for table_id in table_ids {
+        client
+            .build_request_v2(Method::Delete, &format!("/meta/tables/{table_id}"))
+            .exec()
+            .await?;
+
+        console_log!("Deleted Noco table with ID `{}`", table_id);
+    }
+
+    Ok(())
+}
