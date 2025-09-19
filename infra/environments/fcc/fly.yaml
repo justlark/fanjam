@@ -1,7 +1,7 @@
 app: sparklefish-noco-fcc-590009
 primary_region: iad
 build:
-  image: nocodb/nocodb:0.264.6
+  image: nocodb/nocodb:0.264.8
 http_service:
   internal_port: 8080
   force_https: true
