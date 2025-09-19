@@ -24,14 +24,6 @@ fn wrap_kv_err(err: KvError) -> anyhow::Error {
     anyhow::Error::msg(err.to_string())
 }
 
-macro_rules! concat_key_fn {
-    ($name:ident, $prefix:expr, $key:expr) => {
-        fn $name(env_name: &EnvName) -> String {
-            format!("{}{}", $prefix(env_name), $key)
-        }
-    };
-}
-
 // This random ID forms part of the app URL gives to attendees. We use a random ID instead of the
 // environment name for two reasons:
 // 1. The environment name isn't meant to change; it's used to identify a lot of resources in the
@@ -70,12 +62,20 @@ fn cache_key_prefix(env_name: &EnvName) -> String {
     format!("env:{env_name}:cache:")
 }
 
-concat_key_fn!(events_cache_key, cache_key_prefix, "events");
-concat_key_fn!(info_cache_key, cache_key_prefix, "info");
-concat_key_fn!(pages_cache_key, cache_key_prefix, "pages");
-concat_key_fn!(announcements_cache_key, cache_key_prefix, "announcements");
-concat_key_fn!(about_cache_key, cache_key_prefix, "about");
-concat_key_fn!(summary_cache_key, cache_key_prefix, "summary");
+macro_rules! cache_key_fn {
+    ($name:ident, $key:expr) => {
+        pub fn $name(env_name: &EnvName) -> String {
+            format!("{}{}", cache_key_prefix(env_name), $key)
+        }
+    };
+}
+
+cache_key_fn!(events_cache_key, "events");
+cache_key_fn!(info_cache_key, "info");
+cache_key_fn!(pages_cache_key, "pages");
+cache_key_fn!(announcements_cache_key, "announcements");
+cache_key_fn!(about_cache_key, "about");
+cache_key_fn!(summary_cache_key, "summary");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -230,8 +230,10 @@ macro_rules! get_cache_fn {
             kv: &KvStore,
             env_name: &EnvName,
         ) -> anyhow::Result<Option<CachedValue<$type>>> {
+            let key = $key_fn(env_name);
+
             let (value, metadata) = kv
-                .get(&$key_fn(env_name))
+                .get(&key)
                 .json_with_metadata::<$type, CacheMetadata>()
                 .await
                 .map_err(wrap_kv_err)?;
