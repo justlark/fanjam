@@ -16,7 +16,7 @@ const {
     <div class="flex flex-col items-center gap-4">
       <h1 class="text-3xl">Announcements</h1>
     </div>
-    <div class="flex flex-col gap-4">
+    <div v-if="announcements.length > 0" class="flex flex-col gap-4">
       <RouterLink
         v-for="announcement of announcements"
         :key="announcement.id"
@@ -37,5 +37,6 @@ const {
         </div>
       </RouterLink>
     </div>
+    <div v-else class="text-center text-lg italic text-muted-color">No announcements yet</div>
   </div>
 </template>
