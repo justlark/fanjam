@@ -5,9 +5,9 @@ import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
-import * as commonmark from "commonmark";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
@@ -25,13 +25,9 @@ const props = defineProps<{
 
 const event = computed(() => props.event);
 
-const mdReader = new commonmark.Parser({ smart: true });
-const mdWriter = new commonmark.HtmlRenderer({ safe: true });
-
 const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
-  const parsed = mdReader.parse(event.value.description);
-  return mdWriter.render(parsed);
+  return renderMarkdown(event.value.description);
 });
 
 const isStarred = computed(() => starredEvents.value.has(event.value.id));

@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { type DeepReadonly } from "vue";
+import { computed, type DeepReadonly } from "vue";
 import { type Event } from "@/utils/api";
 import TagBar from "./TagBar.vue";
 import Drawer from "primevue/drawer";
 import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import { renderMarkdown } from "@/utils/markdown";
 
 const isVisible = defineModel<boolean>("visible", {
   required: true,
 });
 
 const filterCriteria = useFilterQuery();
+
+const descriptionHtml = computed(() => {
+  if (!props.event?.description) return undefined;
+  return renderMarkdown(props.event.description);
+});
 
 const props = defineProps<{
   event?: DeepReadonly<Event>;
@@ -29,7 +35,7 @@ const props = defineProps<{
     position="bottom"
   >
     <template #container="{ closeCallback }">
-      <div class="flex flex-col mx-4 mt-4 overflow-auto h-full" data-testid="event-summary-drawer">
+      <div class="flex flex-col mx-4 mt-4 h-full" data-testid="event-summary-drawer">
         <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-center">
           <h2 class="text-lg font-bold me-auto" v-if="props.event">
             {{ props.event.name }}
@@ -42,22 +48,26 @@ const props = defineProps<{
             :button-props="{ 'data-testid': 'event-summary-close-button' }"
           />
         </div>
-        <TagBar
-          class="mb-2"
-          v-if="props.event"
-          size="sm"
-          :category="props.event.category"
-          :tags="props.event.tags"
-          :all-categories="props.allCategories"
-        />
-        <div class="h-full">
-          <div v-if="props.event?.summary">
-            {{ props.event.summary }}
+        <div class="overflow-hidden h-full">
+          <TagBar
+            class="mb-2"
+            v-if="props.event"
+            size="sm"
+            :category="props.event.category"
+            :tags="props.event.tags"
+            :all-categories="props.allCategories"
+          />
+          <div class="mb-12">
+            <div v-if="props.event?.summary">
+              {{ props.event.summary }}
+            </div>
+            <div v-else-if="descriptionHtml" v-html="descriptionHtml" v-plaintext />
           </div>
         </div>
         <div
-          class="sticky bottom-0 pt-8 flex items-center justify-center bg-linear-to-b from-transparent dark:to-surface-900 to-white"
-        >
+          class="absolute bottom-0 h-18 inset-x-0 bg-linear-to-b from-transparent dark:to-surface-900 to-white"
+        />
+        <div class="absolute bottom-0 left-0 w-full flex items-center justify-center">
           <RouterLink
             v-if="props.event"
             :to="{

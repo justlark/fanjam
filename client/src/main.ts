@@ -64,6 +64,12 @@ const preset = definePreset(Aura, {
   },
 });
 
+app.directive("plaintext", {
+  beforeMount(el) {
+    el.innerHTML = el.innerText;
+  },
+});
+
 app.use(router);
 app.use(PrimeVue, { theme: { preset } });
 app.use(ToastService);

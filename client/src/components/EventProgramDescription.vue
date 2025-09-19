@@ -3,10 +3,10 @@ import Panel from "primevue/panel";
 import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import TagBar from "./TagBar.vue";
-import * as commonmark from "commonmark";
 import { RouterLink } from "vue-router";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
+import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
 import { computed, type DeepReadonly, useId } from "vue";
 import { localizeTimeSpan } from "@/utils/time";
@@ -33,13 +33,9 @@ const toggleStarred = () => {
   }
 };
 
-const mdReader = new commonmark.Parser({ smart: true });
-const mdWriter = new commonmark.HtmlRenderer({ safe: true });
-
 const descriptionHtml = computed(() => {
   if (!props.event.description) return undefined;
-  const parsed = mdReader.parse(props.event.description);
-  return mdWriter.render(parsed);
+  return renderMarkdown(props.event.description);
 });
 
 const eventNameHeadingId = useId();
@@ -74,13 +70,10 @@ const eventNameHeadingId = useId();
         :tags="props.event.tags"
         :all-categories="props.allCategories"
       />
-      <article
-        id="document"
-        class="*:first:mt-0 *:last:mb-0"
-        v-if="descriptionHtml"
-        v-html="descriptionHtml"
-        :aria-labelledby="eventNameHeadingId"
-      ></article>
+      <article id="document" :aria-labelledby="eventNameHeadingId">
+        <p v-if="event.summary" class="mt-0">{{ event.summary }}</p>
+        <div v-if="descriptionHtml" v-html="descriptionHtml" class="*:last:mb-0"></div>
+      </article>
     </div>
     <template #footer>
       <div class="flex items-center justify-evenly gap-2">

@@ -8,7 +8,7 @@ import LinksList from "./LinksList.vue";
 import EventDetail from "./EventDetail.vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { localizeDatetime, timeIsNearlyEqual } from "@/utils/time";
-import * as commonmark from "commonmark";
+import { renderMarkdown } from "@/utils/markdown";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,13 +25,9 @@ const announcement = computed(() => {
   return announcements.find((p) => p.id === announcementId.value);
 });
 
-const mdReader = new commonmark.Parser({ smart: true });
-const mdWriter = new commonmark.HtmlRenderer({ safe: true });
-
 const bodyHtml = computed(() => {
   if (!announcement.value?.body) return undefined;
-  const parsed = mdReader.parse(announcement.value.body);
-  return mdWriter.render(parsed);
+  return renderMarkdown(announcement.value.body);
 });
 
 const back = async () => {

@@ -4,8 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import ProgressSpinner from "primevue/progressspinner";
 import LinksList from "@/components/LinksList.vue";
-import * as commonmark from "commonmark";
 import IconButton from "@/components/IconButton.vue";
+import { renderMarkdown } from "@/utils/markdown";
 
 const route = useRoute();
 const router = useRouter();
@@ -21,13 +21,9 @@ const page = computed(() => {
   return pages.find((p) => p.id === pageId.value);
 });
 
-const mdReader = new commonmark.Parser({ smart: true });
-const mdWriter = new commonmark.HtmlRenderer({ safe: true });
-
 const bodyHtml = computed(() => {
   if (!page.value?.body) return undefined;
-  const parsed = mdReader.parse(page.value.body);
-  return mdWriter.render(parsed);
+  return renderMarkdown(page.value.body);
 });
 
 const back = async () => {
