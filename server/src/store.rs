@@ -91,21 +91,22 @@ enum CacheEntry {
     Expired,
 }
 
-impl CacheEntry {
-    pub fn new<T: Serialize>(value: &T) -> anyhow::Result<Self> {
-        Ok(Self::Fresh {
-            inserted_at: CacheInstant::now(),
-            serialized_value: serde_json::to_string(value)?,
-        })
-    }
-}
-
 static MEMORY_CACHE: LazyLock<Mutex<HashMap<String, CacheEntry>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn put_memory_cache<T: Serialize>(key: &str, value: &T) -> anyhow::Result<()> {
+    // We serialize first to minimize how long we're holding the lock.
+    let serialized_value = serde_json::to_string(value)?;
+
     let mut cache = MEMORY_CACHE.lock().unwrap();
-    cache.insert(key.to_string(), CacheEntry::new(value)?);
+
+    let entry = CacheEntry::Fresh {
+        // However, we should wait until we have the lock to get the current time.
+        inserted_at: CacheInstant::now(),
+        serialized_value,
+    };
+
+    cache.insert(key.to_string(), entry);
 
     Ok(())
 }
@@ -117,27 +118,46 @@ enum CachedValue<T> {
     Missing,
 }
 
-fn get_memory_cache<T: DeserializeOwned>(
-    key: &str,
-    ttl: Duration,
-) -> anyhow::Result<CachedValue<T>> {
+fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> CachedValue<T> {
     let mut cache = MEMORY_CACHE.lock().unwrap();
 
-    match cache.entry(key.to_string()) {
+    let serialized_value = match cache.entry(key.to_string()) {
         MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
             CacheEntry::Fresh {
                 inserted_at,
                 serialized_value,
-            } if inserted_at.elapsed() < ttl => {
-                Ok(CachedValue::Fresh(serde_json::from_str(serialized_value)?))
-            }
+            } if inserted_at.elapsed() < ttl => CachedValue::Fresh(serialized_value.clone()),
             cache_entry @ CacheEntry::Fresh { .. } => {
                 *cache_entry = CacheEntry::Expired;
-                Ok(CachedValue::Expired)
+                CachedValue::Expired
             }
-            CacheEntry::Expired => Ok(CachedValue::Expired),
+            CacheEntry::Expired => CachedValue::Expired,
         },
-        MapEntry::Vacant(_) => Ok(CachedValue::Missing),
+        MapEntry::Vacant(_) => CachedValue::Missing,
+    };
+
+    // We don't need to keep holding the lock while we deserialize the value.
+    drop(cache);
+
+    match serialized_value {
+        CachedValue::Fresh(serialized_value) => {
+            match serde_json::from_str(&serialized_value) {
+                Ok(value) => CachedValue::Fresh(value),
+                Err(e) => {
+                    console_warn!("Failed deserializing cached value for key `{}`: {}", key, e);
+
+                    // As a defensive measure, if we fail to deserialize the cached value, we
+                    // should evict it from the cache to avoid repeated errors on subsequent
+                    // requests.
+                    let mut cache = MEMORY_CACHE.lock().unwrap();
+                    cache.remove(key);
+
+                    CachedValue::Missing
+                }
+            }
+        }
+        CachedValue::Expired => CachedValue::Expired,
+        CachedValue::Missing => CachedValue::Missing,
     }
 }
 
@@ -193,11 +213,11 @@ macro_rules! get_data {
 
             // Check this isolate's in-memory cache first.
             match get_memory_cache(&cache_key, ttl) {
-                Ok(CachedValue::Fresh(value)) => {
+                CachedValue::Fresh(value) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
                     return Ok(DataResponseEnvelope { value, retry_after: None });
                 },
-                Ok(CachedValue::Missing) => {
+                CachedValue::Missing => {
                     // This value is not in the in-memory cache at all, which probably
                     // means this is a new isolate. In that case, we should fetch a possibly-stale
                     // value from the KV cache to warm this isolate's in-memory cache.
@@ -221,12 +241,9 @@ macro_rules! get_data {
                         }
                     }
                 },
-                Ok(CachedValue::Expired) => {
+                CachedValue::Expired => {
                     console_log!("Cached {} expired; fetching from NocoDB.", $err_msg_key);
                 },
-                Err(e) => {
-                    console_warn!("Failed getting {} from memory cache: {}", $err_msg_key, e);
-                }
             }
 
             // A request to get the most recent data from NocoDB.
