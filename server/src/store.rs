@@ -3,6 +3,7 @@ use crate::env::{EnvId, EnvName};
 use crate::error::Error;
 use crate::neon::BackupSnapshot;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
+use crate::router::AppState;
 use crate::{config, kv, url};
 use crate::{
     neon::Client as NeonClient,
@@ -13,10 +14,10 @@ use futures::future::{self, Either, FutureExt};
 use std::collections::HashSet;
 use std::fmt;
 use std::pin::pin;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 use worker::kv::KvStore;
-use worker::{Delay, console_error, console_log, console_warn};
+use worker::{Context, Delay, console_error, console_log, console_warn};
 
 #[derive(Debug)]
 pub struct DataResponseEnvelope<T> {
@@ -29,6 +30,7 @@ pub struct Store {
     neon_client: NeonClient,
     db_client: DbClient,
     kv: KvStore,
+    ctx: Arc<Context>,
     env_name: EnvName,
     base_id: BaseId,
 }
@@ -60,6 +62,12 @@ const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 // isolate could still end up making a request to NocoDB. However, this is a significant reduction
 // in the number of requests that could be made, and should be sufficient for now.
 static CACHE_LOCK: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+
+// Locks on cache keys should be released as soon as the cache is refreshed. However, if that
+// doesn't occur for any reason--maybe a bug--we don't want to wait for the isolate to be evicted
+// to release the lock. So, we spawn a background task which outlives the request and releases the
+// lock after this duration, just in case it hasn't already been released.
+const CACHE_LOCK_MAX_HOLD_TIME: Duration = Duration::from_secs(30);
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
@@ -127,6 +135,20 @@ macro_rules! get_data {
                     // We're the first ones (in this isolate) to notice that the cache has expired,
                     // so we will acquire a lock and refresh it.
                     refreshing_keys.insert(cache_key.clone());
+
+                    drop(refreshing_keys);
+
+                    let background_task_cache_key = cache_key.clone();
+
+                    // We'll release the lock once we're done; this is just a defensive measure.
+                    self.ctx.wait_until(async move {
+                        Delay::from(CACHE_LOCK_MAX_HOLD_TIME).await;
+
+                        let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
+                        if refreshing_keys.remove(&background_task_cache_key) {
+                            console_warn!("Cache key `{}` was never unlocked; auto-unlocked after {}s.", &background_task_cache_key, CACHE_LOCK_MAX_HOLD_TIME.as_secs());
+                        }
+                    });
 
                     console_log!("Cached {} expired, fetching from NocoDB.", $err_msg_key);
                 },
@@ -253,7 +275,10 @@ macro_rules! get_data {
 }
 
 impl Store {
-    pub async fn from_env_name(kv: KvStore, env_name: EnvName) -> Result<Self, Error> {
+    pub async fn from_env_name(state: &AppState, env_name: EnvName) -> Result<Self, Error> {
+        let kv = state.kv.clone();
+        let ctx = Arc::clone(&state.ctx);
+
         let api_token = kv::get_api_token(&kv, &env_name)
             .await
             .map_err(Error::Internal)?
@@ -285,18 +310,19 @@ impl Store {
             neon_client,
             db_client,
             kv,
+            ctx,
             env_name,
             base_id,
         })
     }
 
-    pub async fn from_env_id(kv: KvStore, env_id: &EnvId) -> Result<Self, Error> {
-        let env_name = kv::get_id_env(&kv, env_id)
+    pub async fn from_env_id(state: &AppState, env_id: &EnvId) -> Result<Self, Error> {
+        let env_name = kv::get_id_env(&state.kv, env_id)
             .await
             .map_err(Error::Internal)?
             .ok_or(Error::NoEnvId)?;
 
-        Self::from_env_name(kv, env_name).await
+        Self::from_env_name(state, env_name).await
     }
 
     async fn get_table_ids(&self) -> Result<TableIds, Error> {
