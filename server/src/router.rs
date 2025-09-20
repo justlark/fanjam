@@ -8,7 +8,7 @@ use axum::{
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{console_log, kv::KvStore};
+use worker::{Context, console_log, kv::KvStore};
 
 use crate::{
     api::{
@@ -46,6 +46,7 @@ use crate::{
 
 pub struct AppState {
     pub kv: KvStore,
+    pub ctx: Arc<Context>,
 }
 
 impl fmt::Debug for AppState {
@@ -218,7 +219,7 @@ async fn delete_base(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<NoContent, ErrorResponse> {
-    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
+    let store = Store::from_env_name(&state, env_name).await?;
 
     store.delete_base().await?;
 
@@ -230,7 +231,7 @@ async fn post_apply_migration(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<Json<PostApplyMigrationResponse>, ErrorResponse> {
-    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
+    let store = Store::from_env_name(&state, env_name).await?;
 
     let MigrationChange {
         old_version,
@@ -272,7 +273,7 @@ async fn post_backup(
     Path(env_name): Path<EnvName>,
     Json(body): Json<PostBackupRequest>,
 ) -> Result<NoContent, ErrorResponse> {
-    let store = Store::from_env_name(state.kv.clone(), env_name).await?;
+    let store = Store::from_env_name(&state, env_name).await?;
 
     store.create_backup(body.kind).await?;
 
@@ -358,7 +359,7 @@ async fn get_events(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetEventsResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
 
     let store::DataResponseEnvelope {
         retry_after,
@@ -392,7 +393,7 @@ async fn get_info(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetInfoResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
 
     let store::DataResponseEnvelope {
         retry_after,
@@ -432,7 +433,7 @@ async fn get_pages(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetPagesResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
 
     let store::DataResponseEnvelope {
         retry_after,
@@ -468,7 +469,7 @@ async fn get_announcements(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetAnnouncementsResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
 
     let store::DataResponseEnvelope {
         retry_after,
@@ -506,7 +507,7 @@ async fn get_summary(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<Json<GetSummaryResponse>, ErrorResponse> {
-    let store = Store::from_env_id(state.kv.clone(), &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
 
     let summary = store.get_summary().await?;
 
