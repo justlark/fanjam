@@ -11,13 +11,16 @@ use crate::{
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
 use futures::future::{self, Either, FutureExt};
-use std::collections::HashSet;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry as MapEntry;
 use std::fmt;
 use std::pin::pin;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 use worker::kv::KvStore;
-use worker::{Context, Delay, console_error, console_log, console_warn};
+use worker::{Context, Date, Delay, console_error, console_log, console_warn};
 
 #[derive(Debug)]
 pub struct DataResponseEnvelope<T> {
@@ -53,51 +56,122 @@ pub struct MigrationChange {
 const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
-// There's an inherent race condition with storing an expiration timestamp in the KV metadata,
-// since a burst of requests right as the key expires could all end up trying to refresh it
-// simultaneously, hammering the upstream NocoDB instance with requests.
-//
-// To mitigate this we use a lock to serialize the upstream requests. This isn't a perfect
-// solution; this lock is per-isolate, so if the worker is scaled up to multiple isolates, each
-// isolate could still end up making a request to NocoDB. However, this is a significant reduction
-// in the number of requests that could be made, and should be sufficient for now.
-static CACHE_LOCK: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+// An instant in time for the purpose of caching. This wraps a number of milliseconds since the
+// Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
+// proper monotonic clock in this environment.
+#[derive(Debug, Clone, Copy)]
+struct CacheInstant(u64);
 
-// Locks on cache keys should be released as soon as the cache is refreshed. However, if that
-// doesn't occur for any reason--maybe a bug--we don't want to wait for the isolate to be evicted
-// to release the lock. So, we spawn a background task which outlives the request and releases the
-// lock after this duration, just in case it hasn't already been released.
-const CACHE_LOCK_MAX_HOLD_TIME: Duration = Duration::from_secs(30);
+impl CacheInstant {
+    pub fn now() -> Self {
+        Self(Date::now().as_millis())
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        let now = Date::now();
+        Duration::from_millis(now.as_millis().saturating_sub(self.0))
+    }
+}
+
+// In the in-memory cache, we differentiate between values which have never been cached and values
+// which were cached at one point but have since expired. This is necessary to facilitate an
+// optimization where new isolates have their in-memory cache warmed from the KV cache.
+// Previously-cached-but-expired values should hit the upstream NocoDB instance; what we're trying
+// to avoid is a burst of traffic spinning up multiple new isolates which all hit the upstream
+// NocoDB instance simultaneously.
+//
+// Rather than just letting the expired value sit in the cache forever, we have a separate
+// `Expired` variant to minimize the cache's memory footprint.
+#[derive(Debug)]
+enum CacheEntry {
+    Fresh {
+        inserted_at: CacheInstant,
+        serialized_value: String,
+    },
+    Expired,
+}
+
+impl CacheEntry {
+    pub fn new<T: Serialize>(value: &T) -> anyhow::Result<Self> {
+        Ok(Self::Fresh {
+            inserted_at: CacheInstant::now(),
+            serialized_value: serde_json::to_string(value)?,
+        })
+    }
+}
+
+static MEMORY_CACHE: LazyLock<Mutex<HashMap<String, CacheEntry>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn put_memory_cache<T: Serialize>(key: &str, value: &T) -> anyhow::Result<()> {
+    let mut cache = MEMORY_CACHE.lock().unwrap();
+    cache.insert(key.to_string(), CacheEntry::new(value)?);
+
+    Ok(())
+}
+
+#[derive(Debug)]
+enum CachedValue<T> {
+    Fresh(T),
+    Expired,
+    Missing,
+}
+
+fn get_memory_cache<T: DeserializeOwned>(
+    key: &str,
+    ttl: Duration,
+) -> anyhow::Result<CachedValue<T>> {
+    let mut cache = MEMORY_CACHE.lock().unwrap();
+
+    match cache.entry(key.to_string()) {
+        MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
+            CacheEntry::Fresh {
+                inserted_at,
+                serialized_value,
+            } if inserted_at.elapsed() < ttl => {
+                Ok(CachedValue::Fresh(serde_json::from_str(serialized_value)?))
+            }
+            cache_entry @ CacheEntry::Fresh { .. } => {
+                *cache_entry = CacheEntry::Expired;
+                Ok(CachedValue::Expired)
+            }
+            CacheEntry::Expired => Ok(CachedValue::Expired),
+        },
+        MapEntry::Vacant(_) => Ok(CachedValue::Missing),
+    }
+}
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
 // TLDR: We're using aggressive caching to create an eventually consistent system that maximizes
 // availability while allowing the NocoDB instance to shut itself off when not in use.
 //
-// The cache has a short TTL and is used to reduce the load on the NocoDB instance, which is slower
-// and more expensive than this worker. Data we fetch from NocoDB is put into the cache, where it
-// expires after *n* milliseconds. Requests that come in from the client during that time will get
-// the cached data. This means that NocoDB will only get hit at most every *n* milliseconds, and
-// data returned to the client will only be stale by at most *n* milliseconds.
+// An in-memory cache with a short TTL (configurable per-environment, but likely on the order of
+// seconds) is used to reduce the load on the NocoDB instance. This means that, **for requests
+// handled by this isolate**, the NocoDB instance will only be hit at most once every *n*
+// milliseconds per cache key, and data returned to the client will only be stale by at most *n*
+// milliseconds. This is important, because the NocoDB instance is slower and much more expensive
+// to scale than this worker.
 //
-// Rather than tell the KV store to expire the keys after *n* milliseconds, we store the expiration
-// date alongside the data. This is for two reasons: 1) the KV store we're using only supports a
-// minimum TTL of 60 seconds, which is too long for our purposes; and 2) we want to keep stale data
-// in the cache until fresh data is fetched from upstream, as will be explained below.
+// However, this in-memory cache is **per-isolate**, meaning that if there's a lot of traffic or
+// geographically distributed traffic, multiple isolates may be spun up, each with their own
+// in-memory cache. This means that the load on the NocoDB instance *will* scale with the number of
+// users, just not linearly.
 //
-// The purpose of keeping stale data in the cache is to handle the specific case where the NocoDB
-// instance is temporarily unavailable. This may happen fairly often, because if the Fly Machine
-// shuts itself off (which it is configured to do, to save money), it takes about 10 seconds to
-// start back up, and during that time it will not respond to requests.
+// We need to handle the case where the NocoDB instance is temporarily unavailable. This may happen
+// fairly often, because if the Fly Machine shuts itself off (which it is configured to do, to save
+// money), it takes about 10 seconds to start back up, and during that time it will not respond to
+// requests. To handle this, we also keep a persistent cache in KV, which is shared between
+// isolates and used as a fallback for when the NocoDB instance is unavailable.
 //
-// Whenever the worker responds to a request with expired data from the cache, it includes a
-// directive for the client to retry the request after a short delay, by which point the NocoDB
-// instance is hopefully online. This saves the user from a 10+ second loading spinner while the
-// NocoDB instance starts up.
+// This persistent cache serves a second purpose as well: we use it to warm the in-memory cache of
+// new isolates so that a burst of traffic which spins up multiple new isolates doesn't cause a
+// spike in load on the NocoDB instance.
 //
-// We can't make any guarantees about how stale the data in the cache might be, but it's not
-// particularly important, because that data will only be shown to the user for a few seconds until
-// the client is able to fetch the latest data from NocoDB.
+// Whenever the worker responds to a request with expired data from the persistent cache, it
+// includes a directive for the client to retry the request after a short delay, by which point the
+// NocoDB instance is hopefully online. This saves the user from a 10+ second loading spinner while
+// the NocoDB instance starts up.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -111,165 +185,154 @@ macro_rules! get_data {
         #[worker::send]
         pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
             let cache_key = $cache_key_fn(&self.env_name);
+            let env_config = kv::get_env_config(&self.kv, &self.env_name).await.map_err(Error::Internal)?;
+            let ttl = env_config
+                .cache_ttl
+                .map(Duration::from_millis)
+                .unwrap_or(config::noco_default_memory_cache_ttl());
 
-            match $get_cached_fn(&self.kv, &self.env_name).await {
-                // When the value is fetched from this cache, we do not instruct the client to
-                // retry the request. This data will always be reasonably fresh, and instructing
-                // the client to retry the request would get it stuck in a refresh loop.
-                Ok(Some(value)) if !value.expired => {
+            // Check this isolate's in-memory cache first.
+            match get_memory_cache(&cache_key, ttl) {
+                Ok(CachedValue::Fresh(value)) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
-                    return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
+                    return Ok(DataResponseEnvelope { value, retry_after: None });
                 },
-                Ok(Some(value)) => {
-                    // The cache has expired. However, if another request is already refreshing the
-                    // cache, we should just return the stale value rather than overload the
-                    // upstream NocoDB instance with requests.
-                    let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
-                    let is_refreshing = refreshing_keys.contains(&cache_key);
+                Ok(CachedValue::Missing) => {
+                    // This value is not in the in-memory cache at all, which probably
+                    // means this is a new isolate. In that case, we should fetch a possibly-stale
+                    // value from the KV cache to warm this isolate's in-memory cache.
+                    console_log!("No cached {} in memory; fetching from KV cache.", $err_msg_key);
 
-                    if is_refreshing {
-                        console_log!("Cache already being refreshed by this isolate; returning cached {}; skipping NocoDB.", $err_msg_key);
-                        return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
-                    }
+                    match $get_cached_fn(&self.kv, &self.env_name).await {
+                        Ok(Some(value)) if !value.expired => {
+                            console_log!("Warming in-memory cache for {} from KV cache.", $err_msg_key);
 
-                    // We're the first ones (in this isolate) to notice that the cache has expired,
-                    // so we will acquire a lock and refresh it.
-                    refreshing_keys.insert(cache_key.clone());
+                            if let Err(e) = put_memory_cache(&cache_key, &value.value) {
+                                console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
+                            }
 
-                    drop(refreshing_keys);
-
-                    let background_task_cache_key = cache_key.clone();
-
-                    // We'll release the lock once we're done; this is just a defensive measure.
-                    self.ctx.wait_until(async move {
-                        Delay::from(CACHE_LOCK_MAX_HOLD_TIME).await;
-
-                        let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
-                        if refreshing_keys.remove(&background_task_cache_key) {
-                            console_warn!("Cache key `{}` was never unlocked; auto-unlocked after {}s.", &background_task_cache_key, CACHE_LOCK_MAX_HOLD_TIME.as_secs());
+                            return Ok(DataResponseEnvelope { value: value.value, retry_after: None });
                         }
-                    });
-
-                    console_log!("Cached {} expired, fetching from NocoDB.", $err_msg_key);
+                        Ok(_) => {
+                            console_log!("No fresh {} found in KV cache.", $err_msg_key);
+                        }
+                        Err(e) => {
+                            console_warn!("Failed getting {} from KV cache: {}", $err_msg_key, e);
+                        }
+                    }
                 },
-                Ok(None) => {
-                    // There's no cache, meaning this is a new environment. We're not particularly
-                    // worried about serializing access to the upstream NocoDB instance in this
-                    // case, because this should only happen once.
-                    console_log!("No cached {} found, fetching from NocoDB.", $err_msg_key);
-                }
+                Ok(CachedValue::Expired) => {
+                    console_log!("Cached {} expired; fetching from NocoDB.", $err_msg_key);
+                },
                 Err(e) => {
-                    // If we can't access the cache for some reason, we have no choice but to hit
-                    // the upstream NocoDB instance.
-                    console_warn!("Failed to get {} from cache: {}", $err_msg_key, e);
+                    console_warn!("Failed getting {} from memory cache: {}", $err_msg_key, e);
                 }
             }
 
-            let future_result = async || {
-                // A request to get the most recent data from NocoDB.
-                let value_request = async {
-                    let table_ids = match self.get_table_ids().await {
-                        Ok(table_ids) => table_ids,
-                        Err(e) => {
-                            console_warn!("Failed getting table IDs from NocoDB: {}", e);
-                            return Err(e);
-                        }
-                    };
-
-                    match $get_api_fn(&self.noco_client, &table_ids)
-                        .await
-                        .map_err(Error::Internal)
-                    {
-                        Ok(value) => Ok(value),
-                        Err(e) => {
-                            console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
-                            Err(e)
-                        }
+            // A request to get the most recent data from NocoDB.
+            let value_request = async {
+                let table_ids = match self.get_table_ids().await {
+                    Ok(table_ids) => table_ids,
+                    Err(e) => {
+                        console_warn!("Failed getting table IDs from NocoDB: {}", e);
+                        return Err(e);
                     }
                 };
 
-                // A request to NocoDB's healthcheck endpoint.
-                let healthcheck_request = pin!(noco::check_health(&self.noco_client));
-
-                let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
-
-                // Perform a healthcheck on the NocoDB server with a timeout.
-                //
-                // The timeout is important, because API requests to NocoDB tend to hang while the Fly
-                // Machine is starting up.
-                let healthcheck = future::select(
-                    healthcheck_request,
-                    healthcheck_timeout,
-                ).map(|either| match either {
-                    Either::Left((is_healthy, _)) => is_healthy,
-                    Either::Right(_) => {
-                        console_warn!("NocoDB healthcheck timed out after {} seconds.", NOCO_HEALTHCHECK_TIMEOUT.as_secs());
-                        false
-                    }
-                });
-
-                // This is important! We're both fetching the latest data from NocoDB *and* checking
-                // whether it's healthy, in parallel.
-                //
-                // - If the healthcheck times out, indicating that NocoDB is unhealthy, then we will
-                // not await the API request, and will instead go straight to the cache.
-                // - If the healthcheck returns first and indicates that NocoDB is unhealthy, then we
-                // will not await the API request, and will instead go straight to the cache.
-                // - If the healthcheck returns first and indicates that NocoDB is healthy, then will
-                // await the API request and return it.
-                // - If the API request returns first (unlikely), we will not await the healthcheck.
-                let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
-                    Either::Left((value_result, _)) => Some(value_result?),
-                    Either::Right((is_healthy, value_future)) => if is_healthy {
-                        Some(value_future.await?)
-                    } else {
-                        None
-                    }
-                };
-
-                match maybe_value_if_healthy {
-                    Some(value) => {
-                        console_log!("Caching latest {} from NocoDB.", $err_msg_key);
-                        if let Err(e) = $put_cached_fn(&self.kv, &self.env_name, &value).await {
-                            console_warn!("Failed putting {} in cache: {}", $err_msg_key, e);
-                        }
-
-                        Ok(DataResponseEnvelope { value, retry_after: None })
-                    },
-                    None => {
-                        console_log!("NocoDB is unavailable, fetching stale data if available.");
-
-                        match $get_cached_fn(&self.kv, &self.env_name).await {
-                            Ok(Some(value)) => {
-                                // Return the cached data whether or not it has expired, because we
-                                // have nothing better to send the client right now.
-                                console_log!("Returning stale {} from cache.", $err_msg_key);
-                                Ok(DataResponseEnvelope { value: value.value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
-                            }
-                            Ok(None) => {
-                                console_warn!("No stale cached {} found.", $err_msg_key);
-                                Err(Error::NocoUnavailable)
-                            }
-                            Err(e) => {
-                                console_warn!("Failed getting {} from cache: {}", $err_msg_key, e);
-                                Err(Error::Internal(e))
-                            }
-                        }
+                match $get_api_fn(&self.noco_client, &table_ids)
+                    .await
+                    .map_err(Error::Internal)
+                {
+                    Ok(value) => Ok(value),
+                    Err(e) => {
+                        console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+                        Err(e)
                     }
                 }
             };
 
-            let result = future_result().await;
+            // A request to NocoDB's healthcheck endpoint.
+            let healthcheck_request = pin!(noco::check_health(&self.noco_client));
 
-            // We're done refreshing the cache, so release the lock. This must happen
-            // unconditionally, so an error doesn't result in the lock never being released.
-            // Worst-case, the lock will implicitly be released when the isolate is evicted.
-            {
-                let mut refreshing_keys = CACHE_LOCK.lock().unwrap();
-                refreshing_keys.remove(&cache_key);
+            let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
+
+            // Perform a healthcheck on the NocoDB server with a timeout.
+            //
+            // The timeout is important, because API requests to NocoDB tend to hang while the Fly
+            // Machine is starting up.
+            let healthcheck = future::select(
+                healthcheck_request,
+                healthcheck_timeout,
+            ).map(|either| match either {
+                Either::Left((is_healthy, _)) => is_healthy,
+                Either::Right(_) => {
+                    console_warn!("NocoDB healthcheck timed out after {} seconds.", NOCO_HEALTHCHECK_TIMEOUT.as_secs());
+                    false
+                }
+            });
+
+            // This is important! We're both fetching the latest data from NocoDB *and* checking
+            // whether it's healthy, in parallel.
+            //
+            // - If the healthcheck times out, indicating that NocoDB is unhealthy, then we will
+            // not await the API request, and will instead go straight to the cache.
+            // - If the healthcheck returns first and indicates that NocoDB is unhealthy, then we
+            // will not await the API request, and will instead go straight to the cache.
+            // - If the healthcheck returns first and indicates that NocoDB is healthy, then will
+            // await the API request and return it.
+            // - If the API request returns first (unlikely), we will not await the healthcheck.
+            let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
+                Either::Left((value_result, _)) => Some(value_result?),
+                Either::Right((is_healthy, value_future)) => if is_healthy {
+                    Some(value_future.await?)
+                } else {
+                    None
+                }
+            };
+
+            match maybe_value_if_healthy {
+                Some(value) => {
+                    console_log!("Caching latest {} from NocoDB.", $err_msg_key);
+
+                    if let Err(e) = put_memory_cache(&cache_key, &value) {
+                        console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
+                    }
+
+                    let kv_for_cache = self.kv.clone();
+                    let value_for_cache = value.clone();
+                    let env_name_for_cache = self.env_name.clone();
+
+                    // Update the KV cache used to warm new isolates. This doesn't need to block
+                    // the current request.
+                    self.ctx.wait_until(async move {
+                        if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value_for_cache).await {
+                            console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
+                        }
+                    });
+
+                    Ok(DataResponseEnvelope { value, retry_after: None })
+                },
+                None => {
+                    console_log!("NocoDB is unavailable, fetching stale data if available.");
+
+                    match $get_cached_fn(&self.kv, &self.env_name).await {
+                        Ok(Some(value)) => {
+                            // Return the cached data whether or not it has expired, because we
+                            // have nothing better to send the client right now.
+                            console_log!("Returning stale {} from cache.", $err_msg_key);
+                            Ok(DataResponseEnvelope { value: value.value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
+                        }
+                        Ok(None) => {
+                            console_warn!("No stale cached {} found.", $err_msg_key);
+                            Err(Error::NocoUnavailable)
+                        }
+                        Err(e) => {
+                            console_warn!("Failed getting {} from cache: {}", $err_msg_key, e);
+                            Err(Error::Internal(e))
+                        }
+                    }
+                }
             }
-
-            result
         }
     }
 }

@@ -9,6 +9,10 @@ use crate::{
     noco::{About, Announcement, ApiToken, Event, Info, Page, Summary, TableInfo},
 };
 
+// Rather than make the key expire with a TTL, we store the expiration time in the key metadata and
+// allow the key to live indefinitely. This allows it to serve two purposes: 1) an expiring cache
+// to warm the in-memory cache of new isolates, and 2) a persistent cache that can be used to
+// return *something* if the upstream NocoDB server is still starting up.
 #[derive(Debug, Serialize, Deserialize)]
 struct CacheMetadata {
     pub expires: Option<u64>,
@@ -191,12 +195,8 @@ macro_rules! put_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
         pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
-            let env_config = get_env_config(kv, env_name).await?;
-
             let now = Date::now().as_millis();
-            let ttl = env_config
-                .cache_ttl
-                .unwrap_or(config::noco_default_buffer_cache_ttl().as_millis() as u64);
+            let ttl = config::noco_kv_cache_ttl().as_millis() as u64;
 
             kv.put(&$key_fn(env_name), value)
                 .map_err(wrap_kv_err)?
