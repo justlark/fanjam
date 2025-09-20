@@ -174,7 +174,7 @@ struct AnnouncementResponse {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -188,7 +188,7 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct About {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -196,26 +196,26 @@ pub struct About {
     pub files: Vec<File>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
     pub name: String,
     pub url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Info {
     pub about: About,
     pub links: Vec<Link>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct File {
     pub name: String,
     pub media_type: String,
     pub signed_url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page {
     pub id: String,
     pub title: String,
@@ -223,7 +223,7 @@ pub struct Page {
     pub files: Vec<File>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Announcement {
     pub id: String,
     pub title: String,
@@ -233,7 +233,7 @@ pub struct Announcement {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Summary {
     pub name: Option<String>,
     pub description: Option<String>,
