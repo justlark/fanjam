@@ -339,8 +339,11 @@ macro_rules! get_data {
             // wait to be notified via a oneshot channel when that upstream request completes.
             {
                 let mut cache = MEMORY_CACHE.lock().unwrap();
-                let entry = CacheEntry::InFlight(Vec::new());
-                cache.insert(cache_key.to_string(), entry);
+
+                // Avoid a race condition by only inserting if the entry is still vacant.
+                cache
+                    .entry(cache_key.to_string())
+                    .or_insert_with(|| CacheEntry::InFlight(Vec::new()));
             }
 
             // A request to get the most recent data from NocoDB.
