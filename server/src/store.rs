@@ -54,8 +54,15 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
+// If NocoDB is unavailable, we tell the client to retry after this delay.
 const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
+
+// If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
+
+// A request will only wait this long for an in-flight request to return. Requests waiting for an
+// in-flight request should always be notified. This serves to guard against bugs.
+const INFLIGHT_LOCK_TIMEOUT: Duration = Duration::from_secs(30);
 
 // An instant in time for the purpose of caching. This wraps a number of milliseconds since the
 // Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
@@ -298,8 +305,24 @@ macro_rules! get_data {
                 .map(Duration::from_millis)
                 .unwrap_or(config::noco_default_memory_cache_ttl());
 
+            // As a defensive measure against bugs, we set a cap on how long we will wait for an
+            // in-flight request to return.
+            let memory_cache_request = pin!(get_memory_cache(&cache_key, ttl));
+            let memory_cache_timeout = pin!(Delay::from(INFLIGHT_LOCK_TIMEOUT));
+
+            let memory_cache_response = future::select(
+                memory_cache_request,
+                memory_cache_timeout,
+            ).map(|either| match either {
+                Either::Left((response, _)) => Ok(response),
+                Either::Right(_) => {
+                    console_warn!("Timed out waiting for in-flight upstream request to return after {} seconds. This is a bug.", INFLIGHT_LOCK_TIMEOUT.as_secs());
+                    Err(Error::Internal(anyhow::anyhow!("Timed out waiting for in-flight upstream request to return.")))
+                }
+            });
+
             // Check this isolate's in-memory cache first.
-            match get_memory_cache(&cache_key, ttl).await {
+            match memory_cache_response.await? {
                 CachedValue::Fresh(value) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
                     return Ok(DataResponseEnvelope { value, retry_after: None });
