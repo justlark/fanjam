@@ -18,6 +18,472 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: pg60bi600000bjx; Type: SCHEMA; Schema: -; Owner: sparklefish
+--
+
+CREATE SCHEMA pg60bi600000bjx;
+
+
+ALTER SCHEMA pg60bi600000bjx OWNER TO sparklefish;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: _nc_m2m_people_events; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx._nc_m2m_people_events (
+    events_id integer NOT NULL,
+    people_id integer NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx._nc_m2m_people_events OWNER TO sparklefish;
+
+--
+-- Name: _nc_m2m_tags_events; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx._nc_m2m_tags_events (
+    events_id integer NOT NULL,
+    tags_id integer NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx._nc_m2m_tags_events OWNER TO sparklefish;
+
+--
+-- Name: about; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.about (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    con_name text NOT NULL,
+    con_description text,
+    website text,
+    files text
+);
+
+
+ALTER TABLE pg60bi600000bjx.about OWNER TO sparklefish;
+
+--
+-- Name: about_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.about_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.about_id_seq OWNER TO sparklefish;
+
+--
+-- Name: about_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.about_id_seq OWNED BY pg60bi600000bjx.about.id;
+
+
+--
+-- Name: announcements; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.announcements (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    title text NOT NULL,
+    description text,
+    attachment text
+);
+
+
+ALTER TABLE pg60bi600000bjx.announcements OWNER TO sparklefish;
+
+--
+-- Name: announcements_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.announcements_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.announcements_id_seq OWNER TO sparklefish;
+
+--
+-- Name: announcements_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.announcements_id_seq OWNED BY pg60bi600000bjx.announcements.id;
+
+
+--
+-- Name: categories; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.categories (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx.categories OWNER TO sparklefish;
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.categories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.categories_id_seq OWNER TO sparklefish;
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.categories_id_seq OWNED BY pg60bi600000bjx.categories.id;
+
+
+--
+-- Name: events; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.events (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL,
+    description text,
+    start_time timestamp without time zone,
+    end_time timestamp without time zone,
+    locations_id integer,
+    categories_id integer,
+    hidden boolean DEFAULT false,
+    summary text
+);
+
+
+ALTER TABLE pg60bi600000bjx.events OWNER TO sparklefish;
+
+--
+-- Name: events_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.events_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.events_id_seq OWNER TO sparklefish;
+
+--
+-- Name: events_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.events_id_seq OWNED BY pg60bi600000bjx.events.id;
+
+
+--
+-- Name: links; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.links (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL,
+    url text NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx.links OWNER TO sparklefish;
+
+--
+-- Name: links_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.links_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.links_id_seq OWNER TO sparklefish;
+
+--
+-- Name: links_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.links_id_seq OWNED BY pg60bi600000bjx.links.id;
+
+
+--
+-- Name: locations; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.locations (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx.locations OWNER TO sparklefish;
+
+--
+-- Name: locations_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.locations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.locations_id_seq OWNER TO sparklefish;
+
+--
+-- Name: locations_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.locations_id_seq OWNED BY pg60bi600000bjx.locations.id;
+
+
+--
+-- Name: pages; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.pages (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    title text NOT NULL,
+    body text,
+    files text
+);
+
+
+ALTER TABLE pg60bi600000bjx.pages OWNER TO sparklefish;
+
+--
+-- Name: pages_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.pages_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.pages_id_seq OWNER TO sparklefish;
+
+--
+-- Name: pages_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.pages_id_seq OWNED BY pg60bi600000bjx.pages.id;
+
+
+--
+-- Name: people; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.people (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx.people OWNER TO sparklefish;
+
+--
+-- Name: people_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.people_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.people_id_seq OWNER TO sparklefish;
+
+--
+-- Name: people_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.people_id_seq OWNED BY pg60bi600000bjx.people.id;
+
+
+--
+-- Name: tags; Type: TABLE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE TABLE pg60bi600000bjx.tags (
+    id integer NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    created_by character varying,
+    updated_by character varying,
+    nc_order numeric,
+    name text NOT NULL
+);
+
+
+ALTER TABLE pg60bi600000bjx.tags OWNER TO sparklefish;
+
+--
+-- Name: tags_id_seq; Type: SEQUENCE; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE SEQUENCE pg60bi600000bjx.tags_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE pg60bi600000bjx.tags_id_seq OWNER TO sparklefish;
+
+--
+-- Name: tags_id_seq; Type: SEQUENCE OWNED BY; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER SEQUENCE pg60bi600000bjx.tags_id_seq OWNED BY pg60bi600000bjx.tags.id;
+
+
+--
+-- Name: about id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.about ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.about_id_seq'::regclass);
+
+
+--
+-- Name: announcements id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.announcements ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.announcements_id_seq'::regclass);
+
+
+--
+-- Name: categories id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.categories ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.categories_id_seq'::regclass);
+
+
+--
+-- Name: events id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.events ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.events_id_seq'::regclass);
+
+
+--
+-- Name: links id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.links ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.links_id_seq'::regclass);
+
+
+--
+-- Name: locations id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.locations ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.locations_id_seq'::regclass);
+
+
+--
+-- Name: pages id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.pages ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.pages_id_seq'::regclass);
+
+
+--
+-- Name: people id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.people ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.people_id_seq'::regclass);
+
+
+--
+-- Name: tags id; Type: DEFAULT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.tags ALTER COLUMN id SET DEFAULT nextval('pg60bi600000bjx.tags_id_seq'::regclass);
+
+
+--
 -- Data for Name: _nc_m2m_people_events; Type: TABLE DATA; Schema: pg60bi600000bjx; Owner: sparklefish
 --
 
@@ -269,6 +735,199 @@ SELECT pg_catalog.setval('pg60bi600000bjx.people_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('pg60bi600000bjx.tags_id_seq', 8, true);
+
+
+--
+-- Name: _nc_m2m_people_events _nc_m2m_people_events_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx._nc_m2m_people_events
+    ADD CONSTRAINT _nc_m2m_people_events_pkey PRIMARY KEY (events_id, people_id);
+
+
+--
+-- Name: _nc_m2m_tags_events _nc_m2m_tags_events_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx._nc_m2m_tags_events
+    ADD CONSTRAINT _nc_m2m_tags_events_pkey PRIMARY KEY (events_id, tags_id);
+
+
+--
+-- Name: about about_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.about
+    ADD CONSTRAINT about_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.announcements
+    ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: events events_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.events
+    ADD CONSTRAINT events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: links links_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.links
+    ADD CONSTRAINT links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: locations locations_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.locations
+    ADD CONSTRAINT locations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pages pages_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.pages
+    ADD CONSTRAINT pages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: people people_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.people
+    ADD CONSTRAINT people_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tags tags_pkey; Type: CONSTRAINT; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+ALTER TABLE ONLY pg60bi600000bjx.tags
+    ADD CONSTRAINT tags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: about_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX about_order_idx ON pg60bi600000bjx.about USING btree (nc_order);
+
+
+--
+-- Name: announcements_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX announcements_order_idx ON pg60bi600000bjx.announcements USING btree (nc_order);
+
+
+--
+-- Name: categories_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX categories_order_idx ON pg60bi600000bjx.categories USING btree (nc_order);
+
+
+--
+-- Name: events_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX events_order_idx ON pg60bi600000bjx.events USING btree (nc_order);
+
+
+--
+-- Name: fk_categories_events_yibt7omprq; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_categories_events_yibt7omprq ON pg60bi600000bjx.events USING btree (categories_id);
+
+
+--
+-- Name: fk_locations_events_j_cl_z2x2w; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_locations_events_j_cl_z2x2w ON pg60bi600000bjx.events USING btree (locations_id);
+
+
+--
+-- Name: fk_people_events_fwz5t7b7v_; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_people_events_fwz5t7b7v_ ON pg60bi600000bjx._nc_m2m_people_events USING btree (people_id);
+
+
+--
+-- Name: fk_people_events_xu1setlg02; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_people_events_xu1setlg02 ON pg60bi600000bjx._nc_m2m_people_events USING btree (events_id);
+
+
+--
+-- Name: fk_tags_events_32gcd4syoj; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_tags_events_32gcd4syoj ON pg60bi600000bjx._nc_m2m_tags_events USING btree (tags_id);
+
+
+--
+-- Name: fk_tags_events_t8uoe8io_m; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX fk_tags_events_t8uoe8io_m ON pg60bi600000bjx._nc_m2m_tags_events USING btree (events_id);
+
+
+--
+-- Name: links_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX links_order_idx ON pg60bi600000bjx.links USING btree (nc_order);
+
+
+--
+-- Name: locations_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX locations_order_idx ON pg60bi600000bjx.locations USING btree (nc_order);
+
+
+--
+-- Name: pages_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX pages_order_idx ON pg60bi600000bjx.pages USING btree (nc_order);
+
+
+--
+-- Name: people_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX people_order_idx ON pg60bi600000bjx.people USING btree (nc_order);
+
+
+--
+-- Name: tags_order_idx; Type: INDEX; Schema: pg60bi600000bjx; Owner: sparklefish
+--
+
+CREATE INDEX tags_order_idx ON pg60bi600000bjx.tags USING btree (nc_order);
 
 
 --
