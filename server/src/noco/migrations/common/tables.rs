@@ -34,7 +34,8 @@ pub struct TableIds {
     pub tags: TableId,
     pub about: TableId,
     pub links: TableId,
-    pub files: TableId,
+    // This table was removed in a migration.
+    pub files: Option<TableId>,
     pub pages: TableId,
     pub announcements: TableId,
 }
@@ -64,9 +65,7 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             links: ids
                 .remove("links")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'links' table in cache"))?,
-            files: ids
-                .remove("files")
-                .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache"))?,
+            files: ids.remove("files"),
             pages: ids
                 .remove("pages")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'pages' table in cache"))?,

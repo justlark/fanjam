@@ -42,3 +42,6 @@ To upload the demo data to an environment, use
 [./tools/pg-restore.nu](./tools/pg-restore.nu). It takes the modified database
 dump as stdin, accepts the Postgres endpoint host as a positional argument, and
 prompts interactively for the password.
+
+After uploading the demo data, make sure to clear the server cache with `just
+clear-cache <ENV>`.

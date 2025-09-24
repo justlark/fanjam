@@ -26,7 +26,15 @@ impl<'a> Migration<'a> {
     }
 
     async fn delete_tables(&self, table_ids: &TableIds) -> anyhow::Result<()> {
-        delete_tables(self.client, &[&table_ids.files]).await?;
+        delete_tables(
+            self.client,
+            &[&table_ids
+                .files
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache."))?
+                .to_owned()],
+        )
+        .await?;
         Ok(())
     }
 
