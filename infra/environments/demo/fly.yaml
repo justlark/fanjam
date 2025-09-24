@@ -1,4 +1,4 @@
-app: sparklefish-noco-demo-499067
+app: sparklefish-noco-demo-464305
 primary_region: iad
 build:
   image: nocodb/nocodb:0.264.8
@@ -9,8 +9,8 @@ http_service:
   auto_start_machines: true
   min_machines_running: 0
   processes:
-    - app
+  - app
 vm:
-  - memory: 1gb
-    cpu_kind: shared
-    cpus: 2
+- memory: 1gb
+  cpu_kind: shared
+  cpus: 2
