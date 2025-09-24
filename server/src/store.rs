@@ -81,15 +81,6 @@ impl CacheInstant {
     }
 }
 
-// In the in-memory cache, we differentiate between values which have never been cached and values
-// which were cached at one point but have since expired. This is necessary to facilitate an
-// optimization where new isolates have their in-memory cache warmed from the KV cache.
-// Previously-cached-but-expired values should hit the upstream NocoDB instance; what we're trying
-// to avoid is a burst of traffic spinning up multiple new isolates which all hit the upstream
-// NocoDB instance simultaneously.
-//
-// Rather than just letting the expired value sit in the cache forever, we have a separate
-// `Expired` variant to minimize the cache's memory footprint.
 #[derive(Debug)]
 enum CacheEntry {
     Fresh {
@@ -263,8 +254,6 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
 // burst of traffic could trigger many requests to NocoDB. Requests that come in between when this
 // function is called and when the upstream request to NocoDB completes will wait to be notified
 // via a oneshot channel when that upstream request completes.
-//
-// Returns true if a new lock was acquired and false otherwise.
 fn acquire_memory_cache_lock(cache: &mut HashMap<String, CacheEntry>, cache_key: &str) {
     {
         match cache.entry(cache_key.to_string()) {
@@ -430,8 +419,8 @@ macro_rules! get_data {
                     let value_for_cache = value.clone();
                     let env_name_for_cache = self.env_name.clone();
 
-                    // Update the KV cache used to warm new isolates. This doesn't need to block
-                    // the current request.
+                    // Update the persistent KV cache. This doesn't need to block the current
+                    // request.
                     self.ctx.wait_until(async move {
                         if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value_for_cache).await {
                             console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
