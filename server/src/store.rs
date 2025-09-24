@@ -96,7 +96,6 @@ enum CacheEntry {
         cached_at: CacheInstant,
         serialized_value: String,
     },
-    Expired,
     InFlight {
         requested_at: CacheInstant,
         waiters: Vec<oneshot::Sender<String>>,
@@ -142,10 +141,6 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                     waiters.push(sender);
 
                     CachedValue::Fresh(SerializedValue::InFlight(receiver))
-                }
-                CacheEntry::Expired => {
-                    map_entry.remove();
-                    CachedValue::Expired
                 }
             },
             MapEntry::Vacant(_) => CachedValue::Expired,
@@ -231,7 +226,7 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
 
                 match &serialized_value_action {
                     NotifyAction::Expire(_) | NotifyAction::Close => {
-                        *map_entry.get_mut() = CacheEntry::Expired;
+                        map_entry.remove();
                     }
                     NotifyAction::Refresh(serialized_value) => {
                         *map_entry.get_mut() = CacheEntry::Fresh {
@@ -284,7 +279,7 @@ fn acquire_memory_cache_lock(cache: &mut HashMap<String, CacheEntry>, cache_key:
                             INFLIGHT_LOCK_TIMEOUT.as_secs()
                         );
 
-                        *occupied_entry.into_mut() = CacheEntry::Expired;
+                        occupied_entry.remove();
                     }
                 }
             }
