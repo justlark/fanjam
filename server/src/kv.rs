@@ -1,6 +1,4 @@
 use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize};
-use worker::Date;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
@@ -8,21 +6,6 @@ use crate::{
     env::{Config, EnvId, EnvName},
     noco::{About, Announcement, ApiToken, Event, Info, Page, Summary, TableInfo},
 };
-
-// Rather than make the key expire with a TTL, we store the expiration time in the key metadata and
-// allow the key to live indefinitely. This allows it to serve two purposes: 1) an expiring cache
-// to warm the in-memory cache of new isolates, and 2) a persistent cache that can be used to
-// return *something* if the upstream NocoDB server is still starting up.
-#[derive(Debug, Serialize, Deserialize)]
-struct CacheMetadata {
-    pub expires: Option<u64>,
-}
-
-#[derive(Debug)]
-pub struct CachedValue<T> {
-    pub value: T,
-    pub expired: bool,
-}
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
     anyhow::Error::msg(err.to_string())
@@ -195,14 +178,7 @@ macro_rules! put_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
         pub async fn $name(kv: &KvStore, env_name: &EnvName, value: $type) -> anyhow::Result<()> {
-            let now = Date::now().as_millis();
-            let ttl = config::noco_kv_cache_ttl().as_millis() as u64;
-
             kv.put(&$key_fn(env_name), value)
-                .map_err(wrap_kv_err)?
-                .metadata(CacheMetadata {
-                    expires: Some(now + ttl),
-                })
                 .map_err(wrap_kv_err)?
                 .execute()
                 .await
@@ -226,31 +202,10 @@ put_cache_fn!(put_cached_about, about_cache_key, &About);
 macro_rules! get_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
-        pub async fn $name(
-            kv: &KvStore,
-            env_name: &EnvName,
-        ) -> anyhow::Result<Option<CachedValue<$type>>> {
+        pub async fn $name(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<$type>> {
             let key = $key_fn(env_name);
 
-            let (value, metadata) = kv
-                .get(&key)
-                .json_with_metadata::<$type, CacheMetadata>()
-                .await
-                .map_err(wrap_kv_err)?;
-
-            if let Some(value) = value {
-                let now = Date::now().as_millis();
-                let expired = match metadata {
-                    Some(CacheMetadata {
-                        expires: Some(expires),
-                    }) => expires <= now,
-                    _ => true,
-                };
-
-                Ok(Some(CachedValue { value, expired }))
-            } else {
-                Ok(None)
-            }
+            kv.get(&key).json::<$type>().await.map_err(wrap_kv_err)
         }
     };
 }

@@ -110,7 +110,6 @@ static MEMORY_CACHE: LazyLock<Mutex<HashMap<String, CacheEntry>>> =
 enum CachedValue<T> {
     Fresh(T),
     Expired,
-    Missing,
 }
 
 async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> CachedValue<T> {
@@ -146,7 +145,7 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                     CachedValue::Fresh(SerializedValue::InFlight(receiver))
                 }
             },
-            MapEntry::Vacant(_) => CachedValue::Missing,
+            MapEntry::Vacant(_) => CachedValue::Expired,
         }
     };
 
@@ -162,7 +161,7 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                             key,
                             e
                         );
-                        return CachedValue::Missing;
+                        return CachedValue::Expired;
                     }
                 },
             };
@@ -178,12 +177,11 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                     let mut cache = MEMORY_CACHE.lock().unwrap();
                     cache.remove(key);
 
-                    CachedValue::Missing
+                    CachedValue::Expired
                 }
             }
         }
         CachedValue::Expired => CachedValue::Expired,
-        CachedValue::Missing => CachedValue::Missing,
     }
 }
 
@@ -195,9 +193,6 @@ enum NotifyAction<T> {
     // Expire the in-memory cache and notify all waiting requests.
     Expire(T),
 
-    // Refresh the in-memory cache and do not notify any waiting requests.
-    OnlyStore(T),
-
     // Expire the in-memory cache and close all waiting requests.
     Close,
 }
@@ -207,7 +202,6 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
     let serialized_value_action = match action {
         NotifyAction::Refresh(value) => NotifyAction::Refresh(serde_json::to_string(&value)?),
         NotifyAction::Expire(value) => NotifyAction::Expire(serde_json::to_string(&value)?),
-        NotifyAction::OnlyStore(value) => NotifyAction::OnlyStore(serde_json::to_string(&value)?),
         NotifyAction::Close => NotifyAction::Close,
     };
 
@@ -217,11 +211,7 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
         match cache.entry(key.to_string()) {
             MapEntry::Occupied(mut map_entry) => {
                 let waiters = if let CacheEntry::InFlight { waiters, .. } = map_entry.get_mut() {
-                    if let NotifyAction::OnlyStore(_) = serialized_value_action {
-                        Vec::new()
-                    } else {
-                        std::mem::take(waiters)
-                    }
+                    std::mem::take(waiters)
                 } else {
                     Vec::new()
                 };
@@ -230,8 +220,7 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
                     NotifyAction::Expire(_) | NotifyAction::Close => {
                         *map_entry.get_mut() = CacheEntry::Expired;
                     }
-                    NotifyAction::Refresh(serialized_value)
-                    | NotifyAction::OnlyStore(serialized_value) => {
+                    NotifyAction::Refresh(serialized_value) => {
                         *map_entry.get_mut() = CacheEntry::Fresh {
                             inserted_at: CacheInstant::now(),
                             serialized_value: serialized_value.clone(),
@@ -293,65 +282,6 @@ async fn acquire_memory_cache_lock(cache_key: &str) {
     }
 }
 
-async fn resolve_cached_value<T, Fut, Fn>(
-    cache_key: &str,
-    cached_value: CachedValue<T>,
-    get_kv_cache: Fn,
-    err_msg_key: &str,
-) -> Option<DataResponseEnvelope<T>>
-where
-    T: Serialize,
-    Fut: Future<Output = anyhow::Result<Option<kv::CachedValue<T>>>>,
-    Fn: FnOnce() -> Fut,
-{
-    match cached_value {
-        CachedValue::Fresh(value) => {
-            console_log!("Returning cached {}; skipping NocoDB.", err_msg_key);
-            return Some(DataResponseEnvelope {
-                value,
-                retry_after: None,
-            });
-        }
-        CachedValue::Missing => {
-            // This value is not in the in-memory cache at all, which probably means this is a new
-            // isolate. In that case, we should fetch a possibly-stale value from the KV cache to
-            // warm this isolate's in-memory cache.
-            console_log!(
-                "No cached {} in memory; fetching from KV cache.",
-                err_msg_key
-            );
-
-            match get_kv_cache().await {
-                Ok(Some(value)) if !value.expired => {
-                    console_log!("Warming in-memory cache for {} from KV cache.", err_msg_key);
-
-                    if let Err(e) =
-                        put_memory_cache(cache_key, NotifyAction::OnlyStore(&value.value)).await
-                    {
-                        console_warn!("Failed putting {} in memory cache: {}", err_msg_key, e);
-                    }
-
-                    return Some(DataResponseEnvelope {
-                        value: value.value,
-                        retry_after: None,
-                    });
-                }
-                Ok(_) => {
-                    console_log!("No fresh {} found in KV cache.", err_msg_key);
-                }
-                Err(e) => {
-                    console_warn!("Failed getting {} from KV cache: {}", err_msg_key, e);
-                }
-            }
-        }
-        CachedValue::Expired => {
-            console_log!("Cached {} expired; fetching from NocoDB.", err_msg_key);
-        }
-    }
-
-    None
-}
-
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
 // TLDR: We're using aggressive caching to create an eventually consistent system that maximizes
@@ -374,10 +304,6 @@ where
 // money), it takes about 10 seconds to start back up, and during that time it will not respond to
 // requests. To handle this, we also keep a persistent cache in KV, which is shared between
 // isolates and used as a fallback for when the NocoDB instance is unavailable.
-//
-// This persistent cache serves a second purpose as well: we use it to warm the in-memory cache of
-// new isolates so that a burst of traffic which spins up multiple new isolates doesn't cause a
-// spike in load on the NocoDB instance.
 //
 // Whenever the worker responds to a request with expired data from the persistent cache, it
 // includes a directive for the client to retry the request after a short delay, by which point the
@@ -404,13 +330,19 @@ macro_rules! get_data {
 
             acquire_memory_cache_lock(&cache_key).await;
 
-            // Check this isolate's in-memory cache first.
-            resolve_cached_value(
-                &cache_key,
-                get_memory_cache::<$type_name>(&cache_key, ttl).await,
-                || $get_cached_fn(&self.kv, &self.env_name),
-                $err_msg_key,
-            ).await;
+            match get_memory_cache::<$type_name>(&cache_key, ttl).await {
+                CachedValue::Fresh(value) => {
+                    console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
+                    return Ok(DataResponseEnvelope {
+                        value,
+                        retry_after: None,
+                    });
+                }
+                CachedValue::Expired => {
+                    console_log!("Cached {} expired; fetching from NocoDB.", $err_msg_key);
+                }
+            }
+
 
             // A request to get the most recent data from NocoDB.
             let value_request = async {
@@ -436,7 +368,6 @@ macro_rules! get_data {
 
             // A request to NocoDB's healthcheck endpoint.
             let healthcheck_request = pin!(noco::check_health(&self.noco_client));
-
             let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
 
             // Perform a healthcheck on the NocoDB server with a timeout.
@@ -507,13 +438,13 @@ macro_rules! get_data {
                             // have nothing better to send the client right now.
                             console_log!("Returning stale {} from cache.", $err_msg_key);
 
-                            if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Expire(&value.value)).await {
+                            if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Expire(&value)).await {
                                 console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
                             }
 
-                            Ok(DataResponseEnvelope { value: value.value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
+                            Ok(DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
                         }
-                        Ok(None) => {
+                        Ok(None) | Err(_) => {
                             console_warn!("No stale cached {} found.", $err_msg_key);
 
                             if let Err(e) = put_memory_cache::<()>(&cache_key, NotifyAction::Close).await {
@@ -521,15 +452,6 @@ macro_rules! get_data {
                             }
 
                             Err(Error::NocoUnavailable)
-                        }
-                        Err(e) => {
-                            console_warn!("Failed getting {} from cache: {}", $err_msg_key, e);
-
-                            if let Err(e) = put_memory_cache::<()>(&cache_key, NotifyAction::Close).await {
-                                console_warn!("Failed closing in-flight waiters for {}: {}", $err_msg_key, e);
-                            }
-
-                            Err(Error::Internal(e))
                         }
                     }
                 }
