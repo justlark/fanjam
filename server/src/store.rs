@@ -93,12 +93,12 @@ impl CacheInstant {
 #[derive(Debug)]
 enum CacheEntry {
     Fresh {
-        inserted_at: CacheInstant,
+        cached_at: CacheInstant,
         serialized_value: String,
     },
     Expired,
     InFlight {
-        inserted_at: CacheInstant,
+        requested_at: CacheInstant,
         waiters: Vec<oneshot::Sender<String>>,
     },
 }
@@ -125,28 +125,37 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
         // lock while deserializing.
         let mut cache = MEMORY_CACHE.lock().unwrap();
 
-        match cache.entry(key.to_string()) {
+        let cached_value = match cache.entry(key.to_string()) {
             MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
                 CacheEntry::Fresh {
-                    inserted_at,
+                    cached_at: inserted_at,
                     serialized_value,
                 } if inserted_at.elapsed() < ttl => {
                     CachedValue::Fresh(SerializedValue::Ready(serialized_value.clone()))
                 }
-                cache_entry @ CacheEntry::Fresh { .. } => {
-                    *cache_entry = CacheEntry::Expired;
+                CacheEntry::Fresh { .. } => {
+                    map_entry.remove();
                     CachedValue::Expired
                 }
-                CacheEntry::Expired => CachedValue::Expired,
                 CacheEntry::InFlight { waiters, .. } => {
                     let (sender, receiver) = oneshot::channel();
                     waiters.push(sender);
 
                     CachedValue::Fresh(SerializedValue::InFlight(receiver))
                 }
+                CacheEntry::Expired => {
+                    map_entry.remove();
+                    CachedValue::Expired
+                }
             },
             MapEntry::Vacant(_) => CachedValue::Expired,
+        };
+
+        if matches!(cached_value, CachedValue::Expired) {
+            acquire_memory_cache_lock(&mut cache, key);
         }
+
+        cached_value
     };
 
     match cached_value {
@@ -190,6 +199,9 @@ enum NotifyAction<T> {
     // Refresh the in-memory cache and notify all waiting requests.
     Refresh(T),
 
+    // Notify all waiting requests, but do not refresh the in-memory cache.
+    OnlyNotify(T),
+
     // Expire the in-memory cache and notify all waiting requests.
     Expire(T),
 
@@ -201,6 +213,7 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
     // We serialize first to minimize how long we're holding the lock.
     let serialized_value_action = match action {
         NotifyAction::Refresh(value) => NotifyAction::Refresh(serde_json::to_string(&value)?),
+        NotifyAction::OnlyNotify(value) => NotifyAction::OnlyNotify(serde_json::to_string(&value)?),
         NotifyAction::Expire(value) => NotifyAction::Expire(serde_json::to_string(&value)?),
         NotifyAction::Close => NotifyAction::Close,
     };
@@ -222,9 +235,12 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
                     }
                     NotifyAction::Refresh(serialized_value) => {
                         *map_entry.get_mut() = CacheEntry::Fresh {
-                            inserted_at: CacheInstant::now(),
+                            cached_at: CacheInstant::now(),
                             serialized_value: serialized_value.clone(),
                         };
+                    }
+                    NotifyAction::OnlyNotify(_) => {
+                        // Leave the cache entry as-is.
                     }
                 };
 
@@ -234,8 +250,9 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
         }
     };
 
-    if let NotifyAction::Refresh(serialized_value) | NotifyAction::Expire(serialized_value) =
-        serialized_value_action
+    if let NotifyAction::Refresh(serialized_value)
+    | NotifyAction::Expire(serialized_value)
+    | NotifyAction::OnlyNotify(serialized_value) = serialized_value_action
     {
         for waiter in waiters {
             if waiter.send(serialized_value.clone()).is_err() {
@@ -251,17 +268,16 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
 // burst of traffic could trigger many requests to NocoDB. Requests that come in between when this
 // function is called and when the upstream request to NocoDB completes will wait to be notified
 // via a oneshot channel when that upstream request completes.
-async fn acquire_memory_cache_lock(cache_key: &str) {
+//
+// Returns true if a new lock was acquired and false otherwise.
+fn acquire_memory_cache_lock(cache: &mut HashMap<String, CacheEntry>, cache_key: &str) {
     {
-        let mut cache = MEMORY_CACHE.lock().unwrap();
-
-        // Avoid a race condition by only inserting if the entry is still vacant.
         match cache.entry(cache_key.to_string()) {
             MapEntry::Occupied(occupied_entry) => {
                 // Seems to be a false-positive from the linter.
                 #[allow(clippy::collapsible_if)]
-                if let CacheEntry::InFlight { inserted_at, .. } = occupied_entry.get() {
-                    if inserted_at.elapsed() > INFLIGHT_LOCK_TIMEOUT {
+                if let CacheEntry::InFlight { requested_at, .. } = occupied_entry.get() {
+                    if requested_at.elapsed() > INFLIGHT_LOCK_TIMEOUT {
                         console_warn!(
                             "In-flight cache entry for key `{}` has been held for more than {} seconds. This is a bug.",
                             cache_key,
@@ -274,11 +290,11 @@ async fn acquire_memory_cache_lock(cache_key: &str) {
             }
             MapEntry::Vacant(vacant_entry) => {
                 vacant_entry.insert(CacheEntry::InFlight {
-                    inserted_at: CacheInstant::now(),
+                    requested_at: CacheInstant::now(),
                     waiters: Vec::new(),
                 });
             }
-        };
+        }
     }
 }
 
@@ -328,11 +344,12 @@ macro_rules! get_data {
                 .map(Duration::from_millis)
                 .unwrap_or(config::noco_default_memory_cache_ttl());
 
-            acquire_memory_cache_lock(&cache_key).await;
-
             match get_memory_cache::<$type_name>(&cache_key, ttl).await {
                 CachedValue::Fresh(value) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
+
+                    put_memory_cache(&cache_key, NotifyAction::OnlyNotify(&value)).await.ok();
+
                     return Ok(DataResponseEnvelope {
                         value,
                         retry_after: None,
@@ -342,7 +359,6 @@ macro_rules! get_data {
                     console_log!("Cached {} expired; fetching from NocoDB.", $err_msg_key);
                 }
             }
-
 
             // A request to get the most recent data from NocoDB.
             let value_request = async {
