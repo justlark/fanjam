@@ -19,7 +19,7 @@ def get-tofu-env [] {
 
 def get-tofu-vars [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let vars_file = $repo_path | path join "infra" "secrets.enc.yaml"
+  let vars_file = $repo_path | path join "infra" "vars.yaml"
   let secrets_file = $repo_path | path join "infra" "secrets.enc.yaml"
 
   let tf_plaintext_vars = open $vars_file
