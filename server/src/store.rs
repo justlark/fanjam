@@ -12,7 +12,6 @@ use crate::{
 };
 use futures::channel::oneshot;
 use futures::future::{self, Either, FutureExt};
-use rand::prelude::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
@@ -61,11 +60,6 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 // If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
-// In-flight requests are automatically removed from the in-memory cache after this timeout. During
-// a normal request, that should happen immediately. However, a bug or error in the wrong place
-// could preclude that, in which case this is a fallback.
-const INFLIGHT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-
 // An instant in time for the purpose of caching. This wraps a number of milliseconds since the
 // Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
 // proper monotonic clock in this environment.
@@ -83,16 +77,6 @@ impl CacheInstant {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RequestId(u64);
-
-impl RequestId {
-    pub fn new() -> Self {
-        let mut rng = rand::rng();
-        Self(rng.random())
-    }
-}
-
 #[derive(Debug)]
 enum CacheEntry {
     Fresh {
@@ -104,7 +88,6 @@ enum CacheEntry {
     // requests should register to be notified when it completes. Otherwise, a burst of traffic
     // could trigger many requests to NocoDB.
     InFlight {
-        request_id: RequestId,
         waiters: Vec<oneshot::Sender<String>>,
     },
 }
@@ -117,9 +100,8 @@ impl CacheEntry {
         }
     }
 
-    fn in_flight(request_id: RequestId) -> Self {
+    fn in_flight() -> Self {
         Self::InFlight {
-            request_id,
             waiters: Vec::new(),
         }
     }
@@ -134,18 +116,12 @@ enum CachedValue<T> {
     Expired,
 }
 
-async fn get_memory_cache<T: DeserializeOwned>(
-    ctx: &Context,
-    key: &str,
-    ttl: Duration,
-) -> CachedValue<T> {
+async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> CachedValue<T> {
     #[derive(Debug)]
     enum SerializedValue {
         Ready(String),
         InFlight(oneshot::Receiver<String>),
     }
-
-    let request_id = RequestId::new();
 
     let cached_value = {
         // We need to not be holding the lock over the await boundary while waiting for the in-flight
@@ -163,7 +139,7 @@ async fn get_memory_cache<T: DeserializeOwned>(
                 }
                 CacheEntry::Fresh { .. } => {
                     // Cache is expired.
-                    map_entry.insert(CacheEntry::in_flight(request_id));
+                    map_entry.insert(CacheEntry::in_flight());
 
                     CachedValue::Expired
                 }
@@ -175,7 +151,7 @@ async fn get_memory_cache<T: DeserializeOwned>(
                 }
             },
             MapEntry::Vacant(map_entry) => {
-                map_entry.insert(CacheEntry::in_flight(request_id));
+                map_entry.insert(CacheEntry::in_flight());
 
                 CachedValue::Expired
             }
@@ -214,34 +190,7 @@ async fn get_memory_cache<T: DeserializeOwned>(
                 }
             }
         }
-        CachedValue::Expired => {
-            let cache_key = key.to_string();
-
-            // After this request returns, wait in the background to make sure this in-flight
-            // request is removed from the in-memory cache. This is a defensive measure to guard
-            // against bugs.
-            ctx.wait_until(async move {
-                Delay::from(INFLIGHT_REQUEST_TIMEOUT).await;
-
-                let mut cache = MEMORY_CACHE.lock().unwrap();
-
-                if let MapEntry::Occupied(mut map_entry) = cache.entry(cache_key.clone())
-                    && let CacheEntry::InFlight {
-                        request_id: this_request_id,
-                        ..
-                    } = map_entry.get_mut()
-                    && this_request_id == &request_id
-                {
-                    console_warn!(
-                        "In-flight request for key `{}` timed out; removing from cache.",
-                        cache_key
-                    );
-                    map_entry.remove();
-                }
-            });
-
-            CachedValue::Expired
-        }
+        CachedValue::Expired => CachedValue::Expired,
     }
 }
 
@@ -358,7 +307,7 @@ macro_rules! get_data {
                 .map(Duration::from_millis)
                 .unwrap_or(config::noco_default_memory_cache_ttl());
 
-            match get_memory_cache::<$type_name>(&self.ctx, &cache_key, ttl).await {
+            match get_memory_cache::<$type_name>(&cache_key, ttl).await {
                 CachedValue::Fresh(value) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
 
