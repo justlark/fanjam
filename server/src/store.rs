@@ -60,10 +60,6 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 // If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
-// The lock on the in-memory cache will be held for at most this long. The lock _should_ be
-// released when the request completes; this is a defensive measure to protect against bugs.
-const INFLIGHT_LOCK_TIMEOUT: Duration = Duration::from_secs(30);
-
 // An instant in time for the purpose of caching. This wraps a number of milliseconds since the
 // Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
 // proper monotonic clock in this environment.
@@ -87,10 +83,28 @@ enum CacheEntry {
         cached_at: CacheInstant,
         serialized_value: String,
     },
+
+    // This cache entry is used to indicate that a request to NocoDB is in-flight and subsequent
+    // requests should register to be notified when it completes. Otherwise, a burst of traffic
+    // could trigger many requests to NocoDB.
     InFlight {
-        requested_at: CacheInstant,
         waiters: Vec<oneshot::Sender<String>>,
     },
+}
+
+impl CacheEntry {
+    fn fresh(serialized_value: String) -> Self {
+        Self::Fresh {
+            cached_at: CacheInstant::now(),
+            serialized_value,
+        }
+    }
+
+    fn in_flight() -> Self {
+        Self::InFlight {
+            waiters: Vec::new(),
+        }
+    }
 }
 
 static MEMORY_CACHE: LazyLock<Mutex<HashMap<String, CacheEntry>>> =
@@ -115,7 +129,7 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
         // lock while deserializing.
         let mut cache = MEMORY_CACHE.lock().unwrap();
 
-        let cached_value = match cache.entry(key.to_string()) {
+        match cache.entry(key.to_string()) {
             MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
                 CacheEntry::Fresh {
                     cached_at: inserted_at,
@@ -124,7 +138,9 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                     CachedValue::Fresh(SerializedValue::Ready(serialized_value.clone()))
                 }
                 CacheEntry::Fresh { .. } => {
-                    map_entry.remove();
+                    // Cache is expired.
+                    map_entry.insert(CacheEntry::in_flight());
+
                     CachedValue::Expired
                 }
                 CacheEntry::InFlight { waiters, .. } => {
@@ -134,14 +150,12 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
                     CachedValue::Fresh(SerializedValue::InFlight(receiver))
                 }
             },
-            MapEntry::Vacant(_) => CachedValue::Expired,
-        };
+            MapEntry::Vacant(map_entry) => {
+                map_entry.insert(CacheEntry::in_flight());
 
-        if matches!(cached_value, CachedValue::Expired) {
-            acquire_memory_cache_lock(&mut cache, key);
+                CachedValue::Expired
+            }
         }
-
-        cached_value
     };
 
     match cached_value {
@@ -220,10 +234,7 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
                         map_entry.remove();
                     }
                     NotifyAction::Refresh(serialized_value) => {
-                        *map_entry.get_mut() = CacheEntry::Fresh {
-                            cached_at: CacheInstant::now(),
-                            serialized_value: serialized_value.clone(),
-                        };
+                        *map_entry.get_mut() = CacheEntry::fresh(serialized_value.clone());
                     }
                     NotifyAction::OnlyNotify(_) => {
                         // Leave the cache entry as-is.
@@ -248,38 +259,6 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
     }
 
     Ok(())
-}
-
-// Register a lock to ensure that only one request to NocoDB is in-flight at a time. Otherwise, a
-// burst of traffic could trigger many requests to NocoDB. Requests that come in between when this
-// function is called and when the upstream request to NocoDB completes will wait to be notified
-// via a oneshot channel when that upstream request completes.
-fn acquire_memory_cache_lock(cache: &mut HashMap<String, CacheEntry>, cache_key: &str) {
-    {
-        match cache.entry(cache_key.to_string()) {
-            MapEntry::Occupied(occupied_entry) => {
-                // Seems to be a false-positive from the linter.
-                #[allow(clippy::collapsible_if)]
-                if let CacheEntry::InFlight { requested_at, .. } = occupied_entry.get() {
-                    if requested_at.elapsed() > INFLIGHT_LOCK_TIMEOUT {
-                        console_warn!(
-                            "In-flight cache entry for key `{}` has been held for more than {} seconds. This is a bug.",
-                            cache_key,
-                            INFLIGHT_LOCK_TIMEOUT.as_secs()
-                        );
-
-                        occupied_entry.remove();
-                    }
-                }
-            }
-            MapEntry::Vacant(vacant_entry) => {
-                vacant_entry.insert(CacheEntry::InFlight {
-                    requested_at: CacheInstant::now(),
-                    waiters: Vec::new(),
-                });
-            }
-        }
-    }
 }
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
