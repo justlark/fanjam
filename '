@@ -61,9 +61,6 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 // If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
-// In-flight requests are automatically removed from the in-memory cache after this timeout. During
-// a normal request, that should happen immediately. However, a bug or error in the wrong place
-// could preclude that, in which case this is a fallback.
 const INFLIGHT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 // An instant in time for the purpose of caching. This wraps a number of milliseconds since the
@@ -159,15 +156,18 @@ async fn get_memory_cache<T: DeserializeOwned>(
                     cached_at: inserted_at,
                     serialized_value,
                 } if inserted_at.elapsed() < ttl => {
+                    console_log!("CacheEntry::Fresh");
                     CachedValue::Fresh(SerializedValue::Ready(serialized_value.clone()))
                 }
                 CacheEntry::Fresh { .. } => {
+                    console_log!("CacheEntry::Fresh (expired)");
                     // Cache is expired.
                     map_entry.insert(CacheEntry::in_flight(request_id));
 
                     CachedValue::Expired
                 }
                 CacheEntry::InFlight { waiters, .. } => {
+                    console_log!("CacheEntry::InFlight");
                     let (sender, receiver) = oneshot::channel();
                     waiters.push(sender);
 
@@ -175,6 +175,7 @@ async fn get_memory_cache<T: DeserializeOwned>(
                 }
             },
             MapEntry::Vacant(map_entry) => {
+                console_log!("MapEntry::Vacant");
                 map_entry.insert(CacheEntry::in_flight(request_id));
 
                 CachedValue::Expired
@@ -217,26 +218,21 @@ async fn get_memory_cache<T: DeserializeOwned>(
         CachedValue::Expired => {
             let cache_key = key.to_string();
 
-            // After this request returns, wait in the background to make sure this in-flight
-            // request is removed from the in-memory cache. This is a defensive measure to guard
-            // against bugs.
             ctx.wait_until(async move {
                 Delay::from(INFLIGHT_REQUEST_TIMEOUT).await;
 
                 let mut cache = MEMORY_CACHE.lock().unwrap();
 
-                if let MapEntry::Occupied(mut map_entry) = cache.entry(cache_key.clone())
-                    && let CacheEntry::InFlight {
+                if let MapEntry::Occupied(mut map_entry) = cache.entry(cache_key) {
+                    if let CacheEntry::InFlight {
                         request_id: this_request_id,
                         ..
                     } = map_entry.get_mut()
-                    && this_request_id == &request_id
-                {
-                    console_warn!(
-                        "In-flight request for key `{}` timed out; removing from cache.",
-                        cache_key
-                    );
-                    map_entry.remove();
+                    {
+                        if this_request_id == &request_id {
+                            map_entry.remove();
+                        }
+                    }
                 }
             });
 
