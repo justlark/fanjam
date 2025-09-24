@@ -1,4 +1,4 @@
-app: sparklefish-noco-demo-890210
+app: sparklefish-noco-demo-499067
 primary_region: iad
 build:
   image: nocodb/nocodb:0.264.8

@@ -21,9 +21,9 @@ def get-api-base [stage_name: string] {
 }
 
 def get-api-headers [stage_name: string] {
-  get-tofu-env | load-env
-
-  let admin_api_tokens = tofu -chdir=./infra/ output -json worker_admin_api_tokens | from json
+  let admin_api_tokens = with-env (get-tofu-env) {
+    tofu -chdir=./infra/ output -json worker_admin_api_tokens | from json
+  }
   let admin_api_token = $admin_api_tokens | get $stage_name
 
   ["Authorization", $"Bearer ($admin_api_token)"]
