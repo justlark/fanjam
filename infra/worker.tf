@@ -51,24 +51,20 @@ resource "cloudflare_workers_secret" "admin_api_token" {
   secret_text = random_bytes.worker_admin_api_token[each.key].base64
 }
 
-/*
-resource "cloudflare_workers_secret" "upstash_endpoint" {
-  for_each = local.stages
+# resource "cloudflare_workers_secret" "upstash_endpoint" {
+#   for_each = local.stages
+#
+#   account_id  = var.cloudflare_account_id
+#   name        = "UPSTASH_ENDPOINT"
+#   script_name = "sparklefish-server-${each.key}"
+#   secret_text = "https://${upstash_redis_database.noco.endpoint}"
+# }
 
-  account_id  = var.cloudflare_account_id
-  name        = "UPSTASH_ENDPOINT"
-  script_name = "sparklefish-server-${each.key}"
-  secret_text = "https://${upstash_redis_database.noco.endpoint}"
-}
-*/
-
-/*
-resource "cloudflare_workers_secret" "upstash_api_token" {
-  for_each = local.stages
-
-  account_id  = var.cloudflare_account_id
-  name        = "UPSTASH_API_TOKEN"
-  script_name = "sparklefish-server-${each.key}"
-  secret_text = upstash_redis_database.noco.rest_token
-}
-*/
+# resource "cloudflare_workers_secret" "upstash_api_token" {
+#   for_each = local.stages
+#
+#   account_id  = var.cloudflare_account_id
+#   name        = "UPSTASH_API_TOKEN"
+#   script_name = "sparklefish-server-${each.key}"
+#   secret_text = upstash_redis_database.noco.rest_token
+# }

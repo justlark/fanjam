@@ -31,16 +31,16 @@ variable "neon_org_id" {
   description = "Neon organization ID"
 }
 
-variable "upstash_api_token" {
-  type        = string
-  description = "Upstash API token"
-  sensitive   = true
-}
+# variable "upstash_api_token" {
+#   type        = string
+#   description = "Upstash API token"
+#   sensitive   = true
+# }
 
-variable "upstash_account_email" {
-  type        = string
-  description = "Upstash account email"
-}
+# variable "upstash_account_email" {
+#   type        = string
+#   description = "Upstash account email"
+# }
 
 variable "smtp_host" {
   type        = string
