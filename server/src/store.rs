@@ -60,6 +60,11 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 // If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
+// We will wait at most this long for an in-flight upstream request to NocoDB to complete.
+// Otherwise, if an error or bug occurs in the wrong place, requests could end up waiting forever,
+// necessitating a restart of the worker.
+const NOCO_INFLIGHT_TIMEOUT: Duration = Duration::from_secs(15);
+
 // An instant in time for the purpose of caching. This wraps a number of milliseconds since the
 // Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
 // proper monotonic clock in this environment.
@@ -162,17 +167,42 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
         CachedValue::Fresh(serialized_value) => {
             let serialized_string = match serialized_value {
                 SerializedValue::Ready(s) => s,
-                SerializedValue::InFlight(receiver) => match receiver.await {
-                    Ok(s) => s,
-                    Err(e) => {
-                        console_warn!(
-                            "Failed receiving in-flight cached value for key `{}`: {}",
-                            key,
-                            e
-                        );
-                        return CachedValue::Expired;
+                SerializedValue::InFlight(receiver) => {
+                    let inflight_future = pin!(receiver);
+                    let timeout_future = pin!(Delay::from(NOCO_INFLIGHT_TIMEOUT));
+
+                    let with_timeout = future::select(
+                        inflight_future,
+                        timeout_future,
+                    ).map(|either| match either {
+                        Either::Left((value, _)) => Some(value),
+                        Either::Right(_) => {
+                            console_warn!("Timed out waiting for in-flight upstream request to NocoDB after {} seconds.", NOCO_INFLIGHT_TIMEOUT.as_secs());
+                            None
+                        },
+                    });
+
+                    match with_timeout.await {
+                        Some(Ok(s)) => s,
+                        Some(Err(e)) => {
+                            console_warn!(
+                                "Failed receiving in-flight cached value for key `{}`: {}",
+                                key,
+                                e
+                            );
+                            return CachedValue::Expired;
+                        }
+                        None => {
+                            // The upstream request to NocoDB didn't resolve and notify this
+                            // request, possibly because it failed. We need to mark this cache key
+                            // as expired so the next request will try again.
+                            let mut cache = MEMORY_CACHE.lock().unwrap();
+                            cache.remove(key);
+
+                            return CachedValue::Expired;
+                        }
                     }
-                },
+                }
             };
 
             match serde_json::from_str(&serialized_string) {
