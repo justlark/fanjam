@@ -149,7 +149,7 @@ pub async fn edit_columns(
 pub async fn delete_columns(client: &Client, column_ids: &[ColumnId]) -> anyhow::Result<()> {
     for column_id in column_ids {
         client
-            .build_request_v2(Method::Delete, &format!("/meta/columns/{}", column_id))
+            .build_request_v2(Method::Delete, &format!("/meta/columns/{column_id}"))
             .exec()
             .await?;
 
