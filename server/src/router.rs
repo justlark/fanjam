@@ -314,7 +314,14 @@ async fn delete_cache(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<NoContent, ErrorResponse> {
+    let upstash_client = upstash::Client::new();
+
     kv::delete_cache(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    upstash_client
+        .unlink_noco_keys(&env_name)
         .await
         .map_err(Error::Internal)?;
 
