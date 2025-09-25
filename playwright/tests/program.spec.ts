@@ -13,7 +13,7 @@ export const test = base.extend<Fixtures>({
 });
 
 test.describe("the program view", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, programPage }) => {
     await mockTime(page);
 
     await mockApi(page, {
@@ -40,11 +40,11 @@ test.describe("the program view", () => {
         },
       ],
     });
+
+    await programPage.goto();
   });
 
   test("expand and collapse all events on one day", async ({ programPage }) => {
-    await programPage.goto();
-
     await expect(programPage.expandedEvents).toHaveCount(0);
 
     await programPage.toggleDayExpanded(0);
@@ -59,5 +59,14 @@ test.describe("the program view", () => {
     await programPage.toggleDayExpanded(1);
 
     await expect(programPage.expandedEvents).toHaveCount(0);
+  });
+
+  test("events are sorted by start time, then end time", async ({ programPage }) => {
+    await expect(programPage.eventNames).toHaveText([
+      "Yesterday Event 1",
+      "Yesterday Event 2",
+      "Today Event 1",
+      "Today Event 2",
+    ]);
   });
 });
