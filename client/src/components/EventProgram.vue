@@ -52,9 +52,12 @@ const filteredEventIdsSet = computed(() =>
   filteredEventIds.value !== undefined ? new Set(filteredEventIds.value) : undefined,
 );
 
-const filteredEvents = computed(() =>
-  events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
-);
+const filteredEvents = computed(() => {
+  const filtered = events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true);
+  filtered.sort((a, b) => a.endTime.valueOf() - b.endTime.valueOf());
+  filtered.sort((a, b) => a.startTime.valueOf() - b.startTime.valueOf());
+  return filtered;
+});
 
 const isFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && filteredEvents.value.length < events.length;
