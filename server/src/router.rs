@@ -27,7 +27,7 @@ use crate::{
     noco::{self, ApiToken, MigrationState},
     sql,
     store::{self, MigrationChange, Store},
-    upstash, url,
+    url,
 };
 
 //
@@ -292,14 +292,14 @@ async fn post_restore_backup(
     };
 
     let neon_client = neon::Client::new();
-    let upstash_client = upstash::Client::new();
+    // let upstash_client = upstash::Client::new();
 
     // Since we're rolling back the database, we should clear the Redis cache as well so the
     // client doesn't get confused.
-    upstash_client
-        .unlink_noco_keys(&env_name)
-        .await
-        .map_err(Error::Internal)?;
+    // upstash_client
+    //     .unlink_noco_keys(&env_name)
+    //     .await
+    //     .map_err(Error::Internal)?;
 
     neon_client
         .restore_backup(&env_name.clone().into(), backup_kind)
@@ -314,16 +314,16 @@ async fn delete_cache(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<NoContent, ErrorResponse> {
-    let upstash_client = upstash::Client::new();
+    // let upstash_client = upstash::Client::new();
 
     kv::delete_cache(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?;
 
-    upstash_client
-        .unlink_noco_keys(&env_name)
-        .await
-        .map_err(Error::Internal)?;
+    // upstash_client
+    //     .unlink_noco_keys(&env_name)
+    //     .await
+    //     .map_err(Error::Internal)?;
 
     Ok(NoContent)
 }

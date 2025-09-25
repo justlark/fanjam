@@ -1,3 +1,9 @@
+//
+// For reasons explained in a comment in the Terraform, we currently have Redis caching disabled.
+// We're keeping this code checked in in case we need it in the future, but it's disabled.
+//
+
+/*
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 
@@ -92,3 +98,4 @@ impl Client {
             .await
     }
 }
+*/

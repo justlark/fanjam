@@ -7,7 +7,19 @@ output "noco_secrets" {
       NC_DB = "pg://${neon_project.env[env].database_host_pooler}:5432?u=${neon_project.env[env].database_user}&p=${neon_project.env[env].database_password}&d=${neon_project.env[env].database_name}&ssl=true"
 
       # The extra 's' in the `rediss://` scheme is important.
-      NC_REDIS_URL = "rediss://default:${upstash_redis_database.noco.password}@${upstash_redis_database.noco.endpoint}:${upstash_redis_database.noco.port}"
+      # NC_REDIS_URL = "rediss://default:${upstash_redis_database.noco.password}@${upstash_redis_database.noco.endpoint}:${upstash_redis_database.noco.port}"
+
+      # In my testing, with the data sets we're working with, NocoDB is just as
+      # fast with Redis disabled. This could be because we're using a beefy
+      # dedicated Postgres cluster per environment. Additionally, for unknown
+      # reasons, when loading data into the database manually, such as when
+      # seeding demo data, the performance tanks to the point of being unusable
+      # unless we disable Redis caching.
+      #
+      # So, because managed Redis is expensive, we might as well disable it.
+      # However, we're keeping the terraform for managing Redis around, but
+      # commented out, in case we need it again in the future.
+      NC_DISABLE_CACHE = "true"
 
       # Ideally we generate a separate access key for each environment, scoped
       # to that environment's bucket. However, Cloudflare does not provide an API
