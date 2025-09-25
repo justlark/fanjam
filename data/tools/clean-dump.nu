@@ -28,15 +28,18 @@ def main [old_schema: string, new_schema: string] {
 
     UPDATE ($new_schema).announcements SET created_by = NULL;
     UPDATE ($new_schema).announcements SET updated_by = NULL;
+    UPDATE ($new_schema).announcements SET attachment = NULL;
 
     UPDATE ($new_schema).about SET created_by = NULL;
     UPDATE ($new_schema).about SET updated_by = NULL;
+    UPDATE ($new_schema).about SET files = NULL;
 
     UPDATE ($new_schema).links SET created_by = NULL;
     UPDATE ($new_schema).links SET updated_by = NULL;
 
     UPDATE ($new_schema).pages SET created_by = NULL;
     UPDATE ($new_schema).pages SET updated_by = NULL;
+    UPDATE ($new_schema).pages SET files = NULL;
   "
 
   psql-exec $dump
