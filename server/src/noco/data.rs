@@ -256,7 +256,7 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
         .map(|p| (p.id, p.name.clone()))
         .collect();
 
-    Ok(event_records_result?
+    let mut events = event_records_result?
         .into_iter()
         .filter(|r| !r.hidden)
         // We allow event organizers to create events in NocoDB without a start time to give them
@@ -306,7 +306,13 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
                 .filter_map(|p| tags_id_to_name.get(&p.id).cloned())
                 .collect(),
         })
-        .collect())
+        .collect::<Vec<_>>();
+
+    // Sort events by start time, then end time.
+    events.sort_by(|a, b| a.end_time.cmp(&b.end_time));
+    events.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+
+    Ok(events)
 }
 
 pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<About> {
