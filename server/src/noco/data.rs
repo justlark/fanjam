@@ -241,20 +241,22 @@ pub struct Summary {
 
 #[worker::send]
 pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
-    let event_records = list_records::<EventResponse>(client, &table_ids.events).await?;
-    let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
-    let tags_records = list_records::<TagResponse>(client, &table_ids.tags).await?;
+    let (event_records_result, people_records_result, tags_records_result) = futures::join!(
+        list_records::<EventResponse>(client, &table_ids.events),
+        list_records::<PeopleResponse>(client, &table_ids.people),
+        list_records::<TagResponse>(client, &table_ids.tags),
+    );
 
-    let people_id_to_name: HashMap<u32, String> = people_records
+    let people_id_to_name: HashMap<u32, String> = people_records_result?
         .iter()
         .map(|p| (p.id, p.name.clone()))
         .collect();
-    let tags_id_to_name: HashMap<u32, String> = tags_records
+    let tags_id_to_name: HashMap<u32, String> = tags_records_result?
         .iter()
         .map(|p| (p.id, p.name.clone()))
         .collect();
 
-    Ok(event_records
+    Ok(event_records_result?
         .into_iter()
         .filter(|r| !r.hidden)
         // We allow event organizers to create events in NocoDB without a start time to give them
