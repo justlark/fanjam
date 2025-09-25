@@ -1,0 +1,27 @@
+direction: up
+
+client: Browser {shape: person}
+isolate: Worker Isolate (1..𝑛) {
+  server: Isolate 𝑛 {shape: queue}
+  cache: Memory Cache 𝑛 {shape: cylinder}
+}
+noco: NocoDB {shape: queue}
+kv: Clouflare KV {shape: cylinder}
+
+is_request_inflight: Is NocoDB\nrequest\nin-flight? {shape: diamond}
+is_cache_fresh: Is memory\ncache fresh? {shape: diamond}
+is_noco_online: Is NocoDB\nonline? {shape: diamond}
+is_inflight_done: Is in-flight\nrequest done? {shape: diamond}
+
+client -> isolate.server: HTTP Request
+isolate.server -> is_cache_fresh: Check Memory Cache
+is_cache_fresh -> isolate.cache: Yes
+is_cache_fresh -> is_request_inflight: No
+is_request_inflight -> is_noco_online: No
+is_noco_online -> noco: Yes
+is_noco_online -> kv: No
+noco -> kv: Refresh Cache
+noco -> isolate.cache: Refresh Cache
+is_request_inflight -> is_inflight_done: Yes
+is_inflight_done -> is_inflight_done: No
+is_inflight_done -> isolate.server: Yes

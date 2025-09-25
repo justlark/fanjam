@@ -8,10 +8,6 @@ and that information is shared with attendees in real time via a web app.
 
 ## Architecture
 
-See the [architecture diagram](./docs/architecture.svg). This diagram is
-rendered using the [D2](https://d2lang.com/) diagramming language; the source
-is [here](./docs/architecture.d2).
-
 - The client is written in Vue and TypeScript and hosted on [Cloudflare
   Workers](https://developers.cloudflare.com/workers/).
 - There is a serverless function written in TypeScript and hosted on Cloudflare
@@ -34,6 +30,12 @@ cluster, and object storage bucket per tenant environment.
 We have a single deployment of the frontend and a single deployment of the
 backend which are shared across tenant environments. We have separate `prod`
 and `test` deployments of each.
+
+See the following architecture diagrams, laid out using
+[D2](https://d2lang.com/):
+
+- [Services](./docs/architecture.svg) ([source](./docs/architecture.d2))
+- [Caching Logic](./docs/caching.svg) ([source](./docs/caching.d2))
 
 ## Development
 
