@@ -2,6 +2,7 @@
 import { ref, computed, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Divider from "primevue/divider";
+import { RouterLink } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
@@ -75,9 +76,11 @@ const headerHeadingId = useId();
             <span class="lg:hidden">
               <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
             </span>
-            <h1 :id="headerHeadingId" class="text-xl lg:text-2xl" data-testid="site-nav-heading">
-              {{ conName }}
-            </h1>
+            <RouterLink :to="{ name: 'info' }">
+              <h1 :id="headerHeadingId" class="text-xl lg:text-2xl" data-testid="site-nav-heading">
+                {{ conName }}
+              </h1>
+            </RouterLink>
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
