@@ -37,7 +37,7 @@ const back = async () => {
 };
 
 watchEffect(async () => {
-  if (announcementsStatus.value === "success" && !announcement.value) {
+  if (announcementsStatus.value === "success" && announcements.length > 0 && !announcement.value) {
     await back();
   }
 });

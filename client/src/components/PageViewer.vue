@@ -33,7 +33,7 @@ const back = async () => {
 };
 
 watchEffect(async () => {
-  if (pagesStatus.value === "success" && !page.value) {
+  if (pagesStatus.value === "success" && pages.length > 0 && !page.value) {
     await back();
   }
 });
