@@ -80,7 +80,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
         </RouterLink>
         <button
           @click="focusedEventId = event.id"
-          class="lg:hidden cursor-pointer"
+          class="lg:hidden cursor-pointer text-left"
           :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
           data-testid="schedule-event-link"
         >
