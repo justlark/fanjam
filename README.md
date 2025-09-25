@@ -24,14 +24,12 @@ is [here](./docs/architecture.d2).
 - The database and interface for con organizers is provided by a
   [NocoDB](https://nocodb.com/) instance hosted on [Fly.io](https://fly.io/).
 - The Postgres provider for NocoDB is Neon.
-- The Redis provider for NocoDB is [Upstash](https://upstash.com/).
 - The object storage provider for NocoDB is [Cloudflare
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://mailersend.com).
 
 FanJam is single-tenant, meaning we have a separate NocoDB instance, Postgres
-cluster, and object storage bucket per tenant environment. All environments
-share a Redis database.
+cluster, and object storage bucket per tenant environment.
 
 We have a single deployment of the frontend and a single deployment of the
 backend which are shared across tenant environments. We have separate `prod`

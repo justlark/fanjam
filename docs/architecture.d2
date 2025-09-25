@@ -21,10 +21,6 @@ neon: Neon {
   }
 }
 
-upstash: Upstash {
-  redis: Redis DB {shape: cylinder}
-}
-
 mailersend: MailerSend {
   smtp: SMTP {shape: cloud}
 }
@@ -42,7 +38,5 @@ fly.noco <- organizer
 
 neon.pg.noco <- fly.noco
 neon.pg.worker <- cf.server
-
-upstash.redis <- fly.noco
 
 mailersend.smtp <- fly.noco
