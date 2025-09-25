@@ -54,8 +54,15 @@ const filteredEventIdsSet = computed(() =>
 
 const filteredEvents = computed(() => {
   const filtered = events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true);
-  filtered.sort((a, b) => a.endTime.valueOf() - b.endTime.valueOf());
+
+  filtered.sort((a, b) =>
+    a.endTime === undefined || b.endTime === undefined
+      ? 0
+      : a.endTime.valueOf() - b.endTime.valueOf(),
+  );
+
   filtered.sort((a, b) => a.startTime.valueOf() - b.startTime.valueOf());
+
   return filtered;
 });
 
