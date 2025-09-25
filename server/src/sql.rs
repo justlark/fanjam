@@ -1,4 +1,4 @@
-use worker::{SecureTransport, Socket, console_error, postgres_tls::PassthroughTls};
+use worker::{SecureTransport, Socket, postgres_tls::PassthroughTls};
 
 use crate::{
     env,
@@ -45,9 +45,7 @@ impl Client {
             .await?;
 
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(error) = connection.await {
-                console_error!("Postgres connection error: {:?}", error);
-            }
+            connection.await.ok();
         });
 
         Ok(Client { client })
