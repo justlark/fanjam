@@ -67,17 +67,17 @@ tail-client stage:
   npx wrangler tail --env {{ stage }}
 
 # generate the configuration for an environment
-[group("deploy environments")]
+[group("manage environments")]
 configure-env env stage:
   ./tools/configure-env.nu {{ env }} {{ stage}}
 
 # update environment secrets passed to the NocoDB instance
-[group("deploy environments")]
+[group("manage environments")]
 update-secrets env:
   ./tools/update-secrets.nu {{ env }}
 
 # create a new NocoDB instance
-[group("deploy environments")]
+[group("manage environments")]
 create-env env:
   ./tools/graphile-migrate.nu {{ env }} migrate
   ./tools/create-fly-app.nu {{ env }}
@@ -91,23 +91,23 @@ get-creds env:
   ./tools/get-creds.nu {{ env }}
 
 # redeploy an existing NocoDB instance
-[group("deploy environments")]
+[group("manage environments")]
 deploy-env env:
   ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
 
 # configure an environment with a NocoDB API token
-[group("initialize environments")]
+[group("manage environments")]
 set-noco-token env:
   ./tools/set-noco-token.nu {{ env }}
 
 # create a new empty base in a NocoDB instance
-[group("initialize environments")]
+[group("manage environments")]
 create-base env:
   ./tools/create-noco-base.nu {{ env }}
 
 # initialize a new environment
-[group("initialize environments")]
+[group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
 init-env env:
   ./tools/set-noco-token.nu {{ env }}
