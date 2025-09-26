@@ -7,6 +7,7 @@ import PrimeVue from "primevue/config";
 import { definePreset } from "@primeuix/themes";
 import Aura from "@primeuix/themes/aura";
 import ToastService from "primevue/toastservice";
+import "primeicons/primeicons.css";
 
 const app = createApp(App);
 
