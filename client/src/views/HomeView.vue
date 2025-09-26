@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
-import { RouterLink } from "vue-router";
 </script>
 
 <template>
