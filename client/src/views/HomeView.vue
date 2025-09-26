@@ -5,8 +5,8 @@ import { RouterLink } from "vue-router";
 </script>
 
 <template>
-  <main class="flex flex-col justify-center items-center gap-8 mx-6 my-4">
-    <h1 class="text-8xl text-center mt-8 lg:mt-16 mb-8 font-black">
+  <main class="flex flex-col justify-center items-center gap-8 m-6">
+    <h1 class="text-8xl text-center mt-8 lg:mt-14 mb-8 font-black">
       <span class="text-orange-400 dark:text-orange-300">Fan</span
       ><span class="text-sky-400 dark:text-sky-300">Jam</span>
     </h1>
@@ -20,7 +20,21 @@ import { RouterLink } from "vue-router";
         for small cons.
       </p>
     </div>
-    <div class="flex flex-wrap gap-10 justify-evenly">
+    <Card>
+      <template #content>
+        <div class="text-xl text-center">
+          <p>Reach out if you're interested!</p>
+          <p>
+            <a
+              class="text-primary decoration-2 underline underline-offset-2 hover:decoration-3 font-bold"
+              href="mailto:lark@fanjam.live"
+              >lark@fanjam.live</a
+            >
+          </p>
+        </div>
+      </template>
+    </Card>
+    <div class="flex flex-wrap gap-8 justify-evenly">
       <Card class="overflow-hidden">
         <template #header>
           <img
