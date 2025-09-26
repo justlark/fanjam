@@ -28,3 +28,8 @@ pub fn app_url(env_id: &EnvId) -> anyhow::Result<Url> {
         "https://{client_domain}/app/{env_id}"
     ))?)
 }
+
+// The URL of a local instance of the client app for testing.
+pub fn local_url(env_id: &EnvId) -> anyhow::Result<Url> {
+    Ok(Url::parse(&format!("http://localhost:5173/app/{env_id}"))?)
+}

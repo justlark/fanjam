@@ -17,6 +17,7 @@ pub struct PostLinkResponse {
 pub struct GetLinkResponse {
     pub dash_url: String,
     pub app_url: String,
+    pub local_url: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -126,9 +126,9 @@ generate-app-link env:
 delete-base env:
   ./tools/delete-base.nu {{ env }}
 
-# get the app link for an environment
+# get the app and dashboard link for an environment
 [group("manage environments")]
-get-app-link env:
+get-links env:
   ./tools/get-app-link.nu {{ env }}
 
 # apply any pending schema migrations to an environment

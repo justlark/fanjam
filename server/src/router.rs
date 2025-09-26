@@ -132,10 +132,12 @@ async fn get_link(
 
     let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
     let app_url = url::app_url(&env_id).map_err(Error::Internal)?;
+    let local_url = url::local_url(&env_id).map_err(Error::Internal)?;
 
     Ok(Json(GetLinkResponse {
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
+        local_url: local_url.to_string(),
     }))
 }
 
