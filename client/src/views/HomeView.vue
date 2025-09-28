@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
+import SimpleIcon from "@/components/SimpleIcon.vue";
 </script>
 
 <template>
@@ -54,21 +55,26 @@ import Button from "primevue/button";
             <li>Leave comments and notes that only organizers can see.</li>
           </ul>
         </template>
+        <!--
+          We're disabling this for now because the NocoDB demo is unstable.
+          Logging in works fine, but accessing it via the public URL freezes the tab.
+        -->
         <template #footer>
-          <!--
-            We're disabling this for now because the NocoDB demo is unstable.
-            Logging in works fine, but accessing it via the public URL freezes the tab.
-          -->
-          <Button
-            :v-if="false"
-            as="a"
-            label="Open Demo"
-            icon="pi pi-external-link"
-            icon-pos="right"
-            raised
-            target="_blank"
-            href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
-          />
+          <div class="flex gap-4 items-center">
+            <Button
+              disabled
+              label="Open Demo"
+              icon="pi pi-external-link"
+              icon-pos="right"
+              raised
+              target="_blank"
+              href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
+            />
+            <span class="flex gap-1 text-muted-color">
+              <SimpleIcon icon="info-circle" />
+              <span>Demo coming soon!</span>
+            </span>
+          </div>
         </template>
       </Card>
       <Card class="overflow-hidden">
