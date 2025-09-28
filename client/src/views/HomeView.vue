@@ -55,7 +55,12 @@ import Button from "primevue/button";
           </ul>
         </template>
         <template #footer>
+          <!--
+            We're disabling this for now because the NocoDB demo is unstable.
+            Logging in works fine, but accessing it via the public URL freezes the tab.
+          -->
           <Button
+            :v-if="false"
             as="a"
             label="Open Demo"
             icon="pi pi-external-link"
