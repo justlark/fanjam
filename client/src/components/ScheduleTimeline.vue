@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect } from "vue";
+import {
+  ref,
+  type DeepReadonly,
+  onMounted,
+  onUnmounted,
+  toRef,
+  computed,
+  watch,
+  watchEffect,
+} from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
@@ -163,10 +172,8 @@ const isDayFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && firstEventEndTime.value < new Date();
 });
 
-const currentTimeSlotIndex = computed(() => {
-  if (filteredTimeSlots.value.length === 0) return undefined;
-
-  const currentTimeSlotIndices = [...filteredTimeSlots.value.entries()]
+const getCurrentTimeSlotIndices = () =>
+  [...filteredTimeSlots.value.entries()]
     .filter(([, timeSlot]) => {
       const firstEventStartTime = timeSlot.events[0].startTime;
       const lastEvent = timeSlot.events[timeSlot.events.length - 1];
@@ -177,7 +184,30 @@ const currentTimeSlotIndex = computed(() => {
     })
     .map(([index]) => index);
 
-  return currentTimeSlotIndices[currentTimeSlotIndices.length - 1];
+const currentTimeSlotIndex = ref<number>();
+
+watchEffect(() => {
+  const currentIndices = getCurrentTimeSlotIndices();
+  if (currentIndices.length === 0) return;
+  currentTimeSlotIndex.value = currentIndices[currentIndices.length - 1];
+});
+
+const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
+
+const refreshNowTimeIntervalId = ref<number>();
+
+onMounted(() => {
+  refreshNowTimeIntervalId.value = setInterval(() => {
+    const currentIndices = getCurrentTimeSlotIndices();
+    if (currentIndices.length === 0) return;
+    currentTimeSlotIndex.value = currentIndices[currentIndices.length - 1];
+  }, REFRESH_NOW_TIME_INTERVAL_MILLIS);
+});
+
+onUnmounted(() => {
+  if (refreshNowTimeIntervalId.value !== undefined) {
+    clearInterval(refreshNowTimeIntervalId.value);
+  }
 });
 
 // Do not fire when the query params change. Otherwise, if the user is viewing
