@@ -92,10 +92,32 @@ const sectionHeadingId = useId();
             {{ localizeTimeSpan(datetimeFormats, event.startTime, event.endTime) }}
           </EventDetail>
           <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts">
-            Hosted by {{ event.people.join(", ") }}
+            <span>Hosted by </span>
+            <span v-for="(person, index) in event.people" :key="index">
+              <RouterLink
+                class="text-primary underline underline-offset-2 hover:decoration-2"
+                :to="{
+                  name: props.from,
+                  params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+                  query: toFilterQueryParams({ search: person }),
+                }"
+              >
+                {{ person }}
+              </RouterLink>
+              <span v-if="index < event.people.length - 1">, </span>
+            </span>
           </EventDetail>
           <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
-            {{ event.location }}
+            <RouterLink
+              class="text-primary underline underline-offset-2 hover:decoration-2"
+              :to="{
+                name: props.from,
+                params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+                query: toFilterQueryParams({ search: event.location }),
+              }"
+            >
+              {{ event.location }}
+            </RouterLink>
           </EventDetail>
         </dl>
         <IconButton
