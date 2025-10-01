@@ -129,3 +129,7 @@ export const hoursFromNow = (hours: number): Date => {
 export const mockTime = async (page: Page) => {
   await page.clock.setFixedTime(NOW);
 };
+
+export const shiftTimeByHours = async (page: Page, hours: number) => {
+  await page.clock.setFixedTime(hoursFromNow(hours));
+};

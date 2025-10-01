@@ -1,6 +1,12 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, isMobile, hoursFromNow, mockTime } from "./common";
-import { EventDetailsPage, FilterMenu, EventSummaryDrawer, ProgramPage, SchedulePage, } from "./fixtures";
+import { mockApi, isMobile, hoursFromNow, mockTime, shiftTimeByHours } from "./common";
+import {
+  EventDetailsPage,
+  FilterMenu,
+  EventSummaryDrawer,
+  ProgramPage,
+  SchedulePage,
+} from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
@@ -100,6 +106,44 @@ test.describe("filtering events", () => {
         await expect(pastEvent).toHaveCount(1);
         await expect(futureEvent).toHaveCount(1);
         await expect(hiddenNotice).toBeHidden();
+      });
+
+      test("hide past events mid-event", async ({
+        page,
+        filterMenu,
+        schedulePage,
+        programPage,
+      }) => {
+        await shiftTimeByHours(page, -2);
+
+        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+        const hiddenNotice =
+          route === "schedule" ? schedulePage.hiddenNotice : programPage.hiddenNotice;
+
+        const currentEvent = events.filter({ hasText: "Test Event 1" });
+
+        await filterMenu.toggleOpen();
+        await filterMenu.toggleHidePastEvents();
+
+        await expect(currentEvent).toHaveCount(1);
+        await expect(hiddenNotice).not.toBeVisible();
+      });
+
+      test("hide past events before first events of the day", async ({
+        page,
+        filterMenu,
+        schedulePage,
+        programPage,
+      }) => {
+        await shiftTimeByHours(page, -3);
+
+        const hiddenNotice =
+          route === "schedule" ? schedulePage.hiddenNotice : programPage.hiddenNotice;
+
+        await filterMenu.toggleOpen();
+        await filterMenu.toggleHidePastEvents();
+
+        await expect(hiddenNotice).not.toBeVisible();
       });
 
       test("only show starred events", async ({
@@ -229,7 +273,11 @@ test.describe("filtering events", () => {
         );
       });
 
-      test("clearing categories and tags from the filter description", async ({ filterMenu, schedulePage, programPage }) => {
+      test("clearing categories and tags from the filter description", async ({
+        filterMenu,
+        schedulePage,
+        programPage,
+      }) => {
         const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
 
         await filterMenu.toggleOpen();
@@ -268,7 +316,10 @@ test.describe("filtering events", () => {
     await expect(schedulePage.events.nth(1)).toHaveText("Test Event 2");
   });
 
-  test("filter by category or tag from event summary drawer", async ({ schedulePage, summaryDrawer }) => {
+  test("filter by category or tag from event summary drawer", async ({
+    schedulePage,
+    summaryDrawer,
+  }) => {
     if (!isMobile()) {
       test.skip();
     }
