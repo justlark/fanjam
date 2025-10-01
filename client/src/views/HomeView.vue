@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
+import SimpleIcon from "@/components/SimpleIcon.vue";
 </script>
 
 <template>
@@ -55,15 +56,21 @@ import Button from "primevue/button";
           </ul>
         </template>
         <template #footer>
-          <Button
-            as="a"
-            label="Open Demo"
-            icon="pi pi-external-link"
-            icon-pos="right"
-            raised
-            target="_blank"
-            href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
-          />
+          <div class="flex flex-wrap gap-6 items-center">
+            <Button
+              as="a"
+              label="Open Demo"
+              icon="pi pi-external-link"
+              icon-pos="right"
+              raised
+              target="_blank"
+              href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
+            />
+            <span class="flex gap-2 text-muted-color">
+              <SimpleIcon icon="info-circle" />
+              <span>Best on desktop</span>
+            </span>
+          </div>
         </template>
       </Card>
       <Card class="overflow-hidden">
@@ -92,15 +99,21 @@ import Button from "primevue/button";
           </ul>
         </template>
         <template #footer>
-          <Button
-            as="a"
-            label="Open Demo"
-            icon="pi pi-external-link"
-            icon-pos="right"
-            raised
-            target="_blank"
-            href="https://fanjam.live/app/804008/"
-          />
+          <div class="flex flex-wrap gap-6 items-center">
+            <Button
+              as="a"
+              label="Open Demo"
+              icon="pi pi-external-link"
+              icon-pos="right"
+              raised
+              target="_blank"
+              href="https://fanjam.live/app/804008/"
+            />
+            <span class="flex gap-2 text-muted-color">
+              <SimpleIcon icon="info-circle" />
+              <span>Best on mobile</span>
+            </span>
+          </div>
         </template>
       </Card>
     </div>
