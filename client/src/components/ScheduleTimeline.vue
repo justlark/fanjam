@@ -153,19 +153,14 @@ const filteredTimeSlots = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
-const currentDayStart = computed(() => {
-  if (namedDays.value === undefined || currentDayIndex.value === undefined) {
-    return undefined;
-  }
+const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 
-  return namedDays.value[currentDayIndex.value]?.dayStart;
-});
 const isDayFilteringPastEvents = computed(() => {
-  if (currentDayStart.value === undefined) {
+  if (firstEventEndTime.value === undefined) {
     return false;
   }
 
-  return filterCriteria.hidePastEvents && currentDayStart.value < new Date();
+  return filterCriteria.hidePastEvents && firstEventEndTime.value < new Date();
 });
 
 const currentTimeSlotIndex = computed(() => {

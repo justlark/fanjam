@@ -121,7 +121,9 @@ watchEffect(() => {
 
   if (filterCriteria.hidePastEvents) {
     const now = new Date();
-    filteredEvents = filteredEvents.filter((event) => event.startTime >= now);
+    filteredEvents = filteredEvents.filter(
+      (event) => event.endTime === undefined || event.endTime >= now,
+    );
   }
 
   if (filterCriteria.hideNotStarred) {
