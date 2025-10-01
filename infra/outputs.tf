@@ -3,6 +3,8 @@
 output "noco_secrets" {
   value = {
     for env, config in local.environments : env => {
+      NC_PUBLIC_URL = "https://${config.app_domain}.${data.cloudflare_zone.site.name}"
+
       # The `ssl=true` param is important.
       NC_DB = "pg://${neon_project.env[env].database_host_pooler}:5432?u=${neon_project.env[env].database_user}&p=${neon_project.env[env].database_password}&d=${neon_project.env[env].database_name}&ssl=true"
 
@@ -36,6 +38,7 @@ output "noco_secrets" {
       # token for the sparklefish backend. After that, we shouldn't need it
       # again.
       NC_ADMIN_PASSWORD = random_password.noco_admin_password[env].result
+      NC_ADMIN_EMAIL    = local.globals.admin_email
 
       # There is additionally a `NC_SMTP_SECURE` env var that defaults to
       # `false`, but I wasn't able to get it working with MailerSend.
@@ -50,9 +53,9 @@ output "noco_secrets" {
       # database, saving us on infra costs.
       NC_CACHE_PREFIX = "sparklefish:env:${env}:noco"
 
-      NC_PUBLIC_URL         = "https://${config.app_domain}.${data.cloudflare_zone.site.name}"
-      NC_ADMIN_EMAIL        = local.globals.admin_email
-      NC_INVITE_ONLY_SIGNUP = "true"
+      NC_INVITE_ONLY_SIGNUP   = "true"
+      NC_DISABLE_SUPPORT_CHAT = "true"
+      NC_DISABLE_TELE         = "true"
     }
   }
   sensitive = true
