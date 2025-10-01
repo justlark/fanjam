@@ -74,9 +74,9 @@ output "worker_admin_api_tokens" {
 output "graphile_migrate" {
   value = {
     for env in keys(local.environments) : env => {
-      DATABASE_URL        = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host_pooler}/${neon_database.sparklefish[env].name}?sslmode=require"
-      SHADOW_DATABASE_URL = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host_pooler}/${neon_database.sparklefish_shadow[env].name}?sslmode=require"
-      ROOT_DATABASE_URL   = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host_pooler}/${neon_project.env[env].database_name}?sslmode=require"
+      DATABASE_URL        = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host}/${neon_database.sparklefish[env].name}?sslmode=require"
+      SHADOW_DATABASE_URL = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host}/${neon_database.sparklefish_shadow[env].name}?sslmode=require"
+      ROOT_DATABASE_URL   = "postgres://${neon_project.env[env].database_user}:${neon_project.env[env].database_password}@${neon_project.env[env].database_host}/${neon_project.env[env].database_name}?sslmode=require"
     }
   }
   sensitive = true
