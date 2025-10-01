@@ -34,6 +34,9 @@ output "noco_secrets" {
       NC_S3_BUCKET_NAME   = "sparklefish-noco-${env}"
       NC_S3_REGION        = "auto"
 
+      # Signed file URLs are valid for 12 hours.
+      NC_ATTACHMENT_EXPIRE_SECONDS = "43200"
+
       # Users are never given this password. We need it to generate an API
       # token for the sparklefish backend. After that, we shouldn't need it
       # again.
