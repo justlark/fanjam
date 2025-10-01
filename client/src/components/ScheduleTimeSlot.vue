@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { useId, type DeepReadonly, computed } from "vue";
+import { useId, type DeepReadonly } from "vue";
 import Divider from "primevue/divider";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { type Event } from "@/utils/api";
-import { dateIsBetween } from "@/utils/time";
 import CategoryLabel from "./CategoryLabel.vue";
 import { RouterLink } from "vue-router";
 import useStarredEvents from "@/composables/useStarredEvents";
@@ -15,23 +14,13 @@ const focusedEventId = defineModel<string | undefined>("focused");
 const props = defineProps<{
   localizedTime: string;
   events: Array<DeepReadonly<Event>>;
+  isCurrentTimeSlot: boolean;
   allCategories: Array<string>;
 }>();
 
 const starredEvents = useStarredEvents();
 
 const sectionHeadingId = useId();
-
-const isCurrentTimeSlot = computed(() => {
-  if (props.events.length === 0) return false;
-
-  const firstEventStartTime = props.events[0].startTime;
-  const lastEvent = props.events[props.events.length - 1];
-  const lastEventEndTime = lastEvent.endTime ?? lastEvent.startTime;
-  const now = new Date();
-
-  return dateIsBetween(now, firstEventStartTime, lastEventEndTime);
-});
 
 const isStarred = (eventId: string) => starredEvents.value.has(eventId);
 </script>
@@ -43,18 +32,18 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
         :id="sectionHeadingId"
         :class="{
           'text-xl': true,
-          'font-bold': isCurrentTimeSlot,
+          'font-bold': props.isCurrentTimeSlot,
         }"
       >
         {{ props.localizedTime }}
       </h2>
-      <small v-if="isCurrentTimeSlot" class="text-muted-color">now</small>
+      <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
     </div>
     <Divider
       :class="{
         '!mt-1': true,
-        'before:!border-primary': isCurrentTimeSlot,
-        'before:!border-1': isCurrentTimeSlot,
+        'before:!border-primary': props.isCurrentTimeSlot,
+        'before:!border-1': props.isCurrentTimeSlot,
       }"
     />
     <ul class="flex flex-wrap gap-3">

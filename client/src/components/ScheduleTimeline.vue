@@ -168,6 +168,23 @@ const isDayFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && currentDayStart.value < new Date();
 });
 
+const currentTimeSlotIndex = computed(() => {
+  if (filteredTimeSlots.value.length === 0) return undefined;
+
+  const currentTimeSlotIndices = [...filteredTimeSlots.value.entries()]
+    .filter(([, timeSlot]) => {
+      const firstEventStartTime = timeSlot.events[0].startTime;
+      const lastEvent = timeSlot.events[timeSlot.events.length - 1];
+      const lastEventEndTime = lastEvent.endTime ?? lastEvent.startTime;
+      const now = new Date();
+
+      return dateIsBetween(now, firstEventStartTime, lastEventEndTime);
+    })
+    .map(([index]) => index);
+
+  return currentTimeSlotIndices[currentTimeSlotIndices.length - 1];
+});
+
 // Do not fire when the query params change. Otherwise, if the user is viewing
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
@@ -241,6 +258,7 @@ watchEffect(() => {
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
         :all-categories="allCategories"
+        :is-current-time-slot="index === currentTimeSlotIndex"
         data-testid="schedule-time-slot"
       />
     </div>

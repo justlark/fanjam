@@ -189,7 +189,7 @@ test.describe("the schedule timeline view", () => {
         {
           name: "Event 1",
           start_time: hoursFromNow(-1).toISOString(),
-          end_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(1).toISOString(),
         },
         {
           name: "Event 2",
@@ -207,6 +207,8 @@ test.describe("the schedule timeline view", () => {
     await schedulePage.goto();
 
     await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(schedulePage.timeSlots.nth(0)).not.toContainText("now");
     await expect(schedulePage.timeSlots.nth(1)).toContainText("now");
+    await expect(schedulePage.timeSlots.nth(2)).not.toContainText("now");
   });
 });
