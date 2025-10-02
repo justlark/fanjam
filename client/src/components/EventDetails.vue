@@ -96,6 +96,7 @@ const sectionHeadingId = useId();
             <span v-for="(person, index) in event.people" :key="index">
               <RouterLink
                 class="text-primary underline underline-offset-2 hover:decoration-2"
+                data-testid="event-details-person-link"
                 :to="{
                   name: props.from,
                   params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
@@ -110,6 +111,7 @@ const sectionHeadingId = useId();
           <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
             <RouterLink
               class="text-primary underline underline-offset-2 hover:decoration-2"
+              data-testid="event-details-location-link"
               :to="{
                 name: props.from,
                 params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},

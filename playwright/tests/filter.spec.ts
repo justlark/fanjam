@@ -296,6 +296,44 @@ test.describe("filtering events", () => {
         await expect(events).toHaveCount(2);
         await expect(filterMenu.description).not.toBeVisible();
       });
+
+      test("follow link to search by location", async ({
+        filterMenu,
+        schedulePage,
+        programPage,
+        eventPage,
+      }) => {
+        if (route === "schedule") {
+          await schedulePage.openEventDetailsPage("Test Event 2");
+        } else if (route === "program") {
+          await programPage.toggleEventExpanded("Test Event 2");
+          await programPage.openEventDetailsPage("Test Event 2");
+        }
+
+        await eventPage.locationLinks.filter({ hasText: "Orange Room" }).click();
+
+        await filterMenu.toggleOpen();
+        await expect(filterMenu.searchInput).toHaveValue("Orange Room");
+      });
+
+      test("follow link to search by person", async ({
+        filterMenu,
+        schedulePage,
+        programPage,
+        eventPage,
+      }) => {
+        if (route === "schedule") {
+          await schedulePage.openEventDetailsPage("Test Event 2");
+        } else if (route === "program") {
+          await programPage.toggleEventExpanded("Test Event 2");
+          await programPage.openEventDetailsPage("Test Event 2");
+        }
+
+        await eventPage.personLinks.filter({ hasText: "Ash" }).click();
+
+        await filterMenu.toggleOpen();
+        await expect(filterMenu.searchInput).toHaveValue("Ash");
+      });
     });
   }
 

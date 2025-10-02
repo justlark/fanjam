@@ -7,7 +7,7 @@ export class FilterMenu {
   private readonly hideNotStarredEventsButton: Locator;
   private readonly categoryFilterList: Locator;
   private readonly tagFilterList: Locator;
-  private readonly searchInput: Locator;
+  readonly searchInput: Locator;
   readonly description: Locator;
 
   constructor(page: Page) {
@@ -147,12 +147,16 @@ export class EventDetailsPage {
   private readonly backButton: Locator;
   private readonly tagbarCategoryLink: Locator;
   private readonly tagbarTagLinks: Locator;
+  readonly personLinks: Locator;
+  readonly locationLinks: Locator;
   readonly starButton: Locator;
 
   constructor(page: Page) {
     this.backButton = page.getByTestId("event-details-back-button").filter({ visible: true });
     this.tagbarCategoryLink = page.getByTestId("tagbar-category-link").filter({ visible: true });
     this.tagbarTagLinks = page.getByTestId("tagbar-tag-link").filter({ visible: true });
+    this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
+    this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
   }
 
