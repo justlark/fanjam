@@ -55,6 +55,11 @@ import SimpleIcon from "@/components/SimpleIcon.vue";
             <li>Leave comments and notes that only organizers can see.</li>
           </ul>
         </template>
+        <!--
+        We're having stability issues with NocoDB right now, so we're removing
+        the demo link for now.
+        -->
+        <!--
         <template #footer>
           <div class="flex flex-wrap gap-6 items-center">
             <Button
@@ -72,6 +77,7 @@ import SimpleIcon from "@/components/SimpleIcon.vue";
             </span>
           </div>
         </template>
+        -->
       </Card>
       <Card class="overflow-hidden">
         <template #header>
