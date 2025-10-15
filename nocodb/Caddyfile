@@ -1,0 +1,16 @@
+:8080 {
+  handle /dashboard/_nuxt/* {
+    vars cdn_host nocodb-{labels.2}.{labels.1}.{labels.0}
+
+    uri strip_prefix /dashboard
+
+    reverse_proxy {vars.cdn_host}:443 {
+      header_up Host {vars.cdn_host}
+      transport http {
+        tls
+      }
+    }
+  }
+
+  reverse_proxy 127.0.0.1:8081
+}
