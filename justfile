@@ -66,26 +66,6 @@ tail-server stage:
 tail-client stage:
   npx wrangler tail --env {{ stage }}
 
-# push a new NocoDB image
-[working-directory: "./nocodb/"]
-[group("deploy NocoDB")]
-push-nocodb tag:
-  podman build -t ghcr.io/justlark/nocodb-fanjam:{{ tag }} --build-arg NOCODB_IMAGE=nocodb/nocodb:{{ tag }} .
-  podman push ghcr.io/justlark/nocodb-fanjam:{{ tag }}
-
-# build the NocoDB client
-[working-directory: "./nocodb/"]
-[group("deploy NocoDB")]
-build-nocodb tag:
-  ./build.nu {{ tag }}
-
-# deploy the NocoDB client to the CDN
-[working-directory: "./nocodb/"]
-[group("deploy NocoDB")]
-[confirm("Did you build the correct version of the NocoDB client first?")]
-deploy-nocodb env:
-  npx wrangler deploy --env {{ env }} --domain nocodb-{{ env }}.fanjam.live
-
 # generate the configuration for an environment
 [group("manage environments")]
 configure-env env stage:
@@ -104,6 +84,9 @@ create-env env:
   ./tools/update-secrets.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
   ./tools/deploy-certs.nu {{ env }}
+  ./build.nu {{ env }}
+  npx wrangler deploy --env {{ env }} --domain {{ env }}.fanjam.live
+  rm --recursive --force ./public/
 
 # get the system user login credentials for an environment
 [group("manage environments")]
@@ -115,6 +98,9 @@ get-creds env:
 deploy-env env:
   ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
+  ./build.nu {{ env }}
+  npx wrangler deploy --env {{ env }} --domain {{ env }}.fanjam.live
+  rm --recursive --force ./public/
 
 # configure an environment with a NocoDB API token
 [group("manage environments")]

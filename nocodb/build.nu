@@ -1,15 +1,16 @@
 #!/usr/bin/env nu
 
-source ../tools/config.nu
+def main [env_name: string] {
+  let fly_file = $env.FILE_PWD | path dirname | path join "infra" "environments" $env_name "fly.yaml"
+  let fly_config = open $fly_file
+  let noco_image = $fly_config.build.image
 
-def main [tag: string] {
   rm --recursive --force ./public/
-  mkdir ./public/
 
-  podman pull $"nocodb/nocodb:($tag)"
-  let container_id = podman create $"nocodb/nocodb:($tag)" | complete | get "stdout" | str trim
+  podman pull $noco_image
+  let container_id = podman create $noco_image | complete | get "stdout" | str trim
 
-  podman cp $"($container_id):/usr/src/app/node_modules/nc-lib-gui/lib/dist/_nuxt/" ./public/
+  podman cp $"($container_id):/usr/src/app/node_modules/nc-lib-gui/lib/dist/" ./public
 
   podman rm $container_id
 }
