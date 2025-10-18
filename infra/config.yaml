@@ -14,6 +14,7 @@ admin_email: "system@fanjam.live"
 notifications_email: "notifications@fanjam.live"
 cloudflare_account_id: "151bc8670b862fa7d694cf7246a2c0dc"
 fly_org: "sparklefish"
+dashboard_path: "dashboard"
 
 # We run multiple deployments of the sparklefish server and client, for
 # testing. If we decide we want to add more stages in the future, note that

@@ -45,6 +45,7 @@ To build and run the app, you'll need to install:
 
 To deploy the app, you'll additionally need to install:
 
+- [Podman](https://podman.io/docs/installation#installing-on-linux)
 - [Nu](https://www.nushell.sh/book/installation.html)
 - [flyctl](https://fly.io/docs/flyctl/install/)
 - [OpenTofu](https://opentofu.org/docs/intro/install/)

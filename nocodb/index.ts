@@ -1,10 +1,14 @@
-import type { Request, Env } from "@cloudflare/workers-types";
+import type { Request, Env, Fetcher } from "@cloudflare/workers-types";
+
+interface Env {
+  ASSETS: Fetcher;
+  DASHBOARD_PATH: string;
+}
 
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
 
-    // Proxy API endpoints to the Matrix server.
     if (url.pathname.startsWith("/api/")) {
       const requestUrl = new URL(request.url);
       const segments = requestUrl.hostname.split(".");
@@ -17,9 +21,9 @@ export default {
       });
     }
 
-    if (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/")) {
+    if (url.pathname === "/") {
       const dashboardUrl = new URL(request.url);
-      dashboardUrl.pathname = dashboardUrl.pathname.replace("/dashboard", "");
+      dashboardUrl.pathname = env.DASHBOARD_PATH;
       return Response.redirect(dashboardUrl, 302);
     }
 
