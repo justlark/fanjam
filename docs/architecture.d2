@@ -1,11 +1,21 @@
-client: Browser {shape: person}
-organizer: Browser {shape: person}
-admin: Admin Tools {shape: person}
+title: FanJam Architecture Diagram {
+  shape: text
+  near: top-center
+  style: {
+    font-size: 40
+  }
+}
+
+client: Attendee {shape: person}
+organizer: Organizer {shape: person}
+admin: Admin {shape: person}
 
 cf: Cloudflare {
   client: Client Worker {shape: queue}
   server: Server Worker {shape: queue}
-  cdn: CDN {shape: cloud}
+  noco: NocoDB Worker {shape: queue}
+  client-cdn: Client CDN {shape: cloud}
+  noco-cdn: NocoDB CDN {shape: cloud}
   kv: Clouflare KV {shape: cylinder}
   r2: Cloudflare R2 {shape: cylinder}
 }
@@ -26,7 +36,7 @@ mailersend: MailerSend {
 }
 
 cf.client <- client
-cf.cdn <- cf.client
+cf.client-cdn <- cf.client
 
 cf.server <- client
 cf.server <- admin
@@ -34,7 +44,9 @@ cf.kv <- cf.server
 
 fly.noco -> cf.r2
 fly.noco <- cf.server
-fly.noco <- organizer
+cf.noco <- organizer
+cf.noco-cdn <- cf.noco
+fly.noco <- cf.noco
 
 neon.pg.noco <- fly.noco
 neon.pg.worker <- cf.server

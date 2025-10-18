@@ -22,6 +22,13 @@ and that information is shared with attendees in real time via a web app.
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://mailersend.com).
 
+Out of the box, NocoDB hosts static assets from within the container via a Node
+server. When deploying a NocoDB instance for FanJam, we instead host those
+assets on a CDN (Cloudflare Workers), forwarding NocoDB API requests to the
+container via an edge function. When we deploy a NocoDB instance, the pipeline
+extracts the client bundle from the NocoDB image and pushes it to the CDN. It's
+important to note that NocoDB _is not_ intended to be deployed this way.
+
 FanJam is single-tenant, meaning we have a separate NocoDB instance, Postgres
 cluster, and object storage bucket per tenant environment.
 
@@ -32,7 +39,7 @@ and `test` deployments of each.
 See the following architecture diagrams, laid out using
 [D2](https://d2lang.com/):
 
-- [Services](./docs/architecture.svg) ([source](./docs/architecture.d2))
+- [System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
 - [Caching Logic](./docs/caching.svg) ([source](./docs/caching.d2))
 
 ## Development
