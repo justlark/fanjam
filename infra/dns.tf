@@ -3,7 +3,7 @@ resource "cloudflare_record" "noco_cname" {
 
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "CNAME"
-  name    = each.value.app_domain
+  name    = "${each.value.app_domain}.noco.${data.cloudflare_zone.site.name}"
   content = "${each.value.fly_app}.fly.dev"
   proxied = false
 }

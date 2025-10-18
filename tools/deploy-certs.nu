@@ -10,9 +10,9 @@ def main [env_name: string] {
   let existing_certs = fly --config $"./infra/environments/($env_name)/fly.yaml" certs list --json | from json
 
   if ($existing_certs | length) > 0 {
-    print $"Certificates already exist for ($app_subdomain).($config.app_base_domain)."
+    print $"Certificates already exist for ($app_subdomain).noco.($config.app_base_domain)."
     return
   }
 
-  fly --config $"./infra/environments/($env_name)/fly.yaml" certs add $"($app_subdomain).($config.app_base_domain)"
+  fly --config $"./infra/environments/($env_name)/fly.yaml" certs add $"($app_subdomain).noco.($config.app_base_domain)"
 }

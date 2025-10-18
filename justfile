@@ -84,9 +84,8 @@ create-env env:
   ./tools/update-secrets.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
   ./tools/deploy-certs.nu {{ env }}
-  ./build.nu {{ env }}
-  npx wrangler deploy --env {{ env }} --domain {{ env }}.fanjam.live
-  rm --recursive --force ./public/
+  ./nocodb/build.nu {{ env }}
+  npx wrangler --config ./nocodb/wrangler.toml deploy --env {{ env }} --domain {{ env }}.fanjam.live
 
 # get the system user login credentials for an environment
 [group("manage environments")]
@@ -98,9 +97,8 @@ get-creds env:
 deploy-env env:
   ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
-  ./build.nu {{ env }}
-  npx wrangler deploy --env {{ env }} --domain {{ env }}.fanjam.live
-  rm --recursive --force ./public/
+  ./nocodb/build.nu {{ env }}
+  npx wrangler --config ./nocodb/wrangler.toml deploy --env {{ env }} --domain {{ env }}.fanjam.live
 
 # configure an environment with a NocoDB API token
 [group("manage environments")]
