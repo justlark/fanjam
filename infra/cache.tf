@@ -16,3 +16,22 @@ resource "cloudflare_ruleset" "etags" {
     enabled     = true
   }
 }
+
+resource "cloudflare_ruleset" "noco_brotli" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  name    = "noco_brotli_compression"
+  kind    = "zone"
+  phase   = "http_response_compression"
+
+  rules {
+    description = "Prefer Brotli compression"
+    expression  = true
+    action      = "compress_response"
+
+    action_parameters {
+      algorithms {
+        name = "brotli"
+      }
+    }
+  }
+}
