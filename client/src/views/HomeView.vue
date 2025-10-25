@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
-import SimpleIcon from "@/components/SimpleIcon.vue";
 </script>
 
 <template>
@@ -20,6 +19,15 @@ import SimpleIcon from "@/components/SimpleIcon.vue";
         for small cons.
       </p>
     </div>
+    <Button
+      as="a"
+      label="Open Demo"
+      icon="pi pi-external-link"
+      icon-pos="right"
+      raised
+      target="_blank"
+      href="https://fanjam.live/app/804008/"
+    />
     <Card>
       <template #content>
         <div class="text-xl text-center">
@@ -104,6 +112,12 @@ import SimpleIcon from "@/components/SimpleIcon.vue";
             <li>Works completely offline.</li>
           </ul>
         </template>
+        <!--
+          Because we're only showing the attendee demo on the homepage right
+          now, we're moving it up to the top to make it more obvious. Once both
+          demos are online, we can put this back here.
+        -->
+        <!--
         <template #footer>
           <div class="flex flex-wrap gap-6 items-center">
             <Button
@@ -121,6 +135,7 @@ import SimpleIcon from "@/components/SimpleIcon.vue";
             </span>
           </div>
         </template>
+        -->
       </Card>
     </div>
   </main>
