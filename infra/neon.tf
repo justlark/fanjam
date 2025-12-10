@@ -1,5 +1,6 @@
 locals {
   neon_default_branch_name = "main"
+  umami_neon_region        = "aws-us-east-1"
 }
 
 # TODO: Once this issue in the Neon Terraform provider is addressed, we can
@@ -54,4 +55,22 @@ resource "neon_database" "sparklefish_shadow" {
   branch_id  = neon_project.env[each.key].default_branch_id
   name       = "sparklefish-shadow"
   owner_name = neon_project.env[each.key].database_user
+}
+
+resource "neon_project" "umami" {
+  name      = "umami"
+  org_id    = var.neon_org_id
+  region_id = local.umami_neon_region
+
+  branch {
+    name          = local.neon_default_branch_name
+    database_name = "umami"
+    role_name     = "umami"
+  }
+
+  default_endpoint_settings {
+    autoscaling_limit_min_cu = 0.25
+    autoscaling_limit_max_cu = 0.5
+    suspend_timeout_seconds  = 300
+  }
 }
