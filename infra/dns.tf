@@ -8,6 +8,14 @@ resource "cloudflare_record" "noco_cname" {
   proxied = false
 }
 
+resource "cloudflare_record" "umami_cname" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  type    = "CNAME"
+  name    = "umami.${data.cloudflare_zone.site.name}"
+  content = "sparklefish-umami-605418.fly.dev"
+  proxied = false
+}
+
 resource "cloudflare_record" "apex_txt_sl_verification" {
   zone_id = data.cloudflare_zone.site.zone_id
   type    = "TXT"
