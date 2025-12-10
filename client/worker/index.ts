@@ -13,7 +13,7 @@ const headerPatterns = {
     // We need to include all of these origins in the `connect-src` so the
     // service worker can cache them and the app can work offline.
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self' https://umami.fanjam.live; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-ancestors 'none';",
+      "default-src 'self'; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-ancestors 'none';",
     "Referrer-Policy": "strict-origin",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   },
@@ -169,7 +169,7 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       })
       // We use Umami for privacy-preserving analytics. Here we're configuring it
       // to tag requests by environment name.
-      .on("head > script[src='https://umami.fanjam.live/script.js']", {
+      .on("head > script[src='/stats.js']", {
         element(element: Element) {
           if (appInfo.env_name) {
             element.setAttribute("data-tag", `env/${appInfo.env_name}`);
@@ -183,6 +183,15 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
 export default {
   async fetch(request: Request, env: Env) {
     const requestUrl = new URL(request.url);
+
+    // uBlock Origin seems to block Umami's tracking script. To work around
+    // that, we proxy it through this worker. I'm generally not a fan of trying
+    // to circumvent privacy tools, but under the circumstances I think it's
+    // justified. We're deliberately using a self-hosted analytics solution
+    // because I care about my users' privacy.
+    if (requestUrl.pathname === "/stats.js") {
+      return await fetch("https://umami.fanjam.live/script.js");
+    }
 
     // If this is the URL of a web manifest, generate it instead of forwarding
     // the request to the CDN.
