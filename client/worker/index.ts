@@ -23,6 +23,7 @@ const headerPatterns = {
 };
 
 interface AppInfo {
+  env_name?: string;
   name?: string;
   description?: string;
 }
@@ -122,50 +123,61 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
   const envId = matches[1];
   const appInfo = await getAppInfo(env.API_DOMAIN, envId);
 
-  return new HTMLRewriter()
-    .on("head > title", {
-      element(element: Element) {
-        if (appInfo.name) {
-          element.setInnerContent(appInfo.name);
-        }
-      },
-    })
-    .on("head > meta[name='description']", {
-      element(element: Element) {
-        if (appInfo.description) {
-          element.setAttribute("content", appInfo.description);
-        }
-      },
-    })
-    .on("head > meta[property='og:title']", {
-      element(element: Element) {
-        if (appInfo.name) {
-          element.setAttribute("content", appInfo.name);
-        }
-      },
-    })
-    .on("head > meta[property='og:description']", {
-      element(element: Element) {
-        if (appInfo.description) {
-          element.setAttribute("content", appInfo.description);
-        }
-      },
-    })
-    .on("head > meta[property='twitter:title']", {
-      element(element: Element) {
-        if (appInfo.name) {
-          element.setAttribute("content", appInfo.name);
-        }
-      },
-    })
-    .on("head > meta[property='twitter:description']", {
-      element(element: Element) {
-        if (appInfo.description) {
-          element.setAttribute("content", appInfo.description);
-        }
-      },
-    })
-    .transform(response);
+  return (
+    new HTMLRewriter()
+      .on("head > title", {
+        element(element: Element) {
+          if (appInfo.name) {
+            element.setInnerContent(appInfo.name);
+          }
+        },
+      })
+      .on("head > meta[name='description']", {
+        element(element: Element) {
+          if (appInfo.description) {
+            element.setAttribute("content", appInfo.description);
+          }
+        },
+      })
+      .on("head > meta[property='og:title']", {
+        element(element: Element) {
+          if (appInfo.name) {
+            element.setAttribute("content", appInfo.name);
+          }
+        },
+      })
+      .on("head > meta[property='og:description']", {
+        element(element: Element) {
+          if (appInfo.description) {
+            element.setAttribute("content", appInfo.description);
+          }
+        },
+      })
+      .on("head > meta[property='twitter:title']", {
+        element(element: Element) {
+          if (appInfo.name) {
+            element.setAttribute("content", appInfo.name);
+          }
+        },
+      })
+      .on("head > meta[property='twitter:description']", {
+        element(element: Element) {
+          if (appInfo.description) {
+            element.setAttribute("content", appInfo.description);
+          }
+        },
+      })
+      // We use Umami for privacy-preserving analytics. Here we're configuring it
+      // to tag requests by environment name.
+      .on("head > script[src='https://umami.fanjam.live/script.js']", {
+        element(element: Element) {
+          if (appInfo.env_name) {
+            element.setAttribute("data-tag", `env/${appInfo.env_name}`);
+          }
+        },
+      })
+      .transform(response)
+  );
 };
 
 export default {
