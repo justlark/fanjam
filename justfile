@@ -24,7 +24,7 @@ run-client stage="test": _install-client
 [group("test locally")]
 [working-directory: "./server/"]
 run-server stage="test":
-  npx wrangler --env {{ stage }} dev --remote
+  npx wrangler@latest --env {{ stage }} dev --remote
 
 # type check and lint the client
 [working-directory: "./client/"]
@@ -52,19 +52,19 @@ deploy-client stage: _install-client
 [group("deploy changes")]
 [confirm("Deploy the server now?")]
 deploy-server stage:
-  npx wrangler deploy --env {{ stage }}
+  npx wrangler@latest deploy --env {{ stage }}
 
 # tail the server logs
 [working-directory: "./server/"]
 [group("deploy changes")]
 tail-server stage:
-  npx wrangler tail --env {{ stage }}
+  npx wrangler@latest tail --env {{ stage }}
 
 # tail the client worker logs
 [working-directory: "./client/"]
 [group("deploy changes")]
 tail-client stage:
-  npx wrangler tail --env {{ stage }}
+  npx wrangler@latest tail --env {{ stage }}
 
 # generate the configuration for an environment
 [group("manage environments")]
