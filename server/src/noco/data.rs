@@ -5,7 +5,7 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use worker::{Method, console_warn};
 
-use crate::noco::Client;
+use crate::{env::EnvName, noco::Client};
 
 use super::migrations::{TableId, TableIds};
 
@@ -235,6 +235,7 @@ pub struct Announcement {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Summary {
+    pub env_name: EnvName,
     pub name: Option<String>,
     pub description: Option<String>,
 }

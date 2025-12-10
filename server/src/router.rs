@@ -521,6 +521,7 @@ async fn get_summary(
     let summary = store.get_summary().await?;
 
     Ok(Json(GetSummaryResponse {
+        env_name: summary.env_name.to_string(),
         name: summary.name,
         description: summary.description,
     }))

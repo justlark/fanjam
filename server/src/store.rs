@@ -616,6 +616,7 @@ impl Store {
         let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
 
         let summary = noco::Summary {
+            env_name: self.env_name.clone(),
             name: about.name.clone(),
             description: about.description,
         };
