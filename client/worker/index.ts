@@ -114,15 +114,23 @@ const injectWebManifestLink = (requestUrl: URL, response: Response): Response =>
 };
 
 const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Promise<Response> => {
-  // Playwright tests should not report to Umami. Playwright uses the fixed env
-  // ID `000000`, so we can detect that a request is part of a Playwright test
-  // pretty easily.
-  const isPlaywrightTest = requestUrl.pathname.startsWith("/app/000000/");
-
   const matches = appPathRegex.exec(requestUrl.pathname);
 
   if (!matches) {
-    return response;
+    // This isn't an app page.
+    //
+    // Set the Umami tag to "home" for non-app pages so we can track traffic to
+    // the homepage. The reason why we don't set this as the default `data-tag`
+    // in the `index.html` is to prevent Playwright tests and invalid app IDs
+    // from polluting our Umami metrics. Those requests will still be reported
+    // to Umami, but they won't have a tag, so we can filter them out.
+    return new HTMLRewriter()
+      .on("head > script[src='/stats.js']", {
+        element(element: Element) {
+          element.setAttribute("data-tag", "home");
+        },
+      })
+      .transform(response);
   }
 
   const envId = matches[1];
@@ -176,9 +184,7 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       // to tag requests by environment name.
       .on("head > script[src='/stats.js']", {
         element(element: Element) {
-          if (isPlaywrightTest) {
-            element.remove();
-          } else if (appInfo.env_name) {
+          if (appInfo.env_name) {
             element.setAttribute("data-tag", `env/${appInfo.env_name}`);
           }
         },
