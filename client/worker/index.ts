@@ -114,6 +114,11 @@ const injectWebManifestLink = (requestUrl: URL, response: Response): Response =>
 };
 
 const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Promise<Response> => {
+  // Playwright tests should not report to Umami. Playwright uses the fixed env
+  // ID `000000`, so we can detect that a request is part of a Playwright test
+  // pretty easily.
+  const isPlaywrightTest = requestUrl.pathname.startsWith("/app/000000/");
+
   const matches = appPathRegex.exec(requestUrl.pathname);
 
   if (!matches) {
@@ -171,8 +176,12 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       // to tag requests by environment name.
       .on("head > script[src='/stats.js']", {
         element(element: Element) {
-          if (appInfo.env_name) {
+          if (isPlaywrightTest) {
+            element.remove();
+          } else if (appInfo.env_name) {
             element.setAttribute("data-tag", `env/${appInfo.env_name}`);
+          } else {
+            element.setAttribute("data-tag", "home");
           }
         },
       })
