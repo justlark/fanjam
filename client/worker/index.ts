@@ -180,8 +180,6 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
             element.remove();
           } else if (appInfo.env_name) {
             element.setAttribute("data-tag", `env/${appInfo.env_name}`);
-          } else {
-            element.setAttribute("data-tag", "home");
           }
         },
       })
