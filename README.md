@@ -21,6 +21,8 @@ planning software.
 - The object storage provider for NocoDB is [Cloudflare
   R2](https://developers.cloudflare.com/r2/).
 - The SMTP provider for NocoDB is [MailerSend](https://mailersend.com).
+- The privacy-preserving analytics solution is a self-hosted instance of
+  [Umami](https://umami.is/).
 
 Out of the box, NocoDB hosts static assets from within the container via a Node
 server. When deploying a NocoDB instance for FanJam, we instead host those
