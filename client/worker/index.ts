@@ -13,7 +13,7 @@ const headerPatterns = {
     // We need to include all of these origins in the `connect-src` so the
     // service worker can cache them and the app can work offline.
     "Content-Security-Policy":
-      "default-src 'self'; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; manifest-src 'self' data:; frame-ancestors 'none';",
+      "default-src 'self'; script-src 'self' https://umami.fanjam.live; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-ancestors 'none';",
     "Referrer-Policy": "strict-origin",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   },
