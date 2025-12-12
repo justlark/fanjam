@@ -8,6 +8,7 @@ import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
+import ScrollTop from "primevue/scrolltop";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 
@@ -100,6 +101,7 @@ const headerHeadingId = useId();
         </div>
         <main class="grow overflow-y-auto min-h-0">
           <slot />
+          <ScrollTop target="parent" />
         </main>
       </div>
     </div>
