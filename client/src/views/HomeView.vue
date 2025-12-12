@@ -4,7 +4,7 @@ import Button from "primevue/button";
 </script>
 
 <template>
-  <main class="flex flex-col justify-center items-center gap-8 m-6">
+  <main class="flex flex-col justify-center items-center gap-8 p-6 min-h-screen">
     <h1 class="text-8xl text-center mt-8 lg:mt-14 mb-8 font-black">
       <span class="text-orange-400 dark:text-orange-300">Fan</span
       ><span class="text-sky-400 dark:text-sky-300">Jam</span>
@@ -137,6 +137,18 @@ import Button from "primevue/button";
         </template>
         -->
       </Card>
+    </div>
+    <div class="mt-auto flex flex-col items-center gap-1 text-muted-color">
+      <small>
+        <a
+          class="text-primary decoration-2 underline underline-offset-2 hover:decoration-3"
+          href="https://github.com/justlark/fanjam"
+          target="_blank"
+        >
+          GitHub
+        </a>
+      </small>
+      <small>© 2025 Lark Aster</small>
     </div>
   </main>
 </template>
