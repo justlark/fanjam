@@ -44,7 +44,7 @@ const conName = computed(() => info.value?.name || "FanJam");
       </span>
       <p class="max-w-200 text-justify" v-if="info?.description">{{ info.description }}</p>
     </div>
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-2 pb-6">
       <LinksList
         class="max-w-140 w-full mx-auto"
         v-if="info || pages"

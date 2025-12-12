@@ -147,7 +147,7 @@ const sectionHeadingId = useId();
         }"
       />
       <Divider />
-      <article id="document" :aria-labelledby="sectionHeadingId" class="my-4">
+      <article id="document" :aria-labelledby="sectionHeadingId" class="pb-6">
         <p v-if="event.summary">{{ event.summary }}</p>
         <div v-if="descriptionHtml" v-html="descriptionHtml" />
       </article>

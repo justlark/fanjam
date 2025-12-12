@@ -27,7 +27,7 @@ const filteredAnnouncements = computed(() => {
     <div class="flex flex-col items-center gap-4">
       <h1 class="text-3xl">Announcements</h1>
     </div>
-    <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4">
+    <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4 pb-6">
       <RouterLink
         v-for="announcement of filteredAnnouncements"
         :key="announcement.id"
