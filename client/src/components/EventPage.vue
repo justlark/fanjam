@@ -46,17 +46,13 @@ onMounted(() => {
       <div
         class="hidden lg:flex justify-between basis-1/2 grow-0 overflow-y-auto overflow-x-hidden min-h-0"
       >
-        <div>
-          <ScheduleTimeline
-            v-if="from === 'schedule'"
-            class="p-6 grow"
-            v-model:day="currentDayIndex"
-          />
+        <div class="grow">
+          <ScheduleTimeline v-if="from === 'schedule'" class="p-6" v-model:day="currentDayIndex" />
         </div>
         <div>
           <EventProgram
             v-if="from === 'program'"
-            class="p-6 grow max-w-240"
+            class="p-6 max-w-240"
             :focused-event-id="eventId"
           />
         </div>
