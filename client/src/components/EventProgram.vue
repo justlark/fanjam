@@ -97,7 +97,7 @@ watchEffect(() => {
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div class="flex flex-col gap-8 pb-6">
+    <div class="flex flex-col gap-8">
       <EventProgramDay
         v-for="(day, index) in days"
         :key="index"

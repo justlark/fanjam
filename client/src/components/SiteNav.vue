@@ -67,7 +67,7 @@ const headerHeadingId = useId();
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
     </div>
-    <div v-else class="flex flex-col grow overflow-hidden">
+    <div v-else class="flex flex-col overflow-hidden grow">
       <header
         :aria-labelledby="headerHeadingId"
         class="shrink-0 sticky top-0 z-2 bg-surface-100 dark:bg-surface-900 flex flex-col"
@@ -90,8 +90,8 @@ const headerHeadingId = useId();
         </Drawer>
         <Divider pt:root="!my-0" />
       </header>
-      <div class="flex grow overflow-hidden min-h-0">
-        <div class="hidden lg:flex grow-0 shrink-0 items-stretch overflow-y-auto">
+      <div class="flex grow min-h-0">
+        <div class="hidden lg:flex grow-0 shrink-0 items-stretch">
           <aside class="p-4 grow min-w-50">
             <MainMenu />
           </aside>
@@ -99,7 +99,7 @@ const headerHeadingId = useId();
         <div class="hidden lg:block">
           <Divider class="!ms-0" layout="vertical" />
         </div>
-        <main class="grow overflow-y-auto min-h-0">
+        <main class="overflow-y-auto grow min-h-0">
           <slot />
           <ScrollTop target="parent" />
         </main>
