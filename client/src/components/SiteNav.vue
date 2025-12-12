@@ -8,6 +8,7 @@ import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
+import SiteAttribution from "./SiteAttribution.vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 
@@ -85,14 +86,22 @@ const headerHeadingId = useId();
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
         <Drawer v-model:visible="visible" header="Menu" class="!w-60">
-          <MainMenu />
+          <div class="h-full flex flex-col justify-between">
+            <MainMenu />
+            <SiteAttribution />
+          </div>
         </Drawer>
         <Divider pt:root="!my-0" />
       </header>
       <div class="flex grow">
-        <div class="hidden lg:flex sticky top-16 h-full grow-0 shrink-0 items-stretch">
-          <aside class="p-4 grow min-w-50">
-            <MainMenu />
+        <div class="hidden lg:flex sticky top-0 max-h-screen grow-0 shrink-0 items-stretch">
+          <aside class="px-4 grow min-w-50 flex flex-col justify-between">
+            <div class="sticky top-16 pt-4">
+              <MainMenu />
+            </div>
+            <div class="sticky bottom-0 pb-4">
+              <SiteAttribution />
+            </div>
           </aside>
         </div>
         <div class="hidden lg:block">
