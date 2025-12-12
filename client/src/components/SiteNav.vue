@@ -57,7 +57,7 @@ const headerHeadingId = useId();
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen">
+  <div class="flex flex-col h-screen">
     <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow">
       <SimpleIcon
         icon="exclamation-circle"
@@ -66,10 +66,10 @@ const headerHeadingId = useId();
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
     </div>
-    <div v-else class="flex flex-col grow">
+    <div v-else class="flex flex-col grow overflow-hidden">
       <header
         :aria-labelledby="headerHeadingId"
-        class="sticky top-0 z-2 bg-surface-100 dark:bg-surface-900 flex flex-col"
+        class="shrink-0 sticky top-0 z-2 bg-surface-100 dark:bg-surface-900 flex flex-col"
       >
         <div class="h-16 flex items-center justify-between px-2 lg:px-4 gap-2">
           <div class="flex items-center gap-2">
@@ -89,8 +89,8 @@ const headerHeadingId = useId();
         </Drawer>
         <Divider pt:root="!my-0" />
       </header>
-      <div class="flex grow">
-        <div class="hidden lg:flex sticky top-16 h-full grow-0 shrink-0 items-stretch">
+      <div class="flex grow overflow-hidden min-h-0">
+        <div class="hidden lg:flex grow-0 shrink-0 items-stretch overflow-y-auto">
           <aside class="p-4 grow min-w-50">
             <MainMenu />
           </aside>
@@ -98,7 +98,7 @@ const headerHeadingId = useId();
         <div class="hidden lg:block">
           <Divider class="!ms-0" layout="vertical" />
         </div>
-        <main class="grow">
+        <main class="grow overflow-y-auto min-h-0">
           <slot />
         </main>
       </div>

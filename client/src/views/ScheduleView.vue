@@ -6,7 +6,7 @@ import ScrollTop from "primevue/scrolltop";
 
 <template>
   <AppRoot>
-    <div class="flex justify-center h-full">
+    <div class="flex justify-center">
       <ScheduleTimeline class="p-6 grow max-w-240" />
       <ScrollTop />
     </div>

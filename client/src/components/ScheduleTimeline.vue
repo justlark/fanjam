@@ -256,7 +256,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 h-full">
+  <div class="flex flex-col gap-4">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker
       v-if="currentDayIndex !== undefined && days.length > 0"

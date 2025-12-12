@@ -41,22 +41,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full">
-    <div v-if="thisEvent" class="flex w-full">
-      <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
-        <ScheduleTimeline
-          v-if="from === 'schedule'"
-          class="p-6 grow"
-          v-model:day="currentDayIndex"
-        />
-        <EventProgram
-          v-if="from === 'program'"
-          class="p-6 grow max-w-240"
-          :focused-event-id="eventId"
-        />
-        <Divider layout="vertical" />
+  <div class="flex h-full overflow-hidden">
+    <div v-if="thisEvent" class="flex w-full h-full min-h-0">
+      <div
+        class="hidden lg:flex justify-between basis-1/2 grow-0 overflow-y-auto overflow-x-hidden min-h-0"
+      >
+        <div>
+          <ScheduleTimeline
+            v-if="from === 'schedule'"
+            class="p-6 grow"
+            v-model:day="currentDayIndex"
+          />
+        </div>
+        <div>
+          <EventProgram
+            v-if="from === 'program'"
+            class="p-6 grow max-w-240"
+            :focused-event-id="eventId"
+          />
+        </div>
       </div>
-      <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
+      <Divider class="!hidden lg:!block" layout="vertical" />
+      <div class="flex basis-1/2 grow lg:grow-0 shrink-0 overflow-y-auto overflow-x-hidden min-h-0">
         <EventDetails
           class="grow"
           :event="thisEvent"
