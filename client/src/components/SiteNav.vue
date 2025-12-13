@@ -85,7 +85,7 @@ const headerHeadingId = useId();
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
-        <Drawer v-model:visible="visible" header="Menu" :block-scroll="true" class="!w-60">
+        <Drawer v-model:visible="visible" header="Menu" :block-scroll="true" class="!w-65">
           <div class="h-full flex flex-col justify-between">
             <MainMenu />
             <SiteAttribution />

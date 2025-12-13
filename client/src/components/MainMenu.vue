@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import MainMenuItem from "./MainMenuItem.vue";
+import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 
 const fromRoute = ref<string>("schedule");
+const unreadAnnouncements = useUnreadAnnouncements();
 
 onMounted(() => {
   if (history.state.from !== undefined) {
@@ -34,6 +36,7 @@ onMounted(() => {
       label="Announcements"
       to="announcements"
       :is-active="(route) => route.name === 'announcement' || route.name === 'announcements'"
+      :badge="unreadAnnouncements === 0 ? undefined : unreadAnnouncements.toString()"
     />
     <MainMenuItem
       icon="bi bi-info-circle"

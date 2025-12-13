@@ -10,6 +10,7 @@ const props = defineProps<{
   label: string;
   icon: string;
   isActive?: (route: RouteLocationNormalizedLoadedGeneric) => boolean;
+  badge?: string;
 }>();
 
 const route = useRoute();
@@ -31,6 +32,8 @@ const isRouteActive = computed(() => {
     :icon="props.icon"
     :label="props.label"
     :variant="isRouteActive ? undefined : 'outlined'"
+    :badge="props.badge"
+    badge-severity="danger"
     size="large"
   />
 </template>

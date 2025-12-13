@@ -78,7 +78,7 @@ const variant = computed(() => {
       />
       <span
         v-if="props.badge && !props.active"
-        class="absolute -top-2 right-3 border-4 border-red-400 dark:border-red-300 current rounded-full outline-3 outline-surface-50 dark:outline-surface-900"
+        class="absolute -top-2 right-3 border-4 border-red-500 dark:border-red-400 current rounded-full outline-3 outline-surface-50 dark:outline-surface-900"
       >
       </span>
     </span>

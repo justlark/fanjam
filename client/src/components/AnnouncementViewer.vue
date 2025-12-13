@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, watchEffect, computed } from "vue";
+import { useId, watchEffect, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import IconButton from "./IconButton.vue";
@@ -7,6 +7,7 @@ import ProgressSpinner from "primevue/progressspinner";
 import LinksList from "./LinksList.vue";
 import EventDetail from "./EventDetail.vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useReadAnnouncements from "@/composables/useReadAnnouncements";
 import { localizeDatetime, timeIsNearlyEqual } from "@/utils/time";
 import { renderMarkdown } from "@/utils/markdown";
 
@@ -40,6 +41,12 @@ watchEffect(async () => {
   if (announcementsStatus.value === "success" && announcements.length > 0 && !announcement.value) {
     await back();
   }
+});
+
+const readAnnouncementsSet = useReadAnnouncements();
+
+onMounted(() => {
+  readAnnouncementsSet.value.add(announcementId.value);
 });
 
 const announcementHeadingId = useId();
