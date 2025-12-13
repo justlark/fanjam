@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import SimpleIcon from "./SimpleIcon.vue";
+import OverlayBadge from "primevue/overlaybadge";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import useRemoteData from "@/composables/useRemoteData";
 import { localizeDatetime } from "@/utils/time";
 
@@ -10,6 +12,8 @@ const datetimeFormats = useDatetimeFormats();
 const {
   data: { announcements },
 } = useRemoteData();
+
+const unreadAnnouncements = useUnreadAnnouncements();
 
 const filteredAnnouncements = computed(() => {
   const withTitle = announcements.filter((announcement) => announcement.title.trim() !== "");
@@ -34,19 +38,25 @@ const filteredAnnouncements = computed(() => {
         :to="{ name: 'announcement', params: { announcementId: announcement.id } }"
         data-testid="announcement-link"
       >
-        <div
-          class="flex items-center gap-6 text-left border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 mx-auto max-w-160 hover:*:decoration-2"
+        <component
+          :is="unreadAnnouncements.has(announcement.id) ? OverlayBadge : 'div'"
+          size="small"
+          severity="danger"
         >
-          <SimpleIcon icon="megaphone" class="text-2xl" />
-          <div class="flex flex-col items-start gap-1">
-            <h2 class="text-primary underline underline-offset-2 text-lg">
-              {{ announcement.title }}
-            </h2>
-            <span v-if="datetimeFormats" class="text-muted-color">{{
-              localizeDatetime(datetimeFormats, announcement.updatedAt)
-            }}</span>
+          <div
+            class="flex items-center gap-6 text-left border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 mx-auto max-w-160 hover:*:decoration-2"
+          >
+            <SimpleIcon icon="megaphone" class="text-2xl" />
+            <div class="flex flex-col items-start gap-1">
+              <h2 class="text-primary underline underline-offset-2 text-lg">
+                {{ announcement.title }}
+              </h2>
+              <span v-if="datetimeFormats" class="text-muted-color">{{
+                localizeDatetime(datetimeFormats, announcement.updatedAt)
+              }}</span>
+            </div>
           </div>
-        </div>
+        </component>
       </RouterLink>
     </div>
     <div v-else class="text-center text-lg italic text-muted-color">No announcements yet</div>
