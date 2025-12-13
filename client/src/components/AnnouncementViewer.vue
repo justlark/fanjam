@@ -14,6 +14,7 @@ import { renderMarkdown } from "@/utils/markdown";
 const route = useRoute();
 const router = useRouter();
 const datetimeFormats = useDatetimeFormats();
+const readAnnouncementsSet = useReadAnnouncements();
 
 const {
   data: { announcements },
@@ -43,10 +44,17 @@ watchEffect(async () => {
   }
 });
 
-const readAnnouncementsSet = useReadAnnouncements();
-
 onMounted(() => {
   readAnnouncementsSet.value.add(announcementId.value);
+});
+
+const markUnread = async () => {
+  readAnnouncementsSet.value.delete(announcementId.value);
+  await back();
+};
+
+const isUnread = computed(() => {
+  return !readAnnouncementsSet.value.has(announcementId.value);
 });
 
 const announcementHeadingId = useId();
@@ -113,6 +121,15 @@ const announcementHeadingId = useId();
           data-testid="announcement-attachments-list"
         />
       </div>
+      <IconButton
+        class="flex justify-center mt-4"
+        v-if="!isUnread"
+        icon="envelope-open"
+        label="Mark Unread"
+        size="sm"
+        :show-label="true"
+        @click="markUnread()"
+      />
     </article>
     <div v-else class="flex items-center h-full">
       <ProgressSpinner />
