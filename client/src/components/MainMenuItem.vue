@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, type RouteLocationNormalizedLoadedGeneric } from "vue-router";
-
+import OverlayBadge from "primevue/overlaybadge";
 import Button from "primevue/button";
 import { RouterLink } from "vue-router";
 
@@ -25,15 +25,19 @@ const isRouteActive = computed(() => {
 </script>
 
 <template>
-  <Button
-    pt:root="!justify-start"
-    :as="RouterLink"
-    :to="{ name: props.to }"
-    :icon="props.icon"
-    :label="props.label"
-    :variant="isRouteActive ? undefined : 'outlined'"
-    :badge="props.badge"
-    badge-severity="danger"
-    size="large"
-  />
+  <component
+    :is="badge === undefined ? 'div' : OverlayBadge"
+    :value="props.badge"
+    severity="danger"
+  >
+    <Button
+      pt:root="!justify-start w-full"
+      :as="RouterLink"
+      :to="{ name: props.to }"
+      :icon="props.icon"
+      :label="props.label"
+      :variant="isRouteActive ? undefined : 'outlined'"
+      size="large"
+    />
+  </component>
 </template>

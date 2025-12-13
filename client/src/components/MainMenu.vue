@@ -36,7 +36,7 @@ onMounted(() => {
       label="Announcements"
       to="announcements"
       :is-active="(route) => route.name === 'announcement' || route.name === 'announcements'"
-      :badge="unreadAnnouncements === 0 ? undefined : unreadAnnouncements.toString()"
+      :badge="unreadAnnouncements.size === 0 ? undefined : unreadAnnouncements.size.toString()"
     />
     <MainMenuItem
       icon="bi bi-info-circle"
