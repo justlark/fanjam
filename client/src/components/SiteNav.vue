@@ -2,7 +2,7 @@
 import { ref, computed, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Divider from "primevue/divider";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
@@ -10,11 +10,20 @@ import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import Toast from "primevue/toast";
+import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
 const visible = ref(false);
 
 const toast = useToast();
+const route = useRoute();
+const unreadAnnouncements = useUnreadAnnouncements();
+
+const hasUnreadAnnouncements = computed(() => unreadAnnouncements.value.size > 0);
+const showNotificationBadge = computed(
+  () =>
+    route.name !== "announcement" && route.name !== "announcements" && hasUnreadAnnouncements.value,
+);
 
 const toggleMenuDrawer = () => {
   visible.value = !visible.value;
@@ -75,7 +84,12 @@ const headerHeadingId = useId();
         <div class="h-16 flex items-center justify-between px-2 lg:px-4 gap-2">
           <div class="flex items-center gap-2">
             <span class="lg:hidden">
-              <IconButton icon="list" label="Menu" @click="toggleMenuDrawer" />
+              <IconButton
+                icon="list"
+                label="Menu"
+                @click="toggleMenuDrawer"
+                :badge="showNotificationBadge"
+              />
             </span>
             <RouterLink :to="{ name: 'info' }">
               <h1 :id="headerHeadingId" class="text-xl lg:text-2xl" data-testid="site-nav-heading">
