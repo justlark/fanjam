@@ -156,6 +156,11 @@ get-schema-version env:
 clear-cache env:
   ./tools/clear-cache.nu {{ env }}
 
+# upload an environment-specific asset (from stdin)
+[group("manage environments")]
+upload-asset env name:
+  ./tools/upload-asset.nu {{ env }} {{ name }}
+
 # show the documentation for the environment config
 [group("configure environments")]
 describe-config stage:
