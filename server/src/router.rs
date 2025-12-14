@@ -555,7 +555,13 @@ async fn get_asset(
     State(state): State<Arc<AppState>>,
     Path((env_id, name)): Path<(EnvId, String)>,
 ) -> Result<http::Response<worker::Body>, ErrorResponse> {
-    let asset_key = format!("env/{env_id}/{name}");
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let asset_key = format!("env/{env_name}/{name}");
+
     let response_body = state
         .bucket
         .get(&asset_key)
