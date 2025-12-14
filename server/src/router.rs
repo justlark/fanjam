@@ -546,6 +546,12 @@ async fn get_config(
 
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
+        use_custom_icon: config.use_custom_icon.unwrap_or(false),
+        icon_name: config.icon_name,
+        icon_padded_name: config.icon_padded_name,
+        icon_maskable_name: config.icon_maskable_name,
+        icon_monochrome_name: config.icon_monochrome_name,
+        icon_monochrome_maskable_name: config.icon_monochrome_maskable_name,
     }))
 }
 
