@@ -63,6 +63,11 @@ pub struct Config {
     pub config_db_name: Option<String>,
     pub config_db_user: Option<String>,
     pub config_db_password: Option<String>,
+    pub icon_name: Option<String>,
+    pub icon_padded_name: Option<String>,
+    pub icon_maskable_name: Option<String>,
+    pub icon_monochrome_name: Option<String>,
+    pub icon_monochrome_maskable_name: Option<String>,
 }
 
 // Documentation for each config key in the environment-specific configuration. Keep this up to
