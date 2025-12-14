@@ -10,13 +10,18 @@
   "use_custom_icon": "Whether to use a custom app icon instead of the default icon.",
   "icon_name": "The asset name of the app icon.",
   "icon_type": "The IANA media type of the app icon.",
+  "icon_sizes": "The dimensions of the app icon.",
   "icon_padded_name": "The asset name of the app icon (padded).",
   "icon_padded_type": "The IANA media type of the app icon (padded).",
+  "icon_padded_sizes": "The dimensions of the app icon (padded).",
   "icon_maskable_name": "The asset name of the app icon (maskable).",
   "icon_maskable_type": "The IANA media type of the app icon (maskable).",
+  "icon_maskable_sizes": "The dimensions of the app icon (maskable).",
   "icon_monochrome_name": "The asset name of the app icon (monochrome).",
   "icon_monochrome_type": "The IANA media type of the app icon (monochrome).",
+  "icon_monochrome_sizes": "The dimensions of the app icon (monochrome).",
   "icon_monochrome_maskable_name": "The asset name of the app icon (monochrome, maskable).",
   "icon_monochrome_maskable_type": "The IANA media type of the app icon (monochrome, maskable).",
+  "icon_monochrome_maskable_sizes": "The dimensions of the app icon (monochrome, maskable).",
   "icon_alt": "Alt text for the app icon."
 }
