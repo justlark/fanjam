@@ -236,6 +236,7 @@ pub struct Announcement {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Summary {
     pub env_name: EnvName,
+    pub short_app_name: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
 }

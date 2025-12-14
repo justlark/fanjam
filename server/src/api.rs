@@ -146,6 +146,7 @@ pub struct GetPagesResponse {
 #[derive(Debug, Serialize)]
 pub struct GetSummaryResponse {
     pub env_name: String,
+    pub short_app_name: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
 }
