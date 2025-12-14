@@ -30,6 +30,9 @@ pub enum Error {
     #[error("The environment is missing required configuration.")]
     MissingEnvConfig,
 
+    #[error("The requested asset was not found.")]
+    AssetNotFound,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -45,6 +48,7 @@ impl Error {
             Error::NoMigrations => StatusCode::NOT_FOUND,
             Error::NocoUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Error::MissingEnvConfig => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::AssetNotFound => StatusCode::NOT_FOUND,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
