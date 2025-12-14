@@ -9,10 +9,6 @@ command = "cargo install -q worker-build && worker-build --release"
 [observability]
 enabled = true
 
-[[r2_buckets]]
-binding = "ASSETS_BUCKET"
-bucket_name = "sparklefish-assets"
-
 [env.test]
 
 [env.test.vars]
@@ -29,6 +25,10 @@ custom_domain = true
 binding = "KV"
 id = "0afa0089d1f14e0c907f68b5dba8db90"
 preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
+[[env.test.r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "sparklefish-assets-test"
 
 [env.prod]
 
@@ -54,3 +54,7 @@ custom_domain = true
 binding = "KV"
 id = "c36821103a5045fc9de6baad28623928"
 preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
+[[env.prod.r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "sparklefish-assets-prod"
