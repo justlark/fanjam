@@ -565,11 +565,14 @@ async fn get_asset(
         .ok_or(Error::AssetNotFound)?
         .body()
         .ok_or(Error::AssetNotFound)?
+        // Using `ObjectBody::response_body()` here is important because it offloads streaming the
+        // data to the Workers runtime, which saves us CPU time (and therefore money).
         .response_body()
         .map_err(|err| Error::Internal(err.into()))?;
 
     let body = match response_body {
         worker::ResponseBody::Empty => worker::Body::empty(),
+        // Is there a more elegant way to make this conversion?
         worker::ResponseBody::Body(bytes) => {
             worker::Body::from_stream(futures::stream::once(async {
                 Result::<_, Error>::Ok(bytes)
