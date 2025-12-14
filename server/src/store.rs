@@ -617,6 +617,10 @@ impl Store {
 
         let summary = noco::Summary {
             env_name: self.env_name.clone(),
+            short_app_name: kv::get_env_config(&self.kv, &self.env_name)
+                .await
+                .map_err(Error::Internal)?
+                .short_app_name,
             name: about.name.clone(),
             description: about.description,
         };

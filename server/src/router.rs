@@ -524,6 +524,7 @@ async fn get_summary(
 
     Ok(Json(GetSummaryResponse {
         env_name: summary.env_name.to_string(),
+        short_app_name: summary.short_app_name,
         name: summary.name,
         description: summary.description,
     }))
