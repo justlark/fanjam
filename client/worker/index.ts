@@ -48,14 +48,19 @@ interface AppConfig {
   use_custom_icon: boolean;
   icon_name?: string;
   icon_type?: string;
+  icon_sizes?: string;
   icon_padded_name?: string;
   icon_padded_type?: string;
+  icon_padded_sizes?: string;
   icon_maskable_name?: string;
   icon_maskable_type?: string;
+  icon_maskable_sizes?: string;
   icon_monochrome_name?: string;
   icon_monochrome_type?: string;
+  icon_monochrome_sizes?: string;
   icon_monochrome_maskable_name?: string;
   icon_monochrome_maskable_type?: string;
+  icon_monochrome_maskable_sizes?: string;
   icon_alt?: string;
 }
 
@@ -112,6 +117,11 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
           appConfig.use_custom_icon && appConfig.icon_type !== undefined
             ? appConfig.icon_type
             : "image/png",
+        sizes:
+          appConfig.use_custom_icon && appConfig.icon_sizes !== undefined
+            ? appConfig.icon_sizes
+            : undefined,
+        purpose: "any",
       },
       {
         src:
@@ -122,6 +132,10 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
           appConfig.use_custom_icon && appConfig.icon_maskable_type !== undefined
             ? appConfig.icon_maskable_type
             : "image/png",
+        sizes:
+          appConfig.use_custom_icon && appConfig.icon_maskable_sizes !== undefined
+            ? appConfig.icon_sizes
+            : undefined,
         purpose: "maskable",
       },
       {
@@ -133,6 +147,10 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
           appConfig.use_custom_icon && appConfig.icon_monochrome_type !== undefined
             ? appConfig.icon_monochrome_type
             : "image/png",
+        sizes:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_sizes !== undefined
+            ? appConfig.icon_sizes
+            : undefined,
         purpose: "monochrome",
       },
       {
@@ -144,6 +162,10 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
           appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_type !== undefined
             ? appConfig.icon_monochrome_maskable_type
             : "image/png",
+        sizes:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_sizes !== undefined
+            ? appConfig.icon_sizes
+            : undefined,
         purpose: "monochrome maskable",
       },
     ],
