@@ -9,6 +9,10 @@ command = "cargo install -q worker-build && worker-build --release"
 [observability]
 enabled = true
 
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "sparklefish-assets"
+
 [env.test]
 
 [env.test.vars]
