@@ -64,6 +64,7 @@ pub struct Config {
     pub config_db_user: Option<String>,
     pub config_db_password: Option<String>,
     pub short_app_name: Option<String>,
+    pub use_custom_icon: Option<bool>,
     pub icon_name: Option<String>,
     pub icon_padded_name: Option<String>,
     pub icon_maskable_name: Option<String>,

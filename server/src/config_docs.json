@@ -7,9 +7,10 @@
   "config_db_user": "The Postgres user for the configuration database.",
   "config_db_password": "The Postgres password for the configuration database.",
   "short_app_name": "A short name for the app when installed as a PWA.",
-  "icon_name": "The asset name of the app icon without padding.",
-  "icon_padded_name": "The asset name of the app icon with padding.",
-  "icon_maskable_name": "The asset name of the maskable app icon.",
-  "icon_monochrome_name": "The asset name of the monochrome app icon without padding.",
-  "icon_monochrome_maskable_name": "The asset name of the maskable monochrome app icon."
+  "use_custom_icon": "Whether to use a custom app icon instead of the default icon.",
+  "icon_name": "The asset name of the app icon (transparent, without padding).",
+  "icon_padded_name": "The asset name of the app icon (opaque, with padding).",
+  "icon_maskable_name": "The asset name of the app icon (opaque, maskable).",
+  "icon_monochrome_name": "The asset name of the app icon (opaque, monochrome, without padding).",
+  "icon_monochrome_maskable_name": "The asset name of the app icon (opaque, monochrome, maskable)."
 }
