@@ -547,11 +547,18 @@ async fn get_config(
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
         use_custom_icon: config.use_custom_icon.unwrap_or(false),
+        short_app_name: config.short_app_name,
         icon_name: config.icon_name,
+        icon_type: config.icon_type,
         icon_padded_name: config.icon_padded_name,
+        icon_padded_type: config.icon_padded_type,
         icon_maskable_name: config.icon_maskable_name,
+        icon_maskable_type: config.icon_maskable_type,
         icon_monochrome_name: config.icon_monochrome_name,
+        icon_monochrome_type: config.icon_monochrome_type,
         icon_monochrome_maskable_name: config.icon_monochrome_maskable_name,
+        icon_monochrome_maskable_type: config.icon_monochrome_maskable_type,
+        icon_alt: config.icon_alt,
     }))
 }
 

@@ -43,6 +43,44 @@ const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> =>
   }
 };
 
+interface AppConfig {
+  short_app_name?: string;
+  use_custom_icon: boolean;
+  icon_name?: string;
+  icon_type?: string;
+  icon_padded_name?: string;
+  icon_padded_type?: string;
+  icon_maskable_name?: string;
+  icon_maskable_type?: string;
+  icon_monochrome_name?: string;
+  icon_monochrome_type?: string;
+  icon_monochrome_maskable_name?: string;
+  icon_monochrome_maskable_type?: string;
+  icon_alt?: string;
+}
+
+const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig> => {
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/config`);
+
+  if (!response.ok) {
+    return {
+      use_custom_icon: false,
+    };
+  }
+
+  try {
+    const body = await response.json();
+    return body as AppConfig;
+  } catch {
+    return {
+      use_custom_icon: false,
+    };
+  }
+};
+
+const assetUrl = (apiDomain: string, envId: string, assetName: string): string =>
+  `https://${apiDomain}/apps/${envId}/assets/${assetName}`;
+
 const appPathRegex = new RegExp(`^/app/([^/]+)/`);
 const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest$`);
 
@@ -55,31 +93,57 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
 
   const envId = matches[1];
   const appInfo = await getAppInfo(env.API_DOMAIN, envId);
+  const appConfig = await getAppConfig(env.API_DOMAIN, envId);
 
   const webManifest = {
     name: appInfo.name ?? "FanJam",
+    short_name: appConfig.short_app_name ?? appInfo.name ?? "FanJam",
     description: appInfo.description,
     scope: `${requestUrl.origin}/app/${envId}/`,
     start_url: `${requestUrl.origin}/app/${envId}/`,
     display: "standalone",
     icons: [
       {
-        src: `${requestUrl.origin}/icons/icon.png`,
-        type: "image/png",
+        src:
+          appConfig.use_custom_icon && appConfig.icon_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_name)
+            : `${requestUrl.origin}/icons/icon.png`,
+        type:
+          appConfig.use_custom_icon && appConfig.icon_type !== undefined
+            ? appConfig.icon_type
+            : "image/png",
       },
       {
-        src: `${requestUrl.origin}/icons/icon-maskable.png`,
-        type: "image/png",
+        src:
+          appConfig.use_custom_icon && appConfig.icon_maskable_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_maskable_name)
+            : `${requestUrl.origin}/icons/icon-maskable.png`,
+        type:
+          appConfig.use_custom_icon && appConfig.icon_maskable_type !== undefined
+            ? appConfig.icon_maskable_type
+            : "image/png",
         purpose: "maskable",
       },
       {
-        src: `${requestUrl.origin}/icons/icon-monochrome.png`,
-        type: "image/png",
+        src:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_monochrome_name)
+            : `${requestUrl.origin}/icons/icon-monochrome.png`,
+        type:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_type !== undefined
+            ? appConfig.icon_monochrome_type
+            : "image/png",
         purpose: "monochrome",
       },
       {
-        src: `${requestUrl.origin}/icons/icon-monochrome-maskable.png`,
-        type: "image/png",
+        src:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_monochrome_maskable_name)
+            : `${requestUrl.origin}/icons/icon-monochrome-maskable.png`,
+        type:
+          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_type !== undefined
+            ? appConfig.icon_monochrome_maskable_type
+            : "image/png",
         purpose: "monochrome maskable",
       },
     ],
@@ -135,6 +199,7 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
 
   const envId = matches[1];
   const appInfo = await getAppInfo(env.API_DOMAIN, envId);
+  const appConfig = await getAppConfig(env.API_DOMAIN, envId);
 
   return (
     new HTMLRewriter()
@@ -152,6 +217,14 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
           }
         },
       })
+      .on("head > link[rel='icon']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon && appConfig.icon_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_name);
+            element.setAttribute("href", iconUrl);
+          }
+        },
+      })
       .on("head > meta[property='og:title']", {
         element(element: Element) {
           if (appInfo.name) {
@@ -166,6 +239,36 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
           }
         },
       })
+      .on("head > meta[property='og:image']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon && appConfig.icon_padded_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_padded_name);
+            element.setAttribute("content", iconUrl);
+          }
+        },
+      })
+      .on("head > meta[property='og:image:type']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon) {
+            if (appConfig.icon_padded_type) {
+              element.setAttribute("content", appConfig.icon_padded_type);
+            } else {
+              element.remove();
+            }
+          }
+        },
+      })
+      .on("head > meta[property='og:image:alt']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon) {
+            if (appConfig.icon_alt) {
+              element.setAttribute("content", appConfig.icon_alt);
+            } else {
+              element.remove();
+            }
+          }
+        },
+      })
       .on("head > meta[property='twitter:title']", {
         element(element: Element) {
           if (appInfo.name) {
@@ -177,6 +280,25 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
         element(element: Element) {
           if (appInfo.description) {
             element.setAttribute("content", appInfo.description);
+          }
+        },
+      })
+      .on("head > meta[property='twitter:image']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon && appConfig.icon_padded_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_padded_name);
+            element.setAttribute("content", iconUrl);
+          }
+        },
+      })
+      .on("head > meta[property='twitter:image:alt']", {
+        element(element: Element) {
+          if (appConfig.use_custom_icon) {
+            if (appConfig.icon_alt) {
+              element.setAttribute("content", appConfig.icon_alt);
+            } else {
+              element.remove();
+            }
           }
         },
       })
