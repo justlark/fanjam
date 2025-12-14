@@ -66,10 +66,16 @@ pub struct Config {
     pub short_app_name: Option<String>,
     pub use_custom_icon: Option<bool>,
     pub icon_name: Option<String>,
+    pub icon_type: Option<String>,
     pub icon_padded_name: Option<String>,
+    pub icon_padded_type: Option<String>,
     pub icon_maskable_name: Option<String>,
+    pub icon_maskable_type: Option<String>,
     pub icon_monochrome_name: Option<String>,
+    pub icon_monochrome_type: Option<String>,
     pub icon_monochrome_maskable_name: Option<String>,
+    pub icon_monochrome_maskable_type: Option<String>,
+    pub icon_alt: Option<String>,
 }
 
 // Documentation for each config key in the environment-specific configuration. Keep this up to

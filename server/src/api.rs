@@ -154,10 +154,17 @@ pub struct GetSummaryResponse {
 #[derive(Debug, Serialize)]
 pub struct GetConfigResponse {
     pub timezone: Option<String>,
+    pub short_app_name: Option<String>,
     pub use_custom_icon: bool,
     pub icon_name: Option<String>,
+    pub icon_type: Option<String>,
     pub icon_padded_name: Option<String>,
+    pub icon_padded_type: Option<String>,
     pub icon_maskable_name: Option<String>,
+    pub icon_maskable_type: Option<String>,
     pub icon_monochrome_name: Option<String>,
+    pub icon_monochrome_type: Option<String>,
     pub icon_monochrome_maskable_name: Option<String>,
+    pub icon_monochrome_maskable_type: Option<String>,
+    pub icon_alt: Option<String>,
 }
