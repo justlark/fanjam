@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use router::AppState;
 use tower_service::Service;
-use worker::*;
+use worker::{send::SendWrapper, *};
 
 #[event(fetch)]
 async fn fetch(
@@ -33,6 +33,7 @@ async fn fetch(
 
     let state = AppState {
         kv: env.kv("KV")?,
+        bucket: SendWrapper(env.bucket("ASSETS_BUCKET")?),
         ctx: Arc::new(ctx),
     };
 

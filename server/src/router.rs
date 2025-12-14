@@ -3,12 +3,12 @@ use std::{fmt, sync::Arc};
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::StatusCode,
+    http::{self, StatusCode},
     middleware,
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Context, console_log, kv::KvStore};
+use worker::{Bucket, Context, console_log, kv::KvStore, send::SendWrapper};
 
 use crate::{
     api::{
@@ -46,6 +46,7 @@ use crate::{
 
 pub struct AppState {
     pub kv: KvStore,
+    pub bucket: SendWrapper<Bucket>,
     pub ctx: Arc<Context>,
 }
 
@@ -91,6 +92,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/announcements", get(get_announcements))
         .route("/apps/{env_id}/summary", get(get_summary))
         .route("/apps/{env_id}/config", get(get_config))
+        .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
@@ -544,4 +546,37 @@ async fn get_config(
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
     }))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_asset(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, name)): Path<(EnvId, String)>,
+) -> Result<http::Response<worker::Body>, ErrorResponse> {
+    let asset_key = format!("env/{env_id}/{name}");
+    let response_body = state
+        .bucket
+        .get(&asset_key)
+        .execute()
+        .await
+        .map_err(|err| Error::Internal(err.into()))?
+        .ok_or(Error::AssetNotFound)?
+        .body()
+        .ok_or(Error::AssetNotFound)?
+        .response_body()
+        .map_err(|err| Error::Internal(err.into()))?;
+
+    let body = match response_body {
+        worker::ResponseBody::Empty => worker::Body::empty(),
+        worker::ResponseBody::Body(bytes) => {
+            worker::Body::from_stream(futures::stream::once(async {
+                Result::<_, Error>::Ok(bytes)
+            }))
+            .map_err(|err| Error::Internal(err.into()))?
+        }
+        worker::ResponseBody::Stream(readable_stream) => worker::Body::new(readable_stream),
+    };
+
+    Ok(http::Response::new(body))
 }
