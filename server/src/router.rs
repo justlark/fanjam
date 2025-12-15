@@ -605,15 +605,6 @@ async fn get_asset(
 
     let mut response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
 
-    let cache_ttl = config::r2_asset_cache_ttl();
-
-    response_headers.append(
-        "Cache-Control",
-        format!("s-maxage={}", cache_ttl.as_secs())
-            .parse()
-            .map_err(|err| Error::Internal(anyhow::Error::from(err)))?,
-    );
-
     // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
     // to the Workers runtime, which saves us CPU time (and therefore money).
     let response_body = object
@@ -632,6 +623,26 @@ async fn get_asset(
             Ok(body) => body,
             Err(_) => return,
         };
+
+        let cache_ttl = config::r2_asset_cache_ttl();
+
+        response_headers.insert(
+            "Cache-Control",
+            match format!("s-maxage={}", cache_ttl.as_secs()).parse() {
+                Ok(value) => value,
+                Err(_) => return,
+            },
+        );
+
+        // Tag the cache entry with the environment name so we can invalidate the cache on a
+        // per-environment basis if necessary.
+        response_headers.insert(
+            "Cache-Tag",
+            match format!("env/{}", env_name).parse() {
+                Ok(value) => value,
+                Err(_) => return,
+            },
+        );
 
         let mut response = http::Response::new(body);
         *response.headers_mut() = response_headers;
