@@ -146,7 +146,6 @@ pub struct GetPagesResponse {
 #[derive(Debug, Serialize)]
 pub struct GetSummaryResponse {
     pub env_name: String,
-    pub short_app_name: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
 }
@@ -154,12 +153,13 @@ pub struct GetSummaryResponse {
 #[derive(Debug, Serialize)]
 pub struct GetConfigResponse {
     pub timezone: Option<String>,
-    pub short_app_name: Option<String>,
     pub use_custom_icon: Option<bool>,
     pub favicon_name: Option<String>,
     pub opengraph_icon_name: Option<String>,
     pub opengraph_icon_type: Option<String>,
     pub opengraph_icon_alt: Option<String>,
+    pub pwa_short_app_name: Option<String>,
+    pub pwa_background_color: Option<String>,
     pub pwa_icon_any_name: Option<String>,
     pub pwa_icon_any_type: Option<String>,
     pub pwa_icon_any_sizes: Option<String>,
@@ -172,6 +172,4 @@ pub struct GetConfigResponse {
     pub pwa_icon_monochrome_maskable_name: Option<String>,
     pub pwa_icon_monochrome_maskable_type: Option<String>,
     pub pwa_icon_monochrome_maskable_sizes: Option<String>,
-    pub pwa_icon_alt: Option<String>,
-    pub pwa_background_color: Option<String>,
 }

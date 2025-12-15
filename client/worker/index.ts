@@ -44,24 +44,25 @@ const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> =>
 };
 
 interface AppConfig {
-  short_app_name?: string;
   use_custom_icon: boolean;
-  icon_name?: string;
-  icon_type?: string;
-  icon_sizes?: string;
-  icon_padded_name?: string;
-  icon_padded_type?: string;
-  icon_padded_sizes?: string;
-  icon_maskable_name?: string;
-  icon_maskable_type?: string;
-  icon_maskable_sizes?: string;
-  icon_monochrome_name?: string;
-  icon_monochrome_type?: string;
-  icon_monochrome_sizes?: string;
-  icon_monochrome_maskable_name?: string;
-  icon_monochrome_maskable_type?: string;
-  icon_monochrome_maskable_sizes?: string;
-  icon_alt?: string;
+  favicon_name?: string;
+  opengraph_icon_name?: string;
+  opengraph_icon_type?: string;
+  opengraph_icon_alt?: string;
+  pwa_short_app_name?: string;
+  pwa_background_color?: string;
+  pwa_icon_any_name?: string;
+  pwa_icon_any_type?: string;
+  pwa_icon_any_sizes?: string;
+  pwa_icon_maskable_name?: string;
+  pwa_icon_maskable_type?: string;
+  pwa_icon_maskable_sizes?: string;
+  pwa_icon_monochrome_name?: string;
+  pwa_icon_monochrome_type?: string;
+  pwa_icon_monochrome_sizes?: string;
+  pwa_icon_monochrome_maskable_name?: string;
+  pwa_icon_monochrome_maskable_type?: string;
+  pwa_icon_monochrome_maskable_sizes?: string;
 }
 
 const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig> => {
@@ -102,69 +103,70 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
 
   const webManifest = {
     name: appInfo.name ?? "FanJam",
-    short_name: appConfig.short_app_name ?? appInfo.name ?? "FanJam",
+    short_name: appConfig.pwa_short_app_name ?? appInfo.name ?? "FanJam",
     description: appInfo.description,
     scope: `${requestUrl.origin}/app/${envId}/`,
     start_url: `${requestUrl.origin}/app/${envId}/`,
     display: "standalone",
+    background_color: appConfig.pwa_background_color,
     icons: [
       {
         src:
-          appConfig.use_custom_icon && appConfig.icon_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_name)
+          appConfig.use_custom_icon && appConfig.pwa_icon_any_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_any_name)
             : `${requestUrl.origin}/icons/icon.png`,
         type:
-          appConfig.use_custom_icon && appConfig.icon_type !== undefined
-            ? appConfig.icon_type
+          appConfig.use_custom_icon && appConfig.pwa_icon_any_type !== undefined
+            ? appConfig.pwa_icon_any_type
             : "image/png",
         sizes:
-          appConfig.use_custom_icon && appConfig.icon_sizes !== undefined
-            ? appConfig.icon_sizes
+          appConfig.use_custom_icon && appConfig.pwa_icon_any_sizes !== undefined
+            ? appConfig.pwa_icon_any_sizes
             : undefined,
         purpose: "any",
       },
       {
         src:
-          appConfig.use_custom_icon && appConfig.icon_maskable_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_maskable_name)
+          appConfig.use_custom_icon && appConfig.pwa_icon_maskable_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_maskable_name)
             : `${requestUrl.origin}/icons/icon-maskable.png`,
         type:
-          appConfig.use_custom_icon && appConfig.icon_maskable_type !== undefined
-            ? appConfig.icon_maskable_type
+          appConfig.use_custom_icon && appConfig.pwa_icon_maskable_type !== undefined
+            ? appConfig.pwa_icon_maskable_type
             : "image/png",
         sizes:
-          appConfig.use_custom_icon && appConfig.icon_maskable_sizes !== undefined
-            ? appConfig.icon_sizes
+          appConfig.use_custom_icon && appConfig.pwa_icon_maskable_sizes !== undefined
+            ? appConfig.pwa_icon_maskable_sizes
             : undefined,
         purpose: "maskable",
       },
       {
         src:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_monochrome_name)
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_monochrome_name)
             : `${requestUrl.origin}/icons/icon-monochrome.png`,
         type:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_type !== undefined
-            ? appConfig.icon_monochrome_type
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_type !== undefined
+            ? appConfig.pwa_icon_monochrome_type
             : "image/png",
         sizes:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_sizes !== undefined
-            ? appConfig.icon_sizes
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_sizes !== undefined
+            ? appConfig.pwa_icon_monochrome_sizes
             : undefined,
         purpose: "monochrome",
       },
       {
         src:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.icon_monochrome_maskable_name)
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_name !== undefined
+            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_monochrome_maskable_name)
             : `${requestUrl.origin}/icons/icon-monochrome-maskable.png`,
         type:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_type !== undefined
-            ? appConfig.icon_monochrome_maskable_type
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_type !== undefined
+            ? appConfig.pwa_icon_monochrome_maskable_type
             : "image/png",
         sizes:
-          appConfig.use_custom_icon && appConfig.icon_monochrome_maskable_sizes !== undefined
-            ? appConfig.icon_sizes
+          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_sizes !== undefined
+            ? appConfig.pwa_icon_monochrome_maskable_sizes
             : undefined,
         purpose: "monochrome maskable",
       },
@@ -241,8 +243,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       })
       .on("head > link[rel='icon']", {
         element(element: Element) {
-          if (appConfig.use_custom_icon && appConfig.icon_name) {
-            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_name);
+          if (appConfig.use_custom_icon && appConfig.favicon_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.favicon_name);
             element.setAttribute("href", iconUrl);
           }
         },
@@ -263,8 +265,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       })
       .on("head > meta[property='og:image']", {
         element(element: Element) {
-          if (appConfig.use_custom_icon && appConfig.icon_padded_name) {
-            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_padded_name);
+          if (appConfig.use_custom_icon && appConfig.opengraph_icon_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.opengraph_icon_name);
             element.setAttribute("content", iconUrl);
           }
         },
@@ -272,8 +274,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       .on("head > meta[property='og:image:type']", {
         element(element: Element) {
           if (appConfig.use_custom_icon) {
-            if (appConfig.icon_padded_type) {
-              element.setAttribute("content", appConfig.icon_padded_type);
+            if (appConfig.opengraph_icon_type) {
+              element.setAttribute("content", appConfig.opengraph_icon_type);
             } else {
               element.remove();
             }
@@ -283,8 +285,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       .on("head > meta[property='og:image:alt']", {
         element(element: Element) {
           if (appConfig.use_custom_icon) {
-            if (appConfig.icon_alt) {
-              element.setAttribute("content", appConfig.icon_alt);
+            if (appConfig.opengraph_icon_alt) {
+              element.setAttribute("content", appConfig.opengraph_icon_alt);
             } else {
               element.remove();
             }
@@ -307,8 +309,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       })
       .on("head > meta[property='twitter:image']", {
         element(element: Element) {
-          if (appConfig.use_custom_icon && appConfig.icon_padded_name) {
-            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.icon_padded_name);
+          if (appConfig.use_custom_icon && appConfig.opengraph_icon_name) {
+            const iconUrl = assetUrl(env.API_DOMAIN, envId, appConfig.opengraph_icon_name);
             element.setAttribute("content", iconUrl);
           }
         },
@@ -316,8 +318,8 @@ const injectMetadata = async (requestUrl: URL, env: Env, response: Response): Pr
       .on("head > meta[property='twitter:image:alt']", {
         element(element: Element) {
           if (appConfig.use_custom_icon) {
-            if (appConfig.icon_alt) {
-              element.setAttribute("content", appConfig.icon_alt);
+            if (appConfig.opengraph_icon_alt) {
+              element.setAttribute("content", appConfig.opengraph_icon_alt);
             } else {
               element.remove();
             }
