@@ -3,12 +3,12 @@ use std::{fmt, sync::Arc};
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::{self, StatusCode},
+    http::{self, StatusCode, Uri},
     middleware,
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Bucket, Context, console_log, kv::KvStore, send::SendWrapper};
+use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
 
 use crate::{
     api::{
@@ -20,9 +20,11 @@ use crate::{
     },
     auth::admin_auth_layer,
     cache::{EtagJson, if_none_match_middleware},
+    config,
     cors::cors_layer,
     env::{CONFIG_DOCS, Config, EnvId, EnvName},
     error::Error,
+    http::{body_from_response_body, http_headers_from_object},
     kv, neon,
     noco::{self, ApiToken, MigrationState},
     sql,
@@ -571,40 +573,76 @@ async fn get_config(
 #[worker::send]
 async fn get_asset(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path((env_id, name)): Path<(EnvId, String)>,
 ) -> Result<http::Response<worker::Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    // Check the cache first.
+    if let Some(cached_response) = cache
+        .get(uri.to_string(), false)
+        .await
+        .map_err(|err| Error::Internal(err.into()))?
+    {
+        return Ok(http::Response::try_from(cached_response)
+            .map_err(|err| Error::Internal(anyhow::Error::from(err)))?);
+    }
+
     let env_name = kv::get_id_env(&state.kv, &env_id)
         .await
         .map_err(Error::Internal)?
         .ok_or(Error::NoEnvId)?;
 
-    let asset_key = format!("env/{env_name}/{name}");
+    let bucket_key = format!("env/{env_name}/{name}");
 
-    let response_body = state
+    let object = state
         .bucket
-        .get(&asset_key)
+        .get(&bucket_key)
         .execute()
         .await
         .map_err(|err| Error::Internal(err.into()))?
-        .ok_or(Error::AssetNotFound)?
+        .ok_or(Error::AssetNotFound)?;
+
+    let mut response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
+
+    let cache_ttl = config::r2_asset_cache_ttl();
+
+    response_headers.append(
+        "Cache-Control",
+        format!("s-maxage={}", cache_ttl.as_secs())
+            .parse()
+            .map_err(|err| Error::Internal(anyhow::Error::from(err)))?,
+    );
+
+    // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
+    // to the Workers runtime, which saves us CPU time (and therefore money).
+    let response_body = object
         .body()
         .ok_or(Error::AssetNotFound)?
-        // Using `ObjectBody::response_body()` here is important because it offloads streaming the
-        // data to the Workers runtime, which saves us CPU time (and therefore money).
         .response_body()
         .map_err(|err| Error::Internal(err.into()))?;
 
-    let body = match response_body {
-        worker::ResponseBody::Empty => worker::Body::empty(),
-        // Is there a more elegant way to make this conversion?
-        worker::ResponseBody::Body(bytes) => {
-            worker::Body::from_stream(futures::stream::once(async {
-                Result::<_, Error>::Ok(bytes)
-            }))
-            .map_err(|err| Error::Internal(err.into()))?
-        }
-        worker::ResponseBody::Stream(readable_stream) => worker::Body::new(readable_stream),
-    };
+    let body = body_from_response_body(response_body.clone()).map_err(Error::Internal)?;
+    let mut response = http::Response::new(body);
+    *response.headers_mut() = response_headers.clone();
 
-    Ok(http::Response::new(body))
+    // Cache the asset without without blocking this response.
+    state.ctx.wait_until(async move {
+        let body = match body_from_response_body(response_body) {
+            Ok(body) => body,
+            Err(_) => return,
+        };
+
+        let mut response = http::Response::new(body);
+        *response.headers_mut() = response_headers;
+
+        let response = match worker::Response::try_from(response) {
+            Ok(response) => response,
+            Err(_) => return,
+        };
+
+        cache.put(uri.to_string(), response).await.ok();
+    });
+
+    Ok(response)
 }

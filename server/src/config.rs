@@ -18,6 +18,7 @@ struct Config {
     // upstash_api_token: upstash::ApiToken,
     noco_default_memory_cache_ttl_millis: u32,
     noco_summary_cache_ttl_seconds: u32,
+    r2_asset_cache_ttl_seconds: u32,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -43,6 +44,10 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
                 .parse()?,
             noco_summary_cache_ttl_seconds: env
                 .var("NOCO_SUMMARY_CACHE_TTL_SECONDS")?
+                .to_string()
+                .parse()?,
+            r2_asset_cache_ttl_seconds: env
+                .var("R2_ASSET_CACHE_TTL_SECONDS")?
                 .to_string()
                 .parse()?,
         })
@@ -93,4 +98,8 @@ pub fn noco_default_memory_cache_ttl() -> Duration {
 
 pub fn noco_summary_cache_ttl() -> Duration {
     Duration::from_secs(get_config().noco_summary_cache_ttl_seconds.into())
+}
+
+pub fn r2_asset_cache_ttl() -> Duration {
+    Duration::from_secs(get_config().r2_asset_cache_ttl_seconds.into())
 }

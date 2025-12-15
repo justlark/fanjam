@@ -16,6 +16,7 @@ BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "test.fanjam.live"
 NOCO_DEFAULT_MEMORY_CACHE_TTL_MILLIS = "5000"
 NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
+R2_ASSET_CACHE_TTL_SECONDS = "300"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
@@ -45,6 +46,8 @@ NOCO_DEFAULT_MEMORY_CACHE_TTL_MILLIS = "5000"
 # minor—only really affecting link embeds and browser tab names—we can tolerate
 # a longer TTL.
 NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
+# Assets in R2 (such as custom app icons) are cached at the edge.
+R2_ASSET_CACHE_TTL_SECONDS = "300"
 
 [env.prod.route]
 pattern = "api.fanjam.live"
