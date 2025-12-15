@@ -524,7 +524,6 @@ async fn get_summary(
 
     Ok(Json(GetSummaryResponse {
         env_name: summary.env_name.to_string(),
-        short_app_name: summary.short_app_name,
         name: summary.name,
         description: summary.description,
     }))
@@ -546,12 +545,13 @@ async fn get_config(
 
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
-        short_app_name: config.short_app_name,
         use_custom_icon: config.use_custom_icon,
         favicon_name: config.favicon_name,
         opengraph_icon_name: config.opengraph_icon_name,
         opengraph_icon_type: config.opengraph_icon_type,
         opengraph_icon_alt: config.opengraph_icon_alt,
+        pwa_short_app_name: config.pwa_short_app_name,
+        pwa_background_color: config.pwa_background_color,
         pwa_icon_any_name: config.pwa_icon_any_name,
         pwa_icon_any_type: config.pwa_icon_any_type,
         pwa_icon_any_sizes: config.pwa_icon_any_sizes,
@@ -564,8 +564,6 @@ async fn get_config(
         pwa_icon_monochrome_maskable_name: config.pwa_icon_monochrome_maskable_name,
         pwa_icon_monochrome_maskable_type: config.pwa_icon_monochrome_maskable_type,
         pwa_icon_monochrome_maskable_sizes: config.pwa_icon_monochrome_maskable_sizes,
-        pwa_icon_alt: config.pwa_icon_alt,
-        pwa_background_color: config.pwa_background_color,
     }))
 }
 

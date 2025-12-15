@@ -6,12 +6,13 @@
   "config_db_name": "The Postgres database name for the configuration database.",
   "config_db_user": "The Postgres user for the configuration database.",
   "config_db_password": "The Postgres password for the configuration database.",
-  "short_app_name": "A short name for the app when installed as a PWA.",
   "use_custom_icon": "Whether to use a custom app icon instead of the default icon.",
   "favicon_name": "The asset name of the app favicon.",
   "opengraph_icon_name": "The asset name of the app icon in the OpenGraph metadata.",
   "opengraph_icon_type": "The IANA media type of the app icon in the OpenGraph metadata.",
   "opengraph_icon_alt": "The alt text of the app icon in the OpenGraph metadata.",
+  "pwa_short_app_name": "A short name for the app when installed as a PWA.",
+  "pwa_background_color": "The background color in the PWA manifest.",
   "pwa_icon_any_name": "The asset name of the app icon in the PWA manifest (any).",
   "pwa_icon_any_type": "The IANA media type of the app icon in the PWA manifest (any).",
   "pwa_icon_any_sizes": "The dimensions of the app icon in the PWA manifest (any).",
@@ -23,6 +24,5 @@
   "pwa_icon_monochrome_sizes": "The dimensions of the app icon in the PWA manifest (monochrome).",
   "pwa_icon_monochrome_maskable_name": "The asset name of the app icon in the PWA manifest (monochrome, maskable).",
   "pwa_icon_monochrome_maskable_type": "The IANA media type of the app icon in the PWA manifest (monochrome, maskable).",
-  "pwa_icon_monochrome_maskable_sizes": "The dimensions of the app icon in the PWA manifest (monochrome, maskable).",
-  "pwa_icon_alt": "Alt text for the app icon in the PWA manifest."
+  "pwa_icon_monochrome_maskable_sizes": "The dimensions of the app icon in the PWA manifest (monochrome, maskable)."
 }
