@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
-use worker::{Cache, console_error};
+use worker::{Cache, console_debug, console_error};
 
 use crate::{api::DataResponseEnvelope, env::EnvName, error::Error};
 
@@ -95,6 +95,8 @@ pub fn put_cdn_cache(
     uri: Uri,
     response: http::Response<Body>,
 ) -> Result<http::Response<Body>, Error> {
+    console_debug!("Caching response for URI: {}", uri);
+
     let mut worker_response = worker::Response::try_from(response)
         .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
 
