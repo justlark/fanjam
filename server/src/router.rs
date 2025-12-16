@@ -2,10 +2,11 @@ use std::{fmt, sync::Arc};
 
 use axum::{
     Json, Router,
+    body::Body,
     extract::{Path, State},
     http::{self, StatusCode, Uri},
     middleware,
-    response::{ErrorResponse, NoContent},
+    response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
 use worker::{Bucket, Cache, Context, console_log, console_warn, kv::KvStore, send::SendWrapper};
@@ -19,7 +20,7 @@ use crate::{
         PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
     },
     auth::admin_auth_layer,
-    cache::{EtagJson, if_none_match_middleware},
+    cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     config,
     cors::cors_layer,
     env::{CONFIG_DOCS, Config, EnvId, EnvName},
@@ -516,19 +517,39 @@ async fn get_announcements(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_summary(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<Json<GetSummaryResponse>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    }
+
     let store = Store::from_env_id(&state, &env_id).await?;
 
     let summary = store.get_summary().await?;
 
-    Ok(Json(GetSummaryResponse {
+    let response = Json(GetSummaryResponse {
         env_name: summary.env_name.to_string(),
         name: summary.name,
         description: summary.description,
-    }))
+    })
+    .into_response();
+
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        store.env_name().to_owned(),
+        config::noco_summary_cache_ttl(),
+        uri,
+        response,
+    )?;
+
+    Ok(response)
 }
 
 #[axum::debug_handler]

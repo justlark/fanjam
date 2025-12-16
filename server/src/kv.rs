@@ -2,9 +2,8 @@ use secrecy::ExposeSecret;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
-    config,
     env::{Config, EnvId, EnvName},
-    noco::{About, Announcement, ApiToken, Event, Info, Page, Summary, TableInfo},
+    noco::{About, Announcement, ApiToken, Event, Info, Page, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -62,7 +61,6 @@ cache_key_fn!(info_cache_key, "info");
 cache_key_fn!(pages_cache_key, "pages");
 cache_key_fn!(announcements_cache_key, "announcements");
 cache_key_fn!(about_cache_key, "about");
-cache_key_fn!(summary_cache_key, "summary");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -239,40 +237,6 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
     delete_tables(kv, env_name).await?;
 
     Ok(())
-}
-
-#[worker::send]
-pub async fn put_cached_summary(
-    kv: &KvStore,
-    env_name: &EnvName,
-    value: &Summary,
-) -> anyhow::Result<()> {
-    let ttl = config::noco_summary_cache_ttl();
-
-    if ttl.is_zero() {
-        // If the TTL is zero, we have nothing to cache and can just return silently.
-        return Ok(());
-    }
-
-    kv.put(&summary_cache_key(env_name), value)
-        .map_err(wrap_kv_err)?
-        .expiration_ttl(ttl.as_secs())
-        .execute()
-        .await
-        .map_err(wrap_kv_err)?;
-
-    Ok(())
-}
-
-#[worker::send]
-pub async fn get_cached_summary(
-    kv: &KvStore,
-    env_name: &EnvName,
-) -> anyhow::Result<Option<Summary>> {
-    kv.get(&summary_cache_key(env_name))
-        .json::<Summary>()
-        .await
-        .map_err(wrap_kv_err)
 }
 
 #[worker::send]

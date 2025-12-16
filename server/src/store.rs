@@ -520,6 +520,10 @@ impl Store {
         Self::from_env_name(state, env_name).await
     }
 
+    pub fn env_name(&self) -> &EnvName {
+        &self.env_name
+    }
+
     async fn get_table_ids(&self) -> Result<TableIds, Error> {
         Ok(
             match kv::get_tables(&self.kv, &self.env_name)
@@ -594,38 +598,14 @@ impl Store {
         err_msg_key: "about",
     }
 
-    // We add an additional layer of caching here with a longer TTL, because this endpoint can
-    // block the entire app from loading.
     pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
-        match kv::get_cached_summary(&self.kv, &self.env_name).await {
-            Ok(Some(value)) => {
-                console_log!(
-                    "Returning summary from separate cache with TTL {}s; skipping NocoDB.",
-                    config::noco_summary_cache_ttl().as_secs()
-                );
-                return Ok(value);
-            }
-            Ok(None) => {
-                console_log!("No cached summary found, fetching from NocoDB.");
-            }
-            Err(e) => {
-                console_warn!("Failed to get summary from cache: {}", e);
-            }
-        }
-
         let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
 
-        let summary = noco::Summary {
+        Ok(noco::Summary {
             env_name: self.env_name.clone(),
             name: about.name.clone(),
             description: about.description,
-        };
-
-        kv::put_cached_summary(&self.kv, &self.env_name, &summary)
-            .await
-            .map_err(Error::Internal)?;
-
-        Ok(summary)
+        })
     }
 
     #[worker::send]
