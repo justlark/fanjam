@@ -24,7 +24,7 @@ use crate::{
     cors::cors_layer,
     env::{CONFIG_DOCS, Config, EnvId, EnvName},
     error::Error,
-    http::{body_from_response_body, http_headers_from_object},
+    http::http_headers_from_object,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
     sql,
@@ -603,7 +603,20 @@ async fn get_asset(
         .map_err(|err| Error::Internal(err.into()))?
         .ok_or(Error::AssetNotFound)?;
 
-    let mut response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
+    let response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
+
+    response_headers
+        .set(
+            "Cache-Control",
+            &format!("s-maxage={}", config::r2_asset_cache_ttl().as_secs()),
+        )
+        .map_err(|err| Error::Internal(err.into()))?;
+
+    // Tag the cache entry with the environment name so we can invalidate the cache on a
+    // per-environment basis if necessary.
+    response_headers
+        .set("Cache-Tag", &format!("env/{}", env_name))
+        .map_err(|err| Error::Internal(err.into()))?;
 
     // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
     // to the Workers runtime, which saves us CPU time (and therefore money).
@@ -613,33 +626,18 @@ async fn get_asset(
         .response_body()
         .map_err(|err| Error::Internal(err.into()))?;
 
-    let body = body_from_response_body(response_body.clone()).map_err(Error::Internal)?;
-    let mut response = http::Response::new(body);
-    *response.headers_mut() = response_headers.clone();
+    let mut response = worker::Response::from_body(response_body)
+        .map_err(|err| Error::Internal(err.into()))?
+        .with_headers(response_headers);
+
+    let response_to_cache = response
+        .cloned()
+        .map_err(|err| Error::Internal(err.into()))?;
 
     // Cache the asset without without blocking this response.
     state.ctx.wait_until(async move {
         let response = async || -> anyhow::Result<()> {
-            let body = body_from_response_body(response_body)?;
-
-            let cache_ttl = config::r2_asset_cache_ttl();
-
-            response_headers.insert(
-                "Cache-Control",
-                format!("s-maxage={}", cache_ttl.as_secs()).parse()?,
-            );
-
-            // Tag the cache entry with the environment name so we can invalidate the cache on a
-            // per-environment basis if necessary.
-            response_headers.insert("Cache-Tag", format!("env/{}", env_name).parse()?);
-
-            let mut response = http::Response::new(body);
-            *response.headers_mut() = response_headers;
-
-            let response = worker::Response::try_from(response)?;
-
-            cache.put(uri.to_string(), response).await?;
-
+            cache.put(uri.to_string(), response_to_cache).await?;
             Ok(())
         };
 
@@ -648,5 +646,6 @@ async fn get_asset(
         }
     });
 
-    Ok(response)
+    Ok(http::Response::try_from(response)
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?)
 }
