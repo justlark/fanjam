@@ -8,7 +8,7 @@ use axum::{
     response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
+use worker::{Bucket, Cache, Context, console_log, console_warn, kv::KvStore, send::SendWrapper};
 
 use crate::{
     api::{
@@ -619,40 +619,33 @@ async fn get_asset(
 
     // Cache the asset without without blocking this response.
     state.ctx.wait_until(async move {
-        let body = match body_from_response_body(response_body) {
-            Ok(body) => body,
-            Err(_) => return,
+        let response = async || -> anyhow::Result<()> {
+            let body = body_from_response_body(response_body)?;
+
+            let cache_ttl = config::r2_asset_cache_ttl();
+
+            response_headers.insert(
+                "Cache-Control",
+                format!("s-maxage={}", cache_ttl.as_secs()).parse()?,
+            );
+
+            // Tag the cache entry with the environment name so we can invalidate the cache on a
+            // per-environment basis if necessary.
+            response_headers.insert("Cache-Tag", format!("env/{}", env_name).parse()?);
+
+            let mut response = http::Response::new(body);
+            *response.headers_mut() = response_headers;
+
+            let response = worker::Response::try_from(response)?;
+
+            cache.put(uri.to_string(), response).await?;
+
+            Ok(())
         };
 
-        let cache_ttl = config::r2_asset_cache_ttl();
-
-        response_headers.insert(
-            "Cache-Control",
-            match format!("s-maxage={}", cache_ttl.as_secs()).parse() {
-                Ok(value) => value,
-                Err(_) => return,
-            },
-        );
-
-        // Tag the cache entry with the environment name so we can invalidate the cache on a
-        // per-environment basis if necessary.
-        response_headers.insert(
-            "Cache-Tag",
-            match format!("env/{}", env_name).parse() {
-                Ok(value) => value,
-                Err(_) => return,
-            },
-        );
-
-        let mut response = http::Response::new(body);
-        *response.headers_mut() = response_headers;
-
-        let response = match worker::Response::try_from(response) {
-            Ok(response) => response,
-            Err(_) => return,
-        };
-
-        cache.put(uri.to_string(), response).await.ok();
+        if let Err(err) = response().await {
+            console_warn!("Failed to cache asset response: {:?}", err);
+        }
     });
 
     Ok(response)
