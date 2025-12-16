@@ -4,12 +4,12 @@ use std::{
     time::Duration,
 };
 
-use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use axum::http::StatusCode;
 use serde::{Serialize, de::DeserializeOwned};
 use wasm_bindgen::JsValue;
 use worker::{
-    Delay, Fetch, Headers, HttpMetadata, Method, Object, Request, RequestInit, ResponseBody, Url,
-    console_log, console_warn,
+    Delay, Fetch, Headers, HttpMetadata, Method, Object, Request, RequestInit, Url, console_log,
+    console_warn,
 };
 
 use crate::error::Error;
@@ -221,64 +221,42 @@ impl RequestBuilder {
 // confused about how move semantics work in Rust:
 //
 // https://github.com/cloudflare/workers-rs/issues/302
-pub fn write_http_metadata(
-    metadata: &HttpMetadata,
-    headers: &mut HeaderMap<HeaderValue>,
-) -> anyhow::Result<()> {
+pub fn write_http_metadata(metadata: &HttpMetadata, headers: &mut Headers) -> anyhow::Result<()> {
     if let Some(content_type) = &metadata.content_type {
-        headers.insert("Content-Type", content_type.parse()?);
+        headers.set("Content-Type", content_type)?;
     }
 
     if let Some(content_language) = &metadata.content_language {
-        headers.insert("Content-Language", content_language.parse()?);
+        headers.set("Content-Language", content_language)?;
     }
 
     if let Some(content_disposition) = &metadata.content_disposition {
-        headers.insert("Content-Disposition", content_disposition.parse()?);
+        headers.set("Content-Disposition", content_disposition)?;
     }
 
     if let Some(content_encoding) = &metadata.content_encoding {
-        headers.insert("Content-Encoding", content_encoding.parse()?);
+        headers.set("Content-Encoding", content_encoding)?;
     }
 
     if let Some(cache_control) = &metadata.cache_control {
-        headers.insert("Cache-Control", cache_control.parse()?);
+        headers.set("Cache-Control", cache_control)?;
     }
 
     if let Some(cache_expiry) = &metadata.cache_expiry {
-        headers.insert("Expires", cache_expiry.to_string().parse()?);
+        headers.set("Expires", &cache_expiry.to_string())?;
     }
 
     Ok(())
 }
 
-pub fn body_from_response_body(body: ResponseBody) -> anyhow::Result<worker::Body> {
-    Ok(match body {
-        worker::ResponseBody::Empty => worker::Body::empty(),
-        // Is there a more elegant way to make this conversion?
-        worker::ResponseBody::Body(bytes) => {
-            worker::Body::from_stream(futures::stream::once(async {
-                Result::<_, Error>::Ok(bytes)
-            }))
-            .map_err(|err| Error::Internal(err.into()))?
-        }
-        worker::ResponseBody::Stream(readable_stream) => worker::Body::new(readable_stream),
-    })
-}
-
-pub fn http_headers_from_object(object: &Object) -> anyhow::Result<HeaderMap<HeaderValue>> {
-    let mut response_headers = HeaderMap::new();
+pub fn http_headers_from_object(object: &Object) -> anyhow::Result<Headers> {
+    let mut response_headers = Headers::new();
     let http_metadata = object.http_metadata();
     let http_etag = object.http_etag();
 
     write_http_metadata(&http_metadata, &mut response_headers).map_err(Error::Internal)?;
 
-    response_headers.insert(
-        "ETag",
-        http_etag
-            .parse()
-            .map_err(|err| Error::Internal(anyhow::Error::from(err)))?,
-    );
+    response_headers.set("ETag", &http_etag)?;
 
     Ok(response_headers)
 }
