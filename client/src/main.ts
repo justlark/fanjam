@@ -8,6 +8,7 @@ import { definePreset } from "@primeuix/themes";
 import Aura from "@primeuix/themes/aura";
 import ToastService from "primevue/toastservice";
 import "primeicons/primeicons.css";
+import { VueUmamiPlugin } from "@jaseeey/vue-umami-plugin";
 
 const app = createApp(App);
 
@@ -71,8 +72,22 @@ app.directive("plaintext", {
   },
 });
 
-app.use(router);
 app.use(PrimeVue, { theme: { preset } });
+
 app.use(ToastService);
+
+// Self-hosted privacy-preserving analytics.
+app.use(
+  VueUmamiPlugin({
+    websiteID: "b0f28bee-56d2-4a2d-a8c9-802c849b87fb",
+    scriptSrc: "/stats.js",
+    router,
+    extraDataAttributes: {
+      "data-host-url": "https://umami.fanjam.live",
+    },
+  }),
+);
+
+app.use(router);
 
 app.mount("#app");

@@ -20,6 +20,7 @@
     "deploy:prod": "npm run build:prod && wrangler deploy"
   },
   "dependencies": {
+    "@jaseeey/vue-umami-plugin": "^1.4.0",
     "@primeuix/themes": "^1.2.1",
     "@tailwindcss/vite": "^4.1.7",
     "commonmark": "^0.31.2",
