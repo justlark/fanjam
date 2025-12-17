@@ -342,6 +342,9 @@ macro_rules! get_data {
     } => {
         #[worker::send]
         pub async fn $fn_name(app_state: &AppState, env_id: &EnvId) -> Result<DataResponseEnvelope<$type_name>, Error> {
+            // We construct a cache key using the environment ID instead of the environment name to
+            // save ourselves a KV lookup, which incurs significant latency over a purely in-memory
+            // cache.
             let cache_key = $cache_key_fn(env_id);
 
             match get_memory_cache::<$type_name>(&cache_key).await {
