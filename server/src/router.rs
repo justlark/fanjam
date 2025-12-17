@@ -9,7 +9,7 @@ use axum::{
     response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Bucket, Cache, Context, console_log, console_warn, kv::KvStore, send::SendWrapper};
+use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
 
 use crate::{
     api::{
@@ -596,18 +596,12 @@ async fn get_asset(
     State(state): State<Arc<AppState>>,
     uri: Uri,
     Path((env_id, name)): Path<(EnvId, String)>,
-) -> Result<http::Response<worker::Body>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
 
-    // Check the cache first.
-    if let Some(cached_response) = cache
-        .get(uri.to_string(), false)
-        .await
-        .map_err(|err| Error::Internal(err.into()))?
-    {
-        return Ok(http::Response::try_from(cached_response)
-            .map_err(|err| Error::Internal(anyhow::Error::from(err)))?);
-    }
+    if let Some(cached_response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(cached_response);
+    };
 
     let env_name = kv::get_id_env(&state.kv, &env_id)
         .await
@@ -626,19 +620,6 @@ async fn get_asset(
 
     let response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
 
-    response_headers
-        .set(
-            "Cache-Control",
-            &format!("s-maxage={}", config::r2_asset_cache_ttl().as_secs()),
-        )
-        .map_err(|err| Error::Internal(err.into()))?;
-
-    // Tag the cache entry with the environment name so we can invalidate the cache on a
-    // per-environment basis if necessary.
-    response_headers
-        .set("Cache-Tag", &format!("env/{}", env_name))
-        .map_err(|err| Error::Internal(err.into()))?;
-
     // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
     // to the Workers runtime, which saves us CPU time (and therefore money).
     let response_body = object
@@ -647,26 +628,21 @@ async fn get_asset(
         .response_body()
         .map_err(|err| Error::Internal(err.into()))?;
 
-    let mut response = worker::Response::from_body(response_body)
-        .map_err(|err| Error::Internal(err.into()))?
-        .with_headers(response_headers);
+    let response = http::Response::from(
+        worker::Response::from_body(response_body)
+            .map_err(anyhow::Error::from)
+            .map_err(Error::Internal)?
+            .with_headers(response_headers),
+    );
 
-    let response_to_cache = response
-        .cloned()
-        .map_err(|err| Error::Internal(err.into()))?;
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        env_name,
+        config::r2_asset_cache_ttl(),
+        uri,
+        response,
+    )?;
 
-    // Cache the asset without without blocking this response.
-    state.ctx.wait_until(async move {
-        let response = async || -> anyhow::Result<()> {
-            cache.put(uri.to_string(), response_to_cache).await?;
-            Ok(())
-        };
-
-        if let Err(err) = response().await {
-            console_warn!("Failed to cache asset response: {:?}", err);
-        }
-    });
-
-    Ok(http::Response::try_from(response)
-        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?)
+    Ok(response)
 }
