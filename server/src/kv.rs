@@ -43,24 +43,41 @@ fn env_config_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:config")
 }
 
-// We cache responses from the upstream NocoDB server to reduce the load on it.
-fn cache_key_prefix(env_name: &EnvName) -> String {
+fn by_name_cache_key_prefix(env_name: &EnvName) -> String {
     format!("env:{env_name}:cache:")
 }
 
-macro_rules! cache_key_fn {
+fn by_id_cache_key_prefix(env_id: &EnvId) -> String {
+    format!("id:{env_id}:cache:")
+}
+
+macro_rules! by_name_cache_key_fn {
     ($name:ident, $key:expr) => {
         pub fn $name(env_name: &EnvName) -> String {
-            format!("{}{}", cache_key_prefix(env_name), $key)
+            format!("{}{}", by_name_cache_key_prefix(env_name), $key)
         }
     };
 }
 
-cache_key_fn!(events_cache_key, "events");
-cache_key_fn!(info_cache_key, "info");
-cache_key_fn!(pages_cache_key, "pages");
-cache_key_fn!(announcements_cache_key, "announcements");
-cache_key_fn!(about_cache_key, "about");
+by_name_cache_key_fn!(events_by_name_cache_key, "events");
+by_name_cache_key_fn!(info_by_name_cache_key, "info");
+by_name_cache_key_fn!(pages_by_name_cache_key, "pages");
+by_name_cache_key_fn!(announcements_by_name_cache_key, "announcements");
+by_name_cache_key_fn!(about_by_name_cache_key, "about");
+
+macro_rules! by_id_cache_key_fn {
+    ($name:ident, $key:expr) => {
+        pub fn $name(env_id: &EnvId) -> String {
+            format!("{}{}", by_id_cache_key_prefix(env_id), $key)
+        }
+    };
+}
+
+by_id_cache_key_fn!(events_by_id_cache_key, "events");
+by_id_cache_key_fn!(info_by_id_cache_key, "info");
+by_id_cache_key_fn!(pages_by_id_cache_key, "pages");
+by_id_cache_key_fn!(announcements_by_id_cache_key, "announcements");
+by_id_cache_key_fn!(about_by_id_cache_key, "about");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -187,15 +204,15 @@ macro_rules! put_cache_fn {
     };
 }
 
-put_cache_fn!(put_cached_events, events_cache_key, &[Event]);
-put_cache_fn!(put_cached_info, info_cache_key, &Info);
-put_cache_fn!(put_cached_pages, pages_cache_key, &[Page]);
+put_cache_fn!(put_cached_events, events_by_name_cache_key, &[Event]);
+put_cache_fn!(put_cached_info, info_by_name_cache_key, &Info);
+put_cache_fn!(put_cached_pages, pages_by_name_cache_key, &[Page]);
 put_cache_fn!(
     put_cached_announcements,
-    announcements_cache_key,
+    announcements_by_name_cache_key,
     &[Announcement]
 );
-put_cache_fn!(put_cached_about, about_cache_key, &About);
+put_cache_fn!(put_cached_about, about_by_name_cache_key, &About);
 
 macro_rules! get_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
@@ -208,15 +225,15 @@ macro_rules! get_cache_fn {
     };
 }
 
-get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
-get_cache_fn!(get_cached_info, info_cache_key, Info);
-get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
+get_cache_fn!(get_cached_events, events_by_name_cache_key, Vec<Event>);
+get_cache_fn!(get_cached_info, info_by_name_cache_key, Info);
+get_cache_fn!(get_cached_pages, pages_by_name_cache_key, Vec<Page>);
 get_cache_fn!(
     get_cached_announcements,
-    announcements_cache_key,
+    announcements_by_name_cache_key,
     Vec<Announcement>
 );
-get_cache_fn!(get_cached_about, about_cache_key, About);
+get_cache_fn!(get_cached_about, about_by_name_cache_key, About);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
@@ -224,7 +241,7 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
     // that we don't have to worry about pagination.
     let cache_keys = kv
         .list()
-        .prefix(cache_key_prefix(env_name))
+        .prefix(by_name_cache_key_prefix(env_name))
         .execute()
         .await
         .map_err(wrap_kv_err)?

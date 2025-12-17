@@ -373,12 +373,10 @@ async fn get_events(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetEventsResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(&state, &env_id).await?;
-
     let store::DataResponseEnvelope {
         retry_after,
         value: events,
-    } = store.get_events().await?;
+    } = Store::get_events(&state, &env_id).await?;
 
     Ok(EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
@@ -407,12 +405,10 @@ async fn get_info(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetInfoResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(&state, &env_id).await?;
-
     let store::DataResponseEnvelope {
         retry_after,
         value: info,
-    } = store.get_info().await?;
+    } = Store::get_info(&state, &env_id).await?;
 
     Ok(EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
@@ -447,12 +443,10 @@ async fn get_pages(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetPagesResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(&state, &env_id).await?;
-
     let store::DataResponseEnvelope {
         retry_after,
         value: pages,
-    } = store.get_pages().await?;
+    } = Store::get_pages(&state, &env_id).await?;
 
     Ok(EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
@@ -483,12 +477,10 @@ async fn get_announcements(
     State(state): State<Arc<AppState>>,
     Path(env_id): Path<EnvId>,
 ) -> Result<EtagJson<DataResponseEnvelope<GetAnnouncementsResponse>>, ErrorResponse> {
-    let store = Store::from_env_id(&state, &env_id).await?;
-
     let store::DataResponseEnvelope {
         retry_after,
         value: announcements,
-    } = store.get_announcements().await?;
+    } = Store::get_announcements(&state, &env_id).await?;
 
     Ok(EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
@@ -529,9 +521,7 @@ async fn get_summary(
         return Ok(response);
     }
 
-    let store = Store::from_env_id(&state, &env_id).await?;
-
-    let summary = store.get_summary().await?;
+    let summary = Store::get_summary(&state, &env_id).await?;
 
     let response = Json(GetSummaryResponse {
         env_name: summary.env_name.to_string(),
@@ -543,7 +533,7 @@ async fn get_summary(
     let response = put_cdn_cache(
         &state.ctx,
         cache,
-        store.env_name().to_owned(),
+        summary.env_name,
         config::noco_summary_cache_ttl(),
         uri,
         response,

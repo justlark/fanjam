@@ -341,8 +341,8 @@ macro_rules! get_data {
         err_msg_key: $err_msg_key:expr,
     } => {
         #[worker::send]
-        pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
-            let cache_key = $cache_key_fn(&self.env_name);
+        pub async fn $fn_name(app_state: &AppState, env_id: &EnvId) -> Result<DataResponseEnvelope<$type_name>, Error> {
+            let cache_key = $cache_key_fn(env_id);
 
             match get_memory_cache::<$type_name>(&cache_key).await {
                 CachedValue::Fresh(value) => {
@@ -360,9 +360,11 @@ macro_rules! get_data {
                 }
             }
 
+            let store = Store::from_env_id(app_state, env_id).await?;
+
             // A request to get the most recent data from NocoDB.
             let value_request = async {
-                let table_ids = match self.get_table_ids().await {
+                let table_ids = match store.get_table_ids().await {
                     Ok(table_ids) => table_ids,
                     Err(e) => {
                         console_warn!("Failed getting table IDs from NocoDB: {}", e);
@@ -370,7 +372,7 @@ macro_rules! get_data {
                     }
                 };
 
-                match $get_api_fn(&self.noco_client, &table_ids)
+                match $get_api_fn(&store.noco_client, &table_ids)
                     .await
                     .map_err(Error::Internal)
                 {
@@ -383,7 +385,7 @@ macro_rules! get_data {
             };
 
             // A request to NocoDB's healthcheck endpoint.
-            let healthcheck_request = pin!(noco::check_health(&self.noco_client));
+            let healthcheck_request = pin!(noco::check_health(&store.noco_client));
             let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
 
             // Perform a healthcheck on the NocoDB server with a timeout.
@@ -424,7 +426,7 @@ macro_rules! get_data {
                 Some(value) => {
                     console_log!("Caching latest {} from NocoDB.", $err_msg_key);
 
-                    let env_config = kv::get_env_config(&self.kv, &self.env_name).await.map_err(Error::Internal)?;
+                    let env_config = kv::get_env_config(&store.kv, &store.env_name).await.map_err(Error::Internal)?;
                     let ttl = env_config
                         .cache_ttl
                         .map(Duration::from_millis)
@@ -437,13 +439,13 @@ macro_rules! get_data {
                         console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
                     }
 
-                    let kv_for_cache = self.kv.clone();
+                    let kv_for_cache = store.kv.clone();
                     let value_for_cache = value.clone();
-                    let env_name_for_cache = self.env_name.clone();
+                    let env_name_for_cache = store.env_name.clone();
 
                     // Update the persistent KV cache. This doesn't need to block the current
                     // request.
-                    self.ctx.wait_until(async move {
+                    store.ctx.wait_until(async move {
                         if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value_for_cache).await {
                             console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
                         }
@@ -454,7 +456,7 @@ macro_rules! get_data {
                 None => {
                     console_log!("NocoDB is unavailable, fetching stale data if available.");
 
-                    match $get_cached_fn(&self.kv, &self.env_name).await {
+                    match $get_cached_fn(&store.kv, &store.env_name).await {
                         Ok(Some(value)) => {
                             // Return the cached data whether or not it has expired, because we
                             // have nothing better to send the client right now.
@@ -533,10 +535,6 @@ impl Store {
         Self::from_env_name(state, env_name).await
     }
 
-    pub fn env_name(&self) -> &EnvName {
-        &self.env_name
-    }
-
     async fn get_table_ids(&self) -> Result<TableIds, Error> {
         Ok(
             match kv::get_tables(&self.kv, &self.env_name)
@@ -567,7 +565,7 @@ impl Store {
         get_api_fn: noco::get_events,
         get_cached_fn: kv::get_cached_events,
         put_cached_fn: kv::put_cached_events,
-        cache_key_fn: kv::events_cache_key,
+        cache_key_fn: kv::events_by_id_cache_key,
         err_msg_key: "events",
     }
 
@@ -577,7 +575,7 @@ impl Store {
         get_api_fn: noco::get_info,
         get_cached_fn: kv::get_cached_info,
         put_cached_fn: kv::put_cached_info,
-        cache_key_fn: kv::info_cache_key,
+        cache_key_fn: kv::info_by_id_cache_key,
         err_msg_key: "info",
     }
 
@@ -587,7 +585,7 @@ impl Store {
         get_api_fn: noco::get_pages,
         get_cached_fn: kv::get_cached_pages,
         put_cached_fn: kv::put_cached_pages,
-        cache_key_fn: kv::pages_cache_key,
+        cache_key_fn: kv::pages_by_id_cache_key,
         err_msg_key: "pages",
     }
 
@@ -597,7 +595,7 @@ impl Store {
         get_api_fn: noco::get_announcements,
         get_cached_fn: kv::get_cached_announcements,
         put_cached_fn: kv::put_cached_announcements,
-        cache_key_fn: kv::announcements_cache_key,
+        cache_key_fn: kv::announcements_by_id_cache_key,
         err_msg_key: "announcements",
     }
 
@@ -607,15 +605,20 @@ impl Store {
         get_api_fn: noco::get_about,
         get_cached_fn: kv::get_cached_about,
         put_cached_fn: kv::put_cached_about,
-        cache_key_fn: kv::about_cache_key,
+        cache_key_fn: kv::about_by_id_cache_key,
         err_msg_key: "about",
     }
 
-    pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
-        let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
+    pub async fn get_summary(app_state: &AppState, env_id: &EnvId) -> Result<noco::Summary, Error> {
+        let DataResponseEnvelope { value: about, .. } = Self::get_about(app_state, env_id).await?;
+
+        let env_name = kv::get_id_env(&app_state.kv, env_id)
+            .await
+            .map_err(Error::Internal)?
+            .ok_or(Error::NoEnvId)?;
 
         Ok(noco::Summary {
-            env_name: self.env_name.clone(),
+            env_name: env_name.clone(),
             name: about.name.clone(),
             description: about.description,
         })
