@@ -86,6 +86,7 @@ impl CacheInstant {
 enum CacheEntry {
     Fresh {
         cached_at: CacheInstant,
+        ttl: Duration,
         serialized_value: String,
     },
 
@@ -98,9 +99,10 @@ enum CacheEntry {
 }
 
 impl CacheEntry {
-    fn fresh(serialized_value: String) -> Self {
+    fn fresh(serialized_value: String, ttl: Duration) -> Self {
         Self::Fresh {
             cached_at: CacheInstant::now(),
+            ttl,
             serialized_value,
         }
     }
@@ -121,7 +123,7 @@ enum CachedValue<T> {
     Expired,
 }
 
-async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> CachedValue<T> {
+async fn get_memory_cache<T: DeserializeOwned>(key: &str) -> CachedValue<T> {
     #[derive(Debug)]
     enum SerializedValue {
         Ready(String),
@@ -138,8 +140,9 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
             MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
                 CacheEntry::Fresh {
                     cached_at: inserted_at,
+                    ttl,
                     serialized_value,
-                } if inserted_at.elapsed() < ttl => {
+                } if inserted_at.elapsed() < *ttl => {
                     CachedValue::Fresh(SerializedValue::Ready(serialized_value.clone()))
                 }
                 CacheEntry::Fresh { .. } => {
@@ -227,7 +230,7 @@ async fn get_memory_cache<T: DeserializeOwned>(key: &str, ttl: Duration) -> Cach
 #[derive(Debug, Clone, Copy)]
 enum NotifyAction<T> {
     // Refresh the in-memory cache and notify all waiting requests.
-    Refresh(T),
+    Refresh { value: T, ttl: Duration },
 
     // Notify all waiting requests, but do not refresh the in-memory cache.
     OnlyNotify(T),
@@ -242,7 +245,10 @@ enum NotifyAction<T> {
 async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> anyhow::Result<()> {
     // We serialize first to minimize how long we're holding the lock.
     let serialized_value_action = match action {
-        NotifyAction::Refresh(value) => NotifyAction::Refresh(serde_json::to_string(&value)?),
+        NotifyAction::Refresh { value, ttl } => NotifyAction::Refresh {
+            value: serde_json::to_string(&value)?,
+            ttl,
+        },
         NotifyAction::OnlyNotify(value) => NotifyAction::OnlyNotify(serde_json::to_string(&value)?),
         NotifyAction::Expire(value) => NotifyAction::Expire(serde_json::to_string(&value)?),
         NotifyAction::Close => NotifyAction::Close,
@@ -263,8 +269,11 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
                     NotifyAction::Expire(_) | NotifyAction::Close => {
                         map_entry.remove();
                     }
-                    NotifyAction::Refresh(serialized_value) => {
-                        *map_entry.get_mut() = CacheEntry::fresh(serialized_value.clone());
+                    NotifyAction::Refresh {
+                        value: serialized_value,
+                        ttl,
+                    } => {
+                        *map_entry.get_mut() = CacheEntry::fresh(serialized_value.clone(), *ttl);
                     }
                     NotifyAction::OnlyNotify(_) => {
                         // Leave the cache entry as-is.
@@ -277,7 +286,10 @@ async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> a
         }
     };
 
-    if let NotifyAction::Refresh(serialized_value)
+    if let NotifyAction::Refresh {
+        value: serialized_value,
+        ..
+    }
     | NotifyAction::Expire(serialized_value)
     | NotifyAction::OnlyNotify(serialized_value) = serialized_value_action
     {
@@ -331,13 +343,8 @@ macro_rules! get_data {
         #[worker::send]
         pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
             let cache_key = $cache_key_fn(&self.env_name);
-            let env_config = kv::get_env_config(&self.kv, &self.env_name).await.map_err(Error::Internal)?;
-            let ttl = env_config
-                .cache_ttl
-                .map(Duration::from_millis)
-                .unwrap_or(config::noco_default_memory_cache_ttl());
 
-            match get_memory_cache::<$type_name>(&cache_key, ttl).await {
+            match get_memory_cache::<$type_name>(&cache_key).await {
                 CachedValue::Fresh(value) => {
                     console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
 
@@ -417,10 +424,16 @@ macro_rules! get_data {
                 Some(value) => {
                     console_log!("Caching latest {} from NocoDB.", $err_msg_key);
 
+                    let env_config = kv::get_env_config(&self.kv, &self.env_name).await.map_err(Error::Internal)?;
+                    let ttl = env_config
+                        .cache_ttl
+                        .map(Duration::from_millis)
+                        .unwrap_or(config::noco_default_memory_cache_ttl());
+
                     // Notify other requests that came in at the same time as this one that we have
                     // received fresh data from NocoDB and send it to them. Also refresh the
                     // in-memory cache.
-                    if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Refresh(&value)).await {
+                    if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Refresh { value: &value, ttl }).await {
                         console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
                     }
 
