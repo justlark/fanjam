@@ -8,7 +8,6 @@ import { definePreset } from "@primeuix/themes";
 import Aura from "@primeuix/themes/aura";
 import ToastService from "primevue/toastservice";
 import "primeicons/primeicons.css";
-import { VueUmamiPlugin } from "./plugins/umami";
 
 const app = createApp(App);
 
@@ -73,17 +72,7 @@ app.directive("plaintext", {
 });
 
 app.use(PrimeVue, { theme: { preset } });
-
 app.use(ToastService);
-
-// Integrate Umami with vue-router.
-app.use(
-  VueUmamiPlugin({
-    scriptSrc: "/stats.js",
-    router,
-  }),
-);
-
 app.use(router);
 
 app.mount("#app");
