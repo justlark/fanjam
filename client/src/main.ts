@@ -8,7 +8,7 @@ import { definePreset } from "@primeuix/themes";
 import Aura from "@primeuix/themes/aura";
 import ToastService from "primevue/toastservice";
 import "primeicons/primeicons.css";
-import { VueUmamiPlugin } from "@jaseeey/vue-umami-plugin";
+import { VueUmamiPlugin } from "./plugins/umami";
 
 const app = createApp(App);
 
@@ -81,10 +81,8 @@ app.use(
   VueUmamiPlugin({
     websiteID: "b0f28bee-56d2-4a2d-a8c9-802c849b87fb",
     scriptSrc: "/stats.js",
+    hostUrl: "https://umami.fanjam.live",
     router,
-    extraDataAttributes: {
-      "data-host-url": "https://umami.fanjam.live",
-    },
   }),
 );
 
