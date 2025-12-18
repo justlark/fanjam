@@ -42,6 +42,10 @@ where
                         HeaderValue::from_str(&format!("\"{}\"", hash.to_hex()))
                             .expect("Invalid ETag header value"),
                     ),
+                    (
+                        header::CACHE_CONTROL,
+                        HeaderValue::from_static("public, no-cache"),
+                    ),
                 ],
                 buf,
             )
@@ -84,7 +88,14 @@ pub async fn get_cdn_cache(cache: &Cache, uri: Uri) -> Result<Option<http::Respo
         .get(uri.to_string(), false)
         .await
         .map_err(|err| Error::Internal(err.into()))?
-        .map(http::Response::from))
+        .map(http::Response::from)
+        .map(|mut response| {
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, no-cache"),
+            );
+            response
+        }))
 }
 
 pub fn put_cdn_cache(
@@ -106,7 +117,7 @@ pub fn put_cdn_cache(
 
     ctx.wait_until(async move {
         let result = async move || -> anyhow::Result<()> {
-            response_to_cache.headers_mut().append(
+            response_to_cache.headers_mut().set(
                 "Cache-Control",
                 &format!("public, s-maxage={}", ttl.as_secs()),
             )?;
@@ -115,7 +126,7 @@ pub fn put_cdn_cache(
             // per-environment basis if necessary.
             response_to_cache
                 .headers_mut()
-                .append("Cache-Tag", &format!("env/{}", env_name))?;
+                .set("Cache-Tag", &format!("env/{}", env_name))?;
 
             cache.put(uri.to_string(), response_to_cache).await?;
 

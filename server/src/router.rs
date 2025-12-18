@@ -700,6 +700,11 @@ async fn get_asset(
 
     let response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
 
+    response_headers
+        .set("Cache-Control", "public, no-cache")
+        .map_err(anyhow::Error::from)
+        .map_err(Error::Internal)?;
+
     // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
     // to the Workers runtime, which saves us CPU time (and therefore money).
     let response_body = object
