@@ -41,8 +41,7 @@ and `test` deployments of each.
 See the following architecture diagrams, laid out using
 [D2](https://d2lang.com/):
 
-- [System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
-- [Caching Logic](./docs/caching.svg) ([source](./docs/caching.d2))
+[System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
 
 ## Development
 
