@@ -106,9 +106,10 @@ pub fn put_cdn_cache(
 
     ctx.wait_until(async move {
         let result = async move || -> anyhow::Result<()> {
-            response_to_cache
-                .headers_mut()
-                .append("Cache-Control", &format!("s-maxage={}", ttl.as_secs()))?;
+            response_to_cache.headers_mut().append(
+                "Cache-Control",
+                &format!("public, s-maxage={}", ttl.as_secs()),
+            )?;
 
             // Tag the cache entry with the environment name so we can invalidate the cache on a
             // per-environment basis if necessary.
