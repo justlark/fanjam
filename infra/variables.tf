@@ -63,3 +63,16 @@ variable "smtp_password" {
   description = "SMTP password"
   sensitive   = true
 }
+
+# Ideally, rather than pass this in, we would generate a token with the
+# necessary permissions via this Tofu provider. However, it is not possible to
+# generate Cloudflare API tokens using v4.x of the Tofu provider unless you
+# authenticate Tofu with a user-scoped token. This is because the
+# `cloudflare_api_token_permission_groups` data source requires a user-scoped
+# token. An equivalent for account-scoped tokens was introduces in the v5.x
+# branch, but we are not migrating to that yet due to some outstanding issues.
+variable "cloudflare_api_token_for_server_worker" {
+  type        = string
+  description = "Cloudflare API token for server worker"
+  sensitive   = true
+}

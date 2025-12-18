@@ -4,12 +4,15 @@ use std::time::Duration;
 use worker::Env;
 
 use crate::auth;
+use crate::cf;
 use crate::neon;
 
 #[derive(Debug)]
 struct Config {
     base_domain: String,
     client_domain: String,
+    cloudflare_api_token: cf::ApiToken,
+    cloudflare_zone_id: cf::ZoneId,
     admin_api_token: auth::ApiToken,
     neon_api_token: neon::ApiToken,
     neon_org_id: String,
@@ -28,10 +31,14 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
         .set(Config {
             base_domain: env.var("BASE_DOMAIN")?.to_string(),
             client_domain: env.var("CLIENT_DOMAIN")?.to_string(),
-            admin_api_token: auth::ApiToken::try_from(
-                env.secret("ADMIN_API_TOKEN")?.to_string().as_str(),
-            )?,
-            neon_api_token: neon::ApiToken::from(env.secret("NEON_API_TOKEN")?.to_string()),
+            cloudflare_api_token: env.secret("CLOUDFLARE_API_TOKEN")?.to_string().into(),
+            cloudflare_zone_id: env.secret("CLOUDFLARE_ZONE_ID")?.to_string().into(),
+            admin_api_token: env
+                .secret("ADMIN_API_TOKEN")?
+                .to_string()
+                .as_str()
+                .try_into()?,
+            neon_api_token: env.secret("NEON_API_TOKEN")?.to_string().into(),
             neon_org_id: env.secret("NEON_ORG_ID")?.to_string(),
             neon_default_branch_name: env.secret("NEON_DEFAULT_BRANCH_NAME")?.to_string(),
             // upstash_endpoint: env.var("UPSTASH_ENDPOINT")?.to_string(),
@@ -66,6 +73,14 @@ pub fn base_domain() -> &'static str {
 
 pub fn client_domain() -> &'static str {
     get_config().client_domain.as_str()
+}
+
+pub fn cloudflare_api_token() -> cf::ApiToken {
+    get_config().cloudflare_api_token.clone()
+}
+
+pub fn cloudflare_zone_id() -> cf::ZoneId {
+    get_config().cloudflare_zone_id.clone()
 }
 
 pub fn admin_api_token() -> auth::ApiToken {

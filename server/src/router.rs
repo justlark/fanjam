@@ -21,7 +21,7 @@ use crate::{
     },
     auth::admin_auth_layer,
     cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
-    config,
+    cf, config,
     cors::cors_layer,
     env::{CONFIG_DOCS, Config, EnvId, EnvName},
     error::Error,
@@ -317,15 +317,26 @@ async fn post_restore_backup(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn delete_cache(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
 ) -> Result<NoContent, ErrorResponse> {
-    // let upstash_client = upstash::Client::new();
-
     kv::delete_cache(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?;
+
+    let cloudflare_client = cf::Client::new();
+
+    cloudflare_client
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(&env_name),
+        )
+        .await
+        .map_err(Error::Internal)?;
+
+    // let upstash_client = upstash::Client::new();
 
     // upstash_client
     //     .unlink_noco_keys(&env_name)
