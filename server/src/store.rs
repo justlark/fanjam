@@ -247,7 +247,7 @@ impl Store {
     pub fn cache_ttl(&self) -> Duration {
         self.env_config
             .cache_ttl
-            .map(Duration::from_secs)
+            .map(Duration::from_millis)
             .unwrap_or(config::noco_default_cdn_cache_ttl())
     }
 
