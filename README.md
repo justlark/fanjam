@@ -38,7 +38,7 @@ We have a single deployment of the frontend and a single deployment of the
 backend which are shared across tenant environments. We have separate `prod`
 and `test` deployments of each.
 
-See the following architecture diagrams, laid out using
+See the following architecture diagram, laid out using
 [D2](https://d2lang.com/):
 
 [System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
