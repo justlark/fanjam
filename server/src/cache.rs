@@ -22,16 +22,13 @@ where
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
 
-        // We want to cache the data itself, not the whole response body.
-        let hash_serialize_result = serde_json::to_writer(&mut buf, &self.0.value);
+        // We canonicalize the JSON response so that semantically equivalent JSON produces the same
+        // response byte-for-byte which prevents cache misses due to differences in key ordering.
+        let serialize_result = serde_json_canonicalizer::to_writer(&self.0, &mut buf);
         let hash = blake3::hash(&buf);
 
-        buf.clear();
-
-        let response_serialize_result = serde_json::to_writer(&mut buf, &self.0);
-
-        match (hash_serialize_result, response_serialize_result) {
-            (Ok(()), Ok(())) => (
+        match serialize_result {
+            Ok(()) => (
                 [
                     (
                         header::CONTENT_TYPE,
@@ -50,7 +47,7 @@ where
                 buf,
             )
                 .into_response(),
-            (Ok(()), Err(err)) | (Err(err), Ok(())) | (Err(err), Err(_)) => (
+            Err(err) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"))],
                 err.to_string(),

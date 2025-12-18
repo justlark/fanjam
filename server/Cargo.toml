@@ -41,3 +41,4 @@ tokio-postgres = { version = "0.7.13", default-features = false, features = [
 ] }
 wasm-bindgen-futures = "0.4.50"
 chrono = "0.4.41"
+serde_json_canonicalizer = "0.3.1"
