@@ -76,12 +76,10 @@ app.use(PrimeVue, { theme: { preset } });
 
 app.use(ToastService);
 
-// Self-hosted privacy-preserving analytics.
+// Integrate Umami with vue-router.
 app.use(
   VueUmamiPlugin({
-    websiteID: "b0f28bee-56d2-4a2d-a8c9-802c849b87fb",
     scriptSrc: "/stats.js",
-    hostUrl: "https://umami.fanjam.live",
     router,
   }),
 );

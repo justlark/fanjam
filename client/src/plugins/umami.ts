@@ -1,18 +1,20 @@
 import type { Router } from "vue-router";
 
+type UmamiTrackProps = {
+  url: string;
+};
+
 declare global {
   interface Window {
     umami: {
-      track: () => void;
+      track: (func?: (props: UmamiTrackProps) => UmamiTrackProps) => void;
     };
   }
 }
 
 type UmamiPluginOptions = {
-  websiteID: string;
   scriptSrc: string;
   router: Router;
-  hostUrl?: string;
 };
 
 export const VueUmamiPlugin = (options: UmamiPluginOptions): { install: () => void } => ({
@@ -22,24 +24,19 @@ export const VueUmamiPlugin = (options: UmamiPluginOptions): { install: () => vo
       return;
     }
 
-    const { scriptSrc, websiteID, router, hostUrl }: UmamiPluginOptions = options;
-
-    if (!websiteID) {
-      console.warn("Website ID not provided for Umami plugin, skipping.");
-      return;
-    }
+    const { scriptSrc, router }: UmamiPluginOptions = options;
 
     attachUmamiToRouter(router);
 
     onDocumentReady(() => {
-      initUmamiScript(scriptSrc, websiteID, hostUrl);
+      trackOnScriptLoad(scriptSrc);
     });
   },
 });
 
 const attachUmamiToRouter = (router: Router): void => {
-  router.afterEach((): void => {
-    window.umami.track();
+  router.afterEach((to): void => {
+    window.umami.track((props) => ({ ...props, url: to.fullPath }));
   });
 };
 
@@ -51,23 +48,11 @@ const onDocumentReady = (callback: () => void): void => {
   }
 };
 
-const initUmamiScript = (scriptSrc: string, websiteID: string, hostUrl?: string): void => {
-  const script: HTMLScriptElement = document.createElement("script");
-
-  script.defer = true;
-  script.src = scriptSrc;
+const trackOnScriptLoad = (scriptSrc: string): void => {
+  const script = document.querySelector(`head > script[src='${scriptSrc}']`) as HTMLScriptElement;
 
   script.onload = (): void => {
     console.log("Umami plugin loaded");
     window.umami.track();
   };
-
-  script.setAttribute("data-website-id", websiteID);
-  script.setAttribute("data-auto-track", "false");
-
-  if (hostUrl) {
-    script.setAttribute("data-host-url", hostUrl);
-  }
-
-  document.head.appendChild(script);
 };
