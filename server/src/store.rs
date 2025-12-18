@@ -58,31 +58,23 @@ const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
-// TLDR: We're using aggressive caching to create an eventually consistent system that maximizes
-// availability while allowing the NocoDB instance to shut itself off when not in use.
-//
-// An in-memory cache with a short TTL (configurable per-environment, but likely on the order of
-// seconds) is used to reduce the load on the NocoDB instance. This means that, **for requests
-// handled by this isolate**, the NocoDB instance will only be hit at most once every *n*
-// milliseconds per cache key, and data returned to the client will only be stale by at most *n*
-// milliseconds. This is important, because the NocoDB instance is slower and much more expensive
-// to scale than this worker.
-//
-// However, this in-memory cache is **per-isolate**, meaning that if there's a lot of traffic or
-// geographically distributed traffic, multiple isolates may be spun up, each with their own
-// in-memory cache. This means that the load on the NocoDB instance *will* scale with the number of
-// users, just not linearly.
+// We're using the Cloudflare cache API with a short TTL (configurable per-environment, but likely
+// on the order of seconds) to reduce the load on the NocoDB instance. This means that the NocoDB
+// instance will only be hit at most once every *n* milliseconds per data center per cache key, and
+// data returned to the client will only be stale by at most *n* milliseconds. This is important,
+// because the NocoDB instance is slower and much more expensive to scale than this worker.
 //
 // We need to handle the case where the NocoDB instance is temporarily unavailable. This may happen
-// fairly often, because if the Fly Machine shuts itself off (which it is configured to do, to save
-// money), it takes about 10 seconds to start back up, and during that time it will not respond to
-// requests. To handle this, we also keep a persistent cache in KV, which is shared between
-// isolates and used as a fallback for when the NocoDB instance is unavailable.
+// fairly often, because if the Fly Machine and/or Postgres Instance shut themselves off (which
+// they are configured to do, to save money), they take some time to start back up, and during that
+// time they will not respond to requests. To handle this, we also keep a persistent cache in KV,
+// which is shared between isolates and used as a fallback for when the NocoDB instance is
+// unavailable.
 //
 // Whenever the worker responds to a request with expired data from the persistent cache, it
 // includes a directive for the client to retry the request after a short delay, by which point the
-// NocoDB instance is hopefully online. This saves the user from a 10+ second loading spinner while
-// the NocoDB instance starts up.
+// NocoDB instance is hopefully online. This saves first-time users from a long loading spinner
+// while the NocoDB instance starts up.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
