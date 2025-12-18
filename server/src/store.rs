@@ -1,5 +1,5 @@
 use crate::api::PostBackupKind;
-use crate::env::{EnvId, EnvName};
+use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
 use crate::neon::BackupSnapshot;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
@@ -10,18 +10,13 @@ use crate::{
     noco::Client as NocoClient,
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
-use futures::channel::oneshot;
 use futures::future::{self, Either, FutureExt};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry as MapEntry;
 use std::fmt;
 use std::pin::pin;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use worker::kv::KvStore;
-use worker::{Context, Date, Delay, console_error, console_log, console_warn};
+use worker::{Context, Delay, console_error, console_log, console_warn};
 
 #[derive(Debug)]
 pub struct DataResponseEnvelope<T> {
@@ -37,6 +32,7 @@ pub struct Store {
     ctx: Arc<Context>,
     env_name: EnvName,
     base_id: BaseId,
+    env_config: Config,
 }
 
 impl fmt::Debug for Store {
@@ -59,249 +55,6 @@ const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
 
 // If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
 const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
-
-// We will wait at most this long for an in-flight upstream request to NocoDB to complete.
-// Otherwise, if an error or bug occurs in the wrong place, requests could end up waiting forever,
-// necessitating a restart of the worker.
-const NOCO_INFLIGHT_TIMEOUT: Duration = Duration::from_secs(15);
-
-// An instant in time for the purpose of caching. This wraps a number of milliseconds since the
-// Unix epoch. This is backed by the JS `Date` API, because we don't seem to have access to a
-// proper monotonic clock in this environment.
-#[derive(Debug, Clone, Copy)]
-struct CacheInstant(u64);
-
-impl CacheInstant {
-    pub fn now() -> Self {
-        Self(Date::now().as_millis())
-    }
-
-    pub fn elapsed(&self) -> Duration {
-        let now = Date::now();
-        Duration::from_millis(now.as_millis().saturating_sub(self.0))
-    }
-}
-
-#[derive(Debug)]
-enum CacheEntry {
-    Fresh {
-        cached_at: CacheInstant,
-        ttl: Duration,
-        serialized_value: String,
-    },
-
-    // This cache entry is used to indicate that a request to NocoDB is in-flight and subsequent
-    // requests should register to be notified when it completes. Otherwise, a burst of traffic
-    // could trigger many requests to NocoDB.
-    InFlight {
-        waiters: Vec<oneshot::Sender<String>>,
-    },
-}
-
-impl CacheEntry {
-    fn fresh(serialized_value: String, ttl: Duration) -> Self {
-        Self::Fresh {
-            cached_at: CacheInstant::now(),
-            ttl,
-            serialized_value,
-        }
-    }
-
-    fn in_flight() -> Self {
-        Self::InFlight {
-            waiters: Vec::new(),
-        }
-    }
-}
-
-static MEMORY_CACHE: LazyLock<Mutex<HashMap<String, CacheEntry>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-#[derive(Debug)]
-enum CachedValue<T> {
-    Fresh(T),
-    Expired,
-}
-
-async fn get_memory_cache<T: DeserializeOwned>(key: &str) -> CachedValue<T> {
-    #[derive(Debug)]
-    enum SerializedValue {
-        Ready(String),
-        InFlight(oneshot::Receiver<String>),
-    }
-
-    let cached_value = {
-        // We need to not be holding the lock over the await boundary while waiting for the in-flight
-        // request to complete. Even in the case where the value was fresh, we don't need to hold the
-        // lock while deserializing.
-        let mut cache = MEMORY_CACHE.lock().unwrap();
-
-        match cache.entry(key.to_string()) {
-            MapEntry::Occupied(mut map_entry) => match map_entry.get_mut() {
-                CacheEntry::Fresh {
-                    cached_at: inserted_at,
-                    ttl,
-                    serialized_value,
-                } if inserted_at.elapsed() < *ttl => {
-                    CachedValue::Fresh(SerializedValue::Ready(serialized_value.clone()))
-                }
-                CacheEntry::Fresh { .. } => {
-                    // Cache is expired.
-                    map_entry.insert(CacheEntry::in_flight());
-
-                    CachedValue::Expired
-                }
-                CacheEntry::InFlight { waiters, .. } => {
-                    let (sender, receiver) = oneshot::channel();
-                    waiters.push(sender);
-
-                    CachedValue::Fresh(SerializedValue::InFlight(receiver))
-                }
-            },
-            MapEntry::Vacant(map_entry) => {
-                map_entry.insert(CacheEntry::in_flight());
-
-                CachedValue::Expired
-            }
-        }
-    };
-
-    match cached_value {
-        CachedValue::Fresh(serialized_value) => {
-            let serialized_string = match serialized_value {
-                SerializedValue::Ready(s) => s,
-                SerializedValue::InFlight(receiver) => {
-                    let inflight_future = pin!(receiver);
-                    let timeout_future = pin!(Delay::from(NOCO_INFLIGHT_TIMEOUT));
-
-                    let with_timeout = future::select(
-                        inflight_future,
-                        timeout_future,
-                    ).map(|either| match either {
-                        Either::Left((value, _)) => Some(value),
-                        Either::Right(_) => {
-                            console_warn!("Timed out waiting for in-flight upstream request to NocoDB after {} seconds.", NOCO_INFLIGHT_TIMEOUT.as_secs());
-                            None
-                        },
-                    });
-
-                    match with_timeout.await {
-                        Some(Ok(s)) => s,
-                        Some(Err(e)) => {
-                            console_warn!(
-                                "Failed receiving in-flight cached value for key `{}`: {}",
-                                key,
-                                e
-                            );
-                            return CachedValue::Expired;
-                        }
-                        None => {
-                            // The upstream request to NocoDB didn't resolve and notify this
-                            // request, possibly because it failed. We need to mark this cache key
-                            // as expired so the next request will try again.
-                            let mut cache = MEMORY_CACHE.lock().unwrap();
-                            cache.remove(key);
-
-                            return CachedValue::Expired;
-                        }
-                    }
-                }
-            };
-
-            match serde_json::from_str(&serialized_string) {
-                Ok(value) => CachedValue::Fresh(value),
-                Err(e) => {
-                    console_warn!("Failed deserializing cached value for key `{}`: {}", key, e);
-
-                    // As a defensive measure, if we fail to deserialize the cached value, we
-                    // should evict it from the cache to avoid repeated errors on subsequent
-                    // requests.
-                    let mut cache = MEMORY_CACHE.lock().unwrap();
-                    cache.remove(key);
-
-                    CachedValue::Expired
-                }
-            }
-        }
-        CachedValue::Expired => CachedValue::Expired,
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum NotifyAction<T> {
-    // Refresh the in-memory cache and notify all waiting requests.
-    Refresh { value: T, ttl: Duration },
-
-    // Notify all waiting requests, but do not refresh the in-memory cache.
-    OnlyNotify(T),
-
-    // Expire the in-memory cache and notify all waiting requests.
-    Expire(T),
-
-    // Expire the in-memory cache and close all waiting requests.
-    Close,
-}
-
-async fn put_memory_cache<T: Serialize>(key: &str, action: NotifyAction<T>) -> anyhow::Result<()> {
-    // We serialize first to minimize how long we're holding the lock.
-    let serialized_value_action = match action {
-        NotifyAction::Refresh { value, ttl } => NotifyAction::Refresh {
-            value: serde_json::to_string(&value)?,
-            ttl,
-        },
-        NotifyAction::OnlyNotify(value) => NotifyAction::OnlyNotify(serde_json::to_string(&value)?),
-        NotifyAction::Expire(value) => NotifyAction::Expire(serde_json::to_string(&value)?),
-        NotifyAction::Close => NotifyAction::Close,
-    };
-
-    let waiters = {
-        let mut cache = MEMORY_CACHE.lock().unwrap();
-
-        match cache.entry(key.to_string()) {
-            MapEntry::Occupied(mut map_entry) => {
-                let waiters = if let CacheEntry::InFlight { waiters, .. } = map_entry.get_mut() {
-                    std::mem::take(waiters)
-                } else {
-                    Vec::new()
-                };
-
-                match &serialized_value_action {
-                    NotifyAction::Expire(_) | NotifyAction::Close => {
-                        map_entry.remove();
-                    }
-                    NotifyAction::Refresh {
-                        value: serialized_value,
-                        ttl,
-                    } => {
-                        *map_entry.get_mut() = CacheEntry::fresh(serialized_value.clone(), *ttl);
-                    }
-                    NotifyAction::OnlyNotify(_) => {
-                        // Leave the cache entry as-is.
-                    }
-                };
-
-                waiters
-            }
-            MapEntry::Vacant(_) => return Ok(()),
-        }
-    };
-
-    if let NotifyAction::Refresh {
-        value: serialized_value,
-        ..
-    }
-    | NotifyAction::Expire(serialized_value)
-    | NotifyAction::OnlyNotify(serialized_value) = serialized_value_action
-    {
-        for waiter in waiters {
-            if waiter.send(serialized_value.clone()).is_err() {
-                console_warn!("Failed notifying in-flight waiter for key `{}`", key);
-            }
-        }
-    }
-
-    Ok(())
-}
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
@@ -337,37 +90,13 @@ macro_rules! get_data {
         get_api_fn: $get_api_fn:path,
         get_cached_fn: $get_cached_fn:path,
         put_cached_fn: $put_cached_fn:path,
-        cache_key_fn: $cache_key_fn:path,
         err_msg_key: $err_msg_key:expr,
     } => {
         #[worker::send]
-        pub async fn $fn_name(app_state: &AppState, env_id: &EnvId) -> Result<DataResponseEnvelope<$type_name>, Error> {
-            // We construct a cache key using the environment ID instead of the environment name to
-            // save ourselves a KV lookup, which incurs significant latency over a purely in-memory
-            // cache.
-            let cache_key = $cache_key_fn(env_id);
-
-            match get_memory_cache::<$type_name>(&cache_key).await {
-                CachedValue::Fresh(value) => {
-                    console_log!("Returning cached {}; skipping NocoDB.", $err_msg_key);
-
-                    put_memory_cache(&cache_key, NotifyAction::OnlyNotify(&value)).await.ok();
-
-                    return Ok(DataResponseEnvelope {
-                        value,
-                        retry_after: None,
-                    });
-                }
-                CachedValue::Expired => {
-                    console_log!("Cached {} expired; fetching from NocoDB.", $err_msg_key);
-                }
-            }
-
-            let store = Store::from_env_id(app_state, env_id).await?;
-
+        pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
             // A request to get the most recent data from NocoDB.
             let value_request = async {
-                let table_ids = match store.get_table_ids().await {
+                let table_ids = match self.get_table_ids().await {
                     Ok(table_ids) => table_ids,
                     Err(e) => {
                         console_warn!("Failed getting table IDs from NocoDB: {}", e);
@@ -375,7 +104,7 @@ macro_rules! get_data {
                     }
                 };
 
-                match $get_api_fn(&store.noco_client, &table_ids)
+                match $get_api_fn(&self.noco_client, &table_ids)
                     .await
                     .map_err(Error::Internal)
                 {
@@ -388,7 +117,7 @@ macro_rules! get_data {
             };
 
             // A request to NocoDB's healthcheck endpoint.
-            let healthcheck_request = pin!(noco::check_health(&store.noco_client));
+            let healthcheck_request = pin!(noco::check_health(&self.noco_client));
             let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
 
             // Perform a healthcheck on the NocoDB server with a timeout.
@@ -429,26 +158,13 @@ macro_rules! get_data {
                 Some(value) => {
                     console_log!("Caching latest {} from NocoDB.", $err_msg_key);
 
-                    let env_config = kv::get_env_config(&store.kv, &store.env_name).await.map_err(Error::Internal)?;
-                    let ttl = env_config
-                        .cache_ttl
-                        .map(Duration::from_millis)
-                        .unwrap_or(config::noco_default_memory_cache_ttl());
-
-                    // Notify other requests that came in at the same time as this one that we have
-                    // received fresh data from NocoDB and send it to them. Also refresh the
-                    // in-memory cache.
-                    if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Refresh { value: &value, ttl }).await {
-                        console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
-                    }
-
-                    let kv_for_cache = store.kv.clone();
+                    let kv_for_cache = self.kv.clone();
                     let value_for_cache = value.clone();
-                    let env_name_for_cache = store.env_name.clone();
+                    let env_name_for_cache = self.env_name.clone();
 
                     // Update the persistent KV cache. This doesn't need to block the current
                     // request.
-                    store.ctx.wait_until(async move {
+                    self.ctx.wait_until(async move {
                         if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value_for_cache).await {
                             console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
                         }
@@ -459,24 +175,16 @@ macro_rules! get_data {
                 None => {
                     console_log!("NocoDB is unavailable, fetching stale data if available.");
 
-                    match $get_cached_fn(&store.kv, &store.env_name).await {
+                    match $get_cached_fn(&self.kv, &self.env_name).await {
                         Ok(Some(value)) => {
                             // Return the cached data whether or not it has expired, because we
                             // have nothing better to send the client right now.
                             console_log!("Returning stale {} from cache.", $err_msg_key);
 
-                            if let Err(e) = put_memory_cache(&cache_key, NotifyAction::Expire(&value)).await {
-                                console_warn!("Failed putting {} in memory cache: {}", $err_msg_key, e);
-                            }
-
                             Ok(DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
                         }
                         Ok(None) | Err(_) => {
                             console_warn!("No stale cached {} found.", $err_msg_key);
-
-                            if let Err(e) = put_memory_cache::<()>(&cache_key, NotifyAction::Close).await {
-                                console_warn!("Failed closing in-flight waiters for {}: {}", $err_msg_key, e);
-                            }
 
                             Err(Error::NocoUnavailable)
                         }
@@ -502,7 +210,8 @@ impl Store {
             .map_err(Error::Internal)?;
 
         let db_client = DbClient::connect(
-            &Option::<DbConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+            &Option::<DbConnectionConfig>::from(env_config.clone())
+                .ok_or(Error::MissingEnvConfig)?,
         )
         .await
         .map_err(Error::Internal)?;
@@ -526,6 +235,7 @@ impl Store {
             ctx,
             env_name,
             base_id,
+            env_config,
         })
     }
 
@@ -536,6 +246,17 @@ impl Store {
             .ok_or(Error::NoEnvId)?;
 
         Self::from_env_name(state, env_name).await
+    }
+
+    pub fn env_name(&self) -> &EnvName {
+        &self.env_name
+    }
+
+    pub fn cache_ttl(&self) -> Duration {
+        self.env_config
+            .cache_ttl
+            .map(Duration::from_secs)
+            .unwrap_or(config::noco_default_cdn_cache_ttl())
     }
 
     async fn get_table_ids(&self) -> Result<TableIds, Error> {
@@ -568,7 +289,6 @@ impl Store {
         get_api_fn: noco::get_events,
         get_cached_fn: kv::get_cached_events,
         put_cached_fn: kv::put_cached_events,
-        cache_key_fn: kv::events_by_id_cache_key,
         err_msg_key: "events",
     }
 
@@ -578,7 +298,6 @@ impl Store {
         get_api_fn: noco::get_info,
         get_cached_fn: kv::get_cached_info,
         put_cached_fn: kv::put_cached_info,
-        cache_key_fn: kv::info_by_id_cache_key,
         err_msg_key: "info",
     }
 
@@ -588,7 +307,6 @@ impl Store {
         get_api_fn: noco::get_pages,
         get_cached_fn: kv::get_cached_pages,
         put_cached_fn: kv::put_cached_pages,
-        cache_key_fn: kv::pages_by_id_cache_key,
         err_msg_key: "pages",
     }
 
@@ -598,7 +316,6 @@ impl Store {
         get_api_fn: noco::get_announcements,
         get_cached_fn: kv::get_cached_announcements,
         put_cached_fn: kv::put_cached_announcements,
-        cache_key_fn: kv::announcements_by_id_cache_key,
         err_msg_key: "announcements",
     }
 
@@ -608,20 +325,13 @@ impl Store {
         get_api_fn: noco::get_about,
         get_cached_fn: kv::get_cached_about,
         put_cached_fn: kv::put_cached_about,
-        cache_key_fn: kv::about_by_id_cache_key,
         err_msg_key: "about",
     }
 
-    pub async fn get_summary(app_state: &AppState, env_id: &EnvId) -> Result<noco::Summary, Error> {
-        let DataResponseEnvelope { value: about, .. } = Self::get_about(app_state, env_id).await?;
-
-        let env_name = kv::get_id_env(&app_state.kv, env_id)
-            .await
-            .map_err(Error::Internal)?
-            .ok_or(Error::NoEnvId)?;
+    pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
+        let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
 
         Ok(noco::Summary {
-            env_name: env_name.clone(),
             name: about.name.clone(),
             description: about.description,
         })

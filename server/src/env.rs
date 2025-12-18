@@ -54,7 +54,7 @@ impl fmt::Display for EnvName {
 }
 
 // Environment-specific configuration. This should be a flat key-value map.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub timezone: Option<String>,
     pub cache_ttl: Option<u64>,

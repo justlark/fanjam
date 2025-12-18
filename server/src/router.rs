@@ -369,16 +369,26 @@ async fn get_config_docs() -> Result<Json<serde_json::Value>, ErrorResponse> {
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_events(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<DataResponseEnvelope<GetEventsResponse>>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
     let store::DataResponseEnvelope {
         retry_after,
         value: events,
-    } = Store::get_events(&state, &env_id).await?;
+    } = store.get_events().await?;
 
-    Ok(EtagJson(DataResponseEnvelope {
+    let response = EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
         value: GetEventsResponse {
             events: events
@@ -397,20 +407,42 @@ async fn get_events(
                 })
                 .collect::<Vec<_>>(),
         },
-    }))
+    })
+    .into_response();
+
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        store.env_name().to_owned(),
+        store.cache_ttl(),
+        uri,
+        response,
+    )?;
+
+    Ok(response)
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_info(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<DataResponseEnvelope<GetInfoResponse>>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
     let store::DataResponseEnvelope {
         retry_after,
         value: info,
-    } = Store::get_info(&state, &env_id).await?;
+    } = store.get_info().await?;
 
-    Ok(EtagJson(DataResponseEnvelope {
+    let response = EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
         value: GetInfoResponse {
             name: info.about.name.clone(),
@@ -435,20 +467,42 @@ async fn get_info(
                 })
                 .collect::<Vec<_>>(),
         },
-    }))
+    })
+    .into_response();
+
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        store.env_name().to_owned(),
+        store.cache_ttl(),
+        uri,
+        response,
+    )?;
+
+    Ok(response)
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_pages(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<DataResponseEnvelope<GetPagesResponse>>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
     let store::DataResponseEnvelope {
         retry_after,
         value: pages,
-    } = Store::get_pages(&state, &env_id).await?;
+    } = store.get_pages().await?;
 
-    Ok(EtagJson(DataResponseEnvelope {
+    let response = EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
         value: GetPagesResponse {
             pages: pages
@@ -469,20 +523,42 @@ async fn get_pages(
                 })
                 .collect::<Vec<_>>(),
         },
-    }))
+    })
+    .into_response();
+
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        store.env_name().to_owned(),
+        store.cache_ttl(),
+        uri,
+        response,
+    )?;
+
+    Ok(response)
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_announcements(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<EtagJson<DataResponseEnvelope<GetAnnouncementsResponse>>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
     let store::DataResponseEnvelope {
         retry_after,
         value: announcements,
-    } = Store::get_announcements(&state, &env_id).await?;
+    } = store.get_announcements().await?;
 
-    Ok(EtagJson(DataResponseEnvelope {
+    let response = EtagJson(DataResponseEnvelope {
         retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
         value: GetAnnouncementsResponse {
             announcements: announcements
@@ -505,7 +581,19 @@ async fn get_announcements(
                 })
                 .collect::<Vec<_>>(),
         },
-    }))
+    })
+    .into_response();
+
+    let response = put_cdn_cache(
+        &state.ctx,
+        cache,
+        store.env_name().to_owned(),
+        store.cache_ttl(),
+        uri,
+        response,
+    )?;
+
+    Ok(response)
 }
 
 #[axum::debug_handler]
@@ -521,10 +609,12 @@ async fn get_summary(
         return Ok(response);
     }
 
-    let summary = Store::get_summary(&state, &env_id).await?;
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    let summary = store.get_summary().await?;
 
     let response = Json(GetSummaryResponse {
-        env_name: summary.env_name.to_string(),
+        env_name: store.env_name().to_string(),
         name: summary.name,
         description: summary.description,
     })
@@ -533,7 +623,7 @@ async fn get_summary(
     let response = put_cdn_cache(
         &state.ctx,
         cache,
-        summary.env_name,
+        store.env_name().to_owned(),
         config::noco_summary_cache_ttl(),
         uri,
         response,
