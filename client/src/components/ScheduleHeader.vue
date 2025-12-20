@@ -19,6 +19,7 @@ import FilterMenu from "./FilterMenu.vue";
 
 const {
   data: { events },
+  status: { events: eventsStatus },
 } = useRemoteData();
 
 const filterCriteria = useFilterQuery();
@@ -79,6 +80,15 @@ const searchIndex = new flexsearch.Document({
 const showFilterMenu = ref(false);
 
 watchEffect(() => {
+  // Wait until all events have loaded before building the search index,
+  // otherwise we're going to rebuild the search index every time new events
+  // arrive, which would be a performance nightmare.
+  if (eventsStatus.value !== "success") {
+    return;
+  }
+
+  searchIndex.clear();
+
   for (const event of events) {
     searchIndex.add({
       id: event.id,
