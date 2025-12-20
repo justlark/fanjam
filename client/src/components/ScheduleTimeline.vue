@@ -28,6 +28,7 @@ const router = useRouter();
 const {
   data: { events },
   status: { events: eventsStatus },
+  refresh: { events: refreshEvents },
 } = useRemoteData();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
@@ -68,6 +69,10 @@ interface Day {
 }
 
 const currentDayIndex = defineModel<number>("day");
+
+watch(currentDayIndex, () => {
+  refreshEvents();
+});
 
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});

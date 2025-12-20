@@ -55,8 +55,13 @@ const lazyRenderArray = <T>(
   input: MaybeRefOrGetter<FetchResult<Array<T>>>,
   output: Reactive<Array<T>>,
   chunkSize: number,
-): Readonly<Ref<FetchStatus>> => {
+): { status: Readonly<Ref<FetchStatus>>; refresh: () => void } => {
   const status = ref<FetchStatus>("pending");
+  const renderCounter = ref(0);
+
+  const refresh = () => {
+    renderCounter.value += 1;
+  };
 
   const renderChunk = () => {
     const value = toValue(input);
@@ -79,7 +84,7 @@ const lazyRenderArray = <T>(
 
   onMounted(() => {
     watch(
-      input,
+      [input, renderCounter],
       () => {
         output.length = 0;
         requestAnimationFrame(renderChunk);
@@ -88,7 +93,7 @@ const lazyRenderArray = <T>(
     );
   });
 
-  return status;
+  return { status, refresh };
 };
 
 const setResultIfModified = <T>(
@@ -222,6 +227,7 @@ type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
   data: T;
   status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
+  refresh: () => void;
   clear: () => void;
 };
 
@@ -279,11 +285,12 @@ const useRemoteEvents: DataSource<Readonly<Reactive<Array<DeepReadonly<Event>>>>
   });
 
   const data = reactive<Array<Event>>([]);
-  const status = lazyRenderArray(eventsRef, data, 5);
+  const { status, refresh } = lazyRenderArray(eventsRef, data, 5);
 
   return {
     reload,
     clear,
+    refresh,
     status,
     data: readonly(data),
   };
@@ -343,6 +350,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   return {
     reload,
     clear,
+    refresh: () => { },
     status: unwrapFetchStatus(infoRef),
     data: unwrapFetchValue(infoRef),
   };
@@ -396,9 +404,9 @@ const useRemotePages: DataSource<Readonly<Reactive<Array<DeepReadonly<Page>>>>> 
   });
 
   const data = reactive<Array<Page>>([]);
-  const status = lazyRenderArray(pagesRef, data, 5);
+  const { status, refresh } = lazyRenderArray(pagesRef, data, 5);
 
-  return { reload, clear, status, data: readonly(data) };
+  return { reload, clear, refresh, status, data: readonly(data) };
 };
 
 interface StoredAnnouncement {
@@ -455,9 +463,9 @@ const useRemoteAnnouncements: DataSource<Readonly<Reactive<Array<DeepReadonly<An
   });
 
   const data = reactive<Array<Announcement>>([]);
-  const status = lazyRenderArray(announcementsRef, data, 5);
+  const { status, refresh } = lazyRenderArray(announcementsRef, data, 5);
 
-  return { reload, clear, status, data: readonly(data) };
+  return { reload, clear, refresh, status, data: readonly(data) };
 };
 
 interface StoredConfig {
@@ -485,6 +493,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
   return {
     reload,
     clear,
+    refresh: () => { },
     data: unwrapFetchValue(configRef),
     status: unwrapFetchStatus(configRef),
   };
@@ -504,6 +513,9 @@ type CombinedDataSource = () => {
   };
   status: {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["status"];
+  };
+  refresh: {
+    [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["refresh"];
   };
   reload: () => Promise<void>;
   clear: () => void;
@@ -538,6 +550,9 @@ const useRemoteData: CombinedDataSource = () => {
     data: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.data]),
     ) as ReturnType<CombinedDataSource>["data"],
+    refresh: Object.fromEntries(
+      Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.refresh]),
+    ) as ReturnType<CombinedDataSource>["refresh"],
   };
 };
 
