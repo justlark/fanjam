@@ -18,7 +18,7 @@ const {
 const pageId = computed(() => route.params.pageId as string);
 
 const page = computed(() => {
-  return pages.find((p) => p.id === pageId.value);
+  return pages.value.find((p) => p.id === pageId.value);
 });
 
 const bodyHtml = computed(() => {
@@ -33,7 +33,7 @@ const back = async () => {
 };
 
 watchEffect(async () => {
-  if (pagesStatus.value === "success" && pages.length > 0 && !page.value) {
+  if (pagesStatus.value === "success" && pages.value.length > 0 && !page.value) {
     await back();
   }
 });

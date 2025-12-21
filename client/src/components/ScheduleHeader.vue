@@ -44,10 +44,10 @@ const showFilterDescription = computed(
 
 const eventIds = defineModel<Array<string>>("ids");
 
-const allCategories = computed(() => getSortedCategories(events));
+const allCategories = computed(() => getSortedCategories(events.value));
 
 const allTags = computed(() =>
-  events.reduce<Array<string>>((set, event) => {
+  events.value.reduce<Array<string>>((set, event) => {
     for (const tag of event.tags) {
       if (!set.includes(tag)) {
         set.push(tag);
@@ -60,7 +60,7 @@ const allTags = computed(() =>
 const eventsById = computed<Map<string, DeepReadonly<Event>>>(() => {
   const map = new Map<string, DeepReadonly<Event>>();
 
-  for (const event of events) {
+  for (const event of events.value) {
     map.set(event.id, event);
   }
 
@@ -89,7 +89,7 @@ watchEffect(() => {
 
   searchIndex.clear();
 
-  for (const event of events) {
+  for (const event of events.value) {
     searchIndex.add({
       id: event.id,
       name: event.name,
@@ -106,7 +106,7 @@ const filterTags = computed(() => new Set(filterCriteria.tags));
 const filterCategories = computed(() => new Set(filterCriteria.categories));
 
 watchEffect(() => {
-  let filteredEvents = [...events];
+  let filteredEvents = [...events.value];
 
   if (searchText.value.length > 0) {
     const results = searchIndex.search(searchText.value);

@@ -1,18 +1,19 @@
 import { ref, watch, toValue, type Ref } from "vue";
 
-export function useReactiveMap<T, R>(
-  input: Ref<Array<T>>,
-  mapper: (item: T, index: number) => R,
+export function useReactiveFilter<T>(
+  input: Ref<T[]>,
+  predicate: (item: T, index: number) => boolean,
   chunkSize = 5,
 ) {
-  const output = ref<R[]>([]);
+  const output = ref<T[]>([]);
+
   let runId = 0;
 
   function run() {
     const currentRun = ++runId;
     const source = toValue(input);
 
-    output.value = new Array(source.length);
+    output.value = [];
 
     let i = 0;
 
@@ -22,7 +23,10 @@ export function useReactiveMap<T, R>(
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
-        (output.value[i] as R) = mapper(source[i], i);
+        const item = source[i];
+        if (predicate(item, i)) {
+          (output.value as Array<T>).push(item);
+        }
       }
 
       if (i < source.length) {
@@ -38,4 +42,4 @@ export function useReactiveMap<T, R>(
   return output;
 }
 
-export default useReactiveMap;
+export default useReactiveFilter;

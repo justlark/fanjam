@@ -6,7 +6,6 @@ import {
   toRef,
   provide,
   onMounted,
-  readonly,
   inject,
   ref,
   computed,
@@ -35,11 +34,13 @@ interface StoredValue<T> {
   value: T;
 }
 
-const unwrapFetchValue = <T>(
-  result: Readonly<Ref<FetchResult<T>>>,
-): Readonly<Ref<T | undefined>> => {
-  return computed(() => (result.value.status === "success" ? result.value.value : undefined));
-};
+const unwrapFetchValue = <T>(result: Readonly<Ref<FetchResult<T>>>): Readonly<Ref<T | undefined>> =>
+  computed(() => (result.value.status === "success" ? result.value.value : undefined));
+
+const unwrapFetchArray = <T>(
+  result: Readonly<Ref<FetchResult<Array<T>>>>,
+): Readonly<Ref<Array<T>>> =>
+  computed(() => (result.value.status === "success" ? result.value.value : []));
 
 const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
@@ -235,8 +236,8 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   return {
     reload,
     clear,
-    status: readonly(toRef(eventsRef.value, "status")),
-    data: toRef(() => (eventsRef.value.status === "success" ? eventsRef.value.value : [])),
+    status: unwrapFetchStatus(eventsRef),
+    data: unwrapFetchArray(eventsRef),
   };
 };
 
@@ -349,8 +350,8 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   return {
     reload,
     clear,
-    status: readonly(toRef(pagesRef.value, "status")),
-    data: toRef(() => (pagesRef.value.status === "success" ? pagesRef.value.value : [])),
+    status: unwrapFetchStatus(pagesRef),
+    data: unwrapFetchArray(pagesRef),
   };
 };
 
@@ -410,10 +411,8 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
   return {
     reload,
     clear,
-    status: readonly(toRef(announcementsRef.value, "status")),
-    data: toRef(() =>
-      announcementsRef.value.status === "success" ? announcementsRef.value.value : [],
-    ),
+    status: unwrapFetchStatus(announcementsRef),
+    data: unwrapFetchArray(announcementsRef),
   };
 };
 

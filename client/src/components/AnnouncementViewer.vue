@@ -24,7 +24,7 @@ const {
 const announcementId = computed(() => route.params.announcementId as string);
 
 const announcement = computed(() => {
-  return announcements.find((p) => p.id === announcementId.value);
+  return announcements.value.find((p) => p.id === announcementId.value);
 });
 
 const bodyHtml = computed(() => {
@@ -39,7 +39,11 @@ const back = async () => {
 };
 
 watchEffect(async () => {
-  if (announcementsStatus.value === "success" && announcements.length > 0 && !announcement.value) {
+  if (
+    announcementsStatus.value === "success" &&
+    announcements.value.length > 0 &&
+    !announcement.value
+  ) {
     await back();
   }
 });

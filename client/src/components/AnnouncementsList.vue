@@ -16,7 +16,7 @@ const {
 const unreadAnnouncements = useUnreadAnnouncements();
 
 const filteredAnnouncements = computed(() => {
-  const withTitle = announcements.filter((announcement) => announcement.title.trim() !== "");
+  const withTitle = announcements.value.filter((announcement) => announcement.title.trim() !== "");
 
   withTitle.sort((a, b) => {
     return b.updatedAt.valueOf() - a.updatedAt.valueOf();

@@ -11,6 +11,8 @@ import {
 } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
+import useReactiveMap from "@/composables/useReactiveMap";
+import useReactiveFilter from "@/composables/useReactiveFilter";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -34,7 +36,9 @@ const filterCriteria = useFilterQuery();
 
 const focusedEventId = defineModel<string | undefined>("focused");
 const focusedEvent = computed(() =>
-  focusedEventId.value ? events.find((event) => event.id === focusedEventId.value) : undefined,
+  focusedEventId.value
+    ? events.value.find((event) => event.id === focusedEventId.value)
+    : undefined,
 );
 
 onMounted(() => {
@@ -82,10 +86,10 @@ const currentDayTimeSlots = computed(() => {
 });
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
-const allCategories = computed(() => getSortedCategories(events));
+const allCategories = computed(() => getSortedCategories(events.value));
 
 const allDates = computed(() =>
-  events.reduce((set, event) => {
+  events.value.reduce((set, event) => {
     set.add(event.startTime);
     return set;
   }, new Set<Date>()),
@@ -125,7 +129,7 @@ watchEffect(() => {
   const datetimeFormatsValue = datetimeFormats.value;
 
   days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
-    const eventsThisDay = events.filter((event) =>
+    const eventsThisDay = events.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
     );
 
@@ -153,13 +157,12 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlots = computed(() =>
-  currentDayTimeSlots.value
-    .map((timeSlot) => ({
-      events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
-      localizedTime: timeSlot.localizedTime,
-    }))
-    .filter((timeSlot) => timeSlot.events.length > 0),
+const filteredTimeSlots = useReactiveFilter(
+  useReactiveMap(currentDayTimeSlots, (timeSlot) => ({
+    events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+    localizedTime: timeSlot.localizedTime,
+  })),
+  (timeSlot) => timeSlot.events.length > 0,
 );
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);

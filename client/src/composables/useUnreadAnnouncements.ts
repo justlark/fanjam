@@ -11,7 +11,7 @@ export const useUnreadAnnouncements = () => {
   } = useRemoteData();
 
   const announcementsSet = computed(
-    () => new Set(announcements.map((announcement) => announcement.id)),
+    () => new Set(announcements.value.map((announcement) => announcement.id)),
   );
 
   const unreadAnnouncementsCount = computed(() => {
