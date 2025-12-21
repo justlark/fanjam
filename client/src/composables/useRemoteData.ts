@@ -1,11 +1,9 @@
 import {
   type Ref,
   type MaybeRefOrGetter,
-  type Reactive,
   type DeepReadonly,
   toValue,
   toRef,
-  reactive,
   provide,
   onMounted,
   readonly,
@@ -46,56 +44,6 @@ const unwrapFetchValue = <T>(
 const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
 ): Readonly<Ref<FetchStatus>> => computed(() => result.value.status);
-
-// Feed the `input` array into the `output` array in chunks, yielding to the
-// browser to render one chunk at a time. This also returns a `status` ref,
-// which it will set to `pending` while rendering chunks, `success` once all
-// chunks have been rendered, or `error` if the input has an `error` status.
-const lazyRenderArray = <T>(
-  input: MaybeRefOrGetter<FetchResult<Array<T>>>,
-  output: Reactive<Array<T>>,
-  chunkSize: number,
-): { status: Readonly<Ref<FetchStatus>>; refresh: () => void } => {
-  const status = ref<FetchStatus>("pending");
-
-  const refresh = () => {
-    status.value = "pending";
-    output.length = 0;
-    requestAnimationFrame(renderChunk);
-  };
-
-  const renderChunk = () => {
-    const value = toValue(input);
-
-    if (value.status !== "success") {
-      status.value = value.status;
-      return;
-    }
-
-    if (output.length >= value.value.length) {
-      status.value = "success";
-      return;
-    }
-
-    const next = value.value.slice(output.length, output.length + chunkSize);
-    (output as Array<T>).push(...next);
-
-    requestAnimationFrame(renderChunk);
-  };
-
-  onMounted(() => {
-    watch(
-      input,
-      () => {
-        output.length = 0;
-        requestAnimationFrame(renderChunk);
-      },
-      { immediate: true },
-    );
-  });
-
-  return { status, refresh };
-};
 
 const setResultIfModified = <T>(
   result: Ref<FetchResult<T>>,
@@ -228,7 +176,6 @@ type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
   data: T;
   status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
-  refresh: () => void;
   clear: () => void;
 };
 
@@ -247,7 +194,7 @@ interface StoredEvent {
 
 const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
-const useRemoteEvents: DataSource<Readonly<Reactive<Array<DeepReadonly<Event>>>>> = (
+const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("events");
@@ -285,15 +232,11 @@ const useRemoteEvents: DataSource<Readonly<Reactive<Array<DeepReadonly<Event>>>>
       })),
   });
 
-  const data = reactive<Array<Event>>([]);
-  const { status, refresh } = lazyRenderArray(eventsRef, data, 5);
-
   return {
     reload,
     clear,
-    refresh,
-    status,
-    data: readonly(data),
+    status: readonly(toRef(eventsRef.value, "status")),
+    data: toRef(() => (eventsRef.value.status === "success" ? eventsRef.value.value : [])),
   };
 };
 
@@ -351,7 +294,6 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   return {
     reload,
     clear,
-    refresh: () => { },
     status: unwrapFetchStatus(infoRef),
     data: unwrapFetchValue(infoRef),
   };
@@ -370,7 +312,7 @@ interface StoredPage {
 
 const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
 
-const useRemotePages: DataSource<Readonly<Reactive<Array<DeepReadonly<Page>>>>> = (
+const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("pages");
@@ -404,10 +346,12 @@ const useRemotePages: DataSource<Readonly<Reactive<Array<DeepReadonly<Page>>>>> 
       })),
   });
 
-  const data = reactive<Array<Page>>([]);
-  const { status, refresh } = lazyRenderArray(pagesRef, data, 5);
-
-  return { reload, clear, refresh, status, data: readonly(data) };
+  return {
+    reload,
+    clear,
+    status: readonly(toRef(pagesRef.value, "status")),
+    data: toRef(() => (pagesRef.value.status === "success" ? pagesRef.value.value : [])),
+  };
 };
 
 interface StoredAnnouncement {
@@ -425,7 +369,7 @@ interface StoredAnnouncement {
 
 const announcementsRef = ref<FetchResult<Array<Announcement>>>({ status: "pending" });
 
-const useRemoteAnnouncements: DataSource<Readonly<Reactive<Array<DeepReadonly<Announcement>>>>> = (
+const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announcement>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
   const storedValue: StoredValue<unknown> | undefined = getItem("announcements");
@@ -463,10 +407,14 @@ const useRemoteAnnouncements: DataSource<Readonly<Reactive<Array<DeepReadonly<An
       })),
   });
 
-  const data = reactive<Array<Announcement>>([]);
-  const { status, refresh } = lazyRenderArray(announcementsRef, data, 5);
-
-  return { reload, clear, refresh, status, data: readonly(data) };
+  return {
+    reload,
+    clear,
+    status: readonly(toRef(announcementsRef.value, "status")),
+    data: toRef(() =>
+      announcementsRef.value.status === "success" ? announcementsRef.value.value : [],
+    ),
+  };
 };
 
 interface StoredConfig {
@@ -494,7 +442,6 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
   return {
     reload,
     clear,
-    refresh: () => { },
     data: unwrapFetchValue(configRef),
     status: unwrapFetchStatus(configRef),
   };
@@ -514,9 +461,6 @@ type CombinedDataSource = () => {
   };
   status: {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["status"];
-  };
-  refresh: {
-    [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["refresh"];
   };
   reload: () => Promise<void>;
   clear: () => void;
@@ -551,9 +495,6 @@ const useRemoteData: CombinedDataSource = () => {
     data: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.data]),
     ) as ReturnType<CombinedDataSource>["data"],
-    refresh: Object.fromEntries(
-      Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.refresh]),
-    ) as ReturnType<CombinedDataSource>["refresh"],
   };
 };
 
