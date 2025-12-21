@@ -1,10 +1,18 @@
-import { ref, watch, toValue, type Ref } from "vue";
+import { ref, watch, toValue, type Ref, type MaybeRefOrGetter } from "vue";
 
-export function useReactiveMap<T, R>(
+export const useReactiveMap = <T, R>(
   input: Ref<Array<T>>,
   mapper: (item: T, index: number) => R,
-  chunkSize = 5,
-) {
+  options: {
+    chunkSize: number;
+    sources: Array<MaybeRefOrGetter<T>>;
+  } = {
+      chunkSize: 5,
+      sources: [],
+    },
+) => {
+  const { chunkSize, sources } = options;
+
   const output = ref<R[]>([]);
   let runId = 0;
 
@@ -33,9 +41,9 @@ export function useReactiveMap<T, R>(
     requestAnimationFrame(step);
   }
 
-  watch(input, run, { immediate: true });
+  watch([input, ...sources], run, { immediate: true });
 
   return output;
-}
+};
 
 export default useReactiveMap;

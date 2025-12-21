@@ -1,8 +1,8 @@
 import { ref, watch, toValue, type Ref, type MaybeRefOrGetter } from "vue";
 
-export const useReactiveFilter = <T>(
-  input: Ref<T[]>,
-  predicate: (item: T, index: number) => boolean,
+export const useReactiveFilterMap = <T, R>(
+  input: Ref<Array<T>>,
+  mapper: (item: T, index: number) => R,
   options: {
     chunkSize: number;
     sources: Array<MaybeRefOrGetter<T>>;
@@ -13,15 +13,14 @@ export const useReactiveFilter = <T>(
 ) => {
   const { chunkSize, sources } = options;
 
-  const output = ref<T[]>([]);
-
+  const output = ref<R[]>([]);
   let runId = 0;
 
   function run() {
     const currentRun = ++runId;
     const source = toValue(input);
 
-    output.value = [];
+    output.value = new Array(source.length);
 
     let i = 0;
 
@@ -31,10 +30,13 @@ export const useReactiveFilter = <T>(
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
-        const item = source[i];
-        if (predicate(item, i)) {
-          (output.value as Array<T>).push(item);
+        const mapped = mapper(source[i], i);
+
+        if (mapped === undefined) {
+          continue;
         }
+
+        (output.value[i] as R) = mapped;
       }
 
       if (i < source.length) {
@@ -50,4 +52,4 @@ export const useReactiveFilter = <T>(
   return output;
 };
 
-export default useReactiveFilter;
+export default useReactiveFilterMap;

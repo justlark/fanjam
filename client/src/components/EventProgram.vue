@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, type DeepReadonly, watchEffect, ref } from "vue";
+import { computed, type DeepReadonly, ref, watchEffect } from "vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useReactiveMap from "@/composables/useReactiveMap";
+import useReactiveFilter from "@/composables/useReactiveFilter";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
@@ -14,16 +16,10 @@ const {
   data: { events },
 } = useRemoteData();
 
-interface Day {
-  dayName: string;
-  events: Array<DeepReadonly<Event>>;
-}
-
 const props = defineProps<{
   focusedEventId?: string;
 }>();
 
-const days = ref<Array<Day>>([]);
 const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
 const datetimeFormats = useDatetimeFormats();
@@ -43,9 +39,7 @@ const allDates = computed(() =>
 );
 
 const namedDays = computed(() =>
-  datetimeFormats.value === undefined
-    ? undefined
-    : datesToDayNames(datetimeFormats.value, allDates.value),
+  datetimeFormats.value === undefined ? [] : datesToDayNames(datetimeFormats.value, allDates.value),
 );
 
 const filteredEventIdsSet = computed(() =>
@@ -70,19 +64,15 @@ const isFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
 });
 
-watchEffect(() => {
-  if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
+const days = useReactiveMap(namedDays, (day) => {
+  const eventsThisDay = useReactiveFilter(filteredEvents, (event) =>
+    dateIsBetween(event.startTime, day.dayStart, day.dayEnd),
+  );
 
-  days.value = namedDays.value.map(({ dayName, dayStart, dayEnd }) => {
-    const eventsThisDay = filteredEvents.value.filter((event) =>
-      dateIsBetween(event.startTime, dayStart, dayEnd),
-    );
-
-    return {
-      dayName,
-      events: eventsThisDay,
-    };
-  });
+  return {
+    dayName: day.dayName,
+    events: eventsThisDay,
+  };
 });
 </script>
 
