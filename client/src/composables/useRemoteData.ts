@@ -57,10 +57,11 @@ const lazyRenderArray = <T>(
   chunkSize: number,
 ): { status: Readonly<Ref<FetchStatus>>; refresh: () => void } => {
   const status = ref<FetchStatus>("pending");
-  const renderCounter = ref(0);
 
   const refresh = () => {
-    renderCounter.value += 1;
+    status.value = "pending";
+    output.length = 0;
+    requestAnimationFrame(renderChunk);
   };
 
   const renderChunk = () => {
@@ -84,7 +85,7 @@ const lazyRenderArray = <T>(
 
   onMounted(() => {
     watch(
-      [input, renderCounter],
+      input,
       () => {
         output.length = 0;
         requestAnimationFrame(renderChunk);

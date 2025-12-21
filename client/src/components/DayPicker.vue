@@ -55,7 +55,7 @@ const selectToday = () => {
       <IconButton
         icon="chevron-right"
         label="Next"
-        :disabled="currentDayIndex === props.dayNames.length - 1"
+        :disabled="currentDayIndex >= props.dayNames.length - 1"
         @click="selectNextDay"
         :button-props="{
           'data-testid': 'schedule-next-day-button',

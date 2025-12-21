@@ -70,8 +70,10 @@ interface Day {
 
 const currentDayIndex = defineModel<number>("day");
 
-watch(currentDayIndex, () => {
-  refreshEvents();
+watch(currentDayIndex, (newIndex, oldIndex) => {
+  if (newIndex !== undefined && newIndex !== oldIndex) {
+    refreshEvents();
+  }
 });
 
 const days = ref<Array<Day>>([]);
@@ -92,11 +94,6 @@ const allCategories = computed(() => getSortedCategories(events));
 const allDates = computed(() =>
   events.reduce((set, event) => {
     set.add(event.startTime);
-
-    if (event.endTime) {
-      set.add(event.endTime);
-    }
-
     return set;
   }, new Set<Date>()),
 );
@@ -125,6 +122,11 @@ watchEffect(() => {
   dayIndexByEventId.value = {};
 
   if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
+
+  // Until all events have loaded, continue using the previous `days`.
+  // Otherwise, calculations for things like whether we should enable the Next
+  // Day button would have to wait until all the days have loaded.
+  if (eventsStatus.value !== "success") return;
 
   // The type narrowing won't carry into the closure body.
   const datetimeFormatsValue = datetimeFormats.value;
@@ -219,10 +221,16 @@ onUnmounted(() => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  [toRef(route, "path"), dayIndexByEventId, todayIndex],
+  [toRef(route, "path"), eventsStatus, todayIndex],
   () => {
     if (route.name === "schedule") {
       if (route.params.dayIndex) {
+        if (eventsStatus.value !== "success") {
+          // We cannot validate the page number until we know the number of
+          // days in the schedule.
+          return;
+        }
+
         // Handle the page number in the path being out of range or not a number.
         const parsed = parseInt(route.params.dayIndex as string, 10);
         currentDayIndex.value =
