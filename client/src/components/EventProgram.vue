@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, type DeepReadonly, ref, watchEffect } from "vue";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
-import useIncrementalMap from "@/composables/useIncrementalMap";
-import useIncrementalFilter from "@/composables/useIncrementalFilter";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
@@ -64,16 +62,18 @@ const isFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
 });
 
-const days = useIncrementalMap(namedDays, (day) => {
-  const eventsThisDay = useIncrementalFilter(filteredEvents, (event) =>
-    dateIsBetween(event.startTime, day.dayStart, day.dayEnd),
-  );
+const days = computed(() =>
+  namedDays.value.map((day) => {
+    const eventsThisDay = filteredEvents.value.filter((event) =>
+      dateIsBetween(event.startTime, day.dayStart, day.dayEnd),
+    );
 
-  return {
-    dayName: day.dayName,
-    events: eventsThisDay,
-  };
-});
+    return {
+      dayName: day.dayName,
+      events: eventsThisDay,
+    };
+  }),
+);
 </script>
 
 <template>

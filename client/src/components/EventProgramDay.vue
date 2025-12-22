@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, type DeepReadonly, useId } from "vue";
+import { ref, toRef, watchEffect, type DeepReadonly, useId } from "vue";
+import useIncremental from "@/composables/useIncremental";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import IconButton from "./IconButton.vue";
 import { type Event } from "@/utils/api";
@@ -15,6 +16,8 @@ const props = defineProps<{
 }>();
 
 const sectionHeading = useId();
+
+const incrementalEvents = useIncremental(() => props.events);
 </script>
 
 <template>
@@ -32,7 +35,7 @@ const sectionHeading = useId();
       />
     </div>
     <div v-if="events.length > 0" class="flex flex-col gap-4">
-      <div v-for="event in props.events" :key="event.id">
+      <div v-for="event in incrementalEvents" :key="event.id">
         <EventProgramDescription
           :event="event"
           :day-index="props.dayIndex"
