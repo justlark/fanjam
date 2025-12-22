@@ -1,10 +1,10 @@
-import { reactive, readonly, watch, toValue, type MaybeRefOrGetter } from "vue";
+import { shallowRef, readonly, watch, type Ref, type MaybeRefOrGetter } from "vue";
 
 export const useIncremental = <T>(
-  input: MaybeRefOrGetter<T[]>,
+  input: Ref<T[]>,
   options: {
     chunkSize: number;
-    sources: Array<MaybeRefOrGetter<T>>;
+    sources: Array<MaybeRefOrGetter<unknown>>;
   } = {
       chunkSize: 5,
       sources: [],
@@ -12,28 +12,26 @@ export const useIncremental = <T>(
 ) => {
   const { chunkSize, sources } = options;
 
-  const output: Array<T> = reactive([]);
+  const output = shallowRef<Array<T>>([]);
   let runCounter = 0;
 
   const run = () => {
     const currentRun = ++runCounter;
 
-    output.length = 0;
+    output.value = [];
 
     let i = 0;
 
     const step = () => {
-      const source = toValue(input);
-
       if (currentRun !== runCounter) return;
 
-      const end = Math.min(i + chunkSize, source.length);
+      const end = Math.min(i + chunkSize, input.value.length);
 
-      for (; i < end; i++) {
-        output.push(source[i]);
-      }
+      output.value = output.value.concat(input.value.slice(i, end));
 
-      if (i < source.length) {
+      i = end;
+
+      if (i < input.value.length) {
         requestAnimationFrame(step);
       }
     };

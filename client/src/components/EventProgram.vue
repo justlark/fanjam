@@ -4,6 +4,7 @@ import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
+import Divider from "primevue/divider";
 import SimpleIcon from "./SimpleIcon.vue";
 import EventProgramDay from "./EventProgramDay.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
@@ -87,16 +88,15 @@ const days = computed(() =>
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <div class="flex flex-col gap-8">
-      <EventProgramDay
-        v-for="(day, index) in days"
-        :key="index"
-        :day-name="day.dayName"
-        :events="day.events"
-        :focused-event-id="props.focusedEventId"
-        :day-index="index"
-        :all-categories="allCategories"
-      />
-    </div>
+    <EventProgramDay
+      v-for="(day, index) in days"
+      class="mb-2"
+      :key="index"
+      :day-name="day.dayName"
+      :events="day.events"
+      :focused-event-id="props.focusedEventId"
+      :day-index="index"
+      :all-categories="allCategories"
+    />
   </div>
 </template>

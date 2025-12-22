@@ -3,6 +3,7 @@ import { ref, toRef, watchEffect, type DeepReadonly, useId } from "vue";
 import useIncremental from "@/composables/useIncremental";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import IconButton from "./IconButton.vue";
+import VirtualScroller from "primevue/virtualscroller";
 import { type Event } from "@/utils/api";
 
 const expanded = ref(false);
@@ -17,7 +18,7 @@ const props = defineProps<{
 
 const sectionHeading = useId();
 
-const incrementalEvents = useIncremental(() => props.events);
+const incrementalEvents = useIncremental(toRef(props, "events"));
 </script>
 
 <template>
@@ -27,21 +28,36 @@ const incrementalEvents = useIncremental(() => props.events);
       <IconButton
         v-if="events.length > 0"
         size="sm"
-        :label="expanded ? 'Collapse All' : 'Expand All'"
+        :label="expanded ? 'Collapse' : 'Expand'"
         :show-label="true"
         :icon="expanded ? 'arrows-collapse' : 'arrows-expand'"
         @click="expanded = !expanded"
         :button-props="{ 'data-testid': 'program-day-expand-button' }"
       />
     </div>
-    <div v-if="events.length > 0" class="flex flex-col gap-4">
-      <div v-for="event in incrementalEvents" :key="event.id">
-        <EventProgramDescription
-          :event="event"
-          :day-index="props.dayIndex"
-          :expand="expanded || event.id === props.focusedEventId"
-          :all-categories="allCategories"
-        />
+    <div v-if="events.length > 0">
+      <VirtualScroller
+        :items="[...(incrementalEvents.value ?? [])]"
+        :itemSize="1"
+        scrollHeight="80vh"
+      >
+        <template v-slot:item="{ item, options }">
+          <EventProgramDescription
+            :event="item"
+            :day-index="props.dayIndex"
+            :expand="item.id === props.focusedEventId"
+            :all-categories="allCategories"
+            :class="{
+              'mb-4': !options.last,
+            }"
+          />
+        </template>
+      </VirtualScroller>
+      <div
+        v-if="!expanded"
+        class="text-center text-lg italic text-surface-500 dark:text-surface-400"
+      >
+        {{ events.length }} events
       </div>
     </div>
     <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400">
