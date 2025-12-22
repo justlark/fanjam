@@ -17,11 +17,11 @@ export const useReactiveFilter = <T>(
 
   let runId = 0;
 
-  function run() {
+  const run = () => {
     const currentRun = ++runId;
     const source = toValue(input);
 
-    output.value = [];
+    output.value.length = 0;
 
     let i = 0;
 
@@ -43,7 +43,7 @@ export const useReactiveFilter = <T>(
     };
 
     requestAnimationFrame(step);
-  }
+  };
 
   watch([input, ...sources], run, { immediate: true });
 

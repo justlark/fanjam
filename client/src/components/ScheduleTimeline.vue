@@ -11,8 +11,7 @@ import {
 } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
-import useReactiveMap from "@/composables/useReactiveMap";
-import useReactiveFilter from "@/composables/useReactiveFilter";
+import useReactiveFilterMap from "@/composables/useReactiveFilterMap";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -157,13 +156,20 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlots = useReactiveFilter(
-  useReactiveMap(currentDayTimeSlots, (timeSlot) => ({
-    events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+const filteredTimeSlots = useReactiveFilterMap(currentDayTimeSlots, (timeSlot) => {
+  const events = timeSlot.events.filter(
+    (event) => filteredEventIdsSet.value?.has(event.id) ?? true,
+  );
+
+  if (events.length === 0) {
+    return undefined;
+  }
+
+  return {
+    events,
     localizedTime: timeSlot.localizedTime,
-  })),
-  (timeSlot) => timeSlot.events.length > 0,
-);
+  };
+});
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 

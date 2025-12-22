@@ -14,23 +14,19 @@ export const useReactiveMap = <T, R>(
   const { chunkSize, sources } = options;
 
   const output = ref<R[]>([]);
-  let runId = 0;
 
-  function run() {
-    const currentRun = ++runId;
+  const run = () => {
     const source = toValue(input);
 
-    output.value = new Array(source.length);
+    output.value.length = 0;
 
     let i = 0;
 
     const step = () => {
-      if (currentRun !== runId) return;
-
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
-        (output.value[i] as R) = mapper(source[i], i);
+        (output.value as Array<R>).push(mapper(source[i], i));
       }
 
       if (i < source.length) {
@@ -39,7 +35,7 @@ export const useReactiveMap = <T, R>(
     };
 
     requestAnimationFrame(step);
-  }
+  };
 
   watch([input, ...sources], run, { immediate: true });
 

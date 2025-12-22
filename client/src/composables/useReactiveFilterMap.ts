@@ -14,29 +14,23 @@ export const useReactiveFilterMap = <T, R>(
   const { chunkSize, sources } = options;
 
   const output = ref<R[]>([]);
-  let runId = 0;
 
-  function run() {
-    const currentRun = ++runId;
+  const run = () => {
     const source = toValue(input);
 
-    output.value = new Array(source.length);
+    output.value.length = 0;
 
     let i = 0;
 
     const step = () => {
-      if (currentRun !== runId) return;
-
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
         const mapped = mapper(source[i], i);
 
-        if (mapped === undefined) {
-          continue;
-        }
+        if (mapped === undefined) continue;
 
-        (output.value[i] as R) = mapped;
+        (output.value as Array<R>).push(mapped);
       }
 
       if (i < source.length) {
@@ -45,7 +39,7 @@ export const useReactiveFilterMap = <T, R>(
     };
 
     requestAnimationFrame(step);
-  }
+  };
 
   watch([input, ...sources], run, { immediate: true });
 
