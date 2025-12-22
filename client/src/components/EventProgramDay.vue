@@ -36,11 +36,7 @@ const incrementalEvents = useIncremental(toRef(props, "events"));
       />
     </div>
     <div v-if="events.length > 0">
-      <VirtualScroller
-        :items="[...(incrementalEvents.value ?? [])]"
-        :itemSize="1"
-        scrollHeight="80vh"
-      >
+      <VirtualScroller :items="[...incrementalEvents]" :itemSize="1" scrollHeight="80vh">
         <template v-slot:item="{ item, options }">
           <EventProgramDescription
             :event="item"

@@ -1,7 +1,15 @@
-import { shallowRef, readonly, watch, type Ref, type MaybeRefOrGetter } from "vue";
+import {
+  shallowRef,
+  onMounted,
+  computed,
+  watch,
+  triggerRef,
+  type Ref,
+  type MaybeRefOrGetter,
+} from "vue";
 
-export const useIncremental = <T>(
-  input: Ref<T[]>,
+export function useIncremental<T>(
+  input: Readonly<Ref<ReadonlyArray<T>>>,
   options: {
     chunkSize: number;
     sources: Array<MaybeRefOrGetter<unknown>>;
@@ -9,7 +17,7 @@ export const useIncremental = <T>(
       chunkSize: 5,
       sources: [],
     },
-) => {
+) {
   const { chunkSize, sources } = options;
 
   const output = shallowRef<Array<T>>([]);
@@ -18,7 +26,8 @@ export const useIncremental = <T>(
   const run = () => {
     const currentRun = ++runCounter;
 
-    output.value = [];
+    output.value.length = 0;
+    triggerRef(output);
 
     let i = 0;
 
@@ -27,9 +36,11 @@ export const useIncremental = <T>(
 
       const end = Math.min(i + chunkSize, input.value.length);
 
-      output.value = output.value.concat(input.value.slice(i, end));
+      for (; i < end; i++) {
+        output.value.push(input.value[i]);
+      }
 
-      i = end;
+      triggerRef(output);
 
       if (i < input.value.length) {
         requestAnimationFrame(step);
@@ -39,9 +50,11 @@ export const useIncremental = <T>(
     requestAnimationFrame(step);
   };
 
-  watch([input, ...sources], run, { immediate: true });
+  onMounted(() => {
+    watch([() => input.value.length, ...sources], run, { immediate: true });
+  });
 
-  return readonly(output);
-};
+  return output;
+}
 
 export default useIncremental;
