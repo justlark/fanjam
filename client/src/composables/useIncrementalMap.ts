@@ -1,6 +1,6 @@
 import { ref, watch, toValue, type Ref, type MaybeRefOrGetter } from "vue";
 
-export const useReactiveFilterMap = <T, R>(
+export const useIncrementalMap = <T, R>(
   input: Ref<Array<T>>,
   mapper: (item: T, index: number) => R,
   options: {
@@ -26,11 +26,7 @@ export const useReactiveFilterMap = <T, R>(
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
-        const mapped = mapper(source[i], i);
-
-        if (mapped === undefined) continue;
-
-        (output.value as Array<R>).push(mapped);
+        (output.value as Array<R>).push(mapper(source[i], i));
       }
 
       if (i < source.length) {
@@ -46,4 +42,4 @@ export const useReactiveFilterMap = <T, R>(
   return output;
 };
 
-export default useReactiveFilterMap;
+export default useIncrementalMap;
