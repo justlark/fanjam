@@ -14,11 +14,10 @@ export const useIncrementalFilter = <T>(
   const { chunkSize, sources } = options;
 
   const output = ref<T[]>([]);
-
-  let runId = 0;
+  let runCounter = 0;
 
   const run = () => {
-    const currentRun = ++runId;
+    const currentRun = ++runCounter;
     const source = toValue(input);
 
     output.value.length = 0;
@@ -26,7 +25,7 @@ export const useIncrementalFilter = <T>(
     let i = 0;
 
     const step = () => {
-      if (currentRun !== runId) return;
+      if (currentRun !== runCounter) return;
 
       const end = Math.min(i + chunkSize, source.length);
 

@@ -14,8 +14,10 @@ export const useIncrementalMap = <T, R>(
   const { chunkSize, sources } = options;
 
   const output = ref<R[]>([]);
+  let runCounter = 0;
 
   const run = () => {
+    const currentRun = ++runCounter;
     const source = toValue(input);
 
     output.value.length = 0;
@@ -23,6 +25,8 @@ export const useIncrementalMap = <T, R>(
     let i = 0;
 
     const step = () => {
+      if (currentRun !== runCounter) return;
+
       const end = Math.min(i + chunkSize, source.length);
 
       for (; i < end; i++) {
