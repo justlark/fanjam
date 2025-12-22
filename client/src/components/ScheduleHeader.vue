@@ -147,7 +147,7 @@ const filterMenuId = useId();
 </script>
 
 <template>
-  <search class="flex flex-col gap-4">
+  <div class="flex flex-col gap-4">
     <div class="flex gap-4">
       <div class="grow">
         <InputGroup>
@@ -196,5 +196,5 @@ const filterMenuId = useId();
       v-model:criteria="filterCriteria"
       :all-categories="allCategories"
     />
-  </search>
+  </div>
 </template>

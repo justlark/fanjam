@@ -1,12 +1,4 @@
-import {
-  shallowRef,
-  onMounted,
-  computed,
-  watch,
-  triggerRef,
-  type Ref,
-  type MaybeRefOrGetter,
-} from "vue";
+import { shallowRef, onMounted, watch, triggerRef, type Ref, type MaybeRefOrGetter } from "vue";
 
 export function useIncremental<T>(
   input: Readonly<Ref<ReadonlyArray<T>>>,

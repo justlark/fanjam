@@ -15,7 +15,6 @@ import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuer
 const props = defineProps<{
   expand: boolean;
   event: DeepReadonly<Event>;
-  dayIndex: number;
   allCategories: ReadonlyArray<string>;
 }>();
 

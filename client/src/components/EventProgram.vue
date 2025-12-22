@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { computed, type DeepReadonly, ref, watchEffect } from "vue";
-import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import { computed, ref } from "vue";
+import VirtualScroller from "primevue/virtualscroller";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
-import Divider from "primevue/divider";
 import SimpleIcon from "./SimpleIcon.vue";
-import EventProgramDay from "./EventProgramDay.vue";
+import EventProgramDescription from "./EventProgramDescription.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
-import { datesToDayNames, dateIsBetween } from "@/utils/time";
-import { type Event } from "@/utils/api";
 
 const {
   data: { events },
@@ -21,25 +18,8 @@ const props = defineProps<{
 
 const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
-const datetimeFormats = useDatetimeFormats();
 
 const allCategories = computed(() => getSortedCategories(events.value));
-
-const allDates = computed(() =>
-  events.value.reduce((set, event) => {
-    set.add(event.startTime);
-
-    if (event.endTime) {
-      set.add(event.endTime);
-    }
-
-    return set;
-  }, new Set<Date>()),
-);
-
-const namedDays = computed(() =>
-  datetimeFormats.value === undefined ? [] : datesToDayNames(datetimeFormats.value, allDates.value),
-);
 
 const filteredEventIdsSet = computed(() =>
   filteredEventIds.value !== undefined ? new Set(filteredEventIds.value) : undefined,
@@ -62,19 +42,6 @@ const filteredEvents = computed(() => {
 const isFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
 });
-
-const days = computed(() =>
-  namedDays.value.map((day) => {
-    const eventsThisDay = filteredEvents.value.filter((event) =>
-      dateIsBetween(event.startTime, day.dayStart, day.dayEnd),
-    );
-
-    return {
-      dayName: day.dayName,
-      events: eventsThisDay,
-    };
-  }),
-);
 </script>
 
 <template>
@@ -88,15 +55,16 @@ const days = computed(() =>
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <EventProgramDay
-      v-for="(day, index) in days"
-      class="mb-2"
-      :key="index"
-      :day-name="day.dayName"
-      :events="day.events"
-      :focused-event-id="props.focusedEventId"
-      :day-index="index"
-      :all-categories="allCategories"
-    />
+    <VirtualScroller :items="events" :item-size="50" scroll-height="100%">
+      <template v-slot:item="{ item, options }">
+        <EventProgramDescription
+          :key="item.id"
+          :event="item"
+          :expand="item.id === props.focusedEventId"
+          :all-categories="allCategories"
+          :class="{ 'mb-4': options.index < options.count - 1 }"
+        />
+      </template>
+    </VirtualScroller>
   </div>
 </template>
