@@ -11,7 +11,7 @@ import {
 } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
-import useIncrementalFilterMap from "@/composables/useIncrementalFilterMap";
+import useIncremental from "@/composables/useIncremental";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -156,20 +156,16 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlots = useIncrementalFilterMap(currentDayTimeSlots, (timeSlot) => {
-  const events = timeSlot.events.filter(
-    (event) => filteredEventIdsSet.value?.has(event.id) ?? true,
-  );
+const filteredTimeSlots = computed(() =>
+  currentDayTimeSlots.value
+    .map((timeSlot) => ({
+      events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+      localizedTime: timeSlot.localizedTime,
+    }))
+    .filter((timeSlot) => timeSlot.events.length > 0),
+);
 
-  if (events.length === 0) {
-    return undefined;
-  }
-
-  return {
-    events,
-    localizedTime: timeSlot.localizedTime,
-  };
-});
+const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 
@@ -292,7 +288,7 @@ watchEffect(() => {
       :class="{ flex: true, 'flex-col': true, 'gap-6': true, 'mb-[15rem]': eventSummaryIsVisible }"
     >
       <ScheduleTimeSlot
-        v-for="(timeSlot, index) in filteredTimeSlots"
+        v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
         v-model:focused="focusedEventId"
         :key="index"
         :localized-time="timeSlot.localizedTime"
