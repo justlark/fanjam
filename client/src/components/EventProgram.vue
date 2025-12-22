@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import VirtualScroller from "primevue/virtualscroller";
+import { computed, defineAsyncComponent, readonly, ref } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
 import SimpleIcon from "./SimpleIcon.vue";
-import EventProgramDescription from "./EventProgramDescription.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
+import ProgressSpinner from "primevue/progressspinner";
 
 const {
   data: { events },
@@ -42,6 +41,8 @@ const filteredEvents = computed(() => {
 const isFilteringPastEvents = computed(() => {
   return filterCriteria.hidePastEvents && filteredEvents.value.length < events.value.length;
 });
+
+const EventProgramScroller = defineAsyncComponent(() => import("./EventProgramScroller.vue"));
 </script>
 
 <template>
@@ -55,16 +56,19 @@ const isFilteringPastEvents = computed(() => {
       <SimpleIcon class="text-lg" icon="eye-slash-fill" />
       <span class="italic">past events hidden</span>
     </span>
-    <VirtualScroller :items="events" :item-size="50" scroll-height="100%">
-      <template v-slot:item="{ item, options }">
-        <EventProgramDescription
-          :key="item.id"
-          :event="item"
-          :expand="item.id === props.focusedEventId"
+    <Suspense>
+      <template #default>
+        <EventProgramScroller
+          :focused-event-id="props.focusedEventId"
+          :filtered-events="readonly(filteredEvents)"
           :all-categories="allCategories"
-          :class="{ 'mb-4': options.index < options.count - 1 }"
         />
       </template>
-    </VirtualScroller>
+      <template #fallback>
+        <div class="flex items-center h-full">
+          <ProgressSpinner />
+        </div>
+      </template>
+    </Suspense>
   </div>
 </template>
