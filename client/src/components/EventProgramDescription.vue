@@ -14,6 +14,7 @@ import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuer
 
 // This component deliberately has a fixed height when collapsed so it can be
 // used with virtual scrollers.
+const headerHeightPx = 80;
 
 const props = defineProps<{
   expand: boolean;
@@ -60,7 +61,13 @@ const eventNameHeadingId = useId();
     pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>
-      <div :class="['flex flex-col justify-between text-ellipsis', { 'h-[80px]': collapsed }]">
+      <div
+        class="flex flex-col justify-between text-ellipsis"
+        :style="{
+          'min-height': `${headerHeightPx}px`,
+          height: collapsed ? `${headerHeightPx}px` : 'auto',
+        }"
+      >
         <div class="flex flex-col justify-center grow">
           <span
             data-testid="program-event-name"
