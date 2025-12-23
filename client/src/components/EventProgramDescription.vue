@@ -50,14 +50,16 @@ const eventNameHeadingId = useId();
     pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>
-      <div class="flex flex-col">
-        <span data-testid="program-event-name">
-          <SimpleIcon v-if="isStarred" icon="star-fill" label="Starred:" class="me-2" />
-          <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">
-            {{ props.event.name }}
-          </h3>
-        </span>
-        <span class="text-muted-color" v-if="datetimeFormats !== undefined">{{
+      <div class="flex flex-col justify-between h-[120px] text-ellipsis">
+        <div class="flex flex-col justify-center grow">
+          <span data-testid="program-event-name" class="overflow-hidden line-clamp-3">
+            <SimpleIcon v-if="isStarred" icon="star-fill" label="Starred:" class="me-2" />
+            <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">
+              {{ props.event.name }}
+            </h3>
+          </span>
+        </div>
+        <span class="text-muted-color line-clamp-1" v-if="datetimeFormats !== undefined">{{
           localizeTimeSpan(datetimeFormats, props.event.startTime, props.event.endTime)
         }}</span>
       </div>

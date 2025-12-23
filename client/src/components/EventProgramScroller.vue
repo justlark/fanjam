@@ -15,7 +15,7 @@ const scrollerRef = ref<HTMLElement | null>(null);
 const rowVirtualizer = useVirtualizer({
   count: props.filteredEvents.length,
   getScrollElement: () => scrollerRef.value,
-  estimateSize: () => 80,
+  estimateSize: () => 134,
   getItemKey: (index) => props.filteredEvents[index].id,
   overscan: 5,
 });
@@ -49,7 +49,7 @@ const measureElement = (element?: Ref<HTMLElement>) => {
           :event="props.filteredEvents[row.index]"
           :expand="props.filteredEvents[row.index].id === props.focusedEventId"
           :all-categories="props.allCategories"
-          class="mb-4"
+          class="mb-[20px]"
         />
       </div>
     </div>
