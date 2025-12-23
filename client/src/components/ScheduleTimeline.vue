@@ -219,7 +219,7 @@ onUnmounted(() => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  [toRef(route, "path"), eventsStatus, todayIndex],
+  [toRef(route, "path"), dayIndexByEventId, eventsStatus, todayIndex],
   () => {
     if (route.name === "schedule") {
       if (route.params.dayIndex) {
