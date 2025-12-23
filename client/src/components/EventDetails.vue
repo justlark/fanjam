@@ -52,6 +52,7 @@ const sectionHeadingId = useId();
           :to="{
             name: props.from,
             params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+            hash: props.from === 'program' ? `#${event.id}` : '',
             query: toFilterQueryParams(filterCriteria),
           }"
         >

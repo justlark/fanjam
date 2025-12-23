@@ -60,12 +60,7 @@ const eventNameHeadingId = useId();
     pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>
-      <div
-        :class="[
-          'flex flex-col justify-between text-ellipsis break-all',
-          { 'h-[80px]': collapsed },
-        ]"
-      >
+      <div :class="['flex flex-col justify-between text-ellipsis', { 'h-[80px]': collapsed }]">
         <div class="flex flex-col justify-center grow">
           <span
             data-testid="program-event-name"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, readonly, ref } from "vue";
+import { useRoute } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
@@ -11,9 +12,15 @@ const {
   data: { events },
 } = useRemoteData();
 
+const route = useRoute();
+
 const props = defineProps<{
   focusedEventId?: string;
 }>();
+
+const focusedEventId = computed(() =>
+  props.focusedEventId !== undefined ? props.focusedEventId : route.hash.substring(1),
+);
 
 const filterCriteria = useFilterQuery();
 const filteredEventIds = ref<Array<string>>();
@@ -59,7 +66,7 @@ const EventProgramScroller = defineAsyncComponent(() => import("./EventProgramSc
     <Suspense>
       <template #default>
         <EventProgramScroller
-          :focused-event-id="props.focusedEventId"
+          :focused-event-id="focusedEventId"
           :filtered-events="readonly(filteredEvents)"
           :all-categories="allCategories"
         />

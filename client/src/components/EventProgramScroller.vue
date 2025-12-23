@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, type Ref, type DeepReadonly } from "vue";
+import { ref, watch, computed, type Ref, type DeepReadonly } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import { type Event } from "@/utils/api";
 import { useVirtualizer } from "@tanstack/vue-virtual";
@@ -9,6 +9,16 @@ const props = defineProps<{
   filteredEvents: ReadonlyArray<DeepReadonly<Event>>;
   allCategories: ReadonlyArray<string>;
 }>();
+
+const eventIndexById = computed(() => {
+  const map = new Map<string, number>();
+
+  for (const [index, event] of props.filteredEvents.entries()) {
+    map.set(event.id, index);
+  }
+
+  return map;
+});
 
 const scrollerRef = ref<HTMLElement | null>(null);
 
@@ -34,6 +44,22 @@ const measureElement = (element?: Ref<HTMLElement>) => {
 
   return undefined;
 };
+
+const isScrollElementLoaded = computed(() => rowVirtualizer.value.scrollElement !== null);
+
+watch(
+  [props.focusedEventId, isScrollElementLoaded],
+  () => {
+    if (!props.focusedEventId) {
+      return;
+    }
+
+    rowVirtualizer.value.scrollToIndex(eventIndexById.value.get(props.focusedEventId), {
+      align: "start",
+    });
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
