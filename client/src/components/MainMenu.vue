@@ -25,7 +25,7 @@ onMounted(() => {
     />
     <MainMenuItem
       icon="bi bi-book"
-      label="Program"
+      label="All Events"
       to="program"
       :is-active="
         (route) => route.name === 'program' || (route.name === 'event' && fromRoute === 'program')
