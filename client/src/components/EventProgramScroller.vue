@@ -23,8 +23,8 @@ const rowVirtualizer = useVirtualizer({
 const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize());
 
-const measureElement = (element: Ref<HTMLElement | null | undefined>) => {
-  if (!element.value) {
+const measureElement = (element?: Ref<HTMLElement>) => {
+  if (!element) {
     return;
   }
 
