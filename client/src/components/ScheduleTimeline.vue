@@ -260,7 +260,11 @@ watchEffect(async () => {
 
 watchEffect(() => {
   // This day does not exist.
-  if (eventsStatus.value === "success" && currentDayTimeSlots.value.length === 0) {
+  if (
+    route.name === "schedule" &&
+    eventsStatus.value === "success" &&
+    currentDayTimeSlots.value.length === 0
+  ) {
     currentDayIndex.value = 0;
   }
 });
