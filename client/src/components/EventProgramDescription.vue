@@ -8,9 +8,12 @@ import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useStarredEvents from "@/composables/useStarredEvents";
 import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
-import { computed, type DeepReadonly, useId } from "vue";
+import { ref, computed, type DeepReadonly, useId } from "vue";
 import { localizeTimeSpan } from "@/utils/time";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+
+// This component deliberately has a fixed height when collapsed so it can be
+// used with virtual scrollers.
 
 const props = defineProps<{
   expand: boolean;
@@ -37,6 +40,12 @@ const descriptionHtml = computed(() => {
   return renderMarkdown(props.event.description);
 });
 
+const collapsed = ref(!props.expand);
+
+const onUpdateCollapsed = (value: boolean) => {
+  collapsed.value = value;
+};
+
 const eventNameHeadingId = useId();
 </script>
 
@@ -44,15 +53,24 @@ const eventNameHeadingId = useId();
   <Panel
     :toggleable="true"
     :collapsed="!props.expand"
+    @update:collapsed="onUpdateCollapsed"
     pt:content="!pb-2"
     pt:footer="!pb-2"
     pt:root:data-testid="program-event"
     pt:pc-toggle-button:root:data-testid="program-event-expand-button"
   >
     <template #header>
-      <div class="flex flex-col justify-between h-[120px] text-ellipsis">
+      <div
+        :class="[
+          'flex flex-col justify-between text-ellipsis break-all',
+          { 'h-[80px]': collapsed },
+        ]"
+      >
         <div class="flex flex-col justify-center grow">
-          <span data-testid="program-event-name" class="overflow-hidden line-clamp-3">
+          <span
+            data-testid="program-event-name"
+            :class="['overflow-hidden', { 'line-clamp-2': collapsed }]"
+          >
             <SimpleIcon v-if="isStarred" icon="star-fill" label="Starred:" class="me-2" />
             <h3 class="inline text-lg font-bold" :id="eventNameHeadingId">
               {{ props.event.name }}
