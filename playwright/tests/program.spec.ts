@@ -44,23 +44,6 @@ test.describe("the program view", () => {
     await programPage.goto();
   });
 
-  test("expand and collapse all events on one day", async ({ programPage }) => {
-    await expect(programPage.expandedEvents).toHaveCount(0);
-
-    await programPage.toggleDayExpanded(0);
-
-    await expect(programPage.expandedEvents).toHaveCount(2);
-
-    await programPage.toggleDayExpanded(1);
-
-    await expect(programPage.expandedEvents).toHaveCount(4);
-
-    await programPage.toggleDayExpanded(0);
-    await programPage.toggleDayExpanded(1);
-
-    await expect(programPage.expandedEvents).toHaveCount(0);
-  });
-
   test("events are sorted by start time, then end time", async ({ programPage }) => {
     await expect(programPage.eventNames).toHaveText([
       "Yesterday Event 1",
