@@ -22,6 +22,7 @@
   "dependencies": {
     "@primeuix/themes": "^1.2.1",
     "@tailwindcss/vite": "^4.1.7",
+    "@tanstack/vue-virtual": "^3.13.13",
     "commonmark": "^0.31.2",
     "flexsearch": "^0.8.205",
     "primeicons": "^7.0.0",

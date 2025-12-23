@@ -1,25 +1,57 @@
 <script setup lang="ts">
-import { type DeepReadonly } from "vue";
-import VirtualScroller from "primevue/virtualscroller";
+import { ref, computed, type Ref, type DeepReadonly } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import { type Event } from "@/utils/api";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 
 const props = defineProps<{
   focusedEventId?: string;
   filteredEvents: ReadonlyArray<DeepReadonly<Event>>;
   allCategories: ReadonlyArray<string>;
 }>();
+
+const scrollerRef = ref<HTMLElement | null>(null);
+
+const rowVirtualizer = useVirtualizer({
+  count: props.filteredEvents.length,
+  getScrollElement: () => scrollerRef.value,
+  estimateSize: () => 80,
+  getItemKey: (index) => props.filteredEvents[index].id,
+  overscan: 5,
+});
+
+const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
+const totalSize = computed(() => rowVirtualizer.value.getTotalSize());
+
+const measureElement = (element: Ref<HTMLElement | null | undefined>) => {
+  if (!element.value) {
+    return;
+  }
+
+  rowVirtualizer.value.measureElement(element.value);
+
+  return undefined;
+};
 </script>
 
 <template>
-  <VirtualScroller :items="[...props.filteredEvents]" :item-size="50" scroll-height="100%">
-    <template #item="{ item, options }">
-      <EventProgramDescription
-        :event="item"
-        :expand="item.id === props.focusedEventId"
-        :all-categories="props.allCategories"
-        :class="{ 'mb-4': options.index < options.count - 1 }"
-      />
-    </template>
-  </VirtualScroller>
+  <div ref="scrollerRef" class="h-full overflow-y-auto" :style="{ contain: 'strict' }">
+    <div class="relative" :style="{ height: `${totalSize}px` }">
+      <div
+        class="absolute top-0 left-0 w-full"
+        :style="{ transform: `translateY(${virtualRows[0]?.start ?? 0}px)` }"
+      >
+        <EventProgramDescription
+          v-for="row in virtualRows"
+          :key="row.key.toString()"
+          :data-index="row.index"
+          :ref="measureElement"
+          :event="props.filteredEvents[row.index]"
+          :expand="props.filteredEvents[row.index].id === props.focusedEventId"
+          :all-categories="props.allCategories"
+          class="mb-4"
+        />
+      </div>
+    </div>
+  </div>
 </template>
