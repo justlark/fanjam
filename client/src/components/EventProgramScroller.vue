@@ -54,7 +54,13 @@ watch(
       return;
     }
 
-    rowVirtualizer.value.scrollToIndex(eventIndexById.value.get(props.focusedEventId), {
+    const index = eventIndexById.value.get(props.focusedEventId);
+
+    if (index === undefined) {
+      return;
+    }
+
+    rowVirtualizer.value.scrollToIndex(index, {
       align: "start",
     });
   },
