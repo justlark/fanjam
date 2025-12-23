@@ -16,8 +16,8 @@ const rowVirtualizer = useVirtualizer({
   count: props.filteredEvents.length,
   getScrollElement: () => scrollerRef.value,
   // Keep this in sync with `EventProgramDescription`. Use the browser dev
-  // tools to measure if needed.
-  estimateSize: () => 94,
+  // tools to measure if needed. Make sure you include the margin.
+  estimateSize: () => 114,
   getItemKey: (index) => props.filteredEvents[index].id,
   overscan: 5,
 });
