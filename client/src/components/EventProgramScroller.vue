@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, type Ref, type DeepReadonly } from "vue";
+import { ref, toRef, watch, computed, type Ref, type DeepReadonly } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import { type Event } from "@/utils/api";
 import { useVirtualizer } from "@tanstack/vue-virtual";
@@ -22,15 +22,17 @@ const eventIndexById = computed(() => {
 
 const scrollerRef = ref<HTMLElement | null>(null);
 
-const rowVirtualizer = useVirtualizer({
+const virtualizerOptions = computed(() => ({
   count: props.filteredEvents.length,
   getScrollElement: () => scrollerRef.value,
   // Keep this in sync with `EventProgramDescription`. Use the browser dev
   // tools to measure if needed. Make sure you include the margin.
   estimateSize: () => 114,
-  getItemKey: (index) => props.filteredEvents[index].id,
+  getItemKey: (index: number) => props.filteredEvents[index].id,
   overscan: 5,
-});
+}));
+
+const rowVirtualizer = useVirtualizer(virtualizerOptions);
 
 const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize());
@@ -48,7 +50,7 @@ const measureElement = (element?: Ref<HTMLElement>) => {
 const isScrollElementLoaded = computed(() => rowVirtualizer.value.scrollElement !== null);
 
 watch(
-  [props.focusedEventId, isScrollElementLoaded],
+  [toRef(props, "focusedEventId"), isScrollElementLoaded],
   () => {
     if (!props.focusedEventId) {
       return;
