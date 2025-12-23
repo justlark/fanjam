@@ -65,7 +65,7 @@ const props = defineProps<{
           </div>
         </div>
         <div
-          class="absolute bottom-0 h-18 inset-x-0 bg-linear-to-b from-transparent dark:to-surface-900 to-white"
+          class="absolute bottom-0 h-14 inset-x-0 bg-linear-to-b from-transparent dark:via-surface-900/80 via-white/80 via-40% dark:to-surface-900 to-white"
         />
         <div class="absolute bottom-0 left-0 w-full flex items-center justify-center">
           <RouterLink
