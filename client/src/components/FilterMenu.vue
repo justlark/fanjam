@@ -68,7 +68,7 @@ const hideNotStarredLabelId = useId();
       <label :id="hideNotStarredLabelId" :for="hideNotStarredToggleId">Only starred events</label>
     </span>
     <div v-if="hasCategories" class="flex flex-col md:flex-row gap-x-12 gap-y-6">
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2 md:min-w-[20%]">
         <span>Only show these categories:</span>
         <ul class="ms-2 flex flex-wrap gap-3" data-testid="category-filter-list">
           <li v-for="(category, index) in props.categories" :key="index">
@@ -100,7 +100,7 @@ const hideNotStarredLabelId = useId();
         <span>and</span>
         <div class="border-l h-4 mt-2"></div>
       </div>
-      <div v-if="hasTags" class="flex flex-col gap-2">
+      <div v-if="hasTags" class="flex flex-col gap-2 md:min-w-[20%]">
         <span>Only show these tags:</span>
         <ul class="ms-2 flex flex-wrap gap-3" data-testid="tag-filter-list">
           <li v-for="(tag, index) in props.tags" :key="index">
