@@ -2,6 +2,7 @@
 import { ref, toRef, watch, computed, type Ref, type DeepReadonly } from "vue";
 import EventProgramDescription from "./EventProgramDescription.vue";
 import { type Event } from "@/utils/api";
+import ScrollTop from "primevue/scrolltop";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 
 const props = defineProps<{
@@ -89,5 +90,6 @@ watch(
         />
       </div>
     </div>
+    <ScrollTop target="parent" />
   </div>
 </template>
