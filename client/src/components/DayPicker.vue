@@ -29,7 +29,9 @@ const selectToday = () => {
 
 <template>
   <nav class="flex items-center justify-between gap-4">
-    <span class="text-2xl font-bold">{{ props.dayNames[currentDayIndex] }}</span>
+    <span class="text-2xl font-bold" data-testid="schedule-day-name">
+      {{ props.dayNames[currentDayIndex] }}
+    </span>
     <span class="flex items-center">
       <IconButton
         icon="calendar-event"

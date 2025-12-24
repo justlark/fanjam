@@ -90,19 +90,27 @@ test.describe("a multi-day schedule", () => {
   test("pressing the Today button brings you back to the current day", async ({ schedulePage }) => {
     await schedulePage.goto();
 
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.dayName).toHaveText("Monday");
+    await expect(schedulePage.events).toHaveText("Today Event");
+
     await schedulePage.toNextDay();
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Tomorrow Event");
 
     await schedulePage.toToday();
+    await expect(schedulePage.dayName).toHaveText("Monday");
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
 
     await schedulePage.toPrevDay();
+    await expect(schedulePage.dayName).toHaveText("Sunday");
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Yesterday Event");
 
     await schedulePage.toToday();
+    await expect(schedulePage.dayName).toHaveText("Monday");
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
   });
@@ -123,6 +131,9 @@ test.describe("a multi-day schedule", () => {
     schedulePage,
   }) => {
     await schedulePage.goto();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Today Event");
 
     await schedulePage.toPrevDay();
     await schedulePage.openEventDetailsPage("Yesterday Event");

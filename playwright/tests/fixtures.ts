@@ -61,6 +61,7 @@ export class SchedulePage {
   readonly todayButton: Locator;
   readonly prevDayButton: Locator;
   readonly nextDayButton: Locator;
+  readonly dayName: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -70,6 +71,7 @@ export class SchedulePage {
     this.todayButton = page.getByTestId("schedule-today-button");
     this.prevDayButton = page.getByTestId("schedule-prev-day-button");
     this.nextDayButton = page.getByTestId("schedule-next-day-button");
+    this.dayName = page.getByTestId("schedule-day-name");
   }
 
   async goto(day?: number | string) {
