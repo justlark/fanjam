@@ -46,8 +46,9 @@ onMounted(() => {
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
         <ScheduleTimeline
           v-if="from === 'schedule'"
-          class="p-6 grow"
+          class="p-6 grow overflow-y-auto"
           v-model:day="currentDayIndex"
+          :style="{ contain: 'strict' }"
         />
         <EventProgram
           v-if="from === 'program'"
@@ -58,11 +59,12 @@ onMounted(() => {
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
         <EventDetails
-          class="grow"
+          class="grow overflow-y-auto"
           :event="thisEvent"
           :day="currentDayIndex ?? 0"
           :all-categories="allCategories"
           :from="from"
+          :style="{ contain: 'strict' }"
         />
       </div>
     </div>
