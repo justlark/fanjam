@@ -157,7 +157,7 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlotsByDay = computed(() =>
+const filteredTimeSlotsForCurrentDay = computed(() =>
   currentDayTimeSlots.value
     .map((timeSlot) => ({
       events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
@@ -179,7 +179,9 @@ const filteredTimeSlotsForAllDays = computed(() =>
 );
 
 const filteredTimeSlots = computed(() =>
-  viewType.value === "daily" ? filteredTimeSlotsByDay.value : filteredTimeSlotsForAllDays.value,
+  viewType.value === "daily"
+    ? filteredTimeSlotsForCurrentDay.value
+    : filteredTimeSlotsForAllDays.value,
 );
 const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
