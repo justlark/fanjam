@@ -91,7 +91,7 @@ const headerHeadingId = useId();
                 :badge="showNotificationBadge"
               />
             </span>
-            <RouterLink :to="{ name: 'info' }">
+            <RouterLink :to="{ name: 'schedule' }">
               <h1 :id="headerHeadingId" class="text-xl lg:text-2xl" data-testid="site-nav-heading">
                 {{ conName }}
               </h1>
