@@ -10,6 +10,7 @@ import { getSortedCategories } from "@/utils/tags";
 import InputText from "primevue/inputtext";
 import FilterDescription from "./FilterDescription.vue";
 import IconField from "primevue/iconfield";
+import SelectButton from "primevue/selectbutton";
 import InputIcon from "primevue/inputicon";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
@@ -43,7 +44,12 @@ const showFilterDescription = computed(
 );
 
 const eventIds = defineModel<Array<string>>("ids");
+const viewType = defineModel<"daily" | "all">({ default: "daily" });
 
+const viewTypeButtonOptions = ref([
+  { label: "By Day", value: "daily" },
+  { label: "All Events", value: "all" },
+]);
 const allCategories = computed(() => getSortedCategories(events.value));
 
 const allTags = computed(() =>
@@ -190,6 +196,15 @@ const filterMenuId = useId();
       v-if="showFilterMenu"
       :categories="allCategories"
       :tags="allTags"
+    />
+    <SelectButton
+      v-model="viewType"
+      :options="viewTypeButtonOptions"
+      option-label="label"
+      option-value="value"
+      size="small"
+      fluid
+      :allow-empty="false"
     />
     <FilterDescription
       v-if="showFilterDescription && !showFilterMenu"
