@@ -20,11 +20,6 @@ const router = createRouter({
       component: () => import("../views/ScheduleView.vue"),
     },
     {
-      path: "/app/:envId/program",
-      name: "program",
-      component: () => import("../views/ProgramView.vue"),
-    },
-    {
       path: "/app/:envId/announcements",
       name: "announcements",
       component: () => import("../views/AnnouncementsView.vue"),

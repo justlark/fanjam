@@ -20,7 +20,6 @@ const props = defineProps<{
   event: DeepReadonly<Event>;
   day: number;
   allCategories: Array<string>;
-  from: "schedule" | "program" | undefined;
 }>();
 
 const event = computed(() => props.event);
@@ -48,11 +47,9 @@ const sectionHeadingId = useId();
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <span class="flex items-center">
         <RouterLink
-          v-if="props.from !== undefined"
           :to="{
-            name: props.from,
-            params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
-            hash: props.from === 'program' ? `#${event.id}` : '',
+            name: 'schedule',
+            params: { dayIndex: props.day + 1 },
             query: toFilterQueryParams(filterCriteria),
           }"
         >
@@ -99,8 +96,8 @@ const sectionHeadingId = useId();
                 class="text-primary underline underline-offset-2 hover:decoration-2"
                 data-testid="event-details-person-link"
                 :to="{
-                  name: props.from,
-                  params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+                  name: 'schedule',
+                  params: { dayIndex: props.day + 1 },
                   query: toFilterQueryParams({ search: person }),
                 }"
               >
@@ -114,8 +111,8 @@ const sectionHeadingId = useId();
               class="text-primary underline underline-offset-2 hover:decoration-2"
               data-testid="event-details-location-link"
               :to="{
-                name: props.from,
-                params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+                name: 'schedule',
+                params: { dayIndex: props.day + 1 },
                 query: toFilterQueryParams({ search: event.location }),
               }"
             >
@@ -143,8 +140,8 @@ const sectionHeadingId = useId();
         :tags="event.tags"
         :all-categories="props.allCategories"
         :to="{
-          name: props.from,
-          params: props.from === 'schedule' ? { dayIndex: props.day + 1 } : {},
+          name: 'schedule',
+          params: { dayIndex: props.day + 1 },
         }"
       />
       <Divider />
