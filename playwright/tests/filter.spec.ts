@@ -1,17 +1,10 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, isMobile, hoursFromNow, mockTime, shiftTimeByHours } from "./common";
-import {
-  EventDetailsPage,
-  FilterMenu,
-  EventSummaryDrawer,
-  ProgramPage,
-  SchedulePage,
-} from "./fixtures";
+import { EventDetailsPage, FilterMenu, EventSummaryDrawer, SchedulePage } from "./fixtures";
 
 type Fixtures = {
   filterMenu: FilterMenu;
   schedulePage: SchedulePage;
-  programPage: ProgramPage;
   eventPage: EventDetailsPage;
   summaryDrawer: EventSummaryDrawer;
 };
@@ -25,10 +18,6 @@ export const test = base.extend<Fixtures>({
 
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
-  },
-
-  programPage: async ({ page }, use) => {
-    await use(new ProgramPage(page));
   },
 
   eventPage: async ({ page }, use) => {
@@ -70,272 +59,199 @@ test.describe("filtering events", () => {
     });
   });
 
-  for (const route of ["schedule", "program"] as const) {
-    test.describe(`in the ${route} view`, () => {
-      test.beforeEach(async ({ page, schedulePage, programPage }) => {
-        await mockTime(page);
+  test.beforeEach(async ({ page, schedulePage }) => {
+    await mockTime(page);
+    await schedulePage.goto();
+  });
 
-        if (route === "schedule") {
-          await schedulePage.goto();
-        } else if (route === "program") {
-          await programPage.goto();
-        }
-      });
+  test("hide past events", async ({ filterMenu, schedulePage }) => {
+    const pastEvent = schedulePage.events.filter({ hasText: "Test Event 1" });
+    const futureEvent = schedulePage.events.filter({ hasText: "Test Event 2" });
 
-      test("hide past events", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
-        const hiddenNotice =
-          route === "schedule" ? schedulePage.hiddenNotice : programPage.hiddenNotice;
+    await expect(pastEvent).toHaveCount(1);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(schedulePage.hiddenNotice).toBeHidden();
 
-        const pastEvent = events.filter({ hasText: "Test Event 1" });
-        const futureEvent = events.filter({ hasText: "Test Event 2" });
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleHidePastEvents();
 
-        await expect(pastEvent).toHaveCount(1);
-        await expect(futureEvent).toHaveCount(1);
-        await expect(hiddenNotice).toBeHidden();
+    await expect(pastEvent).toHaveCount(0);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(schedulePage.hiddenNotice).toBeVisible();
 
-        await filterMenu.toggleOpen();
-        await filterMenu.toggleHidePastEvents();
+    await filterMenu.toggleHidePastEvents();
 
-        await expect(pastEvent).toHaveCount(0);
-        await expect(futureEvent).toHaveCount(1);
-        await expect(hiddenNotice).toBeVisible();
+    await expect(pastEvent).toHaveCount(1);
+    await expect(futureEvent).toHaveCount(1);
+    await expect(schedulePage.hiddenNotice).toBeHidden();
+  });
 
-        await filterMenu.toggleHidePastEvents();
+  test("hide past events mid-event", async ({ page, filterMenu, schedulePage }) => {
+    await shiftTimeByHours(page, -2);
 
-        await expect(pastEvent).toHaveCount(1);
-        await expect(futureEvent).toHaveCount(1);
-        await expect(hiddenNotice).toBeHidden();
-      });
+    const currentEvent = schedulePage.events.filter({ hasText: "Test Event 1" });
 
-      test("hide past events mid-event", async ({
-        page,
-        filterMenu,
-        schedulePage,
-        programPage,
-      }) => {
-        await shiftTimeByHours(page, -2);
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleHidePastEvents();
 
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
-        const hiddenNotice =
-          route === "schedule" ? schedulePage.hiddenNotice : programPage.hiddenNotice;
+    await expect(currentEvent).toHaveCount(1);
+    await expect(schedulePage.hiddenNotice).not.toBeVisible();
+  });
 
-        const currentEvent = events.filter({ hasText: "Test Event 1" });
+  test("hide past events before first events of the day", async ({
+    page,
+    filterMenu,
+    schedulePage,
+  }) => {
+    await shiftTimeByHours(page, -3);
 
-        await filterMenu.toggleOpen();
-        await filterMenu.toggleHidePastEvents();
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleHidePastEvents();
 
-        await expect(currentEvent).toHaveCount(1);
-        await expect(hiddenNotice).not.toBeVisible();
-      });
+    await expect(schedulePage.hiddenNotice).not.toBeVisible();
+  });
 
-      test("hide past events before first events of the day", async ({
-        page,
-        filterMenu,
-        schedulePage,
-        programPage,
-      }) => {
-        await shiftTimeByHours(page, -3);
+  test("only show starred events", async ({ filterMenu, schedulePage, eventPage }) => {
+    await schedulePage.openEventDetailsPage("Test Event 2");
+    await eventPage.toggleStar();
+    await eventPage.navigateBack();
 
-        const hiddenNotice =
-          route === "schedule" ? schedulePage.hiddenNotice : programPage.hiddenNotice;
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleHideNotStarredEvents();
+    await filterMenu.toggleOpen();
 
-        await filterMenu.toggleOpen();
-        await filterMenu.toggleHidePastEvents();
+    await expect(schedulePage.events).toHaveAccessibleName("Starred: Test Event 2");
+  });
 
-        await expect(hiddenNotice).not.toBeVisible();
-      });
+  test("filter by category", async ({ filterMenu, schedulePage }) => {
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleCategory("Category 1");
 
-      test("only show starred events", async ({
-        filterMenu,
-        schedulePage,
-        programPage,
-        eventPage,
-      }) => {
-        if (route === "schedule") {
-          await schedulePage.openEventDetailsPage("Test Event 2");
-          await eventPage.toggleStar();
-          await eventPage.navigateBack();
-        } else if (route === "program") {
-          await programPage.toggleEventExpanded("Test Event 2");
-          await programPage.toggleStar();
-        }
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Test Event 1");
 
-        await filterMenu.toggleOpen();
-        await filterMenu.toggleHideNotStarredEvents();
-        await filterMenu.toggleOpen();
+    await filterMenu.toggleCategory("Category 2");
 
-        if (route === "schedule") {
-          await expect(schedulePage.events).toHaveAccessibleName("Starred: Test Event 2");
-        } else if (route === "program") {
-          await expect(programPage.eventNames).toHaveText(["Starred:", "Test Event 2"].join(""));
-        }
-      });
+    await expect(schedulePage.events).toHaveCount(2);
+  });
 
-      test("filter by category", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+  test("filter by tag", async ({ filterMenu, schedulePage }) => {
+    await filterMenu.toggleOpen();
 
-        await filterMenu.toggleOpen();
-        await filterMenu.toggleCategory("Category 1");
+    await filterMenu.toggleCategory("Category 1");
+    await filterMenu.toggleTag("Tag 1");
 
-        await expect(events).toHaveCount(1);
-        await expect(events).toHaveText("Test Event 1");
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Test Event 1");
 
-        await filterMenu.toggleCategory("Category 2");
+    await filterMenu.toggleTag("Tag 1");
+    await filterMenu.toggleTag("Tag 3");
 
-        await expect(events).toHaveCount(2);
-      });
+    await expect(schedulePage.events).toHaveCount(0);
+  });
 
-      test("filter by tag", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+  test("search by event name", async ({ filterMenu, schedulePage }) => {
+    await filterMenu.search("Event 1");
 
-        await filterMenu.toggleOpen();
+    await expect(schedulePage.events).toHaveText("Test Event 1");
 
-        await filterMenu.toggleCategory("Category 1");
-        await filterMenu.toggleTag("Tag 1");
+    await filterMenu.search("Event 9999");
 
-        await expect(events).toHaveCount(1);
-        await expect(events).toHaveText("Test Event 1");
+    await expect(schedulePage.events).toHaveCount(0);
+  });
 
-        await filterMenu.toggleTag("Tag 1");
-        await filterMenu.toggleTag("Tag 3");
+  test("search by event location", async ({ filterMenu, schedulePage }) => {
+    await filterMenu.search("Apple");
 
-        await expect(events).toHaveCount(0);
-      });
+    await expect(schedulePage.events).toHaveText("Test Event 1");
 
-      test("search by event name", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+    await filterMenu.search("Banana");
 
-        await filterMenu.search("Event 1");
+    await expect(schedulePage.events).toHaveCount(0);
+  });
 
-        await expect(events).toHaveText("Test Event 1");
+  test("search by person", async ({ filterMenu, schedulePage }) => {
+    await filterMenu.search("Ash");
 
-        await filterMenu.search("Event 9999");
+    await expect(schedulePage.events).toHaveText("Test Event 2");
 
-        await expect(events).toHaveCount(0);
-      });
+    await filterMenu.search("Kit");
 
-      test("search by event location", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+    await expect(schedulePage.events).toHaveCount(0);
+  });
 
-        await filterMenu.search("Apple");
+  test("filter description", async ({ filterMenu }) => {
+    await filterMenu.toggleOpen();
 
-        await expect(events).toHaveText("Test Event 1");
+    await filterMenu.toggleHideNotStarredEvents();
+    await filterMenu.toggleCategory("Category 1");
+    await filterMenu.toggleCategory("Category 2");
+    await filterMenu.toggleTag("Tag 1");
+    await filterMenu.toggleTag("Tag 2");
+    await filterMenu.search("foo");
 
-        await filterMenu.search("Banana");
+    await filterMenu.toggleOpen();
 
-        await expect(events).toHaveCount(0);
-      });
+    await expect(filterMenu.description).toHaveText(
+      [
+        "Only showing:",
+        "Starred",
+        "and",
+        "(",
+        "Category 1",
+        "or",
+        "Category 2",
+        ")",
+        "and",
+        "(",
+        "Tag 1",
+        "or",
+        "Tag 2",
+        ")",
+        "and",
+        '"foo"',
+      ].join(""),
+    );
+  });
 
-      test("search by person", async ({ filterMenu, schedulePage, programPage }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+  test("clearing categories and tags from the filter description", async ({
+    filterMenu,
+    schedulePage,
+  }) => {
+    await filterMenu.toggleOpen();
 
-        await filterMenu.search("Ash");
+    await filterMenu.toggleCategory("Category 1");
+    await filterMenu.toggleTag("Tag 1");
 
-        await expect(events).toHaveText("Test Event 2");
+    await filterMenu.toggleOpen();
 
-        await filterMenu.search("Kit");
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Test Event 1");
 
-        await expect(events).toHaveCount(0);
-      });
+    await filterMenu.clearCategoryOrTag("Category 1");
+    await filterMenu.clearCategoryOrTag("Tag 1");
 
-      test("filter description", async ({ filterMenu }) => {
-        await filterMenu.toggleOpen();
+    await expect(schedulePage.events).toHaveCount(2);
+    await expect(filterMenu.description).not.toBeVisible();
+  });
 
-        await filterMenu.toggleHideNotStarredEvents();
-        await filterMenu.toggleCategory("Category 1");
-        await filterMenu.toggleCategory("Category 2");
-        await filterMenu.toggleTag("Tag 1");
-        await filterMenu.toggleTag("Tag 2");
-        await filterMenu.search("foo");
+  test("follow link to search by location", async ({ filterMenu, schedulePage, eventPage }) => {
+    await schedulePage.openEventDetailsPage("Test Event 2");
 
-        await filterMenu.toggleOpen();
+    await eventPage.locationLinks.filter({ hasText: "Orange Room" }).click();
 
-        await expect(filterMenu.description).toHaveText(
-          [
-            "Only showing:",
-            "Starred",
-            "and",
-            "(",
-            "Category 1",
-            "or",
-            "Category 2",
-            ")",
-            "and",
-            "(",
-            "Tag 1",
-            "or",
-            "Tag 2",
-            ")",
-            "and",
-            '"foo"',
-          ].join(""),
-        );
-      });
+    await filterMenu.toggleOpen();
+    await expect(filterMenu.searchInput).toHaveValue("Orange Room");
+  });
 
-      test("clearing categories and tags from the filter description", async ({
-        filterMenu,
-        schedulePage,
-        programPage,
-      }) => {
-        const events = route === "schedule" ? schedulePage.events : programPage.eventNames;
+  test("follow link to search by person", async ({ filterMenu, schedulePage, eventPage }) => {
+    await schedulePage.openEventDetailsPage("Test Event 2");
 
-        await filterMenu.toggleOpen();
+    await eventPage.personLinks.filter({ hasText: "Ash" }).click();
 
-        await filterMenu.toggleCategory("Category 1");
-        await filterMenu.toggleTag("Tag 1");
-
-        await filterMenu.toggleOpen();
-
-        await expect(events).toHaveCount(1);
-        await expect(events).toHaveText("Test Event 1");
-
-        await filterMenu.clearCategoryOrTag("Category 1");
-        await filterMenu.clearCategoryOrTag("Tag 1");
-
-        await expect(events).toHaveCount(2);
-        await expect(filterMenu.description).not.toBeVisible();
-      });
-
-      test("follow link to search by location", async ({
-        filterMenu,
-        schedulePage,
-        programPage,
-        eventPage,
-      }) => {
-        if (route === "schedule") {
-          await schedulePage.openEventDetailsPage("Test Event 2");
-        } else if (route === "program") {
-          await programPage.toggleEventExpanded("Test Event 2");
-          await programPage.openEventDetailsPage("Test Event 2");
-        }
-
-        await eventPage.locationLinks.filter({ hasText: "Orange Room" }).click();
-
-        await filterMenu.toggleOpen();
-        await expect(filterMenu.searchInput).toHaveValue("Orange Room");
-      });
-
-      test("follow link to search by person", async ({
-        filterMenu,
-        schedulePage,
-        programPage,
-        eventPage,
-      }) => {
-        if (route === "schedule") {
-          await schedulePage.openEventDetailsPage("Test Event 2");
-        } else if (route === "program") {
-          await programPage.toggleEventExpanded("Test Event 2");
-          await programPage.openEventDetailsPage("Test Event 2");
-        }
-
-        await eventPage.personLinks.filter({ hasText: "Ash" }).click();
-
-        await filterMenu.toggleOpen();
-        await expect(filterMenu.searchInput).toHaveValue("Ash");
-      });
-    });
-  }
+    await filterMenu.toggleOpen();
+    await expect(filterMenu.searchInput).toHaveValue("Ash");
+  });
 
   test("filter by category or tag from event page", async ({ schedulePage, eventPage }) => {
     await schedulePage.goto();

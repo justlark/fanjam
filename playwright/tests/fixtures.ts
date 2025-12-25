@@ -179,56 +179,6 @@ export class EventDetailsPage {
   }
 }
 
-export class ProgramPage {
-  private readonly page: Page;
-  readonly eventNames: Locator;
-  readonly starButton: Locator;
-  readonly hiddenNotice: Locator;
-  readonly expandedEvents: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    this.eventNames = page.getByTestId("program-event-name").filter({ visible: true });
-    this.starButton = page.getByTestId("program-event-star-button").filter({ visible: true });
-    this.hiddenNotice = page.getByTestId("program-past-events-hidden-notice");
-    this.expandedEvents = this.page.getByTestId("program-event").filter({
-      has: this.page.getByTestId("program-event-details-button").filter({ visible: true }),
-    });
-  }
-
-  async goto() {
-    await this.page.goto("program");
-  }
-
-  async toggleDayExpanded(index: number) {
-    await this.page.getByTestId("program-day-expand-button").nth(index).click();
-  }
-
-  async toggleEventExpanded(eventName: string) {
-    await this.page
-      .getByTestId("program-event")
-      .filter({ has: this.page.getByTestId("program-event-name").filter({ hasText: eventName }) })
-      .getByTestId("program-event-expand-button")
-      .click();
-  }
-
-  async openEventDetailsPage(eventName: string) {
-    await this.page
-      .getByTestId("program-event")
-      .filter({ has: this.page.getByTestId("program-event-name").filter({ hasText: eventName }) })
-      .getByTestId("program-event-details-button")
-      .click();
-  }
-
-  eventName(eventName: string) {
-    return this.page.getByTestId("program-event-name").filter({ hasText: eventName });
-  }
-
-  async toggleStar() {
-    await this.starButton.click();
-  }
-}
-
 export class StarredEvents {
   private readonly page: Page;
   private readonly envId: string;

@@ -1,11 +1,10 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, mockTime } from "./common";
-import { EventDetailsPage, ProgramPage, SchedulePage, StarredEvents } from "./fixtures";
+import { EventDetailsPage, SchedulePage, StarredEvents } from "./fixtures";
 
 type Fixtures = {
   starredEvents: StarredEvents;
   eventPage: EventDetailsPage;
-  programPage: ProgramPage;
   schedulePage: SchedulePage;
 };
 
@@ -16,10 +15,6 @@ export const test = base.extend<Fixtures>({
 
   eventPage: async ({ page }, use) => {
     await use(new EventDetailsPage(page));
-  },
-
-  programPage: async ({ page }, use) => {
-    await use(new ProgramPage(page));
   },
 
   schedulePage: async ({ page }, use) => {
@@ -50,19 +45,5 @@ test.describe("starring events", () => {
     await expect(schedulePage.events.filter({ hasText: "Test Event" })).toHaveAccessibleName(
       /^Starred:/,
     );
-  });
-
-  test("star button in program view", async ({ programPage, starredEvents }) => {
-    await programPage.goto();
-
-    await programPage.toggleEventExpanded("Test Event");
-
-    await expect(programPage.starButton).toHaveAttribute("aria-pressed", "false");
-    await programPage.toggleStar();
-    await expect(programPage.starButton).toHaveAttribute("aria-pressed", "true");
-
-    expect(await starredEvents.get()).toEqual(["1"]);
-
-    await expect(programPage.eventName("Test Event")).toHaveText(/^Starred:/);
   });
 });
