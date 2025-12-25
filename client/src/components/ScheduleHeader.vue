@@ -44,7 +44,7 @@ const showFilterDescription = computed(
 );
 
 const eventIds = defineModel<Array<string>>("ids");
-const viewType = defineModel<"daily" | "all">({ default: "daily" });
+const viewType = defineModel<"daily" | "all">("view", { required: true });
 
 const viewTypeButtonOptions = ref([
   { label: "By Day", value: "daily" },

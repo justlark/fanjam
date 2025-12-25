@@ -75,7 +75,7 @@ const currentDayIndex = defineModel<number>("day");
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
-const isByDay = ref(false);
+const viewType = ref<"daily" | "all">("daily");
 
 const currentDayTimeSlots = computed(() => {
   if (currentDayIndex.value === undefined) {
@@ -179,7 +179,7 @@ const filteredTimeSlotsForAllDays = computed(() =>
 );
 
 const filteredTimeSlots = computed(() =>
-  isByDay.value ? filteredTimeSlotsByDay.value : filteredTimeSlotsForAllDays.value,
+  viewType.value === "daily" ? filteredTimeSlotsByDay.value : filteredTimeSlotsForAllDays.value,
 );
 const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
@@ -288,9 +288,9 @@ watchEffect(() => {
 
 <template>
   <div class="flex flex-col gap-4 h-full">
-    <ScheduleHeader v-model:ids="searchResultEventIds" />
+    <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
     <DayPicker
-      v-if="isByDay && currentDayIndex !== undefined && days.length > 0"
+      v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
       v-model:day="currentDayIndex"
       :day-names="dayNames"
       :today-index="todayIndex"
