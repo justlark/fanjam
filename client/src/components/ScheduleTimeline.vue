@@ -75,6 +75,7 @@ const currentDayIndex = defineModel<number>("day");
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
+const isByDay = ref(false);
 
 const currentDayTimeSlots = computed(() => {
   if (currentDayIndex.value === undefined) {
@@ -156,7 +157,7 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlots = computed(() =>
+const filteredTimeSlotsByDay = computed(() =>
   currentDayTimeSlots.value
     .map((timeSlot) => ({
       events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
@@ -165,6 +166,21 @@ const filteredTimeSlots = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
+const filteredTimeSlotsForAllDays = computed(() =>
+  days.value
+    .map((day) =>
+      day.timeSlots.map((timeSlot) => ({
+        events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
+        localizedTime: `${day.dayName} ${timeSlot.localizedTime}`,
+      })),
+    )
+    .flat()
+    .filter((timeSlot) => timeSlot.events.length > 0),
+);
+
+const filteredTimeSlots = computed(() =>
+  isByDay.value ? filteredTimeSlotsByDay.value : filteredTimeSlotsForAllDays.value,
+);
 const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
@@ -274,7 +290,7 @@ watchEffect(() => {
   <div class="flex flex-col gap-4 h-full">
     <ScheduleHeader v-model:ids="searchResultEventIds" />
     <DayPicker
-      v-if="currentDayIndex !== undefined && days.length > 0"
+      v-if="isByDay && currentDayIndex !== undefined && days.length > 0"
       v-model:day="currentDayIndex"
       :day-names="dayNames"
       :today-index="todayIndex"
@@ -289,7 +305,7 @@ watchEffect(() => {
     </span>
     <div
       v-if="filteredTimeSlots.length > 0"
-      :class="{ flex: true, 'flex-col': true, 'gap-6': true, 'mb-[15rem]': eventSummaryIsVisible }"
+      :class="['flex flex-col gap-6', { 'mb-[15rem]': eventSummaryIsVisible }]"
     >
       <ScheduleTimeSlot
         v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
