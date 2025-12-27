@@ -211,4 +211,38 @@ test.describe("the schedule timeline view", () => {
     await expect(schedulePage.timeSlots.nth(1)).toContainText("now");
     await expect(schedulePage.timeSlots.nth(2)).not.toContainText("now");
   });
+
+  test("only shows the current time slot on the current day", async ({ page, schedulePage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          name: "Event 1",
+          start_time: hoursFromNow(-25).toISOString(),
+          end_time: hoursFromNow(24).toISOString(),
+        },
+        {
+          name: "Event 2",
+          start_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(1).toISOString(),
+        },
+        {
+          name: "Event 3",
+          start_time: hoursFromNow(24).toISOString(),
+          end_time: hoursFromNow(25).toISOString(),
+        },
+      ],
+    });
+
+    await schedulePage.goto(1);
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(schedulePage.timeSlots.nth(0)).not.toContainText("now");
+
+    await schedulePage.goto(2);
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(schedulePage.timeSlots.nth(0)).toContainText("now");
+
+    await schedulePage.goto(3);
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(schedulePage.timeSlots.nth(0)).not.toContainText("now");
+  });
 });
