@@ -19,11 +19,5 @@
   "pwa_icon_any_sizes": "The dimensions of the app icon in the PWA manifest (any).",
   "pwa_icon_maskable_name": "The asset name of the app icon in the PWA manifest (maskable).",
   "pwa_icon_maskable_type": "The IANA media type of the app icon in the PWA manifest (maskable).",
-  "pwa_icon_maskable_sizes": "The dimensions of the app icon in the PWA manifest (maskable).",
-  "pwa_icon_monochrome_name": "The asset name of the app icon in the PWA manifest (monochrome).",
-  "pwa_icon_monochrome_type": "The IANA media type of the app icon in the PWA manifest (monochrome).",
-  "pwa_icon_monochrome_sizes": "The dimensions of the app icon in the PWA manifest (monochrome).",
-  "pwa_icon_monochrome_maskable_name": "The asset name of the app icon in the PWA manifest (monochrome, maskable).",
-  "pwa_icon_monochrome_maskable_type": "The IANA media type of the app icon in the PWA manifest (monochrome, maskable).",
-  "pwa_icon_monochrome_maskable_sizes": "The dimensions of the app icon in the PWA manifest (monochrome, maskable)."
+  "pwa_icon_maskable_sizes": "The dimensions of the app icon in the PWA manifest (maskable)."
 }

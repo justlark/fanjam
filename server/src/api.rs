@@ -167,10 +167,4 @@ pub struct GetConfigResponse {
     pub pwa_icon_maskable_name: Option<String>,
     pub pwa_icon_maskable_type: Option<String>,
     pub pwa_icon_maskable_sizes: Option<String>,
-    pub pwa_icon_monochrome_name: Option<String>,
-    pub pwa_icon_monochrome_type: Option<String>,
-    pub pwa_icon_monochrome_sizes: Option<String>,
-    pub pwa_icon_monochrome_maskable_name: Option<String>,
-    pub pwa_icon_monochrome_maskable_type: Option<String>,
-    pub pwa_icon_monochrome_maskable_sizes: Option<String>,
 }

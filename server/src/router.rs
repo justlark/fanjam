@@ -673,12 +673,6 @@ async fn get_config(
         pwa_icon_maskable_name: config.pwa_icon_maskable_name,
         pwa_icon_maskable_type: config.pwa_icon_maskable_type,
         pwa_icon_maskable_sizes: config.pwa_icon_maskable_sizes,
-        pwa_icon_monochrome_name: config.pwa_icon_monochrome_name,
-        pwa_icon_monochrome_type: config.pwa_icon_monochrome_type,
-        pwa_icon_monochrome_sizes: config.pwa_icon_monochrome_sizes,
-        pwa_icon_monochrome_maskable_name: config.pwa_icon_monochrome_maskable_name,
-        pwa_icon_monochrome_maskable_type: config.pwa_icon_monochrome_maskable_type,
-        pwa_icon_monochrome_maskable_sizes: config.pwa_icon_monochrome_maskable_sizes,
     }))
 }
 

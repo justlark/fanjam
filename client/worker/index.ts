@@ -57,12 +57,6 @@ interface AppConfig {
   pwa_icon_maskable_name?: string;
   pwa_icon_maskable_type?: string;
   pwa_icon_maskable_sizes?: string;
-  pwa_icon_monochrome_name?: string;
-  pwa_icon_monochrome_type?: string;
-  pwa_icon_monochrome_sizes?: string;
-  pwa_icon_monochrome_maskable_name?: string;
-  pwa_icon_monochrome_maskable_type?: string;
-  pwa_icon_monochrome_maskable_sizes?: string;
 }
 
 const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig> => {
@@ -139,36 +133,6 @@ const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response 
             ? appConfig.pwa_icon_maskable_sizes
             : undefined,
         purpose: "maskable",
-      },
-      {
-        src:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_monochrome_name)
-            : `${requestUrl.origin}/icons/icon-monochrome.png`,
-        type:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_type !== undefined
-            ? appConfig.pwa_icon_monochrome_type
-            : "image/png",
-        sizes:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_sizes !== undefined
-            ? appConfig.pwa_icon_monochrome_sizes
-            : undefined,
-        purpose: "monochrome",
-      },
-      {
-        src:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_name !== undefined
-            ? assetUrl(env.API_DOMAIN, envId, appConfig.pwa_icon_monochrome_maskable_name)
-            : `${requestUrl.origin}/icons/icon-monochrome-maskable.png`,
-        type:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_type !== undefined
-            ? appConfig.pwa_icon_monochrome_maskable_type
-            : "image/png",
-        sizes:
-          appConfig.use_custom_icon && appConfig.pwa_icon_monochrome_maskable_sizes !== undefined
-            ? appConfig.pwa_icon_monochrome_maskable_sizes
-            : undefined,
-        purpose: "monochrome maskable",
       },
     ],
   };
