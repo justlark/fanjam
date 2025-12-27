@@ -219,6 +219,7 @@ const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
 
 const refreshNowTimeIntervalId = ref<number>();
 
+// Refresh the current time slot indicator periodically.
 onMounted(() => {
   refreshNowTimeIntervalId.value = setInterval(() => {
     const currentIndices = getCurrentTimeSlotIndices();
@@ -316,7 +317,9 @@ watchEffect(() => {
         :localized-time="timeSlot.localizedTime"
         :events="timeSlot.events"
         :all-categories="allCategories"
-        :is-current-time-slot="index === currentTimeSlotIndex"
+        :is-current-time-slot="
+          (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
+        "
         data-testid="schedule-time-slot"
       />
     </div>
