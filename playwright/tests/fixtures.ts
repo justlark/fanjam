@@ -62,6 +62,7 @@ export class SchedulePage {
   readonly prevDayButton: Locator;
   readonly nextDayButton: Locator;
   readonly dayName: Locator;
+  readonly viewSelector: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -72,6 +73,7 @@ export class SchedulePage {
     this.prevDayButton = page.getByTestId("schedule-prev-day-button");
     this.nextDayButton = page.getByTestId("schedule-next-day-button");
     this.dayName = page.getByTestId("schedule-day-name");
+    this.viewSelector = page.getByTestId("schedule-view-selector");
   }
 
   async goto(day?: number | string) {
@@ -90,6 +92,14 @@ export class SchedulePage {
     if (isMobile()) {
       await this.events.filter({ hasText: eventName }).click();
     }
+  }
+
+  async toByDayView() {
+    await this.viewSelector.getByRole("button").filter({ hasText: "By Day" }).click();
+  }
+
+  async toAllEventsView() {
+    await this.viewSelector.getByRole("button").filter({ hasText: "All Events" }).click();
   }
 
   async toNextDay() {

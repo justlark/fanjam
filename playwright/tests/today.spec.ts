@@ -174,4 +174,40 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.prevDayButton).toBeEnabled();
     await expect(schedulePage.nextDayButton).toBeDisabled();
   });
+
+  test("the current day is preserved when jumping between views", async ({ schedulePage }) => {
+    await schedulePage.goto();
+    await expect(schedulePage.dayName).toHaveText("Monday");
+
+    await schedulePage.toNextDay();
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+
+    await schedulePage.toAllEventsView();
+    await schedulePage.toByDayView();
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+  });
+
+  test("the all events view shows events from all days", async ({ schedulePage }) => {
+    await schedulePage.goto();
+
+    await schedulePage.toAllEventsView();
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(schedulePage.events).toHaveCount(3);
+
+    await expect(schedulePage.events.nth(0)).toContainText("Yesterday Event");
+    await expect(schedulePage.events.nth(1)).toContainText("Today Event");
+    await expect(schedulePage.events.nth(2)).toContainText("Tomorrow Event");
+  });
+
+  test("time slots include the day when showing all events", async ({ schedulePage }) => {
+    schedulePage.goto();
+
+    await schedulePage.toAllEventsView();
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(schedulePage.timeSlots.nth(0).getByRole("heading")).toHaveText(/^Sunday/);
+    await expect(schedulePage.timeSlots.nth(1).getByRole("heading")).toHaveText(/^Monday/);
+    await expect(schedulePage.timeSlots.nth(2).getByRole("heading")).toHaveText(/^Tuesday/);
+  });
 });

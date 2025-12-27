@@ -205,6 +205,7 @@ const filterMenuId = useId();
       size="small"
       fluid
       :allow-empty="false"
+      data-testid="schedule-view-selector"
     />
     <FilterDescription
       v-if="showFilterDescription && !showFilterMenu"
