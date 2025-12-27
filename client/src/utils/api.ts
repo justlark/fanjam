@@ -52,6 +52,7 @@ interface RawAnnouncement {
 
 interface RawConfig {
   timezone: string | null;
+  feedback_url: string | null;
 }
 
 interface Envelope<T> {
@@ -109,7 +110,7 @@ export interface Info {
 
 export interface Config {
   timezone?: string;
-  feedback_url?: string;
+  feedbackUrl?: string;
 }
 
 export type ApiResult<T> =
@@ -309,6 +310,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
 
   const config: Config = {
     timezone: rawConfig.timezone ?? undefined,
+    feedbackUrl: rawConfig.feedback_url ?? undefined,
   };
 
   return { ok: true, value: config };

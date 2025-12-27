@@ -418,6 +418,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
 
 interface StoredConfig {
   timezone?: string;
+  feedback_url?: string;
 }
 
 const configRef = ref<FetchResult<Config>>({ status: "pending" });
@@ -432,9 +433,11 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
     fetcher: () => api.getConfig(toValue(envId)),
     toCache: (data) => ({
       timezone: data.timezone,
+      feedback_url: data.feedbackUrl,
     }),
     fromCache: (data) => ({
       timezone: data.timezone,
+      feedbackUrl: data.feedback_url,
     }),
   });
 

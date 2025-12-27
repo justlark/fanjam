@@ -10,16 +10,16 @@ const {
 
 const isSameDomain = computed(
   () =>
-    config.value?.feedback_url &&
-    new URL(config.value.feedback_url).origin === window.location.origin,
+    config.value?.feedbackUrl &&
+    new URL(config.value.feedbackUrl).origin === window.location.origin,
 );
 </script>
 
 <template>
-  <div v-if="config?.feedback_url" class="flex flex-col gap-1">
+  <div v-if="config?.feedbackUrl" class="flex flex-col gap-1">
     <div>
       <a
-        :href="config.feedback_url"
+        :href="config.feedbackUrl"
         class="text-primary flex items-center gap-1"
         :target="isSameDomain ? '_self' : '_blank'"
       >
