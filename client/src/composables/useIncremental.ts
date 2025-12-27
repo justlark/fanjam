@@ -1,17 +1,16 @@
 import { ref, watch, type Ref, type MaybeRefOrGetter } from "vue";
 import { isTest } from "@/utils/env";
+import deepEqual from "fast-deep-equal";
 
 const useIncremental = <T>(
   input: Readonly<Ref<ReadonlyArray<T>>>,
   options: {
     chunkSize: number;
-    sources: Array<MaybeRefOrGetter<unknown>>;
   } = {
       chunkSize: 5,
-      sources: [],
     },
 ) => {
-  const { chunkSize, sources } = options;
+  const { chunkSize } = options;
 
   const output = ref<Array<T>>([]);
   let runCounter = 0;
@@ -40,7 +39,15 @@ const useIncremental = <T>(
     requestAnimationFrame(step);
   };
 
-  watch([input, ...sources], run, { immediate: true });
+  watch(
+    input,
+    (newInput, oldInput) => {
+      if (deepEqual(newInput, oldInput)) return;
+
+      run();
+    },
+    { immediate: true },
+  );
 
   return output;
 };
