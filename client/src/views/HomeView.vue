@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
+
+const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
 </script>
 
 <template>
@@ -49,7 +51,7 @@ import Button from "primevue/button";
             <img
               class="max-h-100 object-contain"
               alt="Organizer app screenshot"
-              src="/images/nocodb-demo-screenshot.webp"
+              :src="`${staticDomain}/nocodb-demo-screenshot.webp`"
             />
           </template>
           <template #title>For Organizers</template>
@@ -94,12 +96,12 @@ import Button from "primevue/button";
               <img
                 class="w-full"
                 alt="Attendee app screenshot"
-                src="/images/fanjam-schedule-demo-screenshot.webp"
+                :src="`${staticDomain}/fanjam-schedule-demo-screenshot.webp`"
               />
               <img
                 class="w-full"
                 alt="Attendee app screenshot"
-                src="/images/fanjam-info-demo-screenshot.webp"
+                :src="`${staticDomain}/fanjam-info-demo-screenshot.webp`"
               />
             </div>
           </template>
