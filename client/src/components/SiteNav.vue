@@ -9,6 +9,7 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
+import FeedbackDetail from "./FeedbackDetail.vue";
 import Toast from "primevue/toast";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
@@ -101,7 +102,10 @@ const headerHeadingId = useId();
         </div>
         <Drawer v-model:visible="visible" header="Menu" :block-scroll="true" class="!w-65">
           <div class="h-full flex flex-col justify-between">
-            <MainMenu />
+            <div class="flex flex-col gap-3">
+              <MainMenu />
+              <FeedbackDetail />
+            </div>
             <SiteAttribution />
           </div>
         </Drawer>
@@ -111,7 +115,10 @@ const headerHeadingId = useId();
         <div class="hidden lg:flex sticky top-0 max-h-screen grow-0 shrink-0 items-stretch">
           <aside class="px-4 grow min-w-50 flex flex-col justify-between">
             <div class="sticky top-16 pt-4">
-              <MainMenu />
+              <div class="flex flex-col gap-3">
+                <MainMenu />
+                <FeedbackDetail />
+              </div>
             </div>
             <div class="sticky bottom-0 pb-4">
               <SiteAttribution />

@@ -659,6 +659,7 @@ async fn get_config(
 
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
+        feedback_url: config.feedback_url,
         use_custom_icon: config.use_custom_icon,
         favicon_name: config.favicon_name,
         opengraph_icon_name: config.opengraph_icon_name,
