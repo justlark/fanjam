@@ -3,6 +3,7 @@ import { ref, watchEffect, type Ref } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 
 export interface DatetimeFormats {
+  timezone: string;
   shortTime: Intl.DateTimeFormat;
   shortDate: Intl.DateTimeFormat;
   shortDatetime: Intl.DateTimeFormat;
@@ -18,27 +19,30 @@ const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
   } = useRemoteData();
 
   watchEffect(() => {
+    const timezone = config.value?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     datetimeFormats.value = {
+      timezone,
       shortTime: new Intl.DateTimeFormat(undefined, {
         timeStyle: "short",
-        timeZone: config.value?.timezone,
+        timeZone: timezone,
       }),
       shortDate: new Intl.DateTimeFormat(undefined, {
         dateStyle: "short",
-        timeZone: config.value?.timezone,
+        timeZone: timezone,
       }),
       shortDatetime: new Intl.DateTimeFormat(undefined, {
         timeStyle: "short",
         dateStyle: "medium",
-        timeZone: config.value?.timezone,
+        timeZone: timezone,
       }),
       shortWeekday: new Intl.DateTimeFormat(undefined, {
         weekday: "short",
-        timeZone: config.value?.timezone,
+        timeZone: timezone,
       }),
       longWeekday: new Intl.DateTimeFormat(undefined, {
         weekday: "long",
-        timeZone: config.value?.timezone,
+        timeZone: timezone,
       }),
     };
   });

@@ -102,10 +102,11 @@ const namedDays = computed(() =>
 );
 
 const todayIndex = computed(() => {
-  if (namedDays.value === undefined) return undefined;
+  const timezone = datetimeFormats.value?.timezone;
+  if (namedDays.value === undefined || timezone === undefined) return undefined;
 
   const today = new Date();
-  const index = namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today));
+  const index = namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today, timezone));
 
   if (index === -1) {
     // There are no events today.

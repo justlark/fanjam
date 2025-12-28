@@ -48,10 +48,79 @@ const daysBetween = (start: Date, end: Date): number => {
   return Math.round(Math.abs(start.valueOf() - end.valueOf()) / dayMillis);
 };
 
-const startAndEndOfDay = (date: Date): { start: Date; end: Date } => {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const end = new Date(start);
-  end.setHours(23, 59, 59);
+// Extracts year, month, and date components from a Date in a specific
+// timezone.
+const getDatePartsInTimezone = (
+  date: Date,
+  timezone: string,
+): { year: number; month: number; day: number } => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const year = parseInt(parts.find((p) => p.type === "year")?.value ?? "0", 10);
+  const month = parseInt(parts.find((p) => p.type === "month")?.value ?? "0", 10) - 1;
+  const day = parseInt(parts.find((p) => p.type === "day")?.value ?? "0", 10);
+
+  return { year, month, day };
+};
+
+// Extracts hour, minute, and second components from a Date in a specific
+// timezone.
+const getTimePartsInTimezone = (
+  date: Date,
+  timezone: string,
+): { hour: number; minute: number; second: number } => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const second = parseInt(parts.find((p) => p.type === "second")?.value ?? "0", 10);
+
+  return { hour, minute, second };
+};
+
+// Returns midnight (00:00:00) of the same calendar day as `date` in the given
+// time zone.
+const midnightInTimeZone = (date: Date, timezone: string): Date => {
+  const parts = getDatePartsInTimezone(date, timezone);
+  const utcGuess = new Date(Date.UTC(parts.year, parts.month, parts.day, 0, 0, 0));
+
+  const dateParts = getDatePartsInTimezone(utcGuess, timezone);
+  const timeParts = getTimePartsInTimezone(utcGuess, timezone);
+
+  const zonedMillis = Date.UTC(
+    dateParts.year,
+    dateParts.month,
+    dateParts.day,
+    timeParts.hour,
+    timeParts.minute,
+    timeParts.second,
+  );
+
+  return new Date(utcGuess.getTime() - (zonedMillis - utcGuess.getTime()));
+};
+
+const startAndEndOfDay = (date: Date, timezone: string): { start: Date; end: Date } => {
+  const start = midnightInTimeZone(date, timezone);
+
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const nextMidnight = midnightInTimeZone(nextDay, timezone);
+
+  const end = new Date(nextMidnight.getTime() - 1000);
+
   return { start, end };
 };
 
@@ -82,7 +151,7 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
       ? formats.shortDate.format(start)
       : formats.longWeekday.format(start);
 
-    const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start);
+    const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start, formats.timezone);
 
     for (let j = i + 1; j < sortedDates.length; j++) {
       const end = sortedDates[j];
@@ -129,7 +198,9 @@ export const groupByTime = <T>(
   return grouped;
 };
 
-export const isSameDay = (a: Date, b: Date): boolean =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
+export const isSameDay = (a: Date, b: Date, timezone: string): boolean => {
+  const partsA = getDatePartsInTimezone(a, timezone);
+  const partsB = getDatePartsInTimezone(b, timezone);
+
+  return partsA.year === partsB.year && partsA.month === partsB.month && partsA.day === partsB.day;
+};
