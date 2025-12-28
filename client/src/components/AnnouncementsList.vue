@@ -42,11 +42,11 @@ const filteredAnnouncements = computed(() => {
           :is="unreadAnnouncements.has(announcement.id) ? OverlayBadge : 'div'"
           size="small"
           severity="danger"
-          class="flex items-center gap-6 text-left border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 mx-auto max-w-160 hover:*:decoration-2"
+          class="group flex items-center gap-6 text-left border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 mx-auto max-w-160"
         >
           <SimpleIcon icon="megaphone" class="text-2xl" />
           <div class="flex flex-col items-start gap-1">
-            <h2 class="text-primary underline underline-offset-2 text-lg">
+            <h2 class="text-link-sm group-hover:decoration-2 text-lg">
               {{ announcement.title }}
             </h2>
             <span v-if="datetimeFormats" class="text-muted-color">{{

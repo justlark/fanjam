@@ -24,9 +24,7 @@ const isSameDomain = computed(
         :target="isSameDomain ? '_self' : '_blank'"
       >
         <SimpleIcon icon="hand-thumbs-up" class="text-lg" />
-        <span class="font-bold decoration-2 underline underline-offset-2 hover:decoration-3">
-          Feedback?
-        </span>
+        <span class="text-link-lg">Feedback?</span>
       </a>
     </div>
     <div class="leading-4">

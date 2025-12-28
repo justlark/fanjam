@@ -93,7 +93,7 @@ const sectionHeadingId = useId();
             <span>Hosted by </span>
             <span v-for="(person, index) in event.people" :key="index">
               <RouterLink
-                class="text-primary underline underline-offset-2 hover:decoration-2"
+                class="text-link-sm"
                 data-testid="event-details-person-link"
                 :to="{
                   name: 'schedule',
@@ -108,7 +108,7 @@ const sectionHeadingId = useId();
           </EventDetail>
           <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location">
             <RouterLink
-              class="text-primary underline underline-offset-2 hover:decoration-2"
+              class="text-link-sm"
               data-testid="event-details-location-link"
               :to="{
                 name: 'schedule',

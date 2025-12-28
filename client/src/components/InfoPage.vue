@@ -34,11 +34,7 @@ const conName = computed(() => info.value?.name || "FanJam");
       <h1 class="text-3xl">{{ conName }}</h1>
       <span v-if="websiteUrl" class="flex gap-2 text-lg">
         <SimpleIcon icon="box-arrow-up-right" label="External Link" />
-        <a
-          :href="websiteUrl.href"
-          target="_blank"
-          class="text-primary underline underline-offset-2 hover:decoration-2"
-        >
+        <a :href="websiteUrl.href" target="_blank" class="text-link-sm">
           {{ websiteUrl.hostname }}
         </a>
       </span>

@@ -49,10 +49,10 @@ const linkProps = computed(() => {
   <component
     :is="props.target.kind === 'route' ? RouterLink : 'a'"
     v-bind="linkProps"
-    class="flex items-center justify-start gap-4 text-left text-lg border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 w-full hover:*:decoration-2"
+    class="group flex items-center justify-start gap-4 text-left text-lg border border-surface-300 hover:bg-surface-200 dark:border-surface-600 hover:dark:bg-surface-800 rounded-sm px-4 py-2 w-full"
   >
     <SimpleIcon :icon="props.icon" :label="props.iconLabel" />
-    <span class="text-primary underline underline-offset-2">
+    <span class="text-link-sm group-hover:decoration-2">
       {{ props.name }}
     </span>
   </component>

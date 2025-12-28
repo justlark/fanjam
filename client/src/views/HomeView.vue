@@ -36,11 +36,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           <div class="text-xl text-center">
             <p>Reach out if you're interested!</p>
             <p>
-              <a
-                class="text-primary decoration-2 underline underline-offset-2 hover:decoration-3 font-bold"
-                href="mailto:lark@fanjam.live"
-                >lark@fanjam.live</a
-              >
+              <a class="text-link-lg" href="mailto:lark@fanjam.live">lark@fanjam.live</a>
             </p>
           </div>
         </template>
@@ -144,11 +140,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
     </main>
     <footer class="mt-auto flex flex-col items-center gap-1 text-muted-color">
       <small>
-        <a
-          class="text-primary decoration-2 underline underline-offset-2 hover:decoration-3"
-          href="https://github.com/justlark/fanjam"
-          target="_blank"
-        >
+        <a class="text-link-sm" href="https://github.com/justlark/fanjam" target="_blank">
           GitHub
         </a>
       </small>
