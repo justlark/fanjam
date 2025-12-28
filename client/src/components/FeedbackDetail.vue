@@ -39,7 +39,7 @@ const feedbackInfo = computed(() => {
     <div>
       <a
         :href="feedbackInfo.url"
-        class="text-primary flex items-center gap-1"
+        class="text-primary flex items-center gap-2"
         :target="isSameDomain ? '_self' : '_blank'"
       >
         <SimpleIcon :icon="feedbackInfo.icon" class="text-lg" />

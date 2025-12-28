@@ -102,7 +102,7 @@ const headerHeadingId = useId();
         </div>
         <Drawer v-model:visible="visible" header="Menu" :block-scroll="true" class="!w-65">
           <div class="h-full flex flex-col justify-between">
-            <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-4">
               <MainMenu />
               <FeedbackDetail />
             </div>
@@ -115,7 +115,7 @@ const headerHeadingId = useId();
         <div class="hidden lg:flex sticky top-0 max-h-screen grow-0 shrink-0 items-stretch">
           <aside class="px-4 grow min-w-50 flex flex-col justify-between">
             <div class="sticky top-16 pt-4">
-              <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-4">
                 <MainMenu />
                 <FeedbackDetail />
               </div>
