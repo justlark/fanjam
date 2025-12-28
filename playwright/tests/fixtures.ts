@@ -245,3 +245,19 @@ export class AnnouncementsPage {
     await this.backButton.click();
   }
 }
+
+export class MainMenu {
+  readonly mainMenuButton: Locator;
+  readonly feedbackCallout: Locator;
+
+  constructor(page: Page) {
+    this.mainMenuButton = page.getByTestId("main-menu-button");
+    this.feedbackCallout = isMobile()
+      ? page.getByTestId("main-menu-drawer").getByTestId("feedback-callout")
+      : page.getByTestId("main-menu-sidebar").getByTestId("feedback-callout");
+  }
+
+  async open() {
+    await this.mainMenuButton.click();
+  }
+}

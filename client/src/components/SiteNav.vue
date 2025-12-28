@@ -9,7 +9,7 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
-import FeedbackDetail from "./FeedbackDetail.vue";
+import FeedbackCallout from "./FeedbackCallout.vue";
 import Toast from "primevue/toast";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
@@ -90,6 +90,9 @@ const headerHeadingId = useId();
                 label="Menu"
                 @click="toggleMenuDrawer"
                 :badge="showNotificationBadge"
+                :button-props="{
+                  'data-testid': 'main-menu-button',
+                }"
               />
             </span>
             <RouterLink :to="{ name: 'schedule' }">
@@ -100,11 +103,17 @@ const headerHeadingId = useId();
           </div>
           <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
         </div>
-        <Drawer v-model:visible="visible" header="Menu" :block-scroll="true" class="!w-65">
+        <Drawer
+          v-model:visible="visible"
+          header="Menu"
+          :block-scroll="true"
+          class="!w-65"
+          pt:content:data-testid="main-menu-drawer"
+        >
           <div class="h-full flex flex-col justify-between">
             <div class="flex flex-col gap-4">
               <MainMenu />
-              <FeedbackDetail />
+              <FeedbackCallout />
             </div>
             <SiteAttribution />
           </div>
@@ -113,11 +122,14 @@ const headerHeadingId = useId();
       </header>
       <div class="flex grow">
         <div class="hidden lg:flex sticky top-0 max-h-screen grow-0 shrink-0 items-stretch">
-          <aside class="px-4 grow min-w-50 flex flex-col justify-between">
+          <aside
+            class="px-4 grow min-w-50 flex flex-col justify-between"
+            data-testid="main-menu-sidebar"
+          >
             <div class="sticky top-16 pt-4">
               <div class="flex flex-col gap-4">
                 <MainMenu />
-                <FeedbackDetail />
+                <FeedbackCallout />
               </div>
             </div>
             <div class="sticky bottom-0 pb-4">

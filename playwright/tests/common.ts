@@ -12,11 +12,15 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        retry_after_ms: null,
-        value: body,
-      }),
+      body: JSON.stringify(body),
     });
+  });
+};
+
+const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
+  await mockApiResponse(page, endpoint, {
+    retry_after_ms: null,
+    value: body,
   });
 };
 
@@ -30,7 +34,7 @@ const mockApiInfo = async (page: Page, info: Record<string, unknown>) => {
     ...info,
   };
 
-  await mockApiResponse(page, "/info", data);
+  await mockWrappedApiResponse(page, "/info", data);
 
   return data;
 };
@@ -50,7 +54,7 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
     ...event,
   }));
 
-  await mockApiResponse(page, "/events", {
+  await mockWrappedApiResponse(page, "/events", {
     events: data,
   });
 
@@ -65,7 +69,7 @@ const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) =
     ...page,
   }));
 
-  await mockApiResponse(page, "/pages", {
+  await mockWrappedApiResponse(page, "/pages", {
     pages: data,
   });
 
@@ -85,7 +89,7 @@ const mockApiAnnouncements = async (page: Page, announcements: Array<Record<stri
     ...page,
   }));
 
-  await mockApiResponse(page, "/announcements", {
+  await mockWrappedApiResponse(page, "/announcements", {
     announcements: data,
   });
 

@@ -35,7 +35,7 @@ const feedbackInfo = computed(() => {
 </script>
 
 <template>
-  <div v-if="feedbackInfo" class="flex flex-col gap-1">
+  <div v-if="feedbackInfo" class="flex flex-col gap-1" data-testid="feedback-callout">
     <div>
       <a
         :href="feedbackInfo.url"
