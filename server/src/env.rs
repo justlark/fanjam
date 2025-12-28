@@ -58,6 +58,10 @@ impl fmt::Display for EnvName {
 pub struct Config {
     pub timezone: Option<String>,
     pub cache_ttl: Option<u64>,
+    pub use_feedback: Option<bool>,
+    pub feedback_icon: Option<String>,
+    pub feedback_title: Option<String>,
+    pub feedback_detail: Option<String>,
     pub feedback_url: Option<String>,
     pub config_db_host: Option<String>,
     pub config_db_port: Option<u16>,

@@ -153,6 +153,10 @@ pub struct GetSummaryResponse {
 #[derive(Debug, Serialize)]
 pub struct GetConfigResponse {
     pub timezone: Option<String>,
+    pub use_feedback: Option<bool>,
+    pub feedback_icon: Option<String>,
+    pub feedback_title: Option<String>,
+    pub feedback_detail: Option<String>,
     pub feedback_url: Option<String>,
     pub use_custom_icon: Option<bool>,
     pub favicon_name: Option<String>,

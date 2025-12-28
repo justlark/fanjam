@@ -659,6 +659,10 @@ async fn get_config(
 
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
+        use_feedback: config.use_feedback,
+        feedback_icon: config.feedback_icon,
+        feedback_title: config.feedback_title,
+        feedback_detail: config.feedback_detail,
         feedback_url: config.feedback_url,
         use_custom_icon: config.use_custom_icon,
         favicon_name: config.favicon_name,
