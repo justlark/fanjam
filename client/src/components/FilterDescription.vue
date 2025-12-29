@@ -40,11 +40,11 @@ const clearTag = (tag: string) => {
   <span data-testid="filter-description">
     <span class="font-bold me-2 block md:inline">Only showing:</span>
     <span v-if="onlyStarred">
-      <button aria-label="Clear: Starred Only" class="cursor-pointer" @click="clearStarred()">
+      <button aria-label="Clear: My Schedule" class="cursor-pointer" @click="clearStarred()">
         <Tag
           class="!text-xs my-1"
           icon="bi bi-x-lg"
-          value="Starred"
+          value="My Schedule"
           severity="primary"
           pt:icon:class="flex items-center justify-center mr-1"
         />

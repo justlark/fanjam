@@ -11,10 +11,12 @@ import EventDetail from "./EventDetail.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
+import { useToast } from "primevue/usetoast";
 
 const starredEvents = useStarredEvents();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
+const toast = useToast();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -31,11 +33,30 @@ const descriptionHtml = computed(() => {
 
 const isStarred = computed(() => starredEvents.value.has(event.value.id));
 
+const addStarToastMessage = {
+  severity: "secondary",
+  summary: "Added",
+  detail: "Event added to your schedule.",
+  life: 1000,
+} as const;
+
+const removeStarToastMessage = {
+  severity: "secondary",
+  summary: "Removed",
+  detail: "Event removed from your schedule.",
+  life: 1000,
+} as const;
+
 const toggleStarred = () => {
+  toast.remove(addStarToastMessage);
+  toast.remove(removeStarToastMessage);
+
   if (isStarred.value) {
     starredEvents.value.delete(event.value.id);
+    toast.add(removeStarToastMessage);
   } else {
     starredEvents.value.add(event.value.id);
+    toast.add(addStarToastMessage);
   }
 };
 
@@ -124,10 +145,7 @@ const sectionHeadingId = useId();
           class="lg:hidden"
           label="Star"
           :icon="isStarred ? 'star-fill' : 'star'"
-          :active="isStarred"
-          inactive-variant="filled"
           :button-props="{
-            raised: true,
             'aria-pressed': isStarred,
             'data-testid': 'event-details-star-button',
           }"

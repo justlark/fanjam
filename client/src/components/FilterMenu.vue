@@ -65,7 +65,7 @@ const hideNotStarredLabelId = useId();
         v-model="criteria.hideNotStarred"
         pt:input:data-testid="hide-not-starred-events-button"
       />
-      <label :id="hideNotStarredLabelId" :for="hideNotStarredToggleId">Only starred events</label>
+      <label :id="hideNotStarredLabelId" :for="hideNotStarredToggleId">Only my schedule</label>
     </span>
     <div v-if="hasCategories" class="flex flex-col md:flex-row gap-x-12 gap-y-6">
       <div class="flex flex-col gap-2 md:min-w-[20%]">
