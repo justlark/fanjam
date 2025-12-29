@@ -554,11 +554,6 @@ impl Client {
                 self.restore_to_snapshot(&project_id, &default_branch_id, &backup_snapshot_id)
                     .await?;
 
-                // Since we're rolling back the database, we should clear the Redis cache as well
-                // so the client doesn't get confused.
-                // let upstash_client = upstash::Client::new();
-                // upstash_client.unlink_noco_keys(env_name).await?;
-
                 Err(anyhow::anyhow!(err))
             }
         }

@@ -8,9 +8,6 @@ output "noco_secrets" {
       # The `ssl=true` param is important.
       NC_DB = "pg://${neon_project.env[env].database_host_pooler}:5432?u=${neon_project.env[env].database_user}&p=${neon_project.env[env].database_password}&d=${neon_project.env[env].database_name}&ssl=true"
 
-      # The extra 's' in the `rediss://` scheme is important.
-      # NC_REDIS_URL = "rediss://default:${upstash_redis_database.noco.password}@${upstash_redis_database.noco.endpoint}:${upstash_redis_database.noco.port}"
-
       # In my testing, with the data sets we're working with, NocoDB is just as
       # fast with Redis disabled. This could be because we're using a beefy
       # dedicated Postgres cluster per environment. Additionally, for unknown

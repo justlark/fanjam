@@ -13,7 +13,6 @@ mod noco;
 mod router;
 mod sql;
 mod store;
-mod upstash;
 mod url;
 
 use std::sync::Arc;
