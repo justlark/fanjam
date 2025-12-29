@@ -156,6 +156,7 @@ export class EventSummaryDrawer {
 }
 
 export class EventDetailsPage {
+  private readonly page: Page;
   private readonly backButton: Locator;
   private readonly tagbarCategoryLink: Locator;
   private readonly tagbarTagLinks: Locator;
@@ -164,12 +165,17 @@ export class EventDetailsPage {
   readonly starButton: Locator;
 
   constructor(page: Page) {
+    this.page = page;
     this.backButton = page.getByTestId("event-details-back-button").filter({ visible: true });
     this.tagbarCategoryLink = page.getByTestId("tagbar-category-link").filter({ visible: true });
     this.tagbarTagLinks = page.getByTestId("tagbar-tag-link").filter({ visible: true });
     this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
     this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
+  }
+
+  async goto(eventId: string) {
+    await this.page.goto(`events/${eventId}`);
   }
 
   async toggleStar() {
@@ -249,15 +255,31 @@ export class AnnouncementsPage {
 export class MainMenu {
   readonly mainMenuButton: Locator;
   readonly feedbackCallout: Locator;
+  readonly scheduleLink: Locator;
+  readonly myScheduleLink: Locator;
 
   constructor(page: Page) {
     this.mainMenuButton = page.getByTestId("main-menu-button");
-    this.feedbackCallout = isMobile()
-      ? page.getByTestId("main-menu-drawer").getByTestId("feedback-callout")
-      : page.getByTestId("main-menu-sidebar").getByTestId("feedback-callout");
+    this.feedbackCallout = (
+      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
+    ).getByTestId("feedback-callout");
+    this.scheduleLink = (
+      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
+    ).getByRole("link", { name: "Schedule", exact: true });
+    this.myScheduleLink = (
+      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
+    ).getByRole("link", { name: "My Schedule", exact: true });
   }
 
   async open() {
     await this.mainMenuButton.click();
+  }
+
+  async navigateToSchedule() {
+    await this.scheduleLink.click();
+  }
+
+  async navigateToMySchedule() {
+    await this.myScheduleLink.click();
   }
 }

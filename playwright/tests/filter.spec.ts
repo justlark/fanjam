@@ -195,7 +195,7 @@ test.describe("filtering events", () => {
     await expect(filterMenu.description).toHaveText(
       [
         "Only showing:",
-        "Starred",
+        "My Schedule",
         "and",
         "(",
         "Category 1",

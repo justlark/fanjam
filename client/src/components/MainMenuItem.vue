@@ -37,6 +37,7 @@ const isRouteActive = computed(() => props.isActive(route));
       :label="props.label"
       :variant="isRouteActive ? undefined : 'outlined'"
       size="large"
+      :aria-current="isRouteActive ? 'page' : undefined"
     />
   </component>
 </template>

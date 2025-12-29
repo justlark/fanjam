@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, useId } from "vue";
+import { ref, computed, watch, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Divider from "primevue/divider";
 import { RouterLink, useRoute } from "vue-router";
@@ -29,6 +29,14 @@ const showNotificationBadge = computed(
 const toggleMenuDrawer = () => {
   visible.value = !visible.value;
 };
+
+// Nav menu links don't necessarily change the active route path; they might
+// just change query params. In this case, the menu drawer doesn't close on its
+// own, so we need to watch for changes in all parts of the route to make sure
+// the menu drawer closes.
+watch(route, () => {
+  visible.value = false;
+});
 
 const {
   data: { info },
