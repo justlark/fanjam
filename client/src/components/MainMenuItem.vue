@@ -1,27 +1,26 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute, type RouteLocationNormalizedLoadedGeneric } from "vue-router";
+import {
+  useRoute,
+  type RouteLocationAsRelativeGeneric,
+  type RouteLocationAsPathGeneric,
+  type RouteLocationNormalizedLoadedGeneric,
+} from "vue-router";
 import OverlayBadge from "primevue/overlaybadge";
 import Button from "primevue/button";
 import { RouterLink } from "vue-router";
 
 const props = defineProps<{
-  to: string;
+  to: string | RouteLocationAsRelativeGeneric | RouteLocationAsPathGeneric;
   label: string;
   icon: string;
-  isActive?: (route: RouteLocationNormalizedLoadedGeneric) => boolean;
+  isActive: (route: RouteLocationNormalizedLoadedGeneric) => boolean;
   badge?: string;
 }>();
 
 const route = useRoute();
 
-const isRouteActive = computed(() => {
-  if (props.isActive) {
-    return props.isActive(route);
-  } else {
-    return route.name === props.to;
-  }
-});
+const isRouteActive = computed(() => props.isActive(route));
 </script>
 
 <template>
@@ -33,7 +32,7 @@ const isRouteActive = computed(() => {
     <Button
       pt:root="!justify-start w-full"
       :as="RouterLink"
-      :to="{ name: props.to }"
+      :to="props.to"
       :icon="props.icon"
       :label="props.label"
       :variant="isRouteActive ? undefined : 'outlined'"

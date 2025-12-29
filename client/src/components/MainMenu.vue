@@ -10,20 +10,32 @@ const unreadAnnouncements = useUnreadAnnouncements();
     <MainMenuItem
       icon="bi bi-calendar-event"
       label="Schedule"
-      to="schedule"
-      :is-active="(route) => route.name === 'schedule' || route.name === 'event'"
+      :to="{ name: 'schedule' }"
+      :is-active="
+        (route) =>
+          (route.name === 'schedule' && route.query.star !== 'true') || route.name === 'event'
+      "
+    />
+    <MainMenuItem
+      icon="bi bi-star"
+      label="My Schedule"
+      :to="{
+        name: 'schedule',
+        query: { star: 'true' },
+      }"
+      :is-active="(route) => route.name === 'schedule' && route.query.star === 'true'"
     />
     <MainMenuItem
       icon="bi bi-megaphone"
       label="Announcements"
-      to="announcements"
+      :to="{ name: 'announcements' }"
       :is-active="(route) => route.name === 'announcement' || route.name === 'announcements'"
       :badge="unreadAnnouncements.size === 0 ? undefined : unreadAnnouncements.size.toString()"
     />
     <MainMenuItem
       icon="bi bi-info-circle"
       label="Info"
-      to="info"
+      :to="{ name: 'info' }"
       :is-active="(route) => route.name === 'info' || route.name === 'page'"
     />
   </nav>
