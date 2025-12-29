@@ -83,6 +83,6 @@ pub struct Config {
     pub pwa_icon_maskable_sizes: Option<String>,
 }
 
-// Documentation for each config key in the environment-specific configuration. Keep this up to
-// date.
-pub const CONFIG_DOCS: &str = include_str!("./config_docs.json");
+// Documentation and metadata for each config key in the environment-specific configuration. Keep
+// this up to date.
+pub const CONFIG_SPEC: &str = include_str!("./config-spec.json");

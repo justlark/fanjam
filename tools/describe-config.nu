@@ -3,5 +3,6 @@
 source ./http.nu
 
 def main [stage: string] {
-  admin-api get $stage $"/admin/config-docs"
+  let spec = admin-api get $stage $"/admin/config-spec"
+  $spec | each {|item| { $item.key: $item.help }} | into record
 }

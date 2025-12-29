@@ -23,7 +23,7 @@ use crate::{
     cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
-    env::{CONFIG_DOCS, Config, EnvId, EnvName},
+    env::{CONFIG_SPEC, Config, EnvId, EnvName},
     error::Error,
     http::http_headers_from_object,
     kv, neon,
@@ -86,7 +86,7 @@ pub fn new(state: AppState) -> Router {
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
         .route("/admin/env/{env_name}/config", get(get_admin_config))
         .route("/admin/env/{env_name}/config", put(put_admin_config))
-        .route("/admin/config-docs", get(get_config_docs))
+        .route("/admin/config-spec", get(get_config_spec))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
@@ -372,8 +372,8 @@ async fn put_admin_config(
 }
 
 #[axum::debug_handler]
-async fn get_config_docs() -> Result<Json<serde_json::Value>, ErrorResponse> {
-    Ok(serde_json::from_str::<serde_json::Value>(CONFIG_DOCS)
+async fn get_config_spec() -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(serde_json::from_str::<serde_json::Value>(CONFIG_SPEC)
         .map(Json)
         .map_err(anyhow::Error::from)
         .map_err(Error::Internal)?)

@@ -1,0 +1,127 @@
+[
+  {
+    "key": "timezone",
+    "help": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone.",
+    "sensitive": false
+  },
+  {
+    "key": "cache_ttl",
+    "help": "The time-to-live (TTL) for data cached at the edge, in milliseconds.",
+    "sensitive": false
+  },
+  {
+    "key": "use_feedback",
+    "help": "Whether to show an invitation for users to submit feedback.",
+    "sensitive": false
+  },
+  {
+    "key": "feedback_icon",
+    "help": "The name of the Bootstrap Icons icon to show next to the feedback link, without the `bi-` prefix.",
+    "sensitive": false
+  },
+  {
+    "key": "feedback_title",
+    "help": "The title text for the feedback link.",
+    "sensitive": false
+  },
+  {
+    "key": "feedback_detail",
+    "help": "The subtitle text for the feedback link.",
+    "sensitive": false
+  },
+  {
+    "key": "feedback_url",
+    "help": "The target URL for the feedback link.",
+    "sensitive": false
+  },
+  {
+    "key": "config_db_host",
+    "help": "The Postgres host for the configuration database.",
+    "sensitive": false
+  },
+  {
+    "key": "config_db_port",
+    "help": "The Postgres port for the configuration database.",
+    "sensitive": false
+  },
+  {
+    "key": "config_db_name",
+    "help": "The Postgres database name for the configuration database.",
+    "sensitive": false
+  },
+  {
+    "key": "config_db_user",
+    "help": "The Postgres user for the configuration database.",
+    "sensitive": false
+  },
+  {
+    "key": "config_db_password",
+    "help": "The Postgres password for the configuration database.",
+    "sensitive": true
+  },
+  {
+    "key": "use_custom_icon",
+    "help": "Whether to use a custom app icon instead of the default icon.",
+    "sensitive": false
+  },
+  {
+    "key": "favicon_name",
+    "help": "The asset name of the app favicon.",
+    "sensitive": false
+  },
+  {
+    "key": "opengraph_icon_name",
+    "help": "The asset name of the app icon in the OpenGraph metadata.",
+    "sensitive": false
+  },
+  {
+    "key": "opengraph_icon_type",
+    "help": "The IANA media type of the app icon in the OpenGraph metadata.",
+    "sensitive": false
+  },
+  {
+    "key": "opengraph_icon_alt",
+    "help": "The alt text of the app icon in the OpenGraph metadata.",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_short_app_name",
+    "help": "A short name for the app when installed as a PWA.",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_background_color",
+    "help": "The background color in the PWA manifest.",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_any_name",
+    "help": "The asset name of the app icon in the PWA manifest (any).",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_any_type",
+    "help": "The IANA media type of the app icon in the PWA manifest (any).",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_any_sizes",
+    "help": "The dimensions of the app icon in the PWA manifest (any).",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_maskable_name",
+    "help": "The asset name of the app icon in the PWA manifest (maskable).",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_maskable_type",
+    "help": "The IANA media type of the app icon in the PWA manifest (maskable).",
+    "sensitive": false
+  },
+  {
+    "key": "pwa_icon_maskable_sizes",
+    "help": "The dimensions of the app icon in the PWA manifest (maskable).",
+    "sensitive": false
+  }
+]

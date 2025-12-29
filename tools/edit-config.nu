@@ -19,5 +19,5 @@ def main [env_name: string] {
 
   rm --force $temp_file_path
 
-  admin-api get $env_config.stage $"/admin/env/($env_name)/config"
+  nu ($env.FILE_PWD | path join "get-config.nu") $env_name
 }
