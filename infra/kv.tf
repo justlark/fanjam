@@ -1,9 +1,15 @@
-resource "cloudflare_workers_kv_namespace" "sparklefish_test" {
+resource "cloudflare_workers_kv_namespace" "sparklefish" {
+  for_each   = local.stages
   account_id = var.cloudflare_account_id
-  title      = "sparklefish-test"
+  title      = "sparklefish-${each.key}"
 }
 
-resource "cloudflare_workers_kv_namespace" "sparklefish_prod" {
-  account_id = var.cloudflare_account_id
-  title      = "sparklefish-prod"
+moved {
+  from = cloudflare_workers_kv_namespace.sparklefish_prod
+  to   = cloudflare_workers_kv_namespace.sparklefish["prod"]
+}
+
+moved {
+  from = cloudflare_workers_kv_namespace.sparklefish_test
+  to   = cloudflare_workers_kv_namespace.sparklefish["test"]
 }
