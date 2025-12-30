@@ -8,7 +8,7 @@ let watchHandle: WatchHandle | undefined = undefined;
 
 const debouncedSetItem = debounce((storageKey: string, events: Set<string>) => {
   localStorage.setItem(storageKey, JSON.stringify(Array.from(events)));
-}, 250);
+}, 100);
 
 const useStarredEvents = () => {
   const route = useRoute();
