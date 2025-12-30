@@ -46,6 +46,17 @@ const {
 
 const conName = computed(() => info.value?.name ?? "FanJam");
 
+const copyLink = async () => {
+  await navigator.clipboard.writeText(window.location.href);
+
+  toast.add({
+    severity: "info",
+    summary: "Link Copied",
+    detail: "A link to this page has been copied to your clipboard.",
+    life: 1500,
+  });
+};
+
 const refresh = async () => {
   let isDone = false;
 
@@ -109,7 +120,10 @@ const headerHeadingId = useId();
               </h1>
             </RouterLink>
           </div>
-          <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
+          <div class="flex lg:gap-2">
+            <IconButton icon="link-45deg" label="Copy Link" @click="copyLink" />
+            <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
+          </div>
         </div>
         <Drawer
           v-model:visible="visible"
