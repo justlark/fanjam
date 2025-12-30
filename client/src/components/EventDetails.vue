@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, type DeepReadonly, useId } from "vue";
+import { computed, type DeepReadonly, toRef, useId } from "vue";
 import { RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
-import useStarredEvents from "@/composables/useStarredEvents";
+import useIsEventStarred from "@/composables/useIsEventStarred";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
@@ -11,12 +11,9 @@ import EventDetail from "./EventDetail.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
-import { useToast } from "primevue/usetoast";
 
-const starredEvents = useStarredEvents();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
-const toast = useToast();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -25,40 +22,12 @@ const props = defineProps<{
 }>();
 
 const event = computed(() => props.event);
+const isStarred = useIsEventStarred(toRef(event.value, "id"));
 
 const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
   return renderMarkdown(event.value.description);
 });
-
-const isStarred = computed(() => starredEvents.value.has(event.value.id));
-
-const addStarToastMessage = {
-  severity: "info",
-  summary: "Added",
-  detail: "Event added to your schedule.",
-  life: 1000,
-} as const;
-
-const removeStarToastMessage = {
-  severity: "info",
-  summary: "Removed",
-  detail: "Event removed from your schedule.",
-  life: 1000,
-} as const;
-
-const toggleStarred = () => {
-  toast.remove(addStarToastMessage);
-  toast.remove(removeStarToastMessage);
-
-  if (isStarred.value) {
-    starredEvents.value.delete(event.value.id);
-    toast.add(removeStarToastMessage);
-  } else {
-    starredEvents.value.add(event.value.id);
-    toast.add(addStarToastMessage);
-  }
-};
 
 const sectionHeadingId = useId();
 </script>
@@ -99,7 +68,7 @@ const sectionHeadingId = useId();
             'aria-pressed': isStarred,
             'data-testid': 'event-details-star-button',
           }"
-          @click="toggleStarred()"
+          @click="isStarred = !isStarred"
         />
       </span>
       <h2 :id="sectionHeadingId" class="text-xl font-bold">{{ event.name }}</h2>
@@ -149,7 +118,7 @@ const sectionHeadingId = useId();
             'aria-pressed': isStarred,
             'data-testid': 'event-details-star-button',
           }"
-          @click="toggleStarred()"
+          @click="isStarred = !isStarred"
         />
       </div>
       <TagBar

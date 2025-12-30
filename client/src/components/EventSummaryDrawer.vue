@@ -6,7 +6,7 @@ import Drawer from "primevue/drawer";
 import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
-import useStarredEvents from "@/composables/useStarredEvents";
+import useIsEventStarred from "@/composables/useIsEventStarred";
 import { renderMarkdown } from "@/utils/markdown";
 
 const isVisible = defineModel<boolean>("visible", {
@@ -19,27 +19,13 @@ const props = defineProps<{
   allCategories: Array<string>;
 }>();
 
-const starredEvents = useStarredEvents();
 const filterCriteria = useFilterQuery();
-
-const isStarred = computed(() =>
-  props.event ? starredEvents.value.has(props.event.id) : undefined,
-);
+const isStarred = useIsEventStarred(computed(() => props.event?.id));
 
 const descriptionHtml = computed(() => {
   if (!props.event?.description) return undefined;
   return renderMarkdown(props.event.description);
 });
-
-const toggleStarred = () => {
-  if (isStarred.value === undefined || !props.event) return;
-
-  if (isStarred.value) {
-    starredEvents.value.delete(props.event.id);
-  } else {
-    starredEvents.value.add(props.event.id);
-  }
-};
 </script>
 
 <template>
@@ -64,7 +50,7 @@ const toggleStarred = () => {
                 'aria-pressed': isStarred,
                 'data-testid': 'event-details-star-button',
               }"
-              @click="toggleStarred"
+              @click="isStarred = !isStarred"
             />
             <IconButton
               size="md"
