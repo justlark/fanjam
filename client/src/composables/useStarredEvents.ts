@@ -1,16 +1,20 @@
-import { ref, computed, watchEffect, type WatchHandle } from "vue";
+import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
+import { debounce } from "@/utils/debounce";
 
 const starredEvents = ref<Set<string>>(new Set());
-let currentEventId: string | undefined = undefined;
-let watchHandle: WatchHandle | undefined = undefined;
+const currentEnvId = ref<string>();
+
+const debouncedSetItem = debounce((storageKey: string, starredEvents: Set<string>) => {
+  localStorage.setItem(storageKey, JSON.stringify(Array.from(starredEvents)));
+}, 100);
 
 const useStarredEvents = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
   const storageKey = computed(() => `starred:${envId.value}`);
 
-  if (currentEventId === undefined || currentEventId !== envId.value) {
+  if (currentEnvId.value === undefined || currentEnvId.value !== envId.value) {
     const storedValue = localStorage.getItem(storageKey.value);
 
     if (storedValue) {
@@ -24,16 +28,12 @@ const useStarredEvents = () => {
       }
     }
 
-    if (watchHandle) {
-      watchHandle.stop();
-    }
-
-    watchHandle = watchEffect(() => {
-      localStorage.setItem(storageKey.value, JSON.stringify(Array.from(starredEvents.value)));
-    });
-
-    currentEventId = envId.value;
+    currentEnvId.value = envId.value;
   }
+
+  watchEffect(() => {
+    debouncedSetItem(storageKey.value, starredEvents.value);
+  });
 
   return starredEvents;
 };
