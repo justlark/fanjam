@@ -34,14 +34,14 @@ const descriptionHtml = computed(() => {
 const isStarred = computed(() => starredEvents.value.has(event.value.id));
 
 const addStarToastMessage = {
-  severity: "secondary",
+  severity: "info",
   summary: "Added",
   detail: "Event added to your schedule.",
   life: 1000,
 } as const;
 
 const removeStarToastMessage = {
-  severity: "secondary",
+  severity: "info",
   summary: "Removed",
   detail: "Event removed from your schedule.",
   life: 1000,
