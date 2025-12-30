@@ -6,17 +6,11 @@ import Drawer from "primevue/drawer";
 import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import useStarredEvents from "@/composables/useStarredEvents";
 import { renderMarkdown } from "@/utils/markdown";
 
 const isVisible = defineModel<boolean>("visible", {
   required: true,
-});
-
-const filterCriteria = useFilterQuery();
-
-const descriptionHtml = computed(() => {
-  if (!props.event?.description) return undefined;
-  return renderMarkdown(props.event.description);
 });
 
 const props = defineProps<{
@@ -24,6 +18,28 @@ const props = defineProps<{
   day: number;
   allCategories: Array<string>;
 }>();
+
+const starredEvents = useStarredEvents();
+const filterCriteria = useFilterQuery();
+
+const isStarred = computed(() =>
+  props.event ? starredEvents.value.has(props.event.id) : undefined,
+);
+
+const descriptionHtml = computed(() => {
+  if (!props.event?.description) return undefined;
+  return renderMarkdown(props.event.description);
+});
+
+const toggleStarred = () => {
+  if (isStarred.value === undefined || !props.event) return;
+
+  if (isStarred.value) {
+    starredEvents.value.delete(props.event.id);
+  } else {
+    starredEvents.value.add(props.event.id);
+  }
+};
 </script>
 
 <template>
@@ -36,17 +52,28 @@ const props = defineProps<{
   >
     <template #container="{ closeCallback }">
       <div class="flex flex-col mx-4 mt-4 h-full" data-testid="event-summary-drawer">
-        <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-center">
-          <h2 class="text-lg font-bold me-auto" v-if="props.event">
+        <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-start">
+          <h2 class="text-lg font-bold my-auto me-auto" v-if="props.event">
             {{ props.event.name }}
           </h2>
-          <IconButton
-            size="md"
-            icon="x-lg"
-            label="Close"
-            @click="closeCallback"
-            :button-props="{ 'data-testid': 'event-summary-close-button' }"
-          />
+          <div class="flex">
+            <IconButton
+              label="Star"
+              :icon="isStarred ? 'star-fill' : 'star'"
+              :button-props="{
+                'aria-pressed': isStarred,
+                'data-testid': 'event-details-star-button',
+              }"
+              @click="toggleStarred"
+            />
+            <IconButton
+              size="md"
+              icon="x-lg"
+              label="Close"
+              @click="closeCallback"
+              :button-props="{ 'data-testid': 'event-summary-close-button' }"
+            />
+          </div>
         </div>
         <div class="overflow-hidden h-full">
           <TagBar
