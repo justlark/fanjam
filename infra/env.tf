@@ -1,7 +1,11 @@
 locals {
   globals = yamldecode(file("${path.module}/config.yaml"))
 
-  stages = toset([for stage in local.globals.stages : stage.name])
+  stages = {
+    for stage in local.globals.stages : stage.name => {
+      api_host = stage.name == "prod" ? "api.${data.cloudflare_zone.site.name}" : "api-${stage.name}.${data.cloudflare_zone.site.name}"
+    }
+  }
 
   environments = {
     for env_file in fileset("${path.module}/environments", "*/env.yaml") : dirname(env_file) => yamldecode(file("${path.module}/environments/${env_file}"))

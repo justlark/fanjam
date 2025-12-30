@@ -1,23 +1,11 @@
 source ./config.nu
 
 def get-api-base [stage_name: string] {
-  let config = get-global-config
-  let api_urls = $config.stages | where "name" == $stage_name | get "api_url"
-
-  match ($api_urls | length) {
-    0 => {
-      print --stderr $"No such stage: ($stage_name)"
-      exit 1
-    }
-    1 => {
-      let api_url = $api_urls | first
-      return $api_url
-    }
-    _ => {
-      print --stderr $"Multiple stages match: ($stage_name)"
-      exit 1
-    }
+  let stage = with-env (get-tofu-env) {
+    tofu -chdir=./infra/ output -json stages | from json | get $stage_name
   }
+
+  return $stage.api_url
 }
 
 def get-api-headers [stage_name: string] {

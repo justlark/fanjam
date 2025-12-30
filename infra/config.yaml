@@ -21,6 +21,4 @@ dashboard_path: "dashboard"
 # there is more involved than just appending to this array.
 stages:
   - name: prod
-    api_url: "https://api.fanjam.live"
   - name: test
-    api_url: "https://api-test.fanjam.live"

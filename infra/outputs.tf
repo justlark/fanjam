@@ -63,7 +63,7 @@ output "noco_secrets" {
 
 output "worker_admin_api_tokens" {
   value = {
-    for stage in local.stages : stage => random_bytes.worker_admin_api_token[stage].base64
+    for stage, _ in local.stages : stage => random_bytes.worker_admin_api_token[stage].base64
   }
   sensitive = true
 }
@@ -90,4 +90,12 @@ output "env_config" {
     }
   }
   sensitive = true
+}
+
+output "stages" {
+  value = {
+    for name, config in local.stages : name => {
+      api_url = "https://${config.api_host}",
+    }
+  }
 }
