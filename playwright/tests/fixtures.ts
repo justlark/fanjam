@@ -117,19 +117,17 @@ export class SchedulePage {
 
 export class EventSummaryDrawer {
   private readonly eventSummaryDrawer: Locator;
-  private readonly eventSummaryDrawerCloseButton: Locator;
-  private readonly eventSummaryDrawerExpandButton: Locator;
+  private readonly drawerCloseButton: Locator;
+  private readonly drawerExpandButton: Locator;
   private readonly tagbarCategoryLink: Locator;
   private readonly tagbarTagLinks: Locator;
+  readonly starButton: Locator;
 
   constructor(page: Page) {
     this.eventSummaryDrawer = page.getByTestId("event-summary-drawer").filter({ visible: true });
-    this.eventSummaryDrawerCloseButton = this.eventSummaryDrawer.getByTestId(
-      "event-summary-close-button",
-    );
-    this.eventSummaryDrawerExpandButton = this.eventSummaryDrawer.getByTestId(
-      "event-summary-show-more-button",
-    );
+    this.drawerCloseButton = this.eventSummaryDrawer.getByTestId("event-summary-close-button");
+    this.drawerExpandButton = this.eventSummaryDrawer.getByTestId("event-summary-show-more-button");
+    this.starButton = this.eventSummaryDrawer.getByTestId("event-summary-star-button");
     this.tagbarCategoryLink = this.eventSummaryDrawer
       .getByTestId("tagbar-category-link")
       .filter({ visible: true });
@@ -139,11 +137,15 @@ export class EventSummaryDrawer {
   }
 
   async close() {
-    await this.eventSummaryDrawerCloseButton.click();
+    await this.drawerCloseButton.click();
   }
 
   async openEventDetailsPage() {
-    await this.eventSummaryDrawerExpandButton.click();
+    await this.drawerExpandButton.click();
+  }
+
+  async toggleStar() {
+    await this.starButton.click();
   }
 
   async filterByCategory(name: string) {

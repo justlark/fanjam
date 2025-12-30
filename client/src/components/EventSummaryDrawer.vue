@@ -48,7 +48,7 @@ const descriptionHtml = computed(() => {
               :icon="isStarred ? 'star-fill' : 'star'"
               :button-props="{
                 'aria-pressed': isStarred,
-                'data-testid': 'event-details-star-button',
+                'data-testid': 'event-summary-star-button',
               }"
               @click="isStarred = !isStarred"
             />
