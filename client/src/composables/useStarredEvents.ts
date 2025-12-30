@@ -1,8 +1,13 @@
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
+import { debounce } from "@/utils/debounce";
 
 const starredEvents = ref<Set<string>>(new Set());
 let currentEventId: string | undefined = undefined;
+
+const debouncedSetItem = debounce((storageKey: string, events: Set<string>) => {
+  localStorage.setItem(storageKey, JSON.stringify(Array.from(events)));
+}, 250);
 
 const useStarredEvents = () => {
   const route = useRoute();
@@ -24,7 +29,7 @@ const useStarredEvents = () => {
     }
 
     watchEffect(() => {
-      localStorage.setItem(storageKey.value, JSON.stringify(Array.from(starredEvents.value)));
+      debouncedSetItem(storageKey.value, starredEvents.value);
     });
 
     currentEventId = envId.value;
