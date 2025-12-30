@@ -207,6 +207,7 @@ export class StarredEvents {
   }
 
   async get(): Promise<Array<string>> {
+    await this.page.clock.fastForward(1000);
     const rawJson = await this.page.evaluate(
       (envId) => localStorage.getItem(`starred:${envId}`),
       this.envId,
