@@ -1,41 +1,36 @@
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 
-const starredEvents = ref<Array<string>>();
-const starredEventsSet = ref<Set<string>>(new Set());
+const starredEvents = ref<Set<string>>(new Set());
+let currentEventId: string | undefined = undefined;
 
 const useStarredEvents = () => {
   const route = useRoute();
   const envId = computed(() => route.params.envId as string);
   const storageKey = computed(() => `starred:${envId.value}`);
 
-  watchEffect(() => {
-    if (starredEvents.value === undefined) {
-      const storedValue = localStorage.getItem(storageKey.value);
-      if (storedValue) {
-        try {
-          starredEvents.value = JSON.parse(storedValue);
-          starredEventsSet.value = new Set(starredEvents.value);
-        } catch {
-          starredEvents.value = [];
-          starredEventsSet.value.clear();
-        }
-      } else {
-        starredEvents.value = [];
-        starredEventsSet.value.clear();
-      }
+  if (currentEventId === undefined || currentEventId !== envId.value) {
+    const storedValue = localStorage.getItem(storageKey.value);
 
-      return;
+    if (storedValue) {
+      try {
+        const parsed = JSON.parse(storedValue);
+        if (Array.isArray(parsed)) {
+          starredEvents.value = new Set(parsed);
+        }
+      } catch {
+        starredEvents.value = new Set();
+      }
     }
 
-    localStorage.setItem(storageKey.value, JSON.stringify(starredEvents.value));
-  });
+    watchEffect(() => {
+      localStorage.setItem(storageKey.value, JSON.stringify(Array.from(starredEvents.value)));
+    });
 
-  watchEffect(() => {
-    starredEvents.value = Array.from(starredEventsSet.value);
-  });
+    currentEventId = envId.value;
+  }
 
-  return starredEventsSet;
+  return starredEvents;
 };
 
 export default useStarredEvents;
