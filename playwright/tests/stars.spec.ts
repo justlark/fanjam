@@ -29,7 +29,6 @@ export const test = base.extend<Fixtures>({
 
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTime(page);
     await mockApi(page, { events: [{ id: "1", name: "Test Event" }] });
   });
 
