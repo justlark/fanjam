@@ -188,6 +188,17 @@ const filteredTimeSlots = computed(() =>
     ? filteredTimeSlotsForCurrentDay.value
     : filteredTimeSlotsForAllDays.value,
 );
+
+// We clear the fragment because we don't want the page to autoscroll every
+// time the user switches between the two views.
+watch(viewType, async () => {
+  await router.push({
+    ...route,
+    hash: "",
+    replace: true,
+  });
+});
+
 const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
 const isFullyLoaded = computed(
