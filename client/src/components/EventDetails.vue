@@ -41,6 +41,7 @@ const sectionHeadingId = useId();
             name: 'schedule',
             params: { dayIndex: props.day + 1 },
             query: toFilterQueryParams(filterCriteria),
+            hash: `#event-${event.id}`,
           }"
         >
           <IconButton

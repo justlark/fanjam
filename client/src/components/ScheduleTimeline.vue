@@ -7,6 +7,7 @@ import {
   toRef,
   computed,
   watch,
+  nextTick,
   watchEffect,
 } from "vue";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
@@ -23,6 +24,9 @@ import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";
 import EventSummaryDrawer from "./EventSummaryDrawer.vue";
+
+// TODO: Break up the logic in this component. This component has *way* too
+// much going on.
 
 const route = useRoute();
 const router = useRouter();
@@ -186,6 +190,47 @@ const filteredTimeSlots = computed(() =>
 );
 const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
+const isFullyLoaded = computed(
+  () => incrementalFilteredTimeSlots.value.length === filteredTimeSlots.value.length,
+);
+
+// Scroll to the current event once the schedule is fully loaded into the DOM.
+onMounted(() => {
+  // This watcher should only fire once, when the schedule is fully loaded. We
+  // do not want to update it on route changes, because it would be jarring for
+  // the user if the page scrolled out from under them every time they opened a
+  // new event in the desktop two-page event/schedule view.
+  watch(isFullyLoaded, async () => {
+    if (!isFullyLoaded.value) {
+      return;
+    }
+
+    // When we navigate from the event view back to the schedule view, we add
+    // this fragment telling the app which event we were just looking at so it
+    // can scroll to it.
+    const eventIdFromFragment =
+      route.name === "schedule" && route.hash.startsWith("#event-")
+        ? route.hash.slice("#event-".length)
+        : undefined;
+
+    // When we're on the event page on desktop, the schedule will also be
+    // visible, and that should scroll to the current event as well.
+    const eventIdFromPath = route.name === "event" ? (route.params.eventId as string) : undefined;
+
+    const eventId = eventIdFromFragment ?? eventIdFromPath;
+    if (eventId === undefined) {
+      return;
+    }
+
+    // Make sure that not only has the schedule finished loading, but also that
+    // the DOM has updated to reflect that.
+    await nextTick();
+
+    const eventElement = document.getElementById(`event-${eventId}`);
+    eventElement?.scrollIntoView({ behavior: "smooth" });
+  });
+});
+
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 
 const isDayFilteringPastEvents = computed(() => {
@@ -275,6 +320,8 @@ watchEffect(async () => {
   await router.push({
     params: { dayIndex: currentDayIndex.value + 1 },
     query: toFilterQueryParams(filterCriteria),
+    // Preserve the hash (for linking to a specific event).
+    hash: route.hash,
   });
 });
 
@@ -291,7 +338,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 h-full">
+  <div class="flex flex-col gap-4 h-full overflow-y-auto" :style="{ contain: 'strict' }">
     <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
     <DayPicker
       v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"

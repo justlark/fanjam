@@ -47,7 +47,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
       }"
     />
     <ul class="flex flex-wrap gap-3">
-      <li v-for="event in props.events" :key="event.id">
+      <li v-for="event in props.events" :key="event.id" :id="`event-${event.id}`">
         <RouterLink
           class="hidden lg:inline"
           :to="{
