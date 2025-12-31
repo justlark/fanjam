@@ -27,12 +27,11 @@ const allPaletteColors = [
   "sky",
   "violet",
   "emerald",
+  "indigo",
 
-  // We're not using these colors because they're the primary colors for light
-  // and dark mode respectively.
+  // We're not using this color because it's the primary color for the theme.
 
   // "blue",
-  // "indigo",
 ];
 
 // To avoid accidentally choosing similar colors, the palette above is sorted,
