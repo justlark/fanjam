@@ -10,6 +10,7 @@ import {
   nextTick,
   watchEffect,
 } from "vue";
+import ScrollTop from "primevue/scrolltop";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import useIncremental from "@/composables/useIncremental";
@@ -353,52 +354,55 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 h-full overflow-y-auto" :style="{ contain: 'strict' }">
-    <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
-    <DayPicker
-      v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
-      v-model:day="currentDayIndex"
-      :day-names="dayNames"
-      :today-index="todayIndex"
-    />
-    <span
-      class="text-muted-color flex gap-2 justify-center"
-      v-if="isDayFilteringPastEvents"
-      data-testid="schedule-past-events-hidden-notice"
-    >
-      <SimpleIcon class="text-lg" icon="eye-slash-fill" />
-      <span class="italic">past events hidden</span>
-    </span>
-    <div
-      v-if="filteredTimeSlots.length > 0"
-      :class="['flex flex-col gap-6', { 'mb-[15rem]': eventSummaryIsVisible }]"
-    >
-      <ScheduleTimeSlot
-        v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
-        v-model:focused="focusedEventId"
-        :key="index"
-        :localized-time="timeSlot.localizedTime"
-        :events="timeSlot.events"
+  <div class="h-full overflow-y-auto" :style="{ contain: 'strict' }">
+    <div class="flex flex-col gap-4">
+      <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
+      <DayPicker
+        v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
+        v-model:day="currentDayIndex"
+        :day-names="dayNames"
+        :today-index="todayIndex"
+      />
+      <span
+        class="text-muted-color flex gap-2 justify-center"
+        v-if="isDayFilteringPastEvents"
+        data-testid="schedule-past-events-hidden-notice"
+      >
+        <SimpleIcon class="text-lg" icon="eye-slash-fill" />
+        <span class="italic">past events hidden</span>
+      </span>
+      <div
+        v-if="filteredTimeSlots.length > 0"
+        :class="['flex flex-col gap-6', { 'mb-[15rem]': eventSummaryIsVisible }]"
+      >
+        <ScheduleTimeSlot
+          v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
+          v-model:focused="focusedEventId"
+          :key="index"
+          :localized-time="timeSlot.localizedTime"
+          :events="timeSlot.events"
+          :all-categories="allCategories"
+          :is-current-time-slot="
+            (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
+          "
+          data-testid="schedule-time-slot"
+        />
+      </div>
+      <div class="m-auto" v-else-if="eventsStatus === 'pending'">
+        <ProgressSpinner />
+      </div>
+      <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
+        No events
+      </div>
+      <EventSummaryDrawer
+        class="lg:!hidden"
+        v-if="currentDayIndex !== undefined"
+        v-model:visible="eventSummaryIsVisible"
+        :event="focusedEvent"
+        :day="currentDayIndex"
         :all-categories="allCategories"
-        :is-current-time-slot="
-          (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
-        "
-        data-testid="schedule-time-slot"
       />
     </div>
-    <div class="m-auto" v-else-if="eventsStatus === 'pending'">
-      <ProgressSpinner />
-    </div>
-    <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8">
-      No events
-    </div>
-    <EventSummaryDrawer
-      class="lg:!hidden"
-      v-if="currentDayIndex !== undefined"
-      v-model:visible="eventSummaryIsVisible"
-      :event="focusedEvent"
-      :day="currentDayIndex"
-      :all-categories="allCategories"
-    />
+    <ScrollTop target="parent" />
   </div>
 </template>
