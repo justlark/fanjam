@@ -24,6 +24,10 @@ const router = createRouter({
         // looking at. To make sure the browser's native back button works the
         // same way as this app's back button, we intercept the browser
         // navigation here.
+        if (from.name !== "event") {
+          return;
+        }
+
         const newHash = `#event-${from.params.eventId as string}`;
 
         if (to.hash !== newHash) {
