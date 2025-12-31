@@ -644,6 +644,7 @@ async fn get_config(
 
     Ok(Json(GetConfigResponse {
         timezone: config.timezone,
+        hide_announcements: config.hide_announcements,
         use_feedback: config.use_feedback,
         feedback_icon: config.feedback_icon,
         feedback_title: config.feedback_title,

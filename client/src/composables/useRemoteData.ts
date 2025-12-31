@@ -418,6 +418,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
 
 interface StoredConfig {
   timezone?: string;
+  hide_announcements?: boolean;
   use_feedback?: boolean;
   feedback_icon?: string;
   feedback_title?: string;
@@ -437,6 +438,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
     fetcher: () => api.getConfig(toValue(envId)),
     toCache: (data) => ({
       timezone: data.timezone,
+      hide_announcements: data.hideAnnouncements,
       use_feedback: data.useFeedback,
       feedback_icon: data.feedbackIcon,
       feedback_title: data.feedbackTitle,
@@ -445,6 +447,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
     }),
     fromCache: (data) => ({
       timezone: data.timezone,
+      hideAnnouncements: data.hide_announcements,
       useFeedback: data.use_feedback,
       feedbackIcon: data.feedback_icon,
       feedbackTitle: data.feedback_title,

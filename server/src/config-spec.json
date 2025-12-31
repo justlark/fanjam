@@ -10,6 +10,11 @@
     "sensitive": false
   },
   {
+    "key": "hide_announcements",
+    "help": "Whether to hide the announcements link in the main menu when there are no announcements.",
+    "sensitive": false
+  },
+  {
     "key": "use_feedback",
     "help": "Whether to show an invitation for users to submit feedback.",
     "sensitive": false

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import MainMenuItem from "./MainMenuItem.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
+import useRemoteData from "@/composables/useRemoteData";
 
 const unreadAnnouncements = useUnreadAnnouncements();
+const {
+  data: { config, announcements },
+} = useRemoteData();
 </script>
 
 <template>
@@ -29,6 +33,7 @@ const unreadAnnouncements = useUnreadAnnouncements();
       "
     />
     <MainMenuItem
+      v-if="announcements.length > 0 || !(config?.hideAnnouncements ?? false)"
       icon="bi bi-megaphone"
       label="Announcements"
       :to="{ name: 'announcements' }"
