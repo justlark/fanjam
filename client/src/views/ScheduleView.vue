@@ -5,7 +5,7 @@ import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 
 <template>
   <AppRoot>
-    <div class="flex justify-center h-full">
+    <div class="flex justify-center h-full lg:contain-strict lg:overflow-y-auto">
       <ScheduleTimeline class="p-6 grow max-w-240" />
     </div>
   </AppRoot>

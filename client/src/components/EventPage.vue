@@ -26,19 +26,17 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
     <div v-if="thisEvent" class="flex w-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
         <ScheduleTimeline
-          class="p-6 grow overflow-y-auto"
+          class="p-6 grow lg:contain-strict lg:overflow-y-auto"
           v-model:day="currentDayIndex"
-          :style="{ contain: 'strict' }"
         />
         <Divider layout="vertical" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
         <EventDetails
-          class="grow overflow-y-auto"
+          class="grow lg:contain-strict lg:overflow-y-auto"
           :event="thisEvent"
           :day="currentDayIndex ?? 0"
           :all-categories="allCategories"
-          :style="{ contain: 'strict' }"
         />
       </div>
     </div>

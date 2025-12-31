@@ -87,7 +87,7 @@ const headerHeadingId = useId();
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen">
+  <div class="flex flex-col h-dvh">
     <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow">
       <SimpleIcon
         icon="exclamation-circle"
@@ -140,7 +140,7 @@ const headerHeadingId = useId();
         <Divider pt:root="!my-0" />
       </header>
       <div class="flex grow">
-        <div class="hidden lg:flex sticky top-0 max-h-screen grow-0 shrink-0 items-stretch">
+        <div class="hidden lg:flex sticky top-0 grow-0 shrink-0 items-stretch">
           <aside
             class="px-4 grow min-w-50 flex flex-col justify-between"
             data-testid="main-menu-sidebar"

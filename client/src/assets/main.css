@@ -48,6 +48,11 @@ keep them from being tree-shaken out.
   @apply bg-color-light dark:bg-color-dark;
 }
 
+/* Tailwind doesn't have a utility class for this. */
+@utility contain-strict {
+  contain: strict;
+}
+
 .text-link-sm {
   @apply text-primary underline underline-offset-2 hover:decoration-2;
 }
@@ -57,14 +62,9 @@ keep them from being tree-shaken out.
 }
 
 @layer base {
-  body {
+  :root {
     font-family: "Fira Sans", sans-serif;
-    @apply fg-color bg-color;
-  }
-
-  body,
-  #app {
-    min-height: 100vh;
+    @apply fg-color bg-color touch-pan-y;
   }
 
   #document p {

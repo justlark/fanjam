@@ -354,8 +354,8 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto" :style="{ contain: 'strict' }">
-    <div class="flex flex-col gap-4">
+  <div class="h-full">
+    <div class="h-full flex flex-col gap-4">
       <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
