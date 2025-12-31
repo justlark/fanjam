@@ -81,7 +81,7 @@ export class SchedulePage {
   }
 
   async openEventDetailsPage(eventName: string) {
-    await this.events.filter({ hasText: eventName }).click();
+    await this.events.filter({ hasText: new RegExp(`^(Starred: )?${eventName}$`) }).click();
 
     if (isMobile()) {
       await new EventSummaryDrawer(this.page).openEventDetailsPage();

@@ -13,7 +13,7 @@ const unreadAnnouncements = useUnreadAnnouncements();
       :to="{ name: 'schedule' }"
       :is-active="
         (route) =>
-          (route.name === 'schedule' && route.query.star !== 'true') || route.name === 'event'
+          (route.name === 'schedule' || route.name === 'event') && route.query.star !== 'true'
       "
     />
     <MainMenuItem
@@ -23,7 +23,10 @@ const unreadAnnouncements = useUnreadAnnouncements();
         name: 'schedule',
         query: { star: 'true' },
       }"
-      :is-active="(route) => route.name === 'schedule' && route.query.star === 'true'"
+      :is-active="
+        (route) =>
+          (route.name === 'schedule' || route.name === 'event') && route.query.star === 'true'
+      "
     />
     <MainMenuItem
       icon="bi bi-megaphone"

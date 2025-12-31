@@ -73,7 +73,7 @@ test.describe("main menu", () => {
     await expect(schedulePage.events).toHaveText(["Starred Event"]);
   });
 
-  test("the main nav menu shows you're filtering by starred events", async ({
+  test("the main nav menu in the schedule view shows you're filtering by starred events", async ({
     mainMenu,
     schedulePage,
     filterMenu,
@@ -92,7 +92,7 @@ test.describe("main menu", () => {
     await expect(mainMenu.scheduleLink).not.toHaveAttribute("aria-current");
   });
 
-  test("the main nav menu shows you're not filtering by starred events", async ({
+  test("the main nav menu in the schedule view shows you're not filtering by starred events", async ({
     schedulePage,
     mainMenu,
   }) => {
@@ -104,5 +104,42 @@ test.describe("main menu", () => {
 
     await expect(mainMenu.scheduleLink).toHaveAttribute("aria-current", "page");
     await expect(mainMenu.myScheduleLink).not.toHaveAttribute("aria-current");
+  });
+
+  test("the main nav menu in the event view shows you're filtering by starred events", async ({
+    mainMenu,
+    schedulePage,
+    filterMenu,
+  }) => {
+    await schedulePage.goto();
+
+    await filterMenu.toggleOpen();
+    await filterMenu.toggleHideNotStarredEvents();
+    await filterMenu.toggleOpen();
+
+    await schedulePage.openEventDetailsPage("Starred Event");
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await expect(mainMenu.myScheduleLink).toHaveAttribute("aria-current", "page");
+    await expect(mainMenu.scheduleLink).not.toHaveAttribute("aria-current");
+  });
+
+  test("the main nav menu in the event view shows you're not filtering by starred events", async ({
+    mainMenu,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+
+    await schedulePage.openEventDetailsPage("Unstarred Event");
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await expect(mainMenu.myScheduleLink).not.toHaveAttribute("aria-current", "page");
+    await expect(mainMenu.scheduleLink).toHaveAttribute("aria-current", "page");
   });
 });
