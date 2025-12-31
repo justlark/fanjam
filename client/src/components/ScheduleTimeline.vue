@@ -211,35 +211,39 @@ onMounted(() => {
   // do not want to update it on route changes, because it would be jarring for
   // the user if the page scrolled out from under them every time they opened a
   // new event in the desktop two-page event/schedule view.
-  watch(isFullyLoaded, async () => {
-    if (!isFullyLoaded.value) {
-      return;
-    }
+  watch(
+    isFullyLoaded,
+    async () => {
+      if (!isFullyLoaded.value) {
+        return;
+      }
 
-    // When we navigate from the event view back to the schedule view, we add
-    // this fragment telling the app which event we were just looking at so it
-    // can scroll to it.
-    const eventIdFromFragment =
-      route.name === "schedule" && route.hash.startsWith("#event-")
-        ? route.hash.slice("#event-".length)
-        : undefined;
+      // When we navigate from the event view back to the schedule view, we add
+      // this fragment telling the app which event we were just looking at so it
+      // can scroll to it.
+      const eventIdFromFragment =
+        route.name === "schedule" && route.hash.startsWith("#event-")
+          ? route.hash.slice("#event-".length)
+          : undefined;
 
-    // When we're on the event page on desktop, the schedule will also be
-    // visible, and that should scroll to the current event as well.
-    const eventIdFromPath = route.name === "event" ? (route.params.eventId as string) : undefined;
+      // When we're on the event page on desktop, the schedule will also be
+      // visible, and that should scroll to the current event as well.
+      const eventIdFromPath = route.name === "event" ? (route.params.eventId as string) : undefined;
 
-    const eventId = eventIdFromFragment ?? eventIdFromPath;
-    if (eventId === undefined) {
-      return;
-    }
+      const eventId = eventIdFromFragment ?? eventIdFromPath;
+      if (eventId === undefined) {
+        return;
+      }
 
-    // Make sure that not only has the schedule finished loading, but also that
-    // the DOM has updated to reflect that.
-    await nextTick();
+      // Make sure that not only has the schedule finished loading, but also that
+      // the DOM has updated to reflect that.
+      await nextTick();
 
-    const eventElement = document.getElementById(`event-${eventId}`);
-    eventElement?.scrollIntoView({ behavior: "smooth" });
-  });
+      const eventElement = document.getElementById(`event-${eventId}`);
+      eventElement?.scrollIntoView({ behavior: "smooth" });
+    },
+    { once: true },
+  );
 });
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
