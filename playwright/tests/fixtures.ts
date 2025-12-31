@@ -207,7 +207,12 @@ export class StarredEvents {
   }
 
   async get(): Promise<Array<string>> {
+    // We debounce `localStorage.setItem` in some parts of the app, which
+    // relies on `setTimeout`. If we're mocking the clock, that will never
+    // resolve. So, we fast-forward the clock here to account for that and make
+    // sure any calls to `localStorage.setItem` have landed.
     await this.page.clock.fastForward(1000);
+
     const rawJson = await this.page.evaluate(
       (envId) => localStorage.getItem(`starred:${envId}`),
       this.envId,
