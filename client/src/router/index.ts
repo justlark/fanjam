@@ -18,6 +18,18 @@ const router = createRouter({
       path: "/app/:envId/schedule/:dayIndex?",
       name: "schedule",
       component: () => import("../views/ScheduleView.vue"),
+      beforeEnter: (to, from) => {
+        // When navigating from an event back to the schedule view, we use this
+        // fragment to scroll the schedule to the event the user was just
+        // looking at. To make sure the browser's native back button works the
+        // same way as this app's back button, we intercept the browser
+        // navigation here.
+        const newHash = `#event-${from.params.eventId as string}`;
+
+        if (to.hash !== newHash) {
+          return { ...to, hash: newHash };
+        }
+      },
     },
     {
       path: "/app/:envId/announcements",
