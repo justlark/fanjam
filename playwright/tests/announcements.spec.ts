@@ -13,9 +13,8 @@ export const test = base.extend<Fixtures>({
 });
 
 test.describe("announcements", () => {
-  test.beforeEach(async ({ page, announcementsPage }) => {
+  test.beforeEach(async ({ page }) => {
     await mockTime(page);
-    await announcementsPage.goto();
   });
 
   test("announcements are sorted in descending order by last updated date", async ({
@@ -44,6 +43,8 @@ test.describe("announcements", () => {
         },
       ],
     });
+
+    await announcementsPage.goto();
 
     await expect(announcementsPage.link).toHaveCount(3);
     await expect(announcementsPage.link.nth(0)).toContainText("Announcement 2");
@@ -74,6 +75,8 @@ test.describe("announcements", () => {
         },
       ],
     });
+
+    await announcementsPage.goto();
 
     await expect(announcementsPage.link).toHaveCount(1);
     await expect(announcementsPage.link.nth(0)).toContainText("Announcement 1");
@@ -107,6 +110,8 @@ test.describe("announcements", () => {
         },
       ],
     });
+
+    await announcementsPage.goto();
 
     await announcementsPage.openDetails(0);
     await expect(announcementsPage.noDetailsNotice).toBeVisible();
@@ -142,6 +147,8 @@ test.describe("announcements", () => {
       ],
     });
 
+    await announcementsPage.goto();
+
     await announcementsPage.openDetails(0);
     await expect(announcementsPage.createdTime).toBeVisible();
     await expect(announcementsPage.updatedTime).not.toBeVisible();
@@ -170,6 +177,8 @@ test.describe("announcements", () => {
       ],
     });
 
+    await announcementsPage.goto();
+
     await announcementsPage.openDetails(0);
 
     await expect(announcementsPage.attachmentsList).toBeVisible();
@@ -184,6 +193,8 @@ test.describe("announcements", () => {
         },
       ],
     });
+
+    await announcementsPage.goto();
 
     await announcementsPage.openDetails(0);
 
