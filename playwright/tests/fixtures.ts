@@ -262,21 +262,21 @@ export class AnnouncementsPage {
 
 export class MainMenu {
   readonly mainMenuButton: Locator;
+  readonly menu: Locator;
   readonly feedbackCallout: Locator;
   readonly scheduleLink: Locator;
   readonly myScheduleLink: Locator;
+  readonly announcementsLink: Locator;
 
   constructor(page: Page) {
     this.mainMenuButton = page.getByTestId("main-menu-button");
-    this.feedbackCallout = (
-      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
-    ).getByTestId("feedback-callout");
-    this.scheduleLink = (
-      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
-    ).getByRole("link", { name: "Schedule", exact: true });
-    this.myScheduleLink = (
-      isMobile() ? page.getByTestId("main-menu-drawer") : page.getByTestId("main-menu-sidebar")
-    ).getByRole("link", { name: "My Schedule", exact: true });
+    this.menu = isMobile()
+      ? page.getByTestId("main-menu-drawer")
+      : page.getByTestId("main-menu-sidebar");
+    this.feedbackCallout = this.menu.getByTestId("feedback-callout");
+    this.scheduleLink = this.menu.getByRole("link", { name: "Schedule", exact: true });
+    this.myScheduleLink = this.menu.getByRole("link", { name: "My Schedule", exact: true });
+    this.announcementsLink = this.menu.getByRole("link", { name: "Announcements", exact: true });
   }
 
   async open() {

@@ -1,14 +1,22 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, hoursFromNow, mockTime } from "./common";
-import { AnnouncementsPage } from "./fixtures";
+import { mockApi, hoursFromNow, mockTime, isMobile } from "./common";
+import { AnnouncementsPage, MainMenu, SchedulePage } from "./fixtures";
 
 type Fixtures = {
+  schedulePage: SchedulePage;
   announcementsPage: AnnouncementsPage;
+  mainMenu: MainMenu;
 };
 
 export const test = base.extend<Fixtures>({
+  schedulePage: async ({ page }, use) => {
+    await use(new SchedulePage(page));
+  },
   announcementsPage: async ({ page }, use) => {
     await use(new AnnouncementsPage(page));
+  },
+  mainMenu: async ({ page }, use) => {
+    await use(new MainMenu(page));
   },
 });
 
@@ -199,5 +207,47 @@ test.describe("announcements", () => {
     await announcementsPage.openDetails(0);
 
     await expect(announcementsPage.attachmentsList).not.toBeVisible();
+  });
+
+  test("the announcements link is hidden from the main menu when there are no announcements", async ({
+    page,
+    schedulePage,
+    mainMenu,
+  }) => {
+    await mockApi(page, {
+      config: {
+        hide_announcements: true,
+      },
+      announcements: [],
+    });
+
+    await schedulePage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await expect(mainMenu.announcementsLink).not.toBeVisible();
+  });
+
+  test("the announcements link is not hidden from the main menu when there are no announcements", async ({
+    page,
+    schedulePage,
+    mainMenu,
+  }) => {
+    await mockApi(page, {
+      config: {
+        hide_announcements: false,
+      },
+      announcements: [],
+    });
+
+    await schedulePage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await expect(mainMenu.announcementsLink).toBeVisible();
   });
 });
