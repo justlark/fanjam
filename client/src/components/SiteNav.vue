@@ -97,10 +97,7 @@ const headerHeadingId = useId();
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
     </div>
     <div v-else class="flex flex-col grow">
-      <header
-        :aria-labelledby="headerHeadingId"
-        class="sticky top-0 z-2 bg-surface-100 dark:bg-surface-900 flex flex-col"
-      >
+      <header :aria-labelledby="headerHeadingId" class="sticky top-0 z-2 bg-color flex flex-col">
         <div class="h-16 flex items-center justify-between px-2 lg:px-4 gap-2">
           <div class="flex items-center gap-2">
             <span class="lg:hidden">

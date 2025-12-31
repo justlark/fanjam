@@ -38,7 +38,7 @@ const descriptionHtml = computed(() => {
   >
     <template #container="{ closeCallback }">
       <div class="flex flex-col mx-4 mt-4 h-full" data-testid="event-summary-drawer">
-        <div class="sticky top-0 pb-2 bg-white dark:bg-surface-900 flex gap-2 items-start">
+        <div class="sticky top-0 pb-2 bg-white dark:bg-color-dark flex gap-2 items-start">
           <h2 class="text-lg font-bold my-auto me-auto" v-if="props.event">
             {{ props.event.name }}
           </h2>
