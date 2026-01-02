@@ -10,7 +10,6 @@ import {
   nextTick,
   watchEffect,
 } from "vue";
-import ScrollTop from "primevue/scrolltop";
 import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import useIncremental from "@/composables/useIncremental";
@@ -354,8 +353,8 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="h-full">
-    <div class="h-full flex flex-col gap-4">
+  <div>
+    <div class="flex flex-col gap-4">
       <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
@@ -403,6 +402,5 @@ watchEffect(() => {
         :all-categories="allCategories"
       />
     </div>
-    <ScrollTop target="parent" />
   </div>
 </template>

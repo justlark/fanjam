@@ -7,6 +7,7 @@ import { getSortedCategories } from "@/utils/tags";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 import EventDetails from "@/components/EventDetails.vue";
+import ScrollTop from "primevue/scrolltop";
 
 const route = useRoute();
 const {
@@ -25,10 +26,10 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
   <div class="flex h-full">
     <div v-if="thisEvent" class="flex w-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
-        <ScheduleTimeline
-          class="p-6 grow lg:contain-strict lg:overflow-y-auto"
-          v-model:day="currentDayIndex"
-        />
+        <div class="p-6 grow lg:contain-strict lg:overflow-y-auto">
+          <ScheduleTimeline v-model:day="currentDayIndex" />
+          <ScrollTop target="parent" />
+        </div>
         <Divider layout="vertical" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">

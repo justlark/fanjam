@@ -11,6 +11,7 @@ import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
 import Toast from "primevue/toast";
+import ScrollTop from "primevue/scrolltop";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
@@ -163,6 +164,7 @@ const headerHeadingId = useId();
           <slot />
         </main>
       </div>
+      <ScrollTop class="lg:hidden" />
     </div>
     <Toast position="bottom-center" />
     <AppUpdater />
