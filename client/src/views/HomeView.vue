@@ -144,7 +144,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           GitHub
         </a>
       </small>
-      <small>© 2025 Lark Aster</small>
+      <small>© 2025-2026 Lark Aster</small>
     </footer>
   </div>
 </template>

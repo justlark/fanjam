@@ -169,7 +169,7 @@ tag (not `latest`).
 
 ## Copyright
 
-Copyright © 2025 Lark Aster
+Copyright © 2025-2026 Lark Aster
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
