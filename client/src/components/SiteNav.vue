@@ -48,7 +48,9 @@ const {
 const conName = computed(() => info.value?.name ?? "FanJam");
 
 const copyLink = async () => {
-  await navigator.clipboard.writeText(window.location.href);
+  // Do not include the query params or fragment; users likely aren't intending
+  // to share their current search/filter params.
+  await navigator.clipboard.writeText(window.location.origin + window.location.pathname);
 
   toast.add({
     severity: "info",
