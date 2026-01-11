@@ -35,6 +35,8 @@ const descriptionHtml = computed(() => {
     :dismissable="false"
     :modal="false"
     position="bottom"
+    pt:mask="h-dvh min-h-dvh"
+    pt:root="!fixed !bottom-0"
   >
     <template #container="{ closeCallback }">
       <div class="flex flex-col mx-4 mt-4 h-full" data-testid="event-summary-drawer">

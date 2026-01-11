@@ -372,7 +372,7 @@ watchEffect(() => {
       </span>
       <div
         v-if="filteredTimeSlots.length > 0"
-        :class="['flex flex-col gap-6', { 'mb-[15rem]': eventSummaryIsVisible }]"
+        :class="['flex flex-col gap-6', { 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
       >
         <ScheduleTimeSlot
           v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
