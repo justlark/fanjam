@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId, type DeepReadonly, onMounted, toRef } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
@@ -14,7 +14,6 @@ import TagBar from "./TagBar.vue";
 
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
-const router = useRouter();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -60,7 +59,6 @@ onMounted(() => {
             :button-props="{
               'data-testid': 'event-details-back-button',
             }"
-            @click="router.back()"
           />
           <IconButton
             class="!hidden lg:!block"
@@ -69,7 +67,6 @@ onMounted(() => {
             :button-props="{
               'data-testid': 'event-details-back-button',
             }"
-            @click="router.back()"
           />
         </RouterLink>
         <IconButton

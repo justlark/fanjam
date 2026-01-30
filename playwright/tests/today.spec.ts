@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { EventDetailsPage, SchedulePage } from "./fixtures";
-import { hoursFromNow, mockApi, mockTime } from "./common";
+import { envId, hoursFromNow, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
@@ -23,16 +23,19 @@ test.describe("a multi-day schedule", () => {
     await mockApi(page, {
       events: [
         {
+          id: 1,
           name: "Yesterday Event",
           start_time: hoursFromNow(-25).toISOString(),
           end_time: hoursFromNow(-24).toISOString(),
         },
         {
+          id: 2,
           name: "Today Event",
           start_time: hoursFromNow(0).toISOString(),
           end_time: hoursFromNow(1).toISOString(),
         },
         {
+          id: 3,
           name: "Tomorrow Event",
           start_time: hoursFromNow(24).toISOString(),
           end_time: hoursFromNow(25).toISOString(),
@@ -127,6 +130,7 @@ test.describe("a multi-day schedule", () => {
   });
 
   test("back button from event page returns to that event's day in the schedule", async ({
+    page,
     eventPage,
     schedulePage,
   }) => {
@@ -134,6 +138,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/2`);
 
     await schedulePage.toPrevDay();
     await schedulePage.openEventDetailsPage("Yesterday Event");
@@ -141,6 +146,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Yesterday Event");
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/1`);
 
     await schedulePage.toToday();
     await schedulePage.openEventDetailsPage("Today Event");
@@ -148,6 +154,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/2`);
 
     await schedulePage.toNextDay();
     await schedulePage.openEventDetailsPage("Tomorrow Event");
@@ -155,6 +162,54 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Tomorrow Event");
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+  });
+
+  test("back button from event page returns to the all events view", async ({
+    page,
+    eventPage,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+
+    await schedulePage.openEventDetailsPage("Today Event");
+    await eventPage.navigateBack();
+
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(schedulePage.events).toHaveCount(3);
+
+    await expect(schedulePage.events.nth(0)).toContainText("Yesterday Event");
+    await expect(schedulePage.events.nth(1)).toContainText("Today Event");
+    await expect(schedulePage.events.nth(2)).toContainText("Tomorrow Event");
+  });
+
+  test("back button from event page adds a fragment for the event when navigating back to the daily view", async ({
+    page,
+    eventPage,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.openEventDetailsPage("Today Event");
+    await eventPage.navigateBack();
+
+    expect(new URL(page.url()).hash).toEqual(`event-${1}`);
+  });
+
+  test("back button from event page adds a fragment for the event when navigating back to the all events view", async ({
+    page,
+    eventPage,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+
+    await schedulePage.openEventDetailsPage("Today Event");
+    await eventPage.navigateBack();
+
+    expect(new URL(page.url()).hash).toEqual(`event-${2}`);
   });
 
   test("does not allow navigating before the first day or past the last day", async ({
@@ -175,16 +230,29 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.nextDayButton).toBeDisabled();
   });
 
-  test("the current day is preserved when jumping between views", async ({ schedulePage }) => {
+  test("the daily events URL brings you to the daily events view", async ({
+    page,
+    schedulePage,
+  }) => {
     await schedulePage.goto();
-    await expect(schedulePage.dayName).toHaveText("Monday");
-
     await schedulePage.toNextDay();
-    await expect(schedulePage.dayName).toHaveText("Tuesday");
 
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+
+    await page.reload();
+
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+  });
+
+  test("the all events URL brings you to the all events view", async ({ page, schedulePage }) => {
+    await schedulePage.goto();
     await schedulePage.toAllEventsView();
-    await schedulePage.toByDayView();
-    await expect(schedulePage.dayName).toHaveText("Tuesday");
+
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
+
+    await page.reload();
+
+    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
   });
 
   test("the all events view shows events from all days", async ({ schedulePage }) => {
