@@ -23,19 +23,19 @@ test.describe("a multi-day schedule", () => {
     await mockApi(page, {
       events: [
         {
-          id: 1,
+          id: "1",
           name: "Yesterday Event",
           start_time: hoursFromNow(-25).toISOString(),
           end_time: hoursFromNow(-24).toISOString(),
         },
         {
-          id: 2,
+          id: "2",
           name: "Today Event",
           start_time: hoursFromNow(0).toISOString(),
           end_time: hoursFromNow(1).toISOString(),
         },
         {
-          id: 3,
+          id: "3",
           name: "Tomorrow Event",
           start_time: hoursFromNow(24).toISOString(),
           end_time: hoursFromNow(25).toISOString(),
@@ -195,7 +195,7 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.openEventDetailsPage("Today Event");
     await eventPage.navigateBack();
 
-    expect(new URL(page.url()).hash).toEqual(`event-${1}`);
+    expect(new URL(page.url()).hash).toEqual("#event-2");
   });
 
   test("back button from event page adds a fragment for the event when navigating back to the all events view", async ({
@@ -209,7 +209,7 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.openEventDetailsPage("Today Event");
     await eventPage.navigateBack();
 
-    expect(new URL(page.url()).hash).toEqual(`event-${2}`);
+    expect(new URL(page.url()).hash).toEqual("#event-2");
   });
 
   test("does not allow navigating before the first day or past the last day", async ({
