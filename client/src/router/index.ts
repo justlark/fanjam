@@ -19,11 +19,9 @@ const router = createRouter({
       name: "schedule",
       component: () => import("../views/ScheduleView.vue"),
       beforeEnter: (to, from) => {
-        // When navigating from an event back to the schedule view, we use this
-        // fragment to scroll the schedule to the event the user was just
-        // looking at. To make sure the browser's native back button works the
-        // same way as this app's back button, we intercept the browser
-        // navigation here.
+        // When navigating from an event back to the schedule view, we
+        // intercept the browser navigation and add a fragment to scroll the
+        // schedule to the event the user was just looking at.
         if (from.name !== "event") {
           return;
         }

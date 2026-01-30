@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, type DeepReadonly, toRef, useId } from "vue";
-import { RouterLink } from "vue-router";
+import { computed, type DeepReadonly, toRef } from "vue";
+import { useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
-import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
@@ -13,7 +13,7 @@ import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 
 const datetimeFormats = useDatetimeFormats();
-const filterCriteria = useFilterQuery();
+const router = useRouter();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -28,39 +28,30 @@ const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
   return renderMarkdown(event.value.description);
 });
-
-const sectionHeadingId = useId();
 </script>
 
 <template>
   <section :aria-labelledby="sectionHeadingId">
     <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
       <span class="flex items-center">
-        <RouterLink
-          :to="{
-            name: 'schedule',
-            params: { dayIndex: props.day + 1 },
-            query: toFilterQueryParams(filterCriteria),
-            hash: `#event-${event.id}`,
+        <IconButton
+          class="lg:!hidden"
+          icon="chevron-left"
+          label="Back"
+          :button-props="{
+            'data-testid': 'event-details-back-button',
           }"
-        >
-          <IconButton
-            class="lg:!hidden"
-            icon="chevron-left"
-            label="Back"
-            :button-props="{
-              'data-testid': 'event-details-back-button',
-            }"
-          />
-          <IconButton
-            class="!hidden lg:!block"
-            icon="x-lg"
-            label="Close"
-            :button-props="{
-              'data-testid': 'event-details-back-button',
-            }"
-          />
-        </RouterLink>
+          @click="router.back()"
+        />
+        <IconButton
+          class="!hidden lg:!block"
+          icon="x-lg"
+          label="Close"
+          :button-props="{
+            'data-testid': 'event-details-back-button',
+          }"
+          @click="router.back()"
+        />
         <IconButton
           class="hidden lg:block"
           label="Star"

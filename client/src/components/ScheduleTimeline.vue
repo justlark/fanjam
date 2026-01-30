@@ -79,7 +79,7 @@ const currentDayIndex = defineModel<number>("day");
 const days = ref<Array<Day>>([]);
 const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
-const viewType = ref<"daily" | "all">("daily");
+const viewType = ref<"daily" | "all">();
 
 const currentDayTimeSlots = computed(() => {
   if (currentDayIndex.value === undefined) {
@@ -183,17 +183,30 @@ const filteredTimeSlotsForAllDays = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
-const filteredTimeSlots = computed(() =>
-  viewType.value === "daily"
-    ? filteredTimeSlotsForCurrentDay.value
-    : filteredTimeSlotsForAllDays.value,
-);
+const filteredTimeSlots = computed(() => {
+  if (viewType.value === "daily") {
+    return filteredTimeSlotsForCurrentDay.value;
+  }
 
-// We clear the fragment because we don't want the page to autoscroll every
-// time the user switches between the two views.
-watch(viewType, async () => {
+  if (viewType.value === "all") {
+    return filteredTimeSlotsForAllDays.value;
+  }
+
+  return [];
+});
+
+// When we switch views, we also clear the fragment because we don't want the
+// page to autoscroll every time the user switches between the two views.
+watch(viewType, async (newViewType, oldViewType) => {
+  if (oldViewType === undefined) {
+    return;
+  }
+
   await router.push({
     ...route,
+    params: {
+      dayIndex: newViewType === "all" ? "all" : (currentDayIndex.value ?? 0) + 1,
+    },
     hash: "",
     replace: true,
   });
@@ -235,8 +248,8 @@ onMounted(() => {
         return;
       }
 
-      // Make sure that not only has the schedule finished loading, but also that
-      // the DOM has updated to reflect that.
+      // Make sure that not only has the schedule finished loading, but also
+      // that the DOM has updated to reflect that.
       await nextTick();
 
       const eventElement = document.getElementById(`event-${eventId}`);
@@ -301,6 +314,14 @@ onUnmounted(() => {
 watch(
   [toRef(route, "path"), dayIndexByEventId, eventsStatus, todayIndex],
   () => {
+    if (route.params.dayIndex === "all") {
+      viewType.value = "all";
+      currentDayIndex.value = undefined;
+      return;
+    }
+
+    viewType.value = "daily";
+
     if (route.name === "schedule") {
       if (route.params.dayIndex) {
         if (eventsStatus.value !== "success") {
@@ -326,7 +347,11 @@ watch(
 );
 
 watchEffect(async () => {
-  if (route.name !== "schedule" || currentDayIndex.value === undefined) {
+  if (
+    route.name !== "schedule" ||
+    viewType.value === "all" ||
+    currentDayIndex.value === undefined
+  ) {
     return;
   }
 
