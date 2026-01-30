@@ -17,6 +17,7 @@ const props = defineProps<{
   event?: DeepReadonly<Event>;
   day: number;
   allCategories: Array<string>;
+  viewType: "daily" | "all";
 }>();
 
 const filterCriteria = useFilterQuery();
@@ -89,7 +90,7 @@ const descriptionHtml = computed(() => {
               name: 'event',
               params: { eventId: props.event.id },
               query: toFilterQueryParams(filterCriteria),
-              state: { from: 'schedule' },
+              state: { fromViewType: props.viewType },
             }"
             data-testid="event-summary-show-more-button"
           >

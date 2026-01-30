@@ -16,6 +16,7 @@ const props = defineProps<{
   events: Array<DeepReadonly<Event>>;
   isCurrentTimeSlot: boolean;
   allCategories: Array<string>;
+  viewType: "daily" | "all";
 }>();
 
 const starredEvents = useStarredEvents();
@@ -54,7 +55,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
             name: 'event',
             params: { eventId: event.id },
             query: toFilterQueryParams(filterCriteria),
-            state: { from: 'schedule' },
+            state: { fromViewType: viewType },
           }"
           :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
           data-testid="schedule-event-link"

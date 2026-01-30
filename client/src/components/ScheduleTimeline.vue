@@ -203,7 +203,8 @@ watch(viewType, async (newViewType, oldViewType) => {
   }
 
   await router.push({
-    ...route,
+    name: route.name,
+    query: route.query,
     params: {
       dayIndex: newViewType === "all" ? "all" : (currentDayIndex.value ?? 0) + 1,
     },
@@ -380,7 +381,7 @@ watchEffect(() => {
 <template>
   <div>
     <div class="flex flex-col gap-4">
-      <ScheduleHeader v-model:view="viewType" v-model:ids="searchResultEventIds" />
+      <ScheduleHeader v-if="viewType" v-model:view="viewType" v-model:ids="searchResultEventIds" />
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
         v-model:day="currentDayIndex"
@@ -396,7 +397,7 @@ watchEffect(() => {
         <span class="italic">past events hidden</span>
       </span>
       <div
-        v-if="filteredTimeSlots.length > 0"
+        v-if="filteredTimeSlots.length > 0 && viewType !== undefined"
         :class="['flex flex-col gap-6', { 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
       >
         <ScheduleTimeSlot
@@ -409,6 +410,7 @@ watchEffect(() => {
           :is-current-time-slot="
             (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
           "
+          :view-type="viewType"
           data-testid="schedule-time-slot"
         />
       </div>
@@ -420,11 +422,12 @@ watchEffect(() => {
       </div>
       <EventSummaryDrawer
         class="lg:!hidden"
-        v-if="currentDayIndex !== undefined"
+        v-if="currentDayIndex !== undefined && viewType !== undefined"
         v-model:visible="eventSummaryIsVisible"
         :event="focusedEvent"
         :day="currentDayIndex"
         :all-categories="allCategories"
+        :view-type="viewType"
       />
     </div>
   </div>
