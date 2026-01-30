@@ -254,7 +254,7 @@ onMounted(() => {
       await nextTick();
 
       const eventElement = document.getElementById(`event-${eventId}`);
-      eventElement?.scrollIntoView({ behavior: "smooth" });
+      eventElement?.scrollIntoView({ behavior: "instant" });
     },
     { once: true },
   );
