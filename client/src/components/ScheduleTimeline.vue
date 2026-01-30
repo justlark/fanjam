@@ -198,7 +198,7 @@ const filteredTimeSlots = computed(() => {
 // When we switch views, we also clear the fragment because we don't want the
 // page to autoscroll every time the user switches between the two views.
 watch(viewType, async (newViewType, oldViewType) => {
-  if (oldViewType === undefined) {
+  if (oldViewType === undefined || route.name !== "schedule") {
     return;
   }
 
@@ -315,16 +315,16 @@ onUnmounted(() => {
 watch(
   [toRef(route, "path"), dayIndexByEventId, eventsStatus, todayIndex],
   () => {
-    if (route.params.dayIndex === "all") {
-      viewType.value = "all";
-      currentDayIndex.value = undefined;
-      return;
-    }
-
-    viewType.value = "daily";
-
     if (route.name === "schedule") {
+      if (route.params.dayIndex === "all") {
+        viewType.value = "all";
+        currentDayIndex.value = undefined;
+        return;
+      }
+
       if (route.params.dayIndex) {
+        viewType.value = "daily";
+
         if (eventsStatus.value !== "success") {
           // We cannot validate the page number until we know the number of
           // days in the schedule.
@@ -339,6 +339,9 @@ watch(
         currentDayIndex.value = todayIndex.value;
       }
     } else if (route.name === "event") {
+      const currentFromViewType = history.state.fromViewType as "daily" | "all" | undefined;
+      viewType.value = currentFromViewType ?? "daily";
+
       currentDayIndex.value = route.params.eventId
         ? dayIndexByEventId.value[route.params.eventId as string]
         : undefined;
