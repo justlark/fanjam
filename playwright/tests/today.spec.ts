@@ -1,10 +1,11 @@
 import { test as base, expect } from "@playwright/test";
-import { EventDetailsPage, SchedulePage } from "./fixtures";
+import { EventDetailsPage, MainMenu, SchedulePage } from "./fixtures";
 import { envId, hoursFromNow, isMobile, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
   eventPage: EventDetailsPage;
+  mainMenu: MainMenu;
 };
 
 export const test = base.extend<Fixtures>({
@@ -13,6 +14,9 @@ export const test = base.extend<Fixtures>({
   },
   eventPage: async ({ page }, use) => {
     await use(new EventDetailsPage(page));
+  },
+  mainMenu: async ({ page }, use) => {
+    await use(new MainMenu(page));
   },
 });
 
@@ -341,5 +345,26 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.dayName).toHaveText("Monday");
     await expect(schedulePage.timeSlots).toHaveCount(1);
     await expect(page).toHaveURL(new RegExp(`/events/2$`));
+  });
+
+  test("navigating back to schedule view switches back to the daily events view", async ({
+    page,
+    schedulePage,
+    mainMenu,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all$`));
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await mainMenu.navigateToSchedule();
+
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/schedule$`));
   });
 });

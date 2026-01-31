@@ -322,9 +322,9 @@ watch(
         return;
       }
 
-      if (route.params.dayIndex) {
-        viewType.value = "daily";
+      viewType.value = "daily";
 
+      if (route.params.dayIndex) {
         if (eventsStatus.value !== "success") {
           // We cannot validate the page number until we know the number of
           // days in the schedule.
