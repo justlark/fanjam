@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { EventDetailsPage, SchedulePage } from "./fixtures";
-import { envId, hoursFromNow, mockApi, mockTime } from "./common";
+import { envId, hoursFromNow, isMobile, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
@@ -138,7 +138,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/2`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/2`));
 
     await schedulePage.toPrevDay();
     await schedulePage.openEventDetailsPage("Yesterday Event");
@@ -146,7 +146,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Yesterday Event");
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/1`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/1`));
 
     await schedulePage.toToday();
     await schedulePage.openEventDetailsPage("Today Event");
@@ -154,7 +154,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Today Event");
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/2`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/2`));
 
     await schedulePage.toNextDay();
     await schedulePage.openEventDetailsPage("Tomorrow Event");
@@ -162,7 +162,7 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Tomorrow Event");
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/3`));
   });
 
   test("back button from event page returns to the all events view", async ({
@@ -176,7 +176,7 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.openEventDetailsPage("Today Event");
     await eventPage.navigateBack();
 
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all`));
 
     await expect(schedulePage.timeSlots).toHaveCount(3);
     await expect(schedulePage.events).toHaveCount(3);
@@ -195,7 +195,7 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.openEventDetailsPage("Today Event");
     await eventPage.navigateBack();
 
-    expect(new URL(page.url()).hash).toEqual("#event-2");
+    await expect(page).toHaveURL(new RegExp("#event-2$"));
   });
 
   test("back button from event page adds a fragment for the event when navigating back to the all events view", async ({
@@ -209,7 +209,7 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.openEventDetailsPage("Today Event");
     await eventPage.navigateBack();
 
-    expect(new URL(page.url()).hash).toEqual("#event-2");
+    await expect(page).toHaveURL(new RegExp("#event-2$"));
   });
 
   test("does not allow navigating before the first day or past the last day", async ({
@@ -237,22 +237,22 @@ test.describe("a multi-day schedule", () => {
     await schedulePage.goto();
     await schedulePage.toNextDay();
 
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/3$`));
 
     await page.reload();
 
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/3`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/3$`));
   });
 
   test("the all events URL brings you to the all events view", async ({ page, schedulePage }) => {
     await schedulePage.goto();
     await schedulePage.toAllEventsView();
 
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all$`));
 
     await page.reload();
 
-    expect(new URL(page.url()).pathname).toEqual(`/app/${envId}/schedule/all`);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all$`));
   });
 
   test("the all events view shows events from all days", async ({ schedulePage }) => {
@@ -277,5 +277,69 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.timeSlots.nth(0).getByRole("heading")).toHaveText(/^Sunday/);
     await expect(schedulePage.timeSlots.nth(1).getByRole("heading")).toHaveText(/^Monday/);
     await expect(schedulePage.timeSlots.nth(2).getByRole("heading")).toHaveText(/^Tuesday/);
+  });
+
+  test("switch from daily events view to all events view on event details page", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    // We're specifically testing the double-pane view on desktop.
+    if (isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Monday");
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/schedule/2$`));
+
+    await eventPage.goto("3");
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/events/3$`));
+
+    await schedulePage.toAllEventsView();
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/events/3$`));
+
+    await schedulePage.openEventDetailsPage("Yesterday Event");
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/events/1$`));
+  });
+
+  test("switch from all events view to daily events view on event details page", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    // We're specifically testing the double-pane view on desktop.
+    if (isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+    await schedulePage.openEventDetailsPage("Tomorrow Event");
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/events/3$`));
+
+    await schedulePage.toByDayView();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/events/3$`));
+
+    await schedulePage.toPrevDay();
+    await schedulePage.openEventDetailsPage("Today Event");
+
+    await expect(schedulePage.dayName).toHaveText("Monday");
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/events/2$`));
   });
 });
