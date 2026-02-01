@@ -1,11 +1,12 @@
 import { test as base, expect } from "@playwright/test";
-import { EventDetailsPage, MainMenu, SchedulePage } from "./fixtures";
+import { EventDetailsPage, EventSummaryDrawer, MainMenu, SchedulePage } from "./fixtures";
 import { envId, hoursFromNow, isMobile, mockApi, mockTime } from "./common";
 
 type Fixtures = {
   schedulePage: SchedulePage;
   eventPage: EventDetailsPage;
   mainMenu: MainMenu;
+  summaryDrawer: EventSummaryDrawer;
 };
 
 export const test = base.extend<Fixtures>({
@@ -18,6 +19,9 @@ export const test = base.extend<Fixtures>({
   mainMenu: async ({ page }, use) => {
     await use(new MainMenu(page));
   },
+  summaryDrawer: async ({ page }, use) => {
+    await use(new EventSummaryDrawer(page));
+  },
 });
 
 test.describe("a multi-day schedule", () => {
@@ -29,18 +33,21 @@ test.describe("a multi-day schedule", () => {
         {
           id: "1",
           name: "Yesterday Event",
+          category: "Category",
           start_time: hoursFromNow(-25).toISOString(),
           end_time: hoursFromNow(-24).toISOString(),
         },
         {
           id: "2",
           name: "Today Event",
+          category: "Category",
           start_time: hoursFromNow(0).toISOString(),
           end_time: hoursFromNow(1).toISOString(),
         },
         {
           id: "3",
           name: "Tomorrow Event",
+          category: "Category",
           start_time: hoursFromNow(24).toISOString(),
           end_time: hoursFromNow(25).toISOString(),
         },
@@ -340,5 +347,73 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.timeSlots).toHaveCount(1);
     await expect(page).toHaveURL(new RegExp(`/schedule$`));
+  });
+
+  test("filtering by category or tag in event details switches back to daily events view", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.toNextDay();
+    await schedulePage.openEventDetailsPage("Tomorrow Event");
+
+    await eventPage.filterByCategory("Category");
+
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(page).toHaveURL(new RegExp(`/schedule/3?`));
+  });
+
+  test("filtering by category or tag in event details switches back to all events view", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+    await schedulePage.openEventDetailsPage("Today Event");
+
+    await eventPage.filterByCategory("Category");
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all?`));
+  });
+
+  test("filtering by category or tag in summary drawer switches back to daily events view", async ({
+    page,
+    schedulePage,
+    summaryDrawer,
+  }) => {
+    if (!isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+    await schedulePage.openEventSummaryDrawer("Today Event");
+
+    await summaryDrawer.filterByCategory("Category");
+
+    await expect(schedulePage.timeSlots).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`/schedule/2?`));
+  });
+
+  test("filtering by category or tag in summary drawer switches back to all events view", async ({
+    page,
+    schedulePage,
+    summaryDrawer,
+  }) => {
+    if (!isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+    await schedulePage.openEventSummaryDrawer("Today Event");
+
+    await summaryDrawer.filterByCategory("Category");
+
+    await expect(schedulePage.timeSlots).toHaveCount(3);
+    await expect(page).toHaveURL(new RegExp(`/schedule/all?`));
   });
 });
