@@ -139,7 +139,9 @@ onMounted(() => {
         :all-categories="props.allCategories"
         :to="{
           name: 'schedule',
-          params: { dayIndex: props.day + 1 },
+          params: {
+            dayIndex: fromViewType === 'all' ? 'all' : props.day + 1,
+          },
         }"
       />
       <Divider />
