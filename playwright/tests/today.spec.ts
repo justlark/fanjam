@@ -190,32 +190,6 @@ test.describe("a multi-day schedule", () => {
     await expect(schedulePage.events.nth(2)).toContainText("Tomorrow Event");
   });
 
-  test("back button from event page adds a fragment for the event when navigating back to the daily view", async ({
-    page,
-    eventPage,
-    schedulePage,
-  }) => {
-    await schedulePage.goto();
-    await schedulePage.openEventDetailsPage("Today Event");
-    await eventPage.navigateBack();
-
-    await expect(page).toHaveURL(new RegExp("#event-2$"));
-  });
-
-  test("back button from event page adds a fragment for the event when navigating back to the all events view", async ({
-    page,
-    eventPage,
-    schedulePage,
-  }) => {
-    await schedulePage.goto();
-    await schedulePage.toAllEventsView();
-
-    await schedulePage.openEventDetailsPage("Today Event");
-    await eventPage.navigateBack();
-
-    await expect(page).toHaveURL(new RegExp("#event-2$"));
-  });
-
   test("does not allow navigating before the first day or past the last day", async ({
     schedulePage,
   }) => {

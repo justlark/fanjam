@@ -18,20 +18,6 @@ const router = createRouter({
       path: "/app/:envId/schedule/:dayIndex?",
       name: "schedule",
       component: () => import("../views/ScheduleView.vue"),
-      beforeEnter: (to, from) => {
-        // When navigating from an event back to the schedule view, we
-        // intercept the navigation and add a fragment to scroll the schedule
-        // to the event the user was just looking at.
-        if (from.name !== "event") {
-          return;
-        }
-
-        const newHash = `#event-${from.params.eventId as string}`;
-
-        if (to.hash !== newHash) {
-          return { ...to, hash: newHash };
-        }
-      },
     },
     {
       path: "/app/:envId/announcements",
