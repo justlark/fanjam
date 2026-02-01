@@ -52,7 +52,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
         v-for="event in props.events"
         :key="event.id"
         :id="`event-${event.id}`"
-        class="scroll-mt-18 lg:scroll-mt-2"
+        class="lg:scroll-mt-2"
       >
         <RouterLink
           class="hidden lg:inline"
