@@ -91,7 +91,7 @@ const headerHeadingId = useId();
 
 <template>
   <div class="flex flex-col h-dvh">
-    <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow">
+    <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow" data-testid="site-nav-error-state">
       <SimpleIcon
         icon="exclamation-circle"
         class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
@@ -121,8 +121,8 @@ const headerHeadingId = useId();
             </RouterLink>
           </div>
           <div class="flex lg:gap-2">
-            <IconButton icon="link-45deg" label="Copy Link" @click="copyLink" />
-            <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" />
+            <IconButton icon="link-45deg" label="Copy Link" @click="copyLink" :button-props="{ 'data-testid': 'site-nav-copy-link' }" />
+            <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" :button-props="{ 'data-testid': 'site-nav-refresh' }" />
           </div>
         </div>
         <Drawer

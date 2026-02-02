@@ -13,8 +13,8 @@ const props = defineProps<{
 </script>
 
 <template>
-  <ul class="flex flex-col items-center gap-2">
-    <li v-for="(link, index) in props.links" :key="index" class="flex gap-2 w-full">
+  <ul class="flex flex-col items-center gap-2" data-testid="links-list">
+    <li v-for="(link, index) in props.links" :key="index" class="flex gap-2 w-full" data-testid="links-list-external-link">
       <LinkButton
         :name="link.name"
         :target="{ kind: 'external', url: link.url }"
@@ -22,7 +22,7 @@ const props = defineProps<{
         icon-label="External Link"
       />
     </li>
-    <li v-for="(file, index) in props.files" :key="index" class="flex gap-2 w-full">
+    <li v-for="(file, index) in props.files" :key="index" class="flex gap-2 w-full" data-testid="links-list-file">
       <LinkButton
         :name="file.name"
         :target="{
@@ -34,7 +34,7 @@ const props = defineProps<{
         icon-label="Download"
       />
     </li>
-    <li v-for="(page, index) in props.pages" :key="index" class="flex gap-2 w-full">
+    <li v-for="(page, index) in props.pages" :key="index" class="flex gap-2 w-full" data-testid="links-list-page">
       <LinkButton
         :name="page.title"
         :target="{

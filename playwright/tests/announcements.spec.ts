@@ -1,11 +1,12 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, hoursFromNow, mockTime, isMobile } from "./common";
-import { AnnouncementsPage, MainMenu, SchedulePage } from "./fixtures";
+import { AnnouncementsPage, MainMenu, SchedulePage, ReadAnnouncements } from "./fixtures";
 
 type Fixtures = {
   schedulePage: SchedulePage;
   announcementsPage: AnnouncementsPage;
   mainMenu: MainMenu;
+  readAnnouncements: ReadAnnouncements;
 };
 
 export const test = base.extend<Fixtures>({
@@ -17,6 +18,9 @@ export const test = base.extend<Fixtures>({
   },
   mainMenu: async ({ page }, use) => {
     await use(new MainMenu(page));
+  },
+  readAnnouncements: async ({ page }, use) => {
+    await use(new ReadAnnouncements(page));
   },
 });
 
@@ -249,5 +253,177 @@ test.describe("announcements", () => {
     }
 
     await expect(mainMenu.announcementsLink).toBeVisible();
+  });
+});
+
+test.describe("unread announcements badge", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+  });
+
+  test("shows unread badge when there are unread announcements", async ({
+    page,
+    schedulePage,
+    mainMenu,
+  }) => {
+    await mockApi(page, {
+      events: [{ id: "1", name: "Test Event" }],
+      announcements: [
+        {
+          id: "announce-1",
+          title: "New Announcement",
+          updated_at: hoursFromNow(0).toISOString(),
+        },
+      ],
+    });
+
+    await schedulePage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // The badge should show the number of unread announcements
+    await expect(mainMenu.announcementsLink.locator("..").locator("[class*='badge']")).toBeVisible();
+  });
+
+  test("badge is not visible when all announcements are read", async ({
+    page,
+    schedulePage,
+    mainMenu,
+    readAnnouncements,
+  }) => {
+    await mockApi(page, {
+      events: [{ id: "1", name: "Test Event" }],
+      announcements: [
+        {
+          id: "announce-1",
+          title: "Read Announcement",
+          updated_at: hoursFromNow(0).toISOString(),
+        },
+      ],
+    });
+
+    // Mark the announcement as read before navigating
+    await schedulePage.goto();
+    await readAnnouncements.set(["announce-1"]);
+    await page.reload();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // The badge should not be visible since all are read
+    await expect(
+      mainMenu.announcementsLink.locator("..").locator("[class*='badge']"),
+    ).not.toBeVisible();
+  });
+
+  test("badge clears when viewing an announcement", async ({
+    page,
+    schedulePage,
+    announcementsPage,
+    mainMenu,
+    readAnnouncements,
+  }) => {
+    await mockApi(page, {
+      events: [{ id: "1", name: "Test Event" }],
+      announcements: [
+        {
+          id: "announce-1",
+          title: "Unread Announcement",
+          updated_at: hoursFromNow(0).toISOString(),
+        },
+      ],
+    });
+
+    await schedulePage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // Badge should be visible initially
+    await expect(mainMenu.announcementsLink.locator("..").locator("[class*='badge']")).toBeVisible();
+
+    // Navigate to announcements and view the announcement
+    await mainMenu.navigateToAnnouncements();
+    await announcementsPage.openDetails(0);
+
+    // Navigate back to schedule
+    await announcementsPage.navigateBack();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await mainMenu.navigateToSchedule();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // Badge should not be visible after reading
+    await expect(
+      mainMenu.announcementsLink.locator("..").locator("[class*='badge']"),
+    ).not.toBeVisible();
+  });
+
+  test("badge is not visible on announcements page itself", async ({
+    page,
+    announcementsPage,
+    mainMenu,
+  }) => {
+    await mockApi(page, {
+      announcements: [
+        {
+          id: "announce-1",
+          title: "Unread Announcement",
+          updated_at: hoursFromNow(0).toISOString(),
+        },
+      ],
+    });
+
+    await announcementsPage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // Badge should not be visible when on the announcements page
+    await expect(
+      mainMenu.announcementsLink.locator("..").locator("[class*='badge']"),
+    ).not.toBeVisible();
+  });
+
+  test("badge persists across page navigation", async ({ page, schedulePage, mainMenu }) => {
+    await mockApi(page, {
+      events: [{ id: "1", name: "Test Event" }],
+      announcements: [
+        {
+          id: "announce-1",
+          title: "Unread Announcement",
+          updated_at: hoursFromNow(0).toISOString(),
+        },
+      ],
+    });
+
+    await schedulePage.goto();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    await expect(mainMenu.announcementsLink.locator("..").locator("[class*='badge']")).toBeVisible();
+
+    // Navigate to info page
+    await mainMenu.navigateToInfo();
+
+    if (isMobile()) {
+      await mainMenu.open();
+    }
+
+    // Badge should still be visible
+    await expect(mainMenu.announcementsLink.locator("..").locator("[class*='badge']")).toBeVisible();
   });
 });

@@ -63,6 +63,7 @@ export class SchedulePage {
   readonly nextDayButton: Locator;
   readonly dayName: Locator;
   readonly viewSelector: Locator;
+  readonly noEventsNotice: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -74,6 +75,7 @@ export class SchedulePage {
     this.nextDayButton = page.getByTestId("schedule-next-day-button");
     this.dayName = page.getByTestId("schedule-day-name");
     this.viewSelector = page.getByTestId("schedule-view-selector");
+    this.noEventsNotice = page.getByTestId("schedule-no-events");
   }
 
   async goto(day?: number | string) {
@@ -162,18 +164,34 @@ export class EventDetailsPage {
   private readonly backButton: Locator;
   private readonly tagbarCategoryLink: Locator;
   private readonly tagbarTagLinks: Locator;
+  readonly name: Locator;
+  readonly time: Locator;
+  readonly hosts: Locator;
+  readonly location: Locator;
   readonly personLinks: Locator;
   readonly locationLinks: Locator;
   readonly starButton: Locator;
+  readonly summary: Locator;
+  readonly description: Locator;
+  readonly noDescription: Locator;
+  readonly content: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.backButton = page.getByTestId("event-details-back-button").filter({ visible: true });
     this.tagbarCategoryLink = page.getByTestId("tagbar-category-link").filter({ visible: true });
     this.tagbarTagLinks = page.getByTestId("tagbar-tag-link").filter({ visible: true });
+    this.name = page.getByTestId("event-details-name");
+    this.time = page.getByTestId("event-details-time");
+    this.hosts = page.getByTestId("event-details-hosts");
+    this.location = page.getByTestId("event-details-location");
     this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
     this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
+    this.summary = page.getByTestId("event-details-summary");
+    this.description = page.getByTestId("event-details-description");
+    this.noDescription = page.getByTestId("event-details-no-description");
+    this.content = page.getByTestId("event-details-content");
   }
 
   async goto(eventId: string) {
@@ -236,6 +254,7 @@ export class AnnouncementsPage {
   readonly createdTime: Locator;
   readonly updatedTime: Locator;
   readonly attachmentsList: Locator;
+  readonly emptyNotice: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -245,6 +264,7 @@ export class AnnouncementsPage {
     this.noDetailsNotice = page.getByTestId("announcement-no-details-notice");
     this.attachmentsList = page.getByTestId("announcement-attachments-list");
     this.backButton = page.getByTestId("announcement-back-button");
+    this.emptyNotice = page.getByTestId("announcements-empty");
   }
 
   async goto() {
@@ -267,6 +287,7 @@ export class MainMenu {
   readonly scheduleLink: Locator;
   readonly myScheduleLink: Locator;
   readonly announcementsLink: Locator;
+  readonly infoLink: Locator;
 
   constructor(page: Page) {
     this.mainMenuButton = page.getByTestId("main-menu-button");
@@ -277,6 +298,7 @@ export class MainMenu {
     this.scheduleLink = this.menu.getByRole("link", { name: "Schedule", exact: true });
     this.myScheduleLink = this.menu.getByRole("link", { name: "My Schedule", exact: true });
     this.announcementsLink = this.menu.getByRole("link", { name: "Announcements", exact: true });
+    this.infoLink = this.menu.getByRole("link", { name: "Info", exact: true });
   }
 
   async open() {
@@ -289,5 +311,119 @@ export class MainMenu {
 
   async navigateToMySchedule() {
     await this.myScheduleLink.click();
+  }
+
+  async navigateToInfo() {
+    await this.infoLink.click();
+  }
+
+  async navigateToAnnouncements() {
+    await this.announcementsLink.click();
+  }
+}
+
+export class InfoPage {
+  private readonly page: Page;
+  readonly name: Locator;
+  readonly description: Locator;
+  readonly websiteLink: Locator;
+  readonly linksList: Locator;
+  readonly externalLinks: Locator;
+  readonly files: Locator;
+  readonly pageLinks: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.name = page.getByTestId("info-page-name");
+    this.description = page.getByTestId("info-page-description");
+    this.websiteLink = page.getByTestId("info-page-website");
+    this.linksList = page.getByTestId("links-list");
+    this.externalLinks = page.getByTestId("links-list-external-link");
+    this.files = page.getByTestId("links-list-file");
+    this.pageLinks = page.getByTestId("links-list-page");
+  }
+
+  async goto() {
+    await this.page.goto("info");
+  }
+}
+
+export class CustomPage {
+  private readonly page: Page;
+  readonly viewer: Locator;
+  readonly title: Locator;
+  readonly body: Locator;
+  readonly noDetailsNotice: Locator;
+  readonly backButton: Locator;
+  readonly files: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.viewer = page.getByTestId("page-viewer");
+    this.title = page.getByTestId("page-viewer-title");
+    this.body = page.getByTestId("page-viewer-body");
+    this.noDetailsNotice = page.getByTestId("page-viewer-no-details");
+    this.backButton = page.getByTestId("page-viewer-back-button");
+    this.files = page.getByTestId("links-list-file");
+  }
+
+  async goto(pageId: string) {
+    await this.page.goto(`pages/${pageId}`);
+  }
+
+  async navigateBack() {
+    await this.backButton.click();
+  }
+}
+
+export class SiteNav {
+  private readonly page: Page;
+  readonly heading: Locator;
+  readonly copyLinkButton: Locator;
+  readonly refreshButton: Locator;
+  readonly errorState: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.heading = page.getByTestId("site-nav-heading");
+    this.copyLinkButton = page.getByTestId("site-nav-copy-link");
+    this.refreshButton = page.getByTestId("site-nav-refresh");
+    this.errorState = page.getByTestId("site-nav-error-state");
+  }
+
+  async copyLink() {
+    await this.copyLinkButton.click();
+  }
+
+  async refresh() {
+    await this.refreshButton.click();
+  }
+}
+
+export class ReadAnnouncements {
+  private readonly page: Page;
+  private readonly envId: string;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.envId = envId;
+  }
+
+  async get(): Promise<Array<string>> {
+    await this.page.clock.fastForward(1000);
+
+    const rawJson = await this.page.evaluate(
+      (envId) => localStorage.getItem(`announcements:${envId}`),
+      this.envId,
+    );
+    return rawJson ? JSON.parse(rawJson) : [];
+  }
+
+  async set(announcementIds: Array<string>) {
+    await this.page.evaluate(
+      ([envId, announcementIds]) =>
+        localStorage.setItem(`announcements:${envId}`, JSON.stringify(announcementIds)),
+      [this.envId, announcementIds],
+    );
   }
 }

@@ -137,3 +137,24 @@ export const mockTime = async (page: Page) => {
 export const shiftTimeByHours = async (page: Page, hours: number) => {
   await page.clock.setFixedTime(hoursFromNow(hours));
 };
+
+export const mockApiError = async (
+  page: Page,
+  endpoint: string,
+  statusCode: number,
+  message?: string,
+) => {
+  const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
+
+  await page.route(url, async (route) => {
+    await route.fulfill({
+      status: statusCode,
+      contentType: "application/json",
+      body: JSON.stringify({ error: message ?? "Internal Server Error" }),
+    });
+  });
+};
+
+export const mockInfoError = async (page: Page, statusCode: number = 500) => {
+  await mockApiError(page, "/info", statusCode);
+};

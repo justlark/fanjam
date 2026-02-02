@@ -29,16 +29,16 @@ const conName = computed(() => info.value?.name || "FanJam");
 </script>
 
 <template>
-  <div class="mt-8 text-center flex flex-col gap-10 px-6">
+  <div class="mt-8 text-center flex flex-col gap-10 px-6" data-testid="info-page">
     <div class="flex flex-col items-center gap-4">
-      <h1 class="text-3xl">{{ conName }}</h1>
-      <span v-if="websiteUrl" class="flex gap-2 text-lg">
+      <h1 class="text-3xl" data-testid="info-page-name">{{ conName }}</h1>
+      <span v-if="websiteUrl" class="flex gap-2 text-lg" data-testid="info-page-website">
         <SimpleIcon icon="box-arrow-up-right" label="External Link" />
         <a :href="websiteUrl.href" target="_blank" class="text-link-sm">
           {{ websiteUrl.hostname }}
         </a>
       </span>
-      <p class="max-w-200 text-justify" v-if="info?.description">{{ info.description }}</p>
+      <p class="max-w-200 text-justify" v-if="info?.description" data-testid="info-page-description">{{ info.description }}</p>
     </div>
     <div class="flex flex-col gap-2">
       <LinksList

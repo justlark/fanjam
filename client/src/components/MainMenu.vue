@@ -10,7 +10,7 @@ const {
 </script>
 
 <template>
-  <nav class="flex flex-col gap-3" aria-label="Menu">
+  <nav class="flex flex-col gap-3" aria-label="Menu" data-testid="main-menu">
     <MainMenuItem
       icon="bi bi-calendar-event"
       label="Schedule"

@@ -43,16 +43,17 @@ const pageHeadingId = useId();
 
 <template>
   <div class="h-full">
-    <article class="max-w-200 mx-auto" v-if="page" :aria-labelledby="pageHeadingId">
+    <article class="max-w-200 mx-auto" v-if="page" :aria-labelledby="pageHeadingId" data-testid="page-viewer">
       <div class="flex justify-start items-center gap-2 pl-2 pr-4 py-4">
-        <IconButton icon="chevron-left" label="Back" @click="back()" />
-        <h2 :id="pageHeadingId" class="text-xl font-bold">{{ page.title }}</h2>
+        <IconButton icon="chevron-left" label="Back" @click="back()" :button-props="{ 'data-testid': 'page-viewer-back-button' }" />
+        <h2 :id="pageHeadingId" class="text-xl font-bold" data-testid="page-viewer-title">{{ page.title }}</h2>
       </div>
       <div class="px-6">
-        <div id="document" v-if="bodyHtml && page?.body.trim() !== ''" v-html="bodyHtml"></div>
+        <div id="document" v-if="bodyHtml && page?.body.trim() !== ''" v-html="bodyHtml" data-testid="page-viewer-body"></div>
         <div
           v-else-if="page.files.length === 0"
           class="text-center text-lg italic text-muted-color mt-8"
+          data-testid="page-viewer-no-details"
         >
           No details provided
         </div>
