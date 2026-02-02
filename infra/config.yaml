@@ -1,5 +1,5 @@
-# The NocoDB version to use for new environments.
-nocodb_version: "0.264.9"
+# The NocoDB image and tag to use for new environments.
+nocodb_image: "ghcr.io/justlark/nocodb-fanjam:0.265.2"
 
 # The Fly Machine must be located as physically near the Postgres database as
 # possible to have acceptable performance. Note that Fly.io regions and Neon

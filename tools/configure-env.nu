@@ -9,7 +9,7 @@ def generate-fly-config [fly_app: string] {
     app: $fly_app,
     primary_region: $config.default_fly_region,
     build: {
-      image: $"nocodb/nocodb:($config.nocodb_version)",
+      image: $config.nocodb_image,
     },
     http_service: {
       internal_port: 8080,

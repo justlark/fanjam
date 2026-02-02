@@ -1,7 +1,7 @@
 app: sparklefish-noco-playground-592072
 primary_region: iad
 build:
-  image: nocodb/nocodb:latest
+  image: ghcr.io/justlark/nocodb-fanjam:latest
 http_service:
   internal_port: 8080
   force_https: true
