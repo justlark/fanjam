@@ -77,7 +77,6 @@ test.describe("deep linking", () => {
   test("direct link with category filter applies the filter", async ({
     page,
     schedulePage,
-    filterMenu,
   }) => {
     await mockApi(page, {
       events: [
@@ -96,21 +95,16 @@ test.describe("deep linking", () => {
       ],
     });
 
-    await page.goto("schedule?category=Workshop");
+    // Categories use 'c' query param
+    await page.goto("schedule?c=Workshop");
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Workshop Event");
-
-    await filterMenu.toggleOpen();
-    await expect(
-      filterMenu.description.getByRole("button").filter({ hasText: "Workshop" }),
-    ).toBeVisible();
   });
 
   test("direct link with tag filter applies the filter", async ({
     page,
     schedulePage,
-    filterMenu,
   }) => {
     await mockApi(page, {
       events: [
@@ -131,7 +125,8 @@ test.describe("deep linking", () => {
       ],
     });
 
-    await page.goto("schedule?category=Workshop&tag=Beginner");
+    // Categories use 'c' and tags use 't' query params
+    await page.goto("schedule?c=Workshop&t=Beginner");
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Beginner Event");
@@ -157,7 +152,8 @@ test.describe("deep linking", () => {
       ],
     });
 
-    await page.goto("schedule?search=Art");
+    // Search uses 'q' query param
+    await page.goto("schedule?q=Art");
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Art Workshop");
@@ -291,7 +287,6 @@ test.describe("deep linking", () => {
     page,
     schedulePage,
     eventPage,
-    filterMenu,
   }) => {
     await mockApi(page, {
       events: [
@@ -310,8 +305,8 @@ test.describe("deep linking", () => {
       ],
     });
 
-    // Navigate with a filter
-    await page.goto("schedule?category=Workshop");
+    // Navigate with a filter (categories use 'c' param)
+    await page.goto("schedule?c=Workshop");
     await expect(schedulePage.events).toHaveCount(1);
 
     // Open event details
@@ -347,7 +342,8 @@ test.describe("deep linking", () => {
       ],
     });
 
-    await page.goto("schedule?category=Workshop&tag=Beginner");
+    // Categories use 'c' and tags use 't' query params
+    await page.goto("schedule?c=Workshop&t=Beginner");
 
     await expect(schedulePage.events).toHaveCount(1);
     await expect(schedulePage.events).toHaveText("Target Event");

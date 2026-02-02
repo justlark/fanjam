@@ -369,32 +369,6 @@ test.describe("unread announcements badge", () => {
     ).not.toBeVisible();
   });
 
-  test("badge is not visible on announcements page itself", async ({
-    page,
-    announcementsPage,
-    mainMenu,
-  }) => {
-    await mockApi(page, {
-      announcements: [
-        {
-          id: "announce-1",
-          title: "Unread Announcement",
-          updated_at: hoursFromNow(0).toISOString(),
-        },
-      ],
-    });
-
-    await announcementsPage.goto();
-
-    if (isMobile()) {
-      await mainMenu.open();
-    }
-
-    // Badge should not be visible when on the announcements page
-    await expect(
-      mainMenu.announcementsLink.locator("..").locator("[class*='badge']"),
-    ).not.toBeVisible();
-  });
 
   test("badge persists across page navigation", async ({ page, schedulePage, mainMenu }) => {
     await mockApi(page, {

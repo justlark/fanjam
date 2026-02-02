@@ -1,17 +1,11 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, mockTime, hoursFromNow } from "./common";
-import {
-  SchedulePage,
-  AnnouncementsPage,
-  FilterMenu,
-  EventDetailsPage,
-} from "./fixtures";
+import { SchedulePage, AnnouncementsPage, FilterMenu } from "./fixtures";
 
 type Fixtures = {
   schedulePage: SchedulePage;
   announcementsPage: AnnouncementsPage;
   filterMenu: FilterMenu;
-  eventPage: EventDetailsPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -23,9 +17,6 @@ export const test = base.extend<Fixtures>({
   },
   filterMenu: async ({ page }, use) => {
     await use(new FilterMenu(page));
-  },
-  eventPage: async ({ page }, use) => {
-    await use(new EventDetailsPage(page));
   },
 });
 
@@ -46,20 +37,27 @@ test.describe("empty states", () => {
     await expect(schedulePage.events).toHaveCount(0);
   });
 
-  test("shows empty message when no events for specific day", async ({ page, schedulePage }) => {
+  test("shows empty message when filters exclude all events on a day", async ({
+    page,
+    schedulePage,
+    filterMenu,
+  }) => {
     await mockApi(page, {
       events: [
         {
           id: "1",
-          name: "Tomorrow Event",
-          start_time: hoursFromNow(24).toISOString(),
-          end_time: hoursFromNow(25).toISOString(),
+          name: "Today Workshop",
+          start_time: hoursFromNow(1).toISOString(),
+          end_time: hoursFromNow(2).toISOString(),
+          category: "Workshop",
         },
       ],
     });
 
-    // Go to today (which has no events since the event is tomorrow)
     await schedulePage.goto();
+
+    // Filter by a non-matching category using search
+    await filterMenu.search("nonexistent");
 
     await expect(schedulePage.noEventsNotice).toBeVisible();
     await expect(schedulePage.noEventsNotice).toHaveText("No events");

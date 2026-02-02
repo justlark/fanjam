@@ -48,9 +48,10 @@ test.describe("info page", () => {
     await infoPage.goto();
 
     await expect(infoPage.websiteLink).toBeVisible();
+    // URL constructor normalizes URLs, adding a trailing slash
     await expect(infoPage.websiteLink.getByRole("link")).toHaveAttribute(
       "href",
-      "https://example.com",
+      "https://example.com/",
     );
   });
 
@@ -104,13 +105,15 @@ test.describe("info page", () => {
         name: "Test Con",
       },
       pages: [
-        { id: "page-1", title: "Rules & Guidelines", body: "Some rules here" },
-        { id: "page-2", title: "Venue Information", body: "Venue details" },
+        { id: "page-1", title: "Rules & Guidelines", body: "Some rules here", files: [] },
+        { id: "page-2", title: "Venue Information", body: "Venue details", files: [] },
       ],
     });
 
     await infoPage.goto();
 
+    // Wait for links list to be visible first
+    await expect(infoPage.linksList).toBeVisible();
     await expect(infoPage.pageLinks).toHaveCount(2);
     await expect(infoPage.pageLinks.nth(0)).toContainText("Rules & Guidelines");
     await expect(infoPage.pageLinks.nth(1)).toContainText("Venue Information");

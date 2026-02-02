@@ -66,6 +66,7 @@ const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) =
     id: newRandomId(),
     title: "Test Page",
     body: "",
+    files: [],
     ...page,
   }));
 
