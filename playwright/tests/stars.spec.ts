@@ -29,16 +29,22 @@ export const test = base.extend<Fixtures>({
 
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
+    await mockTime(page);
     await mockApi(page, { events: [{ id: "1", name: "Test Event" }] });
   });
 
-  test("star button in event page", async ({ starredEvents, eventPage, schedulePage }) => {
+  test("star button in event page", async ({ page, starredEvents, eventPage, schedulePage }) => {
     await schedulePage.goto();
 
     await schedulePage.openEventDetailsPage("Test Event");
 
     await expect(eventPage.starButton).toHaveAttribute("aria-pressed", "false");
+
     await eventPage.toggleStar();
+
+    // Wait for debounced localStorage write.
+    await page.clock.fastForward(500);
+
     await expect(eventPage.starButton).toHaveAttribute("aria-pressed", "true");
 
     expect(await starredEvents.get()).toEqual(["1"]);
@@ -51,6 +57,7 @@ test.describe("starring events", () => {
   });
 
   test("star button in the event summary drawer", async ({
+    page,
     starredEvents,
     schedulePage,
     summaryDrawer,
@@ -63,7 +70,12 @@ test.describe("starring events", () => {
 
     await schedulePage.openEventSummaryDrawer("Test Event");
     await expect(summaryDrawer.starButton).toHaveAttribute("aria-pressed", "false");
+
     await summaryDrawer.toggleStar();
+
+    // Wait for debounced localStorage write.
+    await page.clock.fastForward(500);
+
     await expect(summaryDrawer.starButton).toHaveAttribute("aria-pressed", "true");
 
     expect(await starredEvents.get()).toEqual(["1"]);

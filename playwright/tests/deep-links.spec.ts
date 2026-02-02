@@ -1,11 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, mockTime, hoursFromNow } from "./common";
-import {
-  EventDetailsPage,
-  SchedulePage,
-  AnnouncementsPage,
-  FilterMenu,
-} from "./fixtures";
+import { EventDetailsPage, SchedulePage, AnnouncementsPage, FilterMenu } from "./fixtures";
 
 type Fixtures = {
   eventPage: EventDetailsPage;
@@ -74,10 +69,7 @@ test.describe("deep linking", () => {
     await expect(announcementsPage.createdTime).toBeVisible();
   });
 
-  test("direct link with category filter applies the filter", async ({
-    page,
-    schedulePage,
-  }) => {
+  test("direct link with category filter applies the filter", async ({ page, schedulePage }) => {
     await mockApi(page, {
       events: [
         {
@@ -102,10 +94,7 @@ test.describe("deep linking", () => {
     await expect(schedulePage.events).toHaveText("Workshop Event");
   });
 
-  test("direct link with tag filter applies the filter", async ({
-    page,
-    schedulePage,
-  }) => {
+  test("direct link with tag filter applies the filter", async ({ page, schedulePage }) => {
     await mockApi(page, {
       events: [
         {
@@ -180,11 +169,12 @@ test.describe("deep linking", () => {
       ],
     });
 
-    // First, star an event
     await eventPage.goto("1");
     await eventPage.toggleStar();
 
-    // Then navigate with the starred filter
+    // Wait for debounced localStorage write.
+    await page.clock.fastForward(500);
+
     await page.goto("schedule?star=true");
     await schedulePage.toAllEventsView();
 
