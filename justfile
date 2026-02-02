@@ -184,9 +184,8 @@ tofu *args:
 
 # run a SOPS command
 [group("manage infrastructure")]
-[working-directory: "./infra/"]
 sops *args:
-  sops {{ args }}
+  sops --config ./infra/config/.sops.yaml {{ args }}
 
 # run the Playwright server in a container
 [group("run playwright")]

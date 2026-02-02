@@ -1,5 +1,5 @@
 locals {
-  globals = yamldecode(file("${path.module}/config.yaml"))
+  globals = yamldecode(file("${path.module}/config/globals.yaml"))
 
   stages = {
     for stage in local.globals.stages : stage.name => {

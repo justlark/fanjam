@@ -1,6 +1,6 @@
 def get-global-config [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let config_path = $repo_path | path join "infra" "config.yaml"
+  let config_path = $repo_path | path join "infra" "config" "globals.yaml"
   return (open $config_path)
 }
 
@@ -12,18 +12,20 @@ def get-env-config [env_name: string] {
 
 def get-tofu-env [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let secrets_file = $repo_path | path join "infra" "env.enc.yaml"
+  let secrets_file = $repo_path | path join "infra" "config" "env.enc.yaml"
+  let sops_config_file = $repo_path | path join "infra" "config" ".sops.yaml"
 
-  sops decrypt $secrets_file | from yaml
+  sops --config $sops_config_file decrypt $secrets_file | from yaml
 }
 
 def get-tofu-vars [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let vars_file = $repo_path | path join "infra" "vars.yaml"
-  let secrets_file = $repo_path | path join "infra" "secrets.enc.yaml"
+  let vars_file = $repo_path | path join "infra" "config" "vars.yaml"
+  let secrets_file = $repo_path | path join "infra" "config" "secrets.enc.yaml"
+  let sops_config_file = $repo_path | path join "infra" "config" ".sops.yaml"
 
   let tf_plaintext_vars = open $vars_file
-  let tf_secret_vars = sops decrypt $secrets_file | from yaml
+  let tf_secret_vars = sops --config $sops_config_file decrypt $secrets_file | from yaml
   let tf_vars = $tf_plaintext_vars | merge $tf_secret_vars
 
   $tf_vars | items {|key, value| [$"TF_VAR_($key)", $value] } | into record
