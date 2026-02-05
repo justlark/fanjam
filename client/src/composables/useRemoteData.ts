@@ -109,6 +109,12 @@ const useRemoteDataInner = <T, S>({
       // If the server returns a 304 Not Modified, we can just keep displaying
       // the data we already have cached locally.
       setResultIfModified(result, fromCache(storedValue.value), toCache);
+
+      if (storedValue.instance !== instance.value) {
+        // This can happen if an environment ID is renamed.
+        storedValue.instance = instance.value;
+        setItem(key, storedValue);
+      }
     } else if (
       fetchResult.status === "error" &&
       fetchResult.code === 404 &&
