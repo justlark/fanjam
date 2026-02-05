@@ -8,7 +8,7 @@ pub struct ErrorResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PostLinkResponse {
+pub struct PutLinkResponse {
     pub dash_url: String,
     pub app_url: String,
 }
@@ -18,6 +18,11 @@ pub struct GetLinkResponse {
     pub dash_url: String,
     pub app_url: String,
     pub local_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAliasResponse {
+    pub env_id: String,
 }
 
 #[derive(Debug, Deserialize)]

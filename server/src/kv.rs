@@ -10,14 +10,11 @@ fn wrap_kv_err(err: KvError) -> anyhow::Error {
     anyhow::Error::msg(err.to_string())
 }
 
-// This random ID forms part of the app URL gives to attendees. We use a random ID instead of the
-// environment name for two reasons:
-// 1. The environment name isn't meant to change; it's used to identify a lot of resources in the
-//    infrastructure. Therefore, it shouldn't be user-facing. If we offered vanity URLs to cons, it
-//    would be reasonable for them to expect we're able to change it for them. By decoupling them,
-//    we can change one without the other.
-// 2. Some cons (e.g. adult-only cons) might not want their app URL to be guessable; they might not
-//    want non-attendees to be able to easily access the schedule.
+// This ID forms part of the app URL gives to attendees. We use an ID distinct from the environment
+// name because the environment name isn't meant to change; it's used to identify a lot of
+// resources in the infrastructure. Therefore, it shouldn't be user-facing. It is reasonable for
+// cons to expect we're able to change the URL for them. By decoupling the environment name from
+// the environment ID, we can change one without the other.
 fn env_id_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:id")
 }
@@ -26,6 +23,12 @@ fn env_id_key(env_name: &EnvName) -> String {
 // to this service by the environment ID.
 fn id_env_key(env_id: &EnvId) -> String {
     format!("id:{env_id}:env")
+}
+
+// If we ever change the environment ID, we may want to keep the old ID as an alias which redirects
+// to the new one.
+fn alias_id_key(env_id: &EnvId) -> String {
+    format!("alias:{env_id}:id")
 }
 
 // The NocoDB API token for the environment. This is used to authenticate with the NocoDB API.
@@ -89,6 +92,34 @@ pub async fn get_id_env(kv: &KvStore, env_id: &EnvId) -> anyhow::Result<Option<E
     }
 
     return Ok(None);
+}
+
+#[worker::send]
+pub async fn put_alias_id(kv: &KvStore, from: &EnvId, to: &EnvId) -> anyhow::Result<()> {
+    kv.put(&alias_id_key(from), to)
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_alias_id(kv: &KvStore, alias: &EnvId) -> anyhow::Result<Option<EnvId>> {
+    Ok(kv
+        .get(&alias_id_key(alias))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?
+        .map(EnvId::from))
+}
+
+#[worker::send]
+pub async fn delete_alias_id(kv: &KvStore, alias: &EnvId) -> anyhow::Result<()> {
+    kv.delete(&alias_id_key(alias)).await.map_err(wrap_kv_err)?;
+
+    Ok(())
 }
 
 #[worker::send]

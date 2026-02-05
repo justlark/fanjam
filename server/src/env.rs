@@ -1,29 +1,10 @@
-use std::{fmt, iter};
+use std::fmt;
 
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 // A random ID that forms part of the app URL gives to attendees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvId(String);
-
-impl EnvId {
-    const LEN: usize = 6;
-    const POOL: &str = "0123456789";
-
-    pub fn new() -> Self {
-        let mut rng = rand::rng();
-
-        Self(
-            iter::repeat_with(|| {
-                let idx = rng.random_range(0..Self::POOL.len());
-                Self::POOL.chars().nth(idx).unwrap()
-            })
-            .take(Self::LEN)
-            .collect(),
-        )
-    }
-}
 
 impl From<String> for EnvId {
     fn from(value: String) -> Self {

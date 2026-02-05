@@ -13,11 +13,11 @@ use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper
 
 use crate::{
     api::{
-        Announcement, DataResponseEnvelope, Event, File, GetAnnouncementsResponse,
-        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, GetPagesResponse, GetSummaryResponse, Link, Page,
-        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostLinkResponse,
-        PostRestoreBackupKind, PostRestoreBackupRequest, PutTokenRequest,
+        Announcement, DataResponseEnvelope, Event, File, GetAliasResponse,
+        GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
+        GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
+        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutLinkResponse, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -65,7 +65,8 @@ pub fn new(state: AppState) -> Router {
     // environments.
     Router::new()
         // ADMIN API (AUTHENTICATED)
-        .route("/admin/env/{env_name}/links", post(post_link))
+        .route("/admin/env/{env_name}/links/{env_id}", put(put_link))
+        .route("/admin/env/{env_name}/links/{env_id}", delete(delete_link))
         .route("/admin/env/{env_name}/links", get(get_link))
         .route("/admin/env/{env_name}/tokens", put(put_token))
         .route("/admin/env/{env_name}/bases", post(post_base))
@@ -86,6 +87,7 @@ pub fn new(state: AppState) -> Router {
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
         .route("/admin/env/{env_name}/config", get(get_admin_config))
         .route("/admin/env/{env_name}/config", put(put_admin_config))
+        .route("/admin/aliases/{env_id}", delete(delete_link))
         .route("/admin/config-spec", get(get_config_spec))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
@@ -96,33 +98,66 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/summary", get(get_summary))
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
+        .route("/aliases/{env_id}", get(get_alias))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
 }
 
 #[axum::debug_handler]
-async fn post_link(
+async fn put_link(
     State(state): State<Arc<AppState>>,
-    Path(env_name): Path<EnvName>,
-) -> Result<Json<PostLinkResponse>, ErrorResponse> {
-    let env_id = EnvId::new();
-
-    kv::put_id_env(&state.kv, &env_id, &env_name)
+    Path((env_name, new_env_id)): Path<(EnvName, EnvId)>,
+) -> Result<Json<PutLinkResponse>, ErrorResponse> {
+    let current_env_id = kv::get_env_id(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?;
 
-    kv::put_env_id(&state.kv, &env_name, &env_id)
+    if let Some(current_env_id) = &current_env_id
+        && &new_env_id == current_env_id
+    {
+        let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
+        let app_url = url::app_url(&new_env_id).map_err(Error::Internal)?;
+
+        return Ok(Json(PutLinkResponse {
+            dash_url: dash_url.to_string(),
+            app_url: app_url.to_string(),
+        }));
+    }
+
+    kv::put_id_env(&state.kv, &new_env_id, &env_name)
         .await
         .map_err(Error::Internal)?;
+
+    kv::put_env_id(&state.kv, &env_name, &new_env_id)
+        .await
+        .map_err(Error::Internal)?;
+
+    if let Some(current_env_id) = &current_env_id {
+        kv::put_alias_id(&state.kv, current_env_id, &new_env_id)
+            .await
+            .map_err(Error::Internal)?;
+    }
 
     let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
-    let app_url = url::app_url(&env_id).map_err(Error::Internal)?;
+    let app_url = url::app_url(&new_env_id).map_err(Error::Internal)?;
 
-    Ok(Json(PostLinkResponse {
+    Ok(Json(PutLinkResponse {
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
     }))
+}
+
+#[axum::debug_handler]
+async fn delete_link(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::delete_alias_id(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
 }
 
 #[axum::debug_handler]
@@ -143,6 +178,21 @@ async fn get_link(
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
         local_url: local_url.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_alias(
+    State(state): State<Arc<AppState>>,
+    Path(alias_id): Path<EnvId>,
+) -> Result<Json<GetAliasResponse>, ErrorResponse> {
+    let env_id = kv::get_alias_id(&state.kv, &alias_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    Ok(Json(GetAliasResponse {
+        env_id: env_id.to_string(),
     }))
 }
 
