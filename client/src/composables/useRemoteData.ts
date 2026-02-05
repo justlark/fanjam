@@ -138,6 +138,9 @@ const useRemoteDataInner = <T, S>({
           },
           query: route.query,
         });
+      } else {
+        // This environment ID is not a valid alias; it just doesn't exist.
+        result.value = { status: "error", code: fetchResult.code };
       }
     } else if (fetchResult.status === "success") {
       setResultIfModified(result, fetchResult.value, toCache);
