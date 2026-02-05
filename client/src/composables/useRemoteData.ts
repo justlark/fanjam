@@ -115,11 +115,7 @@ const useRemoteDataInner = <T, S>({
         storedValue.instance = instance.value;
         setItem(key, storedValue);
       }
-    } else if (
-      fetchResult.status === "error" &&
-      fetchResult.code === 404 &&
-      storedValue !== undefined
-    ) {
+    } else if (fetchResult.status === "error" && fetchResult.code === 404) {
       // If the API request returned a 404, that may mean the environment ID
       // has changed. Check if the current environment ID is an alias, in which
       // case we need to redirect.
