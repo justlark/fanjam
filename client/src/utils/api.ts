@@ -50,6 +50,10 @@ interface RawAnnouncement {
   updated_at: string;
 }
 
+interface RawAlias {
+  env_id: string;
+}
+
 interface RawConfig {
   timezone: string | null;
   hide_announcements: boolean | null;
@@ -125,14 +129,14 @@ export interface Config {
 
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-      etag?: string;
-    }
+    ok: true;
+    value: T;
+    etag?: string;
+  }
   | {
-      ok: false;
-      code: number;
-    };
+    ok: false;
+    code: number;
+  };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -148,8 +152,8 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -188,8 +192,8 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -230,8 +234,8 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -271,8 +275,8 @@ const getAnnouncements = async (
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -331,10 +335,25 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   return { ok: true, value: config };
 };
 
+const getAlias = async (aliasId: string): Promise<ApiResult<string>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/aliases/${aliasId}`,
+  );
+
+  if (!response.ok) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawConfig: RawAlias = await response.json();
+
+  return { ok: true, value: rawConfig.env_id };
+};
+
 export default {
   getEvents,
   getInfo,
   getPages,
   getAnnouncements,
   getConfig,
+  getAlias,
 };

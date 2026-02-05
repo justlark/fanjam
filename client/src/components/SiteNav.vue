@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
+import api from "@/utils/api";
 import Divider from "primevue/divider";
-import { RouterLink, useRoute } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
@@ -19,7 +20,10 @@ const visible = ref(false);
 
 const toast = useToast();
 const route = useRoute();
+const router = useRouter();
 const unreadAnnouncements = useUnreadAnnouncements();
+
+const envNotFound = ref(false);
 
 const hasUnreadAnnouncements = computed(() => unreadAnnouncements.value.size > 0);
 const showNotificationBadge = computed(
@@ -86,12 +90,40 @@ const refresh = async () => {
   toast.add({ severity: "success", summary: "Done", detail: "You're all up to date!", life: 1500 });
 };
 
+watch(infoStatus, async (status) => {
+  if (status !== "error") {
+    return;
+  }
+
+  const aliasResult = await api.getAlias(route.params.envId as string);
+
+  if (!aliasResult.ok) {
+    envNotFound.value = true;
+    return;
+  }
+
+  await router.push({
+    name: route.name as string,
+    params: {
+      ...route.params,
+      envId: aliasResult.value,
+    },
+    query: route.query,
+  });
+
+  router.go(0);
+});
+
 const headerHeadingId = useId();
 </script>
 
 <template>
   <div class="flex flex-col h-dvh">
-    <div v-if="infoStatus === 'error'" class="flex flex-col justify-center items-center grow" data-testid="site-nav-error-state">
+    <div
+      v-if="envNotFound"
+      class="flex flex-col justify-center items-center grow"
+      data-testid="site-nav-error-state"
+    >
       <SimpleIcon
         icon="exclamation-circle"
         class="mb-4 text-8xl dark:text-red-200 flex justify-center items-center"
@@ -121,8 +153,18 @@ const headerHeadingId = useId();
             </RouterLink>
           </div>
           <div class="flex lg:gap-2">
-            <IconButton icon="link-45deg" label="Copy Link" @click="copyLink" :button-props="{ 'data-testid': 'site-nav-copy-link' }" />
-            <IconButton icon="arrow-clockwise" label="Refresh" @click="refresh" :button-props="{ 'data-testid': 'site-nav-refresh' }" />
+            <IconButton
+              icon="link-45deg"
+              label="Copy Link"
+              @click="copyLink"
+              :button-props="{ 'data-testid': 'site-nav-copy-link' }"
+            />
+            <IconButton
+              icon="arrow-clockwise"
+              label="Refresh"
+              @click="refresh"
+              :button-props="{ 'data-testid': 'site-nav-refresh' }"
+            />
           </div>
         </div>
         <Drawer
