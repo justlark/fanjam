@@ -13,7 +13,7 @@ use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper
 
 use crate::{
     api::{
-        Announcement, DataResponseEnvelope, Event, File, GetAliasResponse,
+        Announcement, DataResponseEnvelope, Event, File, GetAliasResponse, GetAliasesResponse,
         GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
         GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
         Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
@@ -87,6 +87,7 @@ pub fn new(state: AppState) -> Router {
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
         .route("/admin/env/{env_name}/config", get(get_admin_config))
         .route("/admin/env/{env_name}/config", put(put_admin_config))
+        .route("/admin/aliases", get(get_aliases))
         .route("/admin/aliases/{alias_id}", delete(delete_alias))
         .route("/admin/aliases/{alias_id}", put(put_alias))
         .route("/admin/config-spec", get(get_config_spec))
@@ -140,6 +141,15 @@ async fn put_link(
     Ok(Json(PutLinkResponse {
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_aliases(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<GetAliasesResponse>, ErrorResponse> {
+    Ok(Json(GetAliasesResponse {
+        aliases: kv::list_aliases(&state.kv).await.map_err(Error::Internal)?,
     }))
 }
 

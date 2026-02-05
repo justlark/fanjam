@@ -25,6 +25,17 @@ pub struct GetAliasResponse {
     pub env_id: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct Alias {
+    pub alias: String,
+    pub target: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAliasesResponse {
+    pub aliases: Vec<Alias>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PutAliasRequest {
     pub env_id: String,

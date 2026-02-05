@@ -2,6 +2,7 @@ use secrecy::ExposeSecret;
 use worker::kv::{KvError, KvStore};
 
 use crate::{
+    api::Alias,
     env::{Config, EnvId, EnvName},
     noco::{About, Announcement, ApiToken, Event, Info, Page, TableInfo},
 };
@@ -25,10 +26,13 @@ fn id_env_key(env_id: &EnvId) -> String {
     format!("id:{env_id}:env")
 }
 
+const ALIAS_KEY_PREFIX: &str = "alias:";
+const ALIAS_ID_KEY_SUFFIX: &str = ":id";
+
 // If we ever change the environment ID, we may want to keep the old ID as an alias which redirects
 // to the new one.
 fn alias_id_key(env_id: &EnvId) -> String {
-    format!("alias:{env_id}:id")
+    format!("{ALIAS_KEY_PREFIX}{env_id}{ALIAS_ID_KEY_SUFFIX}")
 }
 
 // The NocoDB API token for the environment. This is used to authenticate with the NocoDB API.
@@ -120,6 +124,43 @@ pub async fn delete_alias_id(kv: &KvStore, alias: &EnvId) -> anyhow::Result<()> 
     kv.delete(&alias_id_key(alias)).await.map_err(wrap_kv_err)?;
 
     Ok(())
+}
+
+#[worker::send]
+pub async fn list_aliases(kv: &KvStore) -> anyhow::Result<Vec<Alias>> {
+    // The default and maximum number of keys this will return is 1000, which is more than plenty
+    // that we don't have to worry about pagination.
+    let aliases = kv
+        .list()
+        .prefix(ALIAS_KEY_PREFIX.to_string())
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?
+        .keys
+        .into_iter()
+        .filter_map(|key| {
+            key.name
+                .strip_prefix(ALIAS_KEY_PREFIX)
+                .map(ToString::to_string)
+        })
+        .filter_map(|key| {
+            key.strip_suffix(ALIAS_ID_KEY_SUFFIX)
+                .map(ToString::to_string)
+        })
+        .collect::<Vec<_>>();
+
+    let mut pairs = Vec::with_capacity(aliases.len());
+
+    for alias in aliases {
+        if let Some(target) = get_alias_id(kv, &EnvId::from(alias.clone())).await? {
+            pairs.push(Alias {
+                alias,
+                target: target.to_string(),
+            });
+        }
+    }
+
+    Ok(pairs)
 }
 
 #[worker::send]

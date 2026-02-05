@@ -124,6 +124,11 @@ init-env env slug:
 set-app-link env slug:
   ./tools/set-app-slug.nu {{ env }} {{ slug }}
 
+# list app link aliases across all environments
+[group("manage environments")]
+list-app-aliases stage:
+  ./tools/list-app-aliases.nu {{ stage }}
+
 # add an app link alias
 [group("manage environments")]
 [confirm("Are you sure? The app will be accessible via this link.")]
