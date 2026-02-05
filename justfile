@@ -113,16 +113,22 @@ create-base env:
 # initialize a new environment
 [group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
-init-env env:
+init-env env slug:
   ./tools/set-noco-token.nu {{ env }}
   ./tools/create-noco-base.nu {{ env }}
-  ./tools/generate-app-link.nu {{ env }}
+  ./tools/set-app-slug.nu {{ env }} {{ slug }}
 
-# generate a new app link for an environment
+# update the app link for an environment
 [group("manage environments")]
-[confirm("Are you sure? The old link will stop working for attendees.")]
-generate-app-link env:
-  ./tools/generate-app-link.nu {{ env }}
+[confirm("Are you sure? The old link will becomes an alias which redirects to the new one.")]
+set-app-slug env slug:
+  ./tools/set-app-slug.nu {{ env }} {{ slug }}
+
+# delete an app link alias
+[group("manage environments")]
+[confirm("Are you sure? The app will no longer be accessible via this link.")]
+delete-app-alias env slug:
+  ./tools/delete-app-alias.nu {{ env }} {{ slug }}
 
 # delete an environment's NocoDB base and all its data
 [group("manage environments")]
