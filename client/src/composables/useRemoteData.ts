@@ -11,7 +11,7 @@ import {
   computed,
   watch,
 } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import api, {
   type Announcement,
   type ApiResult,
@@ -93,6 +93,9 @@ const useRemoteDataInner = <T, S>({
   reload: () => Promise<void>;
   clear: () => void;
 } => {
+  const route = useRoute();
+  const router = useRouter();
+
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
     const fetchApiResult = await fetcher();
@@ -106,6 +109,34 @@ const useRemoteDataInner = <T, S>({
       // If the server returns a 304 Not Modified, we can just keep displaying
       // the data we already have cached locally.
       setResultIfModified(result, fromCache(storedValue.value), toCache);
+    } else if (
+      fetchResult.status === "error" &&
+      fetchResult.code === 404 &&
+      storedValue !== undefined
+    ) {
+      // If the API request returned a 404, that may mean the environment ID
+      // has changed. Check if the current environment ID is an alias, in which
+      // case we need to redirect.
+      const aliasResult = await api.getAlias(instance.value);
+
+      if (aliasResult.ok) {
+        const currentStoredValue = getItem<S>(key);
+
+        if (currentStoredValue !== undefined && currentStoredValue.instance !== aliasResult.value) {
+          // Update the stored instance ID to the new environment ID.
+          currentStoredValue.instance = aliasResult.value;
+          setItem(key, currentStoredValue);
+        }
+
+        await router.push({
+          name: route.name as string,
+          params: {
+            ...route.params,
+            envId: aliasResult.value,
+          },
+          query: route.query,
+        });
+      }
     } else if (fetchResult.status === "success") {
       setResultIfModified(result, fetchResult.value, toCache);
 
@@ -142,32 +173,37 @@ const useRemoteDataInner = <T, S>({
   };
 
   onMounted(() => {
-    const storedValue = getItem<S>(key);
+    watch(
+      instance,
+      () => {
+        const storedValue = getItem<S>(key);
 
-    if (!storedValue || storedValue.instance !== instance.value) {
-      // Fetch the data on the initial page load, before it's cached locally.
-      void reload();
-      return;
-    }
+        if (!storedValue || storedValue.instance !== instance.value) {
+          // Fetch the data on the initial page load, before it's cached
+          // locally.
+          void reload();
+          return;
+        }
 
-    let value;
+        let value;
 
-    try {
-      value = fromCache(storedValue.value);
-    } catch {
-      // This can happen if the shape of the cached data has changed and we
-      // need to clear it and re-fetch from the server.
-      void reload();
-      return;
-    }
+        try {
+          value = fromCache(storedValue.value);
+        } catch {
+          // This can happen if the shape of the cached data has changed and we
+          // need to clear it and re-fetch from the server.
+          void reload();
+          return;
+        }
 
-    setResultIfModified(result, value, toCache);
+        setResultIfModified(result, value, toCache);
 
-    // Once the cached data has been loaded, refetch the latest data in the
-    // background.
-    void reload();
-
-    watch(instance, reload);
+        // Once the cached data has been loaded, refetch the latest data in the
+        // background.
+        void reload();
+      },
+      { immediate: true },
+    );
   });
 
   return { reload, clear };
