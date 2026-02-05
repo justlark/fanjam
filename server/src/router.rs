@@ -17,7 +17,8 @@ use crate::{
         GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
         GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
         Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostRestoreBackupKind, PostRestoreBackupRequest, PutLinkResponse, PutTokenRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
+        PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -66,7 +67,6 @@ pub fn new(state: AppState) -> Router {
     Router::new()
         // ADMIN API (AUTHENTICATED)
         .route("/admin/env/{env_name}/links/{env_id}", put(put_link))
-        .route("/admin/env/{env_name}/links/{env_id}", delete(delete_link))
         .route("/admin/env/{env_name}/links", get(get_link))
         .route("/admin/env/{env_name}/tokens", put(put_token))
         .route("/admin/env/{env_name}/bases", post(post_base))
@@ -87,7 +87,8 @@ pub fn new(state: AppState) -> Router {
         .route("/admin/env/{env_name}/cache", delete(delete_cache))
         .route("/admin/env/{env_name}/config", get(get_admin_config))
         .route("/admin/env/{env_name}/config", put(put_admin_config))
-        .route("/admin/aliases/{env_id}", delete(delete_link))
+        .route("/admin/aliases/{alias_id}", delete(delete_alias))
+        .route("/admin/aliases/{alias_id}", put(put_alias))
         .route("/admin/config-spec", get(get_config_spec))
         .route_layer(admin_auth_layer())
         // USER API (UNAUTHENTICATED)
@@ -133,12 +134,6 @@ async fn put_link(
         .await
         .map_err(Error::Internal)?;
 
-    if let Some(current_env_id) = &current_env_id {
-        kv::put_alias_id(&state.kv, current_env_id, &new_env_id)
-            .await
-            .map_err(Error::Internal)?;
-    }
-
     let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
     let app_url = url::app_url(&new_env_id).map_err(Error::Internal)?;
 
@@ -149,11 +144,24 @@ async fn put_link(
 }
 
 #[axum::debug_handler]
-async fn delete_link(
+async fn delete_alias(
     State(state): State<Arc<AppState>>,
-    Path(env_id): Path<EnvId>,
+    Path(alias_id): Path<EnvId>,
 ) -> Result<NoContent, ErrorResponse> {
-    kv::delete_alias_id(&state.kv, &env_id)
+    kv::delete_alias_id(&state.kv, &alias_id)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn put_alias(
+    State(state): State<Arc<AppState>>,
+    Path(alias_id): Path<EnvId>,
+    Json(body): Json<PutAliasRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::put_alias_id(&state.kv, &alias_id, &EnvId::from(body.env_id))
         .await
         .map_err(Error::Internal)?;
 

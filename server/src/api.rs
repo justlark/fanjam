@@ -26,6 +26,11 @@ pub struct GetAliasResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct PutAliasRequest {
+    pub env_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct PutTokenRequest {
     pub token: String,
 }

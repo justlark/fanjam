@@ -120,15 +120,21 @@ init-env env slug:
 
 # update the app link for an environment
 [group("manage environments")]
-[confirm("Are you sure? The old link will becomes an alias which redirects to the new one.")]
-set-app-slug env slug:
+[confirm("Are you sure? The app will no longer be accessible via the original link. If you want a redirect, you will need to add an alias manually.")]
+set-app-link env slug:
   ./tools/set-app-slug.nu {{ env }} {{ slug }}
+
+# add an app link alias
+[group("manage environments")]
+[confirm("Are you sure? The app will be accessible via this link.")]
+add-app-alias stage alias target:
+  ./tools/add-app-alias.nu {{ stage }} {{ alias }} {{ target }}
 
 # delete an app link alias
 [group("manage environments")]
 [confirm("Are you sure? The app will no longer be accessible via this link.")]
-delete-app-alias env slug:
-  ./tools/delete-app-alias.nu {{ env }} {{ slug }}
+delete-app-alias stage alias:
+  ./tools/delete-app-alias.nu {{ stage }} {{ alias }}
 
 # delete an environment's NocoDB base and all its data
 [group("manage environments")]
