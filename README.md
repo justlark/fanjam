@@ -114,8 +114,9 @@ These additional env vars are used to configure the Postgres state backend.
 
 ## Deployment
 
-These are the instructions for deploying a new instance of FanJam at
-`https://foo.fanjam.live` in the `prod` environment.
+These are the instructions for deploying a new instance of FanJam in the `prod`
+environment with the organizer app at `https://foo.fanjam.live` and the
+attendee app at `https://fanjam.live/app/bar`
 
 Start by generating the necessary configuration for the environment.
 
@@ -152,7 +153,7 @@ Finally, initialize the NocoDB instance with a new base. It will prompt you for
 the API token interactively. Once you've done this, you can lose the token.
 
 ```
-just init-env foo
+just init-env foo bar
 ```
 
 ## Upgrade NocoDB
