@@ -137,17 +137,17 @@ macro_rules! get_data {
             // - If the healthcheck returns first and indicates that NocoDB is healthy, then will
             // await the API request and return it.
             // - If the API request returns first (unlikely), we will not await the healthcheck.
-            let maybe_value_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
-                Either::Left((value_result, _)) => Some(value_result?),
+            let maybe_result_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
+                Either::Left((value_result, _)) => Some(value_result),
                 Either::Right((is_healthy, value_future)) => if is_healthy {
-                    Some(value_future.await?)
+                    Some(value_future.await)
                 } else {
                     None
                 }
             };
 
-            match maybe_value_if_healthy {
-                Some(value) => {
+            match maybe_result_if_healthy {
+                Some(Ok(value)) => {
                     console_log!("Caching latest {} from NocoDB.", $err_msg_key);
 
                     let kv_for_cache = self.kv.clone();
@@ -164,8 +164,8 @@ macro_rules! get_data {
 
                     Ok(DataResponseEnvelope { value, retry_after: None })
                 },
-                None => {
-                    console_log!("NocoDB is unavailable, fetching stale data if available.");
+                Some(Err(_)) | None => {
+                    console_log!("NocoDB is unavailable or returned an error, fetching stale data if available.");
 
                     match $get_cached_fn(&self.kv, &self.env_name).await {
                         Ok(Some(value)) => {
