@@ -11,6 +11,9 @@ image = "docker.umami.is/umami-software/umami:postgresql-latest"
 protocol = "tcp"
 internal_port = 3000
 processes = ["app"]
+auto_stop_machines = "suspend"
+auto_start_machines = true
+min_machines_running = 1
 
 [[services.ports]]
 port = 80
