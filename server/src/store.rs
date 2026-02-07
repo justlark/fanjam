@@ -1,5 +1,6 @@
+use std::collections::HashSet;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use axum::{
@@ -24,6 +25,28 @@ use crate::{
     noco::Client as NocoClient,
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
+
+/// Tracks which cache keys currently have a background refresh in flight within this isolate. This
+/// is used to prevent cache stampedes; if a key is in this set, we do not spawn another background
+/// task to refresh the cache from the upstream NocoDB instance. The background task removes the
+/// key when it completes.
+///
+/// This locking mechanism only works **within this isolate**. Under heavy load, Cloudflare may
+/// spin up multiple isolates to handle requests. That may result in multiple concurrent background
+/// refreshes for the same key, but for our use-case it would likely be on the order of "a few" and
+/// not "a few hundred", which is acceptable.
+///
+/// We actually *do not* want a global lock across all isolates across all datacenters, because the
+/// CDN cache (what we call the "edge cache" below) is scoped per-datacenter, so we would need each
+/// datacenter to have an independent lock anyways.
+///
+/// Workers isolates are inherently single-threaded, so the Mutex never actually contends; it's
+/// only needed to satisfy Send/Sync bounds.
+static INFLIGHT_REFRESHES: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+fn inflight_refreshes() -> &'static Mutex<HashSet<String>> {
+    INFLIGHT_REFRESHES.get_or_init(|| Mutex::new(HashSet::new()))
+}
 
 pub struct Store {
     noco_client: NocoClient,
@@ -82,7 +105,7 @@ macro_rules! get_data {
         get_api_fn: $get_api_fn:path,
         get_cached_fn: $get_cached_fn:path,
         put_cached_fn: $put_cached_fn:path,
-        err_msg_key: $err_msg_key:expr,
+        cache_key: $cache_key:expr,
     } => {
         #[worker::send]
         pub async fn $fn_name<T, F>(&self, uri: Uri, to_body: F) -> Result<http::Response<Body>, Error>
@@ -93,14 +116,14 @@ macro_rules! get_data {
 
             let cached_value = match $get_cached_fn(&self.kv, &self.env_name).await {
                 Ok(Some(value)) => {
-                    console_log!("Returning stale {} from cache.", $err_msg_key);
+                    console_log!("Returning stale {} from cache.", $cache_key);
                     Some(value)
                 }
                 Ok(None) => {
                     None
                 }
                 Err(_) => {
-                    console_warn!("Failed getting cached {} from KV.", $err_msg_key);
+                    console_warn!("Failed getting cached {} from KV.", $cache_key);
                     None
                 }
             };
@@ -120,7 +143,7 @@ macro_rules! get_data {
                         {
                             Ok(value) => Some(value),
                             Err(e) => {
-                                console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+                                console_warn!("Failed getting {} from NocoDB: {}", $cache_key, e);
                                 None
                             }
                         }
@@ -139,10 +162,10 @@ macro_rules! get_data {
 
             // Refresh both the edge cache and the persistent cache.
             let put_cache = async move |value: $type_name, body: T| {
-                console_log!("Caching latest {} from NocoDB.", $err_msg_key);
+                console_log!("Caching latest {} from NocoDB.", $cache_key);
 
                 if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value).await {
-                    console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
+                    console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
                 }
 
                 // We consider responses that hit the edge cache to be fresh, so we do not pass a
@@ -173,13 +196,28 @@ macro_rules! get_data {
             match cached_value {
                 Some(cached_value) => {
                     let body = to_body(cached_value);
-                    let body_for_cache = body.clone();
 
-                    self.ctx.wait_until(async move {
-                        if let Some(latest_value) = upstream_request.await {
-                            put_cache(latest_value, body_for_cache).await;
-                        };
-                    });
+                    let refresh_key = format!("{}:{}", self.env_name, $cache_key);
+                    let already_refreshing = {
+                        let mut set = inflight_refreshes().lock().unwrap();
+                        !set.insert(refresh_key.clone())
+                    };
+
+                    if !already_refreshing {
+                        let body_for_cache = body.clone();
+
+                        self.ctx.wait_until(async move {
+                            if let Some(latest_value) = upstream_request.await {
+                                put_cache(latest_value, body_for_cache).await;
+                            }
+                            inflight_refreshes().lock().unwrap().remove(&refresh_key);
+                        });
+                    } else {
+                        console_log!(
+                            "Skipping background refresh for {} (already in flight).",
+                            $cache_key,
+                        );
+                    }
 
                     Ok(EtagJson(DataResponseEnvelope {
                         retry_after_ms: Some(NOCO_RETRY_DELAY.as_millis() as u64),
@@ -312,7 +350,7 @@ impl Store {
         get_api_fn: noco::get_events,
         get_cached_fn: kv::get_cached_events,
         put_cached_fn: kv::put_cached_events,
-        err_msg_key: "events",
+        cache_key: "events",
     }
 
     get_data! {
@@ -321,7 +359,7 @@ impl Store {
         get_api_fn: noco::get_info,
         get_cached_fn: kv::get_cached_info,
         put_cached_fn: kv::put_cached_info,
-        err_msg_key: "info",
+        cache_key: "info",
     }
 
     get_data! {
@@ -330,7 +368,7 @@ impl Store {
         get_api_fn: noco::get_pages,
         get_cached_fn: kv::get_cached_pages,
         put_cached_fn: kv::put_cached_pages,
-        err_msg_key: "pages",
+        cache_key: "pages",
     }
 
     get_data! {
@@ -339,7 +377,7 @@ impl Store {
         get_api_fn: noco::get_announcements,
         get_cached_fn: kv::get_cached_announcements,
         put_cached_fn: kv::put_cached_announcements,
-        err_msg_key: "announcements",
+        cache_key: "announcements",
     }
 
     #[worker::send]
