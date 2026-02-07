@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
-use worker::{Cache, console_debug, console_error};
+use worker::{Cache, console_error};
 
 use crate::{api::DataResponseEnvelope, env::EnvName, error::Error};
 
@@ -95,45 +95,31 @@ pub async fn get_cdn_cache(cache: &Cache, uri: Uri) -> Result<Option<http::Respo
         }))
 }
 
-pub fn put_cdn_cache(
-    ctx: &worker::Context,
-    cache: Cache,
+pub async fn put_cdn_cache(
+    cache: &Cache,
     env_name: EnvName,
     ttl: Duration,
     uri: Uri,
-    response: http::Response<Body>,
-) -> Result<http::Response<Body>, Error> {
-    console_debug!("Caching response for URI: {}", uri);
+    mut response: worker::Response,
+) {
+    let result = async move || -> anyhow::Result<()> {
+        response.headers_mut().set(
+            "Cache-Control",
+            &format!("public, s-maxage={}", ttl.as_secs()),
+        )?;
 
-    let mut worker_response = worker::Response::try_from(response)
-        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+        // Tag the cache entry with the environment name so we can invalidate the cache on a
+        // per-environment basis if necessary.
+        response
+            .headers_mut()
+            .set("Cache-Tag", &format!("env/{}", env_name))?;
 
-    let mut response_to_cache = worker_response
-        .cloned()
-        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+        cache.put(uri.to_string(), response).await?;
 
-    ctx.wait_until(async move {
-        let result = async move || -> anyhow::Result<()> {
-            response_to_cache.headers_mut().set(
-                "Cache-Control",
-                &format!("public, s-maxage={}", ttl.as_secs()),
-            )?;
+        Ok(())
+    };
 
-            // Tag the cache entry with the environment name so we can invalidate the cache on a
-            // per-environment basis if necessary.
-            response_to_cache
-                .headers_mut()
-                .set("Cache-Tag", &format!("env/{}", env_name))?;
-
-            cache.put(uri.to_string(), response_to_cache).await?;
-
-            Ok(())
-        };
-
-        if let Err(err) = result().await {
-            console_error!("Failed to put response in cache: {}", err);
-        }
-    });
-
-    Ok(http::Response::from(worker_response))
+    if let Err(err) = result().await {
+        console_error!("Failed to put response in cache: {}", err);
+    }
 }

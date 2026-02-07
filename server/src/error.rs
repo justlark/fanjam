@@ -24,7 +24,7 @@ pub enum Error {
     #[error("No migrations have been applied to this environment")]
     NoMigrations,
 
-    #[error("The NocoDB instance is not available; it may still be starting up.")]
+    #[error("The NocoDB instance is not available; it may be overloaded or still starting up.")]
     NocoUnavailable,
 
     #[error("The environment is missing required configuration.")]

@@ -15,7 +15,6 @@ enabled = true
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "test.fanjam.live"
 NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
-NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
 R2_ASSET_CACHE_TTL_SECONDS = "300"
 
 [env.test.route]
@@ -40,12 +39,6 @@ CLIENT_DOMAIN = "fanjam.live"
 # the load on the NocoDB instance. This is a default which can be overridden on
 # a per-environment basis.
 NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
-# This cache is specifically for the name and description that are fetched from
-# NocoDB and shown in the HTML page metadata. Fetching this data blocks the
-# page load, so we want it to be as fast as possible. Because the effect is
-# minor—only really affecting link embeds and browser tab names—we can tolerate
-# a longer TTL.
-NOCO_SUMMARY_CACHE_TTL_SECONDS = "3600"
 # Assets in R2 (such as custom app icons) are cached at the edge.
 R2_ASSET_CACHE_TTL_SECONDS = "300"
 

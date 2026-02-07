@@ -6,22 +6,21 @@ use axum::{
     extract::{Path, State},
     http::{self, StatusCode, Uri},
     middleware,
-    response::{ErrorResponse, IntoResponse, NoContent},
+    response::{ErrorResponse, NoContent},
     routing::{delete, get, post, put},
 };
 use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
 
 use crate::{
     api::{
-        Announcement, DataResponseEnvelope, Event, File, GetAliasResponse, GetAliasesResponse,
-        GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
-        GetEventsResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetSummaryResponse,
-        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
-        PutTokenRequest,
+        Announcement, Event, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
+        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
+        GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
+        PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
+        PutAliasRequest, PutLinkResponse, PutTokenRequest,
     },
     auth::admin_auth_layer,
-    cache::{EtagJson, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
+    cache::{get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
     env::{CONFIG_SPEC, Config, EnvId, EnvName},
@@ -30,7 +29,7 @@ use crate::{
     kv, neon,
     noco::{self, ApiToken, MigrationState},
     sql,
-    store::{self, MigrationChange, Store},
+    store::{MigrationChange, Store},
     url,
 };
 
@@ -97,7 +96,6 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
         .route("/apps/{env_id}/announcements", get(get_announcements))
-        .route("/apps/{env_id}/summary", get(get_summary))
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .route("/aliases/{env_id}", get(get_alias))
@@ -447,14 +445,8 @@ async fn get_events(
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
-    let store::DataResponseEnvelope {
-        retry_after,
-        value: events,
-    } = store.get_events().await?;
-
-    let response = EtagJson(DataResponseEnvelope {
-        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
-        value: GetEventsResponse {
+    store
+        .get_events(uri, |events| GetEventsResponse {
             events: events
                 .into_iter()
                 .map(|event| Event {
@@ -470,20 +462,9 @@ async fn get_events(
                     tags: event.tags,
                 })
                 .collect::<Vec<_>>(),
-        },
-    })
-    .into_response();
-
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        store.env_name().to_owned(),
-        store.cache_ttl(),
-        uri,
-        response,
-    )?;
-
-    Ok(response)
+        })
+        .await
+        .map_err(Into::into)
 }
 
 #[axum::debug_handler]
@@ -500,15 +481,11 @@ async fn get_info(
     };
 
     let store = Store::from_env_id(&state, &env_id).await?;
+    let env_name = store.env_name().to_string();
 
-    let store::DataResponseEnvelope {
-        retry_after,
-        value: info,
-    } = store.get_info().await?;
-
-    let response = EtagJson(DataResponseEnvelope {
-        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
-        value: GetInfoResponse {
+    store
+        .get_info(uri, |info| GetInfoResponse {
+            env_name,
             name: info.about.name.clone(),
             description: info.about.description.clone(),
             website_url: info.about.website_url.clone(),
@@ -530,20 +507,9 @@ async fn get_info(
                     signed_url: file.signed_url,
                 })
                 .collect::<Vec<_>>(),
-        },
-    })
-    .into_response();
-
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        store.env_name().to_owned(),
-        store.cache_ttl(),
-        uri,
-        response,
-    )?;
-
-    Ok(response)
+        })
+        .await
+        .map_err(Into::into)
 }
 
 #[axum::debug_handler]
@@ -561,14 +527,8 @@ async fn get_pages(
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
-    let store::DataResponseEnvelope {
-        retry_after,
-        value: pages,
-    } = store.get_pages().await?;
-
-    let response = EtagJson(DataResponseEnvelope {
-        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
-        value: GetPagesResponse {
+    store
+        .get_pages(uri, |pages| GetPagesResponse {
             pages: pages
                 .into_iter()
                 .map(|page| Page {
@@ -586,20 +546,9 @@ async fn get_pages(
                         .collect::<Vec<_>>(),
                 })
                 .collect::<Vec<_>>(),
-        },
-    })
-    .into_response();
-
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        store.env_name().to_owned(),
-        store.cache_ttl(),
-        uri,
-        response,
-    )?;
-
-    Ok(response)
+        })
+        .await
+        .map_err(Into::into)
 }
 
 #[axum::debug_handler]
@@ -617,14 +566,8 @@ async fn get_announcements(
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
-    let store::DataResponseEnvelope {
-        retry_after,
-        value: announcements,
-    } = store.get_announcements().await?;
-
-    let response = EtagJson(DataResponseEnvelope {
-        retry_after_ms: retry_after.map(|d| d.as_millis() as u64),
-        value: GetAnnouncementsResponse {
+    store
+        .get_announcements(uri, |announcements| GetAnnouncementsResponse {
             announcements: announcements
                 .into_iter()
                 .map(|announcement| Announcement {
@@ -644,56 +587,9 @@ async fn get_announcements(
                     updated_at: announcement.updated_at,
                 })
                 .collect::<Vec<_>>(),
-        },
-    })
-    .into_response();
-
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        store.env_name().to_owned(),
-        store.cache_ttl(),
-        uri,
-        response,
-    )?;
-
-    Ok(response)
-}
-
-#[axum::debug_handler]
-#[worker::send]
-async fn get_summary(
-    State(state): State<Arc<AppState>>,
-    uri: Uri,
-    Path(env_id): Path<EnvId>,
-) -> Result<http::Response<Body>, ErrorResponse> {
-    let cache = Cache::default();
-
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
-        return Ok(response);
-    }
-
-    let store = Store::from_env_id(&state, &env_id).await?;
-
-    let summary = store.get_summary().await?;
-
-    let response = Json(GetSummaryResponse {
-        env_name: store.env_name().to_string(),
-        name: summary.name,
-        description: summary.description,
-    })
-    .into_response();
-
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        store.env_name().to_owned(),
-        config::noco_summary_cache_ttl(),
-        uri,
-        response,
-    )?;
-
-    Ok(response)
+        })
+        .await
+        .map_err(Into::into)
 }
 
 #[axum::debug_handler]
@@ -784,14 +680,23 @@ async fn get_asset(
             .with_headers(response_headers),
     );
 
-    let response = put_cdn_cache(
-        &state.ctx,
-        cache,
-        env_name,
-        config::r2_asset_cache_ttl(),
-        uri,
-        response,
-    )?;
+    let mut worker_response = worker::Response::try_from(response)
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
 
-    Ok(response)
+    let response_to_cache = worker_response
+        .cloned()
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    state.ctx.wait_until(async move {
+        put_cdn_cache(
+            &cache,
+            env_name,
+            config::r2_asset_cache_ttl(),
+            uri,
+            response_to_cache,
+        )
+        .await;
+    });
+
+    Ok(http::Response::from(worker_response))
 }

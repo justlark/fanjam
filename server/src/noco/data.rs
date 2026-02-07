@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use axum::http::StatusCode;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use worker::{Method, console_warn};
+use worker::Method;
 
 use crate::noco::Client;
 
@@ -233,12 +232,6 @@ pub struct Announcement {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Summary {
-    pub name: Option<String>,
-    pub description: Option<String>,
-}
-
 #[worker::send]
 pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Event>> {
     let (event_records_result, people_records_result, tags_records_result) = futures::join!(
@@ -410,17 +403,4 @@ pub async fn get_announcements(
             updated_at: a.updated_at,
         })
         .collect())
-}
-
-#[worker::send]
-pub async fn check_health(client: &Client) -> bool {
-    match client.build_request_v1(Method::Get, "/health").exec().await {
-        Ok(status) if status == StatusCode::OK => true,
-        _ => {
-            console_warn!(
-                "The NocoDB instance failed its health check. It might still be starting up."
-            );
-            false
-        }
-    }
 }

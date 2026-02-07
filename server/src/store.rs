@@ -1,4 +1,18 @@
-use crate::api::PostBackupKind;
+use std::fmt;
+use std::sync::Arc;
+use std::time::Duration;
+
+use axum::{
+    body::Body,
+    http::{self, Uri},
+    response::IntoResponse,
+};
+use serde::Serialize;
+use worker::kv::KvStore;
+use worker::{Cache, Context, console_error, console_log, console_warn};
+
+use crate::api::{DataResponseEnvelope, PostBackupKind};
+use crate::cache::{EtagJson, put_cdn_cache};
 use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
 use crate::neon::BackupSnapshot;
@@ -10,19 +24,6 @@ use crate::{
     noco::Client as NocoClient,
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
-use futures::future::{self, Either, FutureExt};
-use std::fmt;
-use std::pin::pin;
-use std::sync::Arc;
-use std::time::Duration;
-use worker::kv::KvStore;
-use worker::{Context, Delay, console_error, console_log, console_warn};
-
-#[derive(Debug)]
-pub struct DataResponseEnvelope<T> {
-    pub retry_after: Option<Duration>,
-    pub value: T,
-}
 
 pub struct Store {
     noco_client: NocoClient,
@@ -50,31 +51,30 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
-// If NocoDB is unavailable, we tell the client to retry after this delay.
-const NOCO_UNAVAILABLE_RETRY_DELAY: Duration = Duration::from_secs(1);
-
-// If the NocoDB healtcheck takes more than this long to return, we consider it to be unhealthy.
-const NOCO_HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(1);
+// If we return stale data to the client, we instruct the client to retry the request after this
+// delay, by which point the upstream request to NocoDB should have completed.
+const NOCO_RETRY_DELAY: Duration = Duration::from_secs(5);
 
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
 // We're using the Cloudflare cache API with a short TTL (configurable per-environment, but likely
-// on the order of seconds) to reduce the load on the NocoDB instance. This means that the NocoDB
-// instance will only be hit at most once every *n* milliseconds per data center per cache key, and
-// data returned to the client will only be stale by at most *n* milliseconds. This is important,
-// because the NocoDB instance is slower and much more expensive to scale than this worker.
+// on the order of seconds) to reduce the load on the upstream NocoDB instance. We'll call this the
+// "edge cache". Using this edge cache means incoming requests will only be routed upstream at most
+// once every *n* milliseconds per data center per cache key. This is important, because the NocoDB
+// instance is slower and much more expensive to scale than this worker.
 //
-// We need to handle the case where the NocoDB instance is temporarily unavailable. This may happen
-// fairly often, because if the Fly Machine and/or Postgres Instance shut themselves off (which
-// they are configured to do, to save money), they take some time to start back up, and during that
-// time they will not respond to requests. To handle this, we also keep a persistent cache in KV,
-// which is shared between isolates and used as a fallback for when the NocoDB instance is
-// unavailable.
+// Once the edge cache expires, we need to fetch fresh data from NocoDB. However, this runs the
+// risk of a cache stampede, where many requests arriving all at once hammer the upstream NocoDB
+// instance. To remedy this, we have a second cache stored in KV that never expires. We'll call
+// this the "persistent cache". Requests that miss the edge cache will hit the persistent cache
+// instead, which will then kick off a background task (that does not block the request from
+// returning) to update both caches with fresh data from NocoDB. We also implement a locking
+// mechanism to ensure that only one request at a time can trigger this background refresh,
+// otherwise we would have the same cache stampede problem.
 //
 // Whenever the worker responds to a request with expired data from the persistent cache, it
 // includes a directive for the client to retry the request after a short delay, by which point the
-// NocoDB instance is hopefully online. This saves first-time users from a long loading spinner
-// while the NocoDB instance starts up.
+// persistent cache in KV should have been updated with fresh data from NocoDB.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -85,103 +85,129 @@ macro_rules! get_data {
         err_msg_key: $err_msg_key:expr,
     } => {
         #[worker::send]
-        pub async fn $fn_name(&self) -> Result<DataResponseEnvelope<$type_name>, Error> {
-            // A request to get the most recent data from NocoDB.
-            let value_request = async {
-                let table_ids = match self.get_table_ids().await {
-                    Ok(table_ids) => table_ids,
-                    Err(e) => {
-                        console_warn!("Failed getting table IDs from NocoDB: {}", e);
-                        return Err(e);
-                    }
-                };
+        pub async fn $fn_name<T, F>(&self, uri: Uri, to_body: F) -> Result<http::Response<Body>, Error>
+        where
+            T: Serialize + Clone + 'static,
+            F: FnOnce($type_name) -> T + 'static,
+        {
 
-                match $get_api_fn(&self.noco_client, &table_ids)
-                    .await
-                    .map_err(Error::Internal)
-                {
-                    Ok(value) => Ok(value),
-                    Err(e) => {
-                        console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
-                        Err(e)
-                    }
+            let cached_value = match $get_cached_fn(&self.kv, &self.env_name).await {
+                Ok(Some(value)) => {
+                    console_log!("Returning stale {} from cache.", $err_msg_key);
+                    Some(value)
                 }
-            };
-
-            // A request to NocoDB's healthcheck endpoint.
-            let healthcheck_request = pin!(noco::check_health(&self.noco_client));
-            let healthcheck_timeout = pin!(Delay::from(NOCO_HEALTHCHECK_TIMEOUT));
-
-            // Perform a healthcheck on the NocoDB server with a timeout.
-            //
-            // The timeout is important, because API requests to NocoDB tend to hang while the Fly
-            // Machine is starting up.
-            let healthcheck = future::select(
-                healthcheck_request,
-                healthcheck_timeout,
-            ).map(|either| match either {
-                Either::Left((is_healthy, _)) => is_healthy,
-                Either::Right(_) => {
-                    console_warn!("NocoDB healthcheck timed out after {} seconds.", NOCO_HEALTHCHECK_TIMEOUT.as_secs());
-                    false
+                Ok(None) => {
+                    None
                 }
-            });
-
-            // This is important! We're both fetching the latest data from NocoDB *and* checking
-            // whether it's healthy, in parallel.
-            //
-            // - If the healthcheck times out, indicating that NocoDB is unhealthy, then we will
-            // not await the API request, and will instead go straight to the cache.
-            // - If the healthcheck returns first and indicates that NocoDB is unhealthy, then we
-            // will not await the API request, and will instead go straight to the cache.
-            // - If the healthcheck returns first and indicates that NocoDB is healthy, then will
-            // await the API request and return it.
-            // - If the API request returns first (unlikely), we will not await the healthcheck.
-            let maybe_result_if_healthy = match future::select(pin!(value_request), pin!(healthcheck)).await {
-                Either::Left((value_result, _)) => Some(value_result),
-                Either::Right((is_healthy, value_future)) => if is_healthy {
-                    Some(value_future.await)
-                } else {
+                Err(_) => {
+                    console_warn!("Failed getting cached {} from KV.", $err_msg_key);
                     None
                 }
             };
 
-            match maybe_result_if_healthy {
-                Some(Ok(value)) => {
-                    console_log!("Caching latest {} from NocoDB.", $err_msg_key);
+            // Required because `Context::wait_until` requires a static future.
+            let kv_for_upstream = self.kv.clone();
+            let env_name_for_upstream = self.env_name.clone();
+            let noco_client_for_upstream = self.noco_client.clone();
+            let base_id_for_upstream = self.base_id.clone();
 
-                    let kv_for_cache = self.kv.clone();
-                    let value_for_cache = value.clone();
-                    let env_name_for_cache = self.env_name.clone();
-
-                    // Update the persistent KV cache. This doesn't need to block the current
-                    // request.
-                    self.ctx.wait_until(async move {
-                        if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value_for_cache).await {
-                            console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
+            // A request to get the most recent data from NocoDB.
+            let upstream_request = async move {
+                match Self::get_table_ids(&kv_for_upstream, &env_name_for_upstream, &noco_client_for_upstream, &base_id_for_upstream).await {
+                    Ok(table_ids) => {
+                        match $get_api_fn(&noco_client_for_upstream, &table_ids)
+                            .await
+                        {
+                            Ok(value) => Some(value),
+                            Err(e) => {
+                                console_warn!("Failed getting {} from NocoDB: {}", $err_msg_key, e);
+                                None
+                            }
                         }
-                    });
-
-                    Ok(DataResponseEnvelope { value, retry_after: None })
-                },
-                Some(Err(_)) | None => {
-                    console_log!("NocoDB is unavailable or returned an error, fetching stale data if available.");
-
-                    match $get_cached_fn(&self.kv, &self.env_name).await {
-                        Ok(Some(value)) => {
-                            // Return the cached data whether or not it has expired, because we
-                            // have nothing better to send the client right now.
-                            console_log!("Returning stale {} from cache.", $err_msg_key);
-
-                            Ok(DataResponseEnvelope { value, retry_after: Some(NOCO_UNAVAILABLE_RETRY_DELAY) })
-                        }
-                        Ok(None) | Err(_) => {
-                            console_warn!("No stale cached {} found.", $err_msg_key);
-
-                            Err(Error::NocoUnavailable)
-                        }
+                    },
+                    Err(e) => {
+                        console_warn!("Failed getting table IDs from NocoDB: {}", e);
+                        None
                     }
                 }
+            };
+
+            let kv_for_cache = self.kv.clone();
+            let env_name_for_cache = self.env_name.clone();
+            let env_name_for_cdn = self.env_name.clone();
+            let cache_ttl = self.cache_ttl();
+
+            // Refresh both the edge cache and the persistent cache.
+            let put_cache = async move |value: $type_name, body: T| {
+                console_log!("Caching latest {} from NocoDB.", $err_msg_key);
+
+                if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value).await {
+                    console_warn!("Failed putting {} in KV cache: {}", $err_msg_key, e);
+                }
+
+                // We consider responses that hit the edge cache to be fresh, so we do not pass a
+                // `retry_after_ms` here. Otherwise the client would get caught in an infinite
+                // retry loop.
+                let response_for_edge_cache_result = worker::Response::try_from(
+                    EtagJson(DataResponseEnvelope {
+                        retry_after_ms: None,
+                        value: body,
+                    })
+                    .into_response()
+                );
+
+                let response_for_edge_cache = match response_for_edge_cache_result {
+                    Ok(response) => response,
+                    Err(_) => return,
+                };
+
+                put_cdn_cache(
+                    &Cache::default(),
+                    env_name_for_cdn,
+                    cache_ttl,
+                    uri,
+                    response_for_edge_cache,
+                ).await;
+            };
+
+            match cached_value {
+                Some(cached_value) => {
+                    let body = to_body(cached_value);
+                    let body_for_cache = body.clone();
+
+                    self.ctx.wait_until(async move {
+                        if let Some(latest_value) = upstream_request.await {
+                            put_cache(latest_value, body_for_cache).await;
+                        };
+                    });
+
+                    Ok(EtagJson(DataResponseEnvelope {
+                        retry_after_ms: Some(NOCO_RETRY_DELAY.as_millis() as u64),
+                        value: body,
+                    })
+                    .into_response())
+                },
+                None => {
+                    // The persistent cache is empty, which should only be the case for new
+                    // environments or after the cache is manually cleared. We need to block and
+                    // wait for the upstream request.
+                    if let Some(latest_value) = upstream_request.await {
+                        let body = to_body(latest_value.clone());
+                        let body_for_cache = body.clone();
+
+                        self.ctx.wait_until(async move {
+                            put_cache(latest_value, body_for_cache).await;
+                        });
+
+                        Ok(EtagJson(DataResponseEnvelope {
+                            retry_after_ms: Some(NOCO_RETRY_DELAY.as_millis() as u64),
+                            value: body,
+                        })
+                        .into_response())
+                    } else {
+                        Err(Error::NocoUnavailable)
+                    }
+                },
             }
         }
     }
@@ -244,16 +270,21 @@ impl Store {
         &self.env_name
     }
 
-    pub fn cache_ttl(&self) -> Duration {
+    fn cache_ttl(&self) -> Duration {
         self.env_config
             .cache_ttl
             .map(Duration::from_millis)
             .unwrap_or(config::noco_default_cdn_cache_ttl())
     }
 
-    async fn get_table_ids(&self) -> Result<TableIds, Error> {
+    async fn get_table_ids(
+        kv: &KvStore,
+        env_name: &EnvName,
+        noco_client: &NocoClient,
+        base_id: &BaseId,
+    ) -> Result<TableIds, Error> {
         Ok(
-            match kv::get_tables(&self.kv, &self.env_name)
+            match kv::get_tables(kv, env_name)
                 .await
                 .and_then(TableIds::try_from)
             {
@@ -261,11 +292,11 @@ impl Store {
                 Err(e) => {
                     console_log!("Failed to get table IDs from KV: {}", e);
 
-                    let table_ids = noco::list_tables(&self.noco_client, &self.base_id)
+                    let table_ids = noco::list_tables(noco_client, base_id)
                         .await
                         .map_err(Error::Internal)?;
 
-                    kv::put_tables(&self.kv, &self.env_name, &table_ids)
+                    kv::put_tables(kv, env_name, &table_ids)
                         .await
                         .map_err(Error::Internal)?;
 
@@ -309,24 +340,6 @@ impl Store {
         get_cached_fn: kv::get_cached_announcements,
         put_cached_fn: kv::put_cached_announcements,
         err_msg_key: "announcements",
-    }
-
-    get_data! {
-        fn_name: get_about,
-        type_name: noco::About,
-        get_api_fn: noco::get_about,
-        get_cached_fn: kv::get_cached_about,
-        put_cached_fn: kv::put_cached_about,
-        err_msg_key: "about",
-    }
-
-    pub async fn get_summary(&self) -> Result<noco::Summary, Error> {
-        let DataResponseEnvelope { value: about, .. } = self.get_about().await?;
-
-        Ok(noco::Summary {
-            name: about.name.clone(),
-            description: about.description,
-        })
     }
 
     #[worker::send]

@@ -4,7 +4,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     api::Alias,
     env::{Config, EnvId, EnvName},
-    noco::{About, Announcement, ApiToken, Event, Info, Page, TableInfo},
+    noco::{Announcement, ApiToken, Event, Info, Page, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -66,7 +66,6 @@ cache_key_fn!(events_cache_key, "events");
 cache_key_fn!(info_cache_key, "info");
 cache_key_fn!(pages_cache_key, "pages");
 cache_key_fn!(announcements_cache_key, "announcements");
-cache_key_fn!(about_cache_key, "about");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -266,7 +265,6 @@ put_cache_fn!(
     announcements_cache_key,
     &[Announcement]
 );
-put_cache_fn!(put_cached_about, about_cache_key, &About);
 
 macro_rules! get_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
@@ -287,7 +285,6 @@ get_cache_fn!(
     announcements_cache_key,
     Vec<Announcement>
 );
-get_cache_fn!(get_cached_about, about_cache_key, About);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {

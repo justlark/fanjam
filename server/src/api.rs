@@ -95,7 +95,7 @@ pub struct DataResponseEnvelope<T> {
     pub value: T,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -109,26 +109,27 @@ pub struct Event {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GetEventsResponse {
     pub events: Vec<Event>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Link {
     pub name: String,
     pub url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct File {
     pub name: String,
     pub media_type: String,
     pub signed_url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GetInfoResponse {
+    pub env_name: String,
     pub name: Option<String>,
     pub description: Option<String>,
     pub website_url: Option<String>,
@@ -136,7 +137,7 @@ pub struct GetInfoResponse {
     pub files: Vec<File>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Announcement {
     pub id: String,
     pub title: String,
@@ -146,12 +147,12 @@ pub struct Announcement {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GetAnnouncementsResponse {
     pub announcements: Vec<Announcement>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Page {
     pub id: String,
     pub title: String,
@@ -159,16 +160,9 @@ pub struct Page {
     pub files: Vec<File>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GetPagesResponse {
     pub pages: Vec<Page>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GetSummaryResponse {
-    pub env_name: String,
-    pub name: Option<String>,
-    pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

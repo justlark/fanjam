@@ -20,13 +20,14 @@ impl ExposeSecret<str> for ApiToken {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ApiVersion {
+    #[allow(dead_code)]
     V1,
     V2,
     #[allow(dead_code)]
     V3,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
     dash_origin: Url,
     api_token: ApiToken,
@@ -58,11 +59,6 @@ impl Client {
         RequestBuilder::new(method, &endpoint)
             .with_header("Xc-Token", self.api_token.0.expose_secret())
             .with_header("Accept", "application/json")
-    }
-
-    // Currently just used for the health check endpoint.
-    pub fn build_request_v1(&self, method: Method, path: &str) -> RequestBuilder {
-        self.build_request(ApiVersion::V1, method, path)
     }
 
     // Once it's stable, we can migrate to v3 of the NocoDB API.

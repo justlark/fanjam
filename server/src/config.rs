@@ -18,7 +18,6 @@ struct Config {
     neon_org_id: String,
     neon_default_branch_name: String,
     noco_default_cdn_cache_ttl_millis: u32,
-    noco_summary_cache_ttl_seconds: u32,
     r2_asset_cache_ttl_seconds: u32,
 }
 
@@ -41,10 +40,6 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
             neon_default_branch_name: env.secret("NEON_DEFAULT_BRANCH_NAME")?.to_string(),
             noco_default_cdn_cache_ttl_millis: env
                 .var("NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS")?
-                .to_string()
-                .parse()?,
-            noco_summary_cache_ttl_seconds: env
-                .var("NOCO_SUMMARY_CACHE_TTL_SECONDS")?
                 .to_string()
                 .parse()?,
             r2_asset_cache_ttl_seconds: env
@@ -95,10 +90,6 @@ pub fn neon_default_branch_name() -> neon::BranchName {
 
 pub fn noco_default_cdn_cache_ttl() -> Duration {
     Duration::from_millis(get_config().noco_default_cdn_cache_ttl_millis.into())
-}
-
-pub fn noco_summary_cache_ttl() -> Duration {
-    Duration::from_secs(get_config().noco_summary_cache_ttl_seconds.into())
 }
 
 pub fn r2_asset_cache_ttl() -> Duration {

@@ -29,7 +29,7 @@ interface AppInfo {
 }
 
 const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/summary`);
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
 
   if (!response.ok) {
     return {};
