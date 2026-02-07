@@ -30,13 +30,19 @@ export const test = base.extend<Fixtures>({
 test.describe("starring events", () => {
   test.beforeEach(async ({ page }) => {
     await mockTime(page);
-    await mockApi(page, { events: [{ id: "1", name: "Test Event" }] });
+    await mockApi(page, {
+      events: [
+        { id: "1", name: "Test Event 1" },
+        { id: "2", name: "Test Event 2" },
+        { id: "3", name: "Test Event 3" },
+      ],
+    });
   });
 
   test("star button in event page", async ({ page, starredEvents, eventPage, schedulePage }) => {
     await schedulePage.goto();
 
-    await schedulePage.openEventDetailsPage("Test Event");
+    await schedulePage.openEventDetailsPage("Test Event 1");
 
     await expect(eventPage.starButton).toHaveAttribute("aria-pressed", "false");
 
@@ -51,7 +57,60 @@ test.describe("starring events", () => {
 
     await eventPage.navigateBack();
 
-    await expect(schedulePage.events.filter({ hasText: "Test Event" })).toHaveAccessibleName(
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+  });
+
+  test("star button in two-pane view", async ({ page, starredEvents, eventPage, schedulePage }) => {
+    if (isMobile()) {
+      test.skip();
+    }
+
+    await schedulePage.goto();
+
+    await schedulePage.openEventDetailsPage("Test Event 1");
+    await eventPage.toggleStar();
+    await page.clock.fastForward(500);
+
+    expect(await starredEvents.get()).toEqual(["1"]);
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).not.toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 3" })).not.toHaveAccessibleName(
+      /^Starred:/,
+    );
+
+    await schedulePage.openEventDetailsPage("Test Event 2");
+    await eventPage.toggleStar();
+    await page.clock.fastForward(500);
+
+    expect(await starredEvents.get()).toEqual(["1", "2"]);
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 3" })).not.toHaveAccessibleName(
+      /^Starred:/,
+    );
+
+    await schedulePage.openEventDetailsPage("Test Event 1");
+    await eventPage.toggleStar();
+    await page.clock.fastForward(500);
+
+    expect(await starredEvents.get()).toEqual(["2"]);
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).not.toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 3" })).not.toHaveAccessibleName(
       /^Starred:/,
     );
   });
@@ -68,7 +127,7 @@ test.describe("starring events", () => {
 
     await schedulePage.goto();
 
-    await schedulePage.openEventSummaryDrawer("Test Event");
+    await schedulePage.openEventSummaryDrawer("Test Event 1");
     await expect(summaryDrawer.starButton).toHaveAttribute("aria-pressed", "false");
 
     await summaryDrawer.toggleStar();
@@ -80,7 +139,7 @@ test.describe("starring events", () => {
 
     expect(await starredEvents.get()).toEqual(["1"]);
 
-    await expect(schedulePage.events.filter({ hasText: "Test Event" })).toHaveAccessibleName(
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
       /^Starred:/,
     );
   });

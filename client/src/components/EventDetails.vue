@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId, type DeepReadonly, onMounted, toRef } from "vue";
+import { computed, ref, useId, type DeepReadonly, onMounted } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 
 const event = computed(() => props.event);
-const isStarred = useIsEventStarred(toRef(event.value, "id"));
+const isStarred = useIsEventStarred(computed(() => event.value.id));
 
 const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
@@ -82,15 +82,27 @@ onMounted(() => {
           @click="isStarred = !isStarred"
         />
       </span>
-      <h2 :id="sectionHeadingId" class="text-xl font-bold" data-testid="event-details-name">{{ event.name }}</h2>
+      <h2 :id="sectionHeadingId" class="text-xl font-bold" data-testid="event-details-name">
+        {{ event.name }}
+      </h2>
     </div>
     <div class="px-6">
       <div class="flex justify-between items-end">
         <dl class="flex flex-col items-start gap-2">
-          <EventDetail v-if="datetimeFormats && event.startTime" icon="clock" icon-label="Time" data-testid="event-details-time">
+          <EventDetail
+            v-if="datetimeFormats && event.startTime"
+            icon="clock"
+            icon-label="Time"
+            data-testid="event-details-time"
+          >
             {{ localizeTimeSpan(datetimeFormats, event.startTime, event.endTime) }}
           </EventDetail>
-          <EventDetail v-if="event.people.length > 0" icon="person-circle" icon-label="Hosts" data-testid="event-details-hosts">
+          <EventDetail
+            v-if="event.people.length > 0"
+            icon="person-circle"
+            icon-label="Hosts"
+            data-testid="event-details-hosts"
+          >
             <span>Hosted by </span>
             <span v-for="(person, index) in event.people" :key="index">
               <RouterLink
@@ -107,7 +119,12 @@ onMounted(() => {
               <span v-if="index < event.people.length - 1">, </span>
             </span>
           </EventDetail>
-          <EventDetail v-if="event.location" icon="geo-alt-fill" icon-label="Location" data-testid="event-details-location">
+          <EventDetail
+            v-if="event.location"
+            icon="geo-alt-fill"
+            icon-label="Location"
+            data-testid="event-details-location"
+          >
             <RouterLink
               class="text-link-sm"
               data-testid="event-details-location-link"
@@ -145,9 +162,18 @@ onMounted(() => {
         }"
       />
       <Divider />
-      <article id="document" :aria-labelledby="sectionHeadingId" class="my-4" data-testid="event-details-content">
+      <article
+        id="document"
+        :aria-labelledby="sectionHeadingId"
+        class="my-4"
+        data-testid="event-details-content"
+      >
         <p v-if="event.summary" data-testid="event-details-summary">{{ event.summary }}</p>
-        <div v-if="descriptionHtml" v-html="descriptionHtml" data-testid="event-details-description" />
+        <div
+          v-if="descriptionHtml"
+          v-html="descriptionHtml"
+          data-testid="event-details-description"
+        />
       </article>
       <div
         v-if="!event.summary && !descriptionHtml"
