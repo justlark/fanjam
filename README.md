@@ -88,6 +88,23 @@ run `just run-client prod`.
 
 The `demo` environment is a good choice for testing frontend changes locally.
 
+### Running Linters
+
+Use `just check-server` and `just check-client` to run static analysis for the
+backend and frontend respectively.
+
+### Running Tests
+
+To run Playwright tests for the frontend, run `just start-playwright` to start
+the Playwright server. This requires Podman to be installed and set up, but
+saves you from having to install any Playwright-specific native dependencies,
+which aren't supported on all platforms.
+
+Once the server is running, run `just run-playwright` to run the test suite. It
+will take several minutes.
+
+Playwright tests are also run in CI.
+
 ## OpenTofu
 
 Secrets for OpenTofu are stored in the repo encrypted with maintainers' SSH
