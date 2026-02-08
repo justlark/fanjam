@@ -70,6 +70,24 @@ that accept an `env` accept the name of a tenant environment.
 This project is referred to by the codename "sparklefish" throughout the
 codebase and infrastructure.
 
+### Local Development
+
+**Run the client locally with `just run-client prod` and access an instance
+pre-populated with example data by navigating to
+<http://localhost:5173/app/demo/>.**
+
+Because instances of the FanJam server worker need to be paired with a NocoDB
+instance to be useful, running the server worker locally isn't recommended for
+doing frontend development. Instead, it's easier to run the client locally
+against a deployed instance of the server worker.
+
+By default, running `just run-client` will run the client locally against the
+server worker in the `test` stage, which allows you to access any environment
+deployed in that stage. To access environments deployed in the `prod` stage,
+run `just run-client prod`.
+
+The `demo` environment is a good choice for testing frontend changes locally.
+
 ## OpenTofu
 
 Secrets for OpenTofu are stored in the repo encrypted with maintainers' SSH
