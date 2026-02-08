@@ -90,10 +90,10 @@ The `demo` environment is a good choice for testing frontend changes locally.
 
 ### Running Linters
 
-Use `just check-server` and `just check-client` to run static analysis for the
-backend and frontend respectively.
+Use `just check-server` and `just check-client` to run type checkers and static
+analysis for the backend and frontend respectively.
 
-Static analysis is also run in CI.
+Linters are also run in CI.
 
 ### Running Tests
 
