@@ -29,7 +29,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
         icon-pos="right"
         raised
         target="_blank"
-        href="https://fanjam.live/app/804008/"
+        href="https://fanjam.live/app/demo/"
       />
       <Card>
         <template #content>
@@ -126,7 +126,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
               icon-pos="right"
               raised
               target="_blank"
-              href="https://fanjam.live/app/804008/"
+              href="https://fanjam.live/app/demo/"
             />
             <span class="flex gap-2 text-muted-color">
               <SimpleIcon icon="info-circle" />
