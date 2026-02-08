@@ -72,9 +72,9 @@ codebase and infrastructure.
 
 ### Local Development
 
-**Run the client locally with `just run-client prod` and access an instance
+Run the client locally with `just run-client prod` and access an instance
 pre-populated with example data by navigating to
-<http://localhost:5173/app/demo/>.**
+<http://localhost:5173/app/demo/>.
 
 Because instances of the FanJam server worker need to be paired with a NocoDB
 instance to be useful, running the server worker locally isn't recommended for
