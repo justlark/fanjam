@@ -93,6 +93,8 @@ The `demo` environment is a good choice for testing frontend changes locally.
 Use `just check-server` and `just check-client` to run static analysis for the
 backend and frontend respectively.
 
+Static analysis is also run in CI.
+
 ### Running Tests
 
 To run Playwright tests for the frontend, run `just start-playwright` to start
