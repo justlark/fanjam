@@ -188,6 +188,44 @@ const filteredTimeSlotsForAllDays = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
+interface DayGroup {
+  dayName: string;
+  dayDate: Date | undefined;
+  timeSlots: Array<TimeSlot>;
+}
+
+const filteredDayGroups = computed<Array<DayGroup>>(() => {
+  if (viewType.value === "daily") {
+    if (currentDayIndex.value === undefined) return [];
+    return [
+      {
+        dayName: dayNames.value[currentDayIndex.value] ?? "",
+        dayDate: namedDays.value?.[currentDayIndex.value]?.dayStart,
+        timeSlots: filteredTimeSlotsForCurrentDay.value,
+      },
+    ];
+  }
+
+  if (viewType.value === "all") {
+    return days.value
+      .map((day, index) => ({
+        dayName: day.dayName,
+        dayDate: namedDays.value?.[index]?.dayStart,
+        timeSlots: day.timeSlots
+          .map((timeSlot) => ({
+            events: timeSlot.events.filter(
+              (event) => filteredEventIdsSet.value?.has(event.id) ?? true,
+            ),
+            localizedTime: timeSlot.localizedTime,
+          }))
+          .filter((timeSlot) => timeSlot.events.length > 0),
+      }))
+      .filter((group) => group.timeSlots.length > 0);
+  }
+
+  return [];
+});
+
 const filteredTimeSlots = computed(() => {
   if (viewType.value === "daily") {
     return filteredTimeSlotsForCurrentDay.value;
@@ -338,7 +376,7 @@ watchEffect(() => {
 
 <template>
   <div>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col">
       <ScheduleHeader v-if="viewType" v-model:view="viewType" v-model:ids="searchResultEventIds" />
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
@@ -360,19 +398,30 @@ watchEffect(() => {
         v-if="filteredTimeSlots.length > 0 && viewType !== undefined"
         :class="['flex flex-col gap-6', { 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
       >
-        <ScheduleTimeSlot
-          v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
-          v-model:focused="focusedEventId"
-          :key="index"
-          :localized-time="timeSlot.localizedTime"
-          :events="timeSlot.events"
-          :all-categories="allCategories"
-          :is-current-time-slot="
-            (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
-          "
-          :view-type="viewType"
-          data-testid="schedule-time-slot"
-        />
+        <template v-for="(group, groupIndex) in filteredDayGroups" :key="groupIndex">
+          <DayPicker
+            v-if="viewType === 'all' && currentDayIndex !== undefined && days.length > 0"
+            v-model:day="currentDayIndex"
+            :day-names="dayNames"
+            :today-index="todayIndex"
+            :day-date="dayDate"
+            :view-type="viewType"
+          />
+          <ScheduleTimeSlot
+            v-for="(timeSlot, index) in group.timeSlots"
+            v-model:focused="focusedEventId"
+            :key="`${groupIndex}-${index}`"
+            :localized-time="timeSlot.localizedTime"
+            :events="timeSlot.events"
+            :all-categories="allCategories"
+            :is-current-time-slot="
+              (viewType === 'all' || currentDayIndex === todayIndex) &&
+              index === currentTimeSlotIndex
+            "
+            :view-type="viewType"
+            data-testid="schedule-time-slot"
+          />
+        </template>
       </div>
       <div class="m-auto" v-else-if="eventsStatus === 'pending'">
         <ProgressSpinner />

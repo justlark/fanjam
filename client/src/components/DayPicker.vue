@@ -30,15 +30,24 @@ const selectToday = () => {
 </script>
 
 <template>
-  <nav class="flex items-center justify-between gap-4">
+  <nav
+    class="flex items-center justify-between gap-4 min-h-12 mt-6"
+    :class="{ 'mb-6': viewType === 'daily' }"
+  >
     <span class="text-2xl font-bold" data-testid="schedule-day-name">
       {{ props.dayNames[currentDayIndex] }}
       <span
-        class="text-sm font-bold text-muted-color"
+        class="text-sm font-bold text-muted-color text-nowrap"
         v-if="props.dayDate !== undefined"
         data-testid="schedule-day-name"
       >
-        {{ props.dayDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) }}
+        {{
+          props.dayDate.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        }}
       </span>
     </span>
     <span v-if="viewType === 'daily'" class="flex items-center">
