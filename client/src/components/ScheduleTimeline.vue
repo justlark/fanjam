@@ -90,6 +90,12 @@ const currentDayTimeSlots = computed(() => {
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
+const dayDate = computed(() => {
+  if (currentDayIndex.value === undefined || namedDays.value === undefined) {
+    return undefined;
+  }
+  return namedDays.value[currentDayIndex.value]?.dayStart;
+});
 
 const allDates = computed(() =>
   events.value.reduce((set, event) => {
@@ -339,6 +345,8 @@ watchEffect(() => {
         v-model:day="currentDayIndex"
         :day-names="dayNames"
         :today-index="todayIndex"
+        :day-date="dayDate"
+        :view-type="viewType"
       />
       <span
         class="text-muted-color flex gap-2 justify-center"

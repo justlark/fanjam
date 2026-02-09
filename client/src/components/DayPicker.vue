@@ -6,6 +6,8 @@ const currentDayIndex = defineModel<number>("day", { required: true });
 const props = defineProps<{
   dayNames: Array<string>;
   todayIndex: number | undefined;
+  dayDate: Date | undefined;
+  viewType: "daily" | "all";
 }>();
 
 const selectNextDay = () => {
@@ -31,8 +33,15 @@ const selectToday = () => {
   <nav class="flex items-center justify-between gap-4">
     <span class="text-2xl font-bold" data-testid="schedule-day-name">
       {{ props.dayNames[currentDayIndex] }}
+      <span
+        class="text-sm font-bold text-muted-color"
+        v-if="props.dayDate !== undefined"
+        data-testid="schedule-day-name"
+      >
+        {{ props.dayDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) }}
+      </span>
     </span>
-    <span class="flex items-center">
+    <span v-if="viewType === 'daily'" class="flex items-center">
       <IconButton
         icon="calendar-event"
         label="Today"
