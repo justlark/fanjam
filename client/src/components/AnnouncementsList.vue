@@ -56,6 +56,12 @@ const filteredAnnouncements = computed(() => {
         </component>
       </RouterLink>
     </div>
-    <div v-else class="text-center text-lg italic text-muted-color" data-testid="announcements-empty">No announcements yet</div>
+    <div
+      v-else
+      class="text-center text-lg italic text-muted-color"
+      data-testid="announcements-empty"
+    >
+      No announcements yet
+    </div>
   </div>
 </template>

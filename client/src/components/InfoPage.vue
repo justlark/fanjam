@@ -38,7 +38,13 @@ const conName = computed(() => info.value?.name || "FanJam");
           {{ websiteUrl.hostname }}
         </a>
       </span>
-      <p class="max-w-200 text-justify" v-if="info?.description" data-testid="info-page-description">{{ info.description }}</p>
+      <p
+        class="max-w-200 text-justify"
+        v-if="info?.description"
+        data-testid="info-page-description"
+      >
+        {{ info.description }}
+      </p>
     </div>
     <div class="flex flex-col gap-2">
       <LinksList

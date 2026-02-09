@@ -369,7 +369,11 @@ watchEffect(() => {
       <div class="m-auto" v-else-if="eventsStatus === 'pending'">
         <ProgressSpinner />
       </div>
-      <div v-else class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8" data-testid="schedule-no-events">
+      <div
+        v-else
+        class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8"
+        data-testid="schedule-no-events"
+      >
         No events
       </div>
       <EventSummaryDrawer

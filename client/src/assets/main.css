@@ -117,11 +117,11 @@ keep them from being tree-shaken out.
     @apply decoration-2;
   }
 
-  #document :not(pre)>code {
+  #document :not(pre) > code {
     @apply bg-surface-200 dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-1.5 py-0.5 rounded;
   }
 
-  #document pre>code {
+  #document pre > code {
     @apply wrap-anywhere whitespace-pre-wrap;
   }
 

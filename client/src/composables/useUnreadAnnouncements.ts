@@ -18,10 +18,10 @@ export const useUnreadAnnouncements = () => {
     return announcementsStatus.value !== "success"
       ? new Set()
       : new Set(
-        [...announcementsSet.value].filter(
-          (announcementId) => !readAnnouncementsSet.value.has(announcementId),
-        ),
-      );
+          [...announcementsSet.value].filter(
+            (announcementId) => !readAnnouncementsSet.value.has(announcementId),
+          ),
+        );
   });
 
   return unreadAnnouncementsCount;

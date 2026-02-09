@@ -7,8 +7,8 @@ const useIncremental = <T>(
   options: {
     chunkSize: number;
   } = {
-      chunkSize: 5,
-    },
+    chunkSize: 5,
+  },
 ) => {
   const { chunkSize } = options;
 
@@ -60,9 +60,9 @@ const useIncrementalExceptInTests = <T>(
     chunkSize: number;
     sources: Array<MaybeRefOrGetter<unknown>>;
   } = {
-      chunkSize: 5,
-      sources: [],
-    },
+    chunkSize: 5,
+    sources: [],
+  },
 ) => {
   if (isTest()) {
     return input;
