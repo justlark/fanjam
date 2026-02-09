@@ -19,7 +19,7 @@ jobs:
         # from a later version of Rust. If you update the MSRV here, update the
         # Cargo.toml as well.
       - name: "Install Toolchain"
-        run: rustup toolchain install --profile minimal stable
+        run: rustup toolchain install --profile minimal 1.90.0
 
       - name: "Check"
         run: cargo check
@@ -36,11 +36,12 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
 
+        # We use the latest stable toolchain here to get the latest lints.
       - name: "Install Toolchain"
         run: rustup toolchain install --profile minimal --component rustfmt --component clippy stable
 
       - name: "Format"
-        run: cargo fmt --all -- --check
+        run: cargo fmt --check
 
       - name: "Lint"
         run: cargo clippy

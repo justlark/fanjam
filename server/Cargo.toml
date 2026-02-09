@@ -3,6 +3,8 @@ name = "sparklefish"
 version = "0.1.0"
 edition = "2024"
 authors = ["Lark Aster <lark@lark.gay>"]
+# If you update this, update the GitHub Actions workflow as well.
+rust-version = "1.90.0"
 
 [package.metadata.release]
 release = false

@@ -32,6 +32,7 @@ run-server stage="test":
 check-client: _install-client
   npm run type-check
   npm run lint
+  npx prettier --check ./src/ ./worker/
 
 # type check and lint the server
 [working-directory: "./server/"]
@@ -39,6 +40,7 @@ check-client: _install-client
 check-server:
   cargo check
   cargo clippy
+  cargo fmt --check
 
 # deploy the client
 [working-directory: "./client/"]
