@@ -61,6 +61,11 @@ keep them from being tree-shaken out.
   @apply font-bold text-primary decoration-2 underline underline-offset-2 hover:decoration-3;
 }
 
+.p-toast {
+  max-width: 95svw;
+}
+
+
 @layer base {
   :root {
     font-family: "Fira Sans", sans-serif;
