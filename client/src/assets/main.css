@@ -65,7 +65,6 @@ keep them from being tree-shaken out.
   max-width: 95svw;
 }
 
-
 @layer base {
   :root {
     font-family: "Fira Sans", sans-serif;
