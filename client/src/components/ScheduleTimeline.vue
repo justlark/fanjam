@@ -188,6 +188,19 @@ const filteredTimeSlotsForAllDays = computed(() =>
     .filter((timeSlot) => timeSlot.events.length > 0),
 );
 
+const filteredTimeSlots = computed(() => {
+  if (viewType.value === "daily") {
+    return filteredTimeSlotsForCurrentDay.value;
+  }
+
+  if (viewType.value === "all") {
+    return filteredTimeSlotsForAllDays.value;
+  }
+
+  return [];
+});
+
+const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 interface DayGroup {
   dayName: string;
   dayDate: Date | undefined;
@@ -201,38 +214,37 @@ const filteredDayGroups = computed<Array<DayGroup>>(() => {
       {
         dayName: dayNames.value[currentDayIndex.value] ?? "",
         dayDate: namedDays.value?.[currentDayIndex.value]?.dayStart,
-        timeSlots: filteredTimeSlotsForCurrentDay.value,
+        timeSlots: incrementalFilteredTimeSlots.value as Array<TimeSlot>,
       },
     ];
   }
 
   if (viewType.value === "all") {
-    return days.value
-      .map((day, index) => ({
-        dayName: day.dayName,
-        dayDate: namedDays.value?.[index]?.dayStart,
-        timeSlots: day.timeSlots
-          .map((timeSlot) => ({
-            events: timeSlot.events.filter(
-              (event) => filteredEventIdsSet.value?.has(event.id) ?? true,
-            ),
-            localizedTime: timeSlot.localizedTime,
-          }))
-          .filter((timeSlot) => timeSlot.events.length > 0),
-      }))
-      .filter((group) => group.timeSlots.length > 0);
-  }
+    const groups: Array<DayGroup> = [];
+    let currentGroup: DayGroup | undefined;
 
-  return [];
-});
+    for (const timeSlot of incrementalFilteredTimeSlots.value) {
+      const matchingDayIndex = days.value.findIndex((day) =>
+        timeSlot.localizedTime.startsWith(day.dayName),
+      );
 
-const filteredTimeSlots = computed(() => {
-  if (viewType.value === "daily") {
-    return filteredTimeSlotsForCurrentDay.value;
-  }
+      const day = matchingDayIndex !== -1 ? days.value[matchingDayIndex] : undefined;
+      const dayName = day?.dayName ?? "";
 
-  if (viewType.value === "all") {
-    return filteredTimeSlotsForAllDays.value;
+      if (!currentGroup || currentGroup.dayName !== dayName) {
+        currentGroup = {
+          dayName,
+          dayDate:
+            matchingDayIndex !== -1 ? namedDays.value?.[matchingDayIndex]?.dayStart : undefined,
+          timeSlots: [],
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.timeSlots.push(timeSlot as TimeSlot);
+    }
+
+    return groups;
   }
 
   return [];
@@ -252,8 +264,6 @@ watch(viewType, async (newViewType, oldViewType) => {
     replace: true,
   });
 });
-
-const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 
