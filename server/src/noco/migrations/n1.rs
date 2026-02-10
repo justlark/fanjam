@@ -367,6 +367,7 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
+                        "is12hrFormat": true,
                     },
                     "rqd": true,
                 }),
@@ -382,6 +383,7 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
+                        "is12hrFormat": true,
                     }
                 }),
             },
@@ -494,6 +496,7 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
+                        "is12hrFormat": true,
                     }
                 }),
             },
@@ -508,6 +511,7 @@ impl Migration<'_> {
                     "meta": {
                         "date_format": DATE_FORMAT,
                         "time_format": TIME_FORMAT,
+                        "is12hrFormat": true,
                     }
                 }),
             },
