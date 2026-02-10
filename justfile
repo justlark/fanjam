@@ -211,8 +211,17 @@ sops *args:
 # run the Playwright server in a container
 [group("run playwright")]
 [working-directory: "./playwright/"]
+[linux]
 start-playwright:
   podman run --add-host=hostmachine:host-gateway -p 3001:3000 --rm --init -it --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c "npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0"
+
+
+# run the Playwright server in a container
+[group("run playwright")]
+[working-directory: "./playwright/"]
+[macos]
+start-playwright:
+  podman run -p 3001:3000 --rm --init -it --name playwright-server --workdir /home/pwuser --user pwuser mcr.microsoft.com/playwright:v1.55.0-noble /bin/sh -c "npx -y playwright@1.55.0 run-server --port 3000 --host 0.0.0.0"
 
 # run Playwright tests against a local instance of the app
 [group("run playwright")]
