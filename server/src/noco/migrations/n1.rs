@@ -10,8 +10,17 @@ use super::common::{
     create_tables, create_views, lock_views, set_nop, set_ref,
 };
 
-pub const DATE_FORMAT: &str = "YYYY-MM-DD";
-pub const TIME_FORMAT: &str = "HH:mm";
+const DATE_FORMAT: &str = "YYYY-MM-DD";
+const TIME_FORMAT: &str = "HH:mm";
+
+// Metadata for DateTime columns
+fn date_time_meta() -> serde_json::Value {
+    json!({
+        "date_format": DATE_FORMAT,
+        "time_format": TIME_FORMAT,
+        "is12hrFormat": true,
+    })
+}
 
 use super::common::{self, BaseId, ColumnId, TableId, Version};
 
@@ -364,11 +373,7 @@ impl Migration<'_> {
                     "title": "Start Time",
                     "uidt": "DateTime",
                     "description": "The day and time the event starts.",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                        "time_format": TIME_FORMAT,
-                        "is12hrFormat": true,
-                    },
+                    "meta": date_time_meta(),
                     "rqd": true,
                 }),
             },
@@ -380,11 +385,7 @@ impl Migration<'_> {
                     "title": "End Time",
                     "uidt": "DateTime",
                     "description": "The day and time the event ends.",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                        "time_format": TIME_FORMAT,
-                        "is12hrFormat": true,
-                    }
+                    "meta": date_time_meta()
                 }),
             },
             CreateColumnRequest {
@@ -493,11 +494,7 @@ impl Migration<'_> {
                     "title": "Created",
                     "uidt": "CreatedTime",
                     "description": "When this announcement was first created.",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                        "time_format": TIME_FORMAT,
-                        "is12hrFormat": true,
-                    }
+                    "meta": date_time_meta()
                 }),
             },
             CreateColumnRequest {
@@ -508,11 +505,7 @@ impl Migration<'_> {
                     "title": "Last Edited",
                     "uidt": "LastModifiedTime",
                     "description": "When this announcement was last edited.",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                        "time_format": TIME_FORMAT,
-                        "is12hrFormat": true,
-                    }
+                    "meta": date_time_meta()
                 }),
             },
             CreateColumnRequest {
