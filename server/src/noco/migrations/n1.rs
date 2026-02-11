@@ -13,15 +13,6 @@ use super::common::{
 const DATE_FORMAT: &str = "YYYY-MM-DD";
 const TIME_FORMAT: &str = "HH:mm";
 
-// Metadata for DateTime columns
-fn date_time_meta() -> serde_json::Value {
-    json!({
-        "date_format": DATE_FORMAT,
-        "time_format": TIME_FORMAT,
-        "is12hrFormat": true,
-    })
-}
-
 use super::common::{self, BaseId, ColumnId, TableId, Version};
 
 #[derive(Debug, Default)]
@@ -373,7 +364,10 @@ impl Migration<'_> {
                     "title": "Start Time",
                     "uidt": "DateTime",
                     "description": "The day and time the event starts.",
-                    "meta": date_time_meta(),
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                    },
                     "rqd": true,
                 }),
             },
@@ -385,7 +379,10 @@ impl Migration<'_> {
                     "title": "End Time",
                     "uidt": "DateTime",
                     "description": "The day and time the event ends.",
-                    "meta": date_time_meta()
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                    }
                 }),
             },
             CreateColumnRequest {
@@ -494,7 +491,10 @@ impl Migration<'_> {
                     "title": "Created",
                     "uidt": "CreatedTime",
                     "description": "When this announcement was first created.",
-                    "meta": date_time_meta()
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                    }
                 }),
             },
             CreateColumnRequest {
@@ -505,7 +505,10 @@ impl Migration<'_> {
                     "title": "Last Edited",
                     "uidt": "LastModifiedTime",
                     "description": "When this announcement was last edited.",
-                    "meta": date_time_meta()
+                    "meta": {
+                        "date_format": DATE_FORMAT,
+                        "time_format": TIME_FORMAT,
+                    }
                 }),
             },
             CreateColumnRequest {

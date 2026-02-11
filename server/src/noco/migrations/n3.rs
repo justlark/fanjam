@@ -11,7 +11,17 @@ use super::{
     n2,
 };
 
-pub const DATE_FORMAT: &str = "DD MMM YYYY";
+const DATE_FORMAT: &str = "DD MMM YYYY";
+const TIME_FORMAT: &str = "HH:mm";
+
+// Metadata for DateTime columns
+fn date_time_meta() -> serde_json::Value {
+    json!({
+        "date_format": DATE_FORMAT,
+        "time_format": TIME_FORMAT,
+        "is12hrFormat": true,
+    })
+}
 
 pub struct Migration<'a> {
     client: &'a Client,
@@ -36,17 +46,13 @@ impl Migration<'_> {
                 column_id: &event_start_time_column_id,
                 body: json!({
                     "rqd": false,
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                    },
+                    "meta": date_time_meta(),
                 }),
             },
             EditColumnRequest {
                 column_id: &event_end_time_column_id,
                 body: json!({
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                    },
+                    "meta": date_time_meta(),
                 }),
             },
             EditColumnRequest {
@@ -61,18 +67,14 @@ impl Migration<'_> {
                 column_id: &announcement_created_column_id,
                 body: json!({
                     "title": "Created",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                    },
+                    "meta": date_time_meta(),
                 }),
             },
             EditColumnRequest {
                 column_id: &announcement_updated_column_id,
                 body: json!({
                     "title": "Last Edited",
-                    "meta": {
-                        "date_format": DATE_FORMAT,
-                    },
+                    "meta": date_time_meta(),
                 }),
             },
         ];
