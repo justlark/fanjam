@@ -65,7 +65,7 @@ interface RawConfig {
 }
 
 interface Envelope<T> {
-  retry_after_ms?: number;
+  stale?: boolean;
   value: T;
 }
 
@@ -132,6 +132,7 @@ export type ApiResult<T> =
       ok: true;
       value: T;
       etag?: string;
+      stale?: boolean;
     }
   | {
       ok: false;
@@ -182,6 +183,7 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
     ok: true,
     value: events,
     etag: response.headers.get("ETag") ?? undefined,
+    stale: rawEvents.stale,
   };
 };
 
@@ -224,6 +226,7 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
     ok: true,
     value: info,
     etag: response.headers.get("ETag") ?? undefined,
+    stale: rawInfo.stale,
   };
 };
 
@@ -262,6 +265,7 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     ok: true,
     value: pages,
     etag: response.headers.get("ETag") ?? undefined,
+    stale: rawPages.stale,
   };
 };
 
@@ -308,6 +312,7 @@ const getAnnouncements = async (
     ok: true,
     value: announcements,
     etag: response.headers.get("ETag") ?? undefined,
+    stale: rawAnnouncements.stale,
   };
 };
 
