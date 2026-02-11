@@ -10,8 +10,8 @@ use super::common::{
     create_tables, create_views, lock_views, set_nop, set_ref,
 };
 
-pub const DATE_FORMAT: &str = "YYYY-MM-DD";
-pub const TIME_FORMAT: &str = "HH:mm";
+const DATE_FORMAT: &str = "YYYY-MM-DD";
+const TIME_FORMAT: &str = "HH:mm";
 
 use super::common::{self, BaseId, ColumnId, TableId, Version};
 
