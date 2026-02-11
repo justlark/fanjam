@@ -107,23 +107,49 @@ will take several minutes.
 
 Playwright tests are also run in CI.
 
-## OpenTofu
+## Infrastructure
 
-Secrets for OpenTofu are stored in the repo encrypted with maintainers' SSH
+### Authorization
+
+Secrets for this project are stored in the repo encrypted with maintainers' SSH
 keys via [SOPS](https://getsops.io/) and [age](https://age-encryption.org/).
 
-To deploy infrastructure, you'll first need your SSH key authorized by adding
-it to [./infra/config/.sops.yaml](./infra/config/.sops.yaml) and running these
+To deploy infrastructure or run `just` recipes that touch deployed
+environments, you'll first need your SSH key authorized by adding it to
+[./infra/config/.sops.yaml](./infra/config/.sops.yaml) and running these
 commands:
 
 ```
-just sops updatekeys ./infra/config/secrets.enc.yaml
+just sops updatekeys ./infra/config/secret_vars.enc.yaml
+just sops updatekeys ./infra/config/secret_globals.enc.yaml
 just sops updatekeys ./infra/config/env.enc.yaml
 ```
 
 Once your key is authorized, set the env var `SOPS_AGE_SSH_PRIVATE_KEY_FILE` to
 the path of your private SSH key. You can put this in a `./.env` file in the
 root of the repo; it will be ignored by git.
+
+### Advisory Checks
+
+As a safety guard against developers making changes to deployed environments in
+stages where they shouldn't, this repo implements _advisory checks_, where you
+can configure for each stage which users (by their git email address) have
+permission to make changes in that stage.
+
+By "advisory", we mean that these checks are not enforced. Any user whose SSH
+key is registered in `./infra/config/.sops.yaml` is assumed to be trusted and
+could override it.
+
+Note that these checks do not apply to deploying infrastructure with OpenTofu.
+
+To change which users have permission to which stages, edit the relevant config
+file, like this:
+
+```
+just sops edit ./infra/config/secret_globals.enc.yaml
+```
+
+### OpenTofu
 
 To run `tofu` commands with the secrets pulled into your environment, use the
 `just` recipe:
@@ -135,7 +161,7 @@ just tofu plan
 You can edit secret OpenTofu variables interactively like this:
 
 ```
-just sops edit ./infra/config/secrets.enc.yaml
+just sops edit ./infra/config/secret_vars.enc.yaml
 ```
 
 You can edit plaintext OpenTofu variables by editing

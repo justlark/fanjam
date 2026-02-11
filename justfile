@@ -47,6 +47,7 @@ check-server:
 [group("deploy changes")]
 [confirm("Deploy the client now?")]
 deploy-client stage: _install-client
+  ../tools/check-advisory-permissions.nu {{ stage }}
   npm run deploy:{{ stage }}
 
 # deploy the server
@@ -54,6 +55,7 @@ deploy-client stage: _install-client
 [group("deploy changes")]
 [confirm("Deploy the server now?")]
 deploy-server stage:
+  ../tools/check-advisory-permissions.nu {{ stage }}
   npx wrangler@latest deploy --env {{ stage }}
 
 # tail the server logs
@@ -71,7 +73,7 @@ tail-client stage:
 # generate the configuration for an environment
 [group("manage environments")]
 configure-env env stage:
-  ./tools/configure-env.nu {{ env }} {{ stage}}
+  ./tools/configure-env.nu {{ env }} {{ stage }}
 
 # update environment secrets passed to the NocoDB instance
 [group("manage environments")]
