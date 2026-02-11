@@ -174,9 +174,9 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
 };
 
 export const groupByTime = <T>(
-  formats: DatetimeFormats,
   values: Array<T>,
   getTime: (value: T) => Date,
+  formatTime: (value: Date) => string,
 ): Map<string, Array<T>> => {
   // Maps in JS preserve insertion order, so as long as we sort the values, the
   // groups will be ordered temporally as well.
@@ -186,7 +186,7 @@ export const groupByTime = <T>(
 
   for (const value of sortedValues) {
     const time = getTime(value);
-    const timeString = localizeTime(formats, time);
+    const timeString = formatTime(time);
 
     if (!grouped.has(timeString)) {
       grouped.set(timeString, []);
@@ -204,3 +204,19 @@ export const isSameDay = (a: Date, b: Date, timezone: string): boolean => {
 
   return partsA.year === partsB.year && partsA.month === partsB.month && partsA.day === partsB.day;
 };
+
+export const earliest = (...dates: (Date | undefined)[]): Date | undefined => {
+  return dates.reduce((a, b) => {
+    if (a === undefined) return b;
+    if (b === undefined) return a;
+    return a.valueOf() < b.valueOf() ? a : b;
+  }, undefined);
+};
+
+export const latest = (...dates: (Date | undefined)[]): Date | undefined => {
+  return dates.reduce((a, b) => {
+    if (a === undefined) return b;
+    if (b === undefined) return a;
+    return a.valueOf() > b.valueOf() ? a : b;
+  }, undefined);
+} 
