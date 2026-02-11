@@ -91,7 +91,7 @@ pub struct PostRestoreBackupRequest {
 
 #[derive(Debug, Serialize)]
 pub struct DataResponseEnvelope<T> {
-    pub retry_after_ms: Option<u64>,
+    pub stale: bool,
     pub value: T,
 }
 
