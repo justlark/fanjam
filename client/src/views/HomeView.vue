@@ -22,15 +22,6 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           Free for small cons.
         </p>
       </div>
-      <Button
-        as="a"
-        label="Open Demo"
-        icon="pi pi-external-link"
-        icon-pos="right"
-        raised
-        target="_blank"
-        href="https://fanjam.live/app/demo/"
-      />
       <Card>
         <template #content>
           <div class="text-xl text-center">
@@ -62,29 +53,23 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
               <li>Leave comments and notes that only organizers can see.</li>
             </ul>
           </template>
-          <!--
-        We're having stability issues with NocoDB right now, so we're removing
-        the demo link for now.
-        -->
-          <!--
-        <template #footer>
-          <div class="flex flex-wrap gap-6 items-center">
-            <Button
-              as="a"
-              label="Open Demo"
-              icon="pi pi-external-link"
-              icon-pos="right"
-              raised
-              target="_blank"
-              href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
-            />
-            <span class="flex gap-2 text-muted-color">
-              <SimpleIcon icon="info-circle" />
-              <span>Best on desktop</span>
-            </span>
-          </div>
-        </template>
-        -->
+          <template #footer>
+            <div class="flex flex-wrap gap-6 items-center">
+              <Button
+                as="a"
+                label="Open Demo"
+                icon="pi pi-external-link"
+                icon-pos="right"
+                raised
+                target="_blank"
+                href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
+              />
+              <span class="flex gap-2 text-muted-color">
+                <SimpleIcon icon="info-circle" />
+                <span>Best on desktop</span>
+              </span>
+            </div>
+          </template>
         </Card>
         <Card class="overflow-hidden">
           <template #header>
@@ -111,30 +96,23 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
               <li>Works completely offline.</li>
             </ul>
           </template>
-          <!--
-          Because we're only showing the attendee demo on the homepage right
-          now, we're moving it up to the top to make it more obvious. Once both
-          demos are online, we can put this back here.
-        -->
-          <!--
-        <template #footer>
-          <div class="flex flex-wrap gap-6 items-center">
-            <Button
-              as="a"
-              label="Open Demo"
-              icon="pi pi-external-link"
-              icon-pos="right"
-              raised
-              target="_blank"
-              href="https://fanjam.live/app/demo/"
-            />
-            <span class="flex gap-2 text-muted-color">
-              <SimpleIcon icon="info-circle" />
-              <span>Best on mobile</span>
-            </span>
-          </div>
-        </template>
-        -->
+          <template #footer>
+            <div class="flex flex-wrap gap-6 items-center">
+              <Button
+                as="a"
+                label="Open Demo"
+                icon="pi pi-external-link"
+                icon-pos="right"
+                raised
+                target="_blank"
+                href="https://fanjam.live/app/demo/"
+              />
+              <span class="flex gap-2 text-muted-color">
+                <SimpleIcon icon="info-circle" />
+                <span>Best on mobile</span>
+              </span>
+            </div>
+          </template>
         </Card>
       </div>
     </main>
