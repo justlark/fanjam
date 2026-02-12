@@ -49,7 +49,7 @@ def get-env-config [env_name: string] {
 
 def get-tofu-env [] {
   let repo_path = $env.FILE_PWD | path dirname
-  let secrets_file = $repo_path | path join "infra" "config" "env.enc.yaml"
+  let secrets_file = $repo_path | path join "infra" "config" "secret_env.enc.yaml"
   let sops_config_file = $repo_path | path join "infra" "config" ".sops.yaml"
 
   sops --config $sops_config_file decrypt $secrets_file | from yaml

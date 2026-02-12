@@ -122,7 +122,7 @@ commands:
 ```
 just sops updatekeys ./infra/config/secret_vars.enc.yaml
 just sops updatekeys ./infra/config/secret_globals.enc.yaml
-just sops updatekeys ./infra/config/env.enc.yaml
+just sops updatekeys ./infra/config/secret_env.enc.yaml
 ```
 
 Once your key is authorized, set the env var `SOPS_AGE_SSH_PRIVATE_KEY_FILE` to
@@ -170,7 +170,7 @@ You can edit plaintext OpenTofu variables by editing
 You can set additional secret env vars to be passed to OpenTofu like this:
 
 ```
-just sops edit ./infra/config/env.enc.yaml
+just sops edit ./infra/config/secret_env.enc.yaml
 ```
 
 These additional env vars are used to configure the Postgres state backend.
