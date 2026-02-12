@@ -48,13 +48,13 @@ See the following architecture diagram, laid out using
 To build and run the app, you'll need to install:
 
 - [just](https://github.com/casey/just?tab=readme-ov-file#installation)
+- [Nu](https://www.nushell.sh/book/installation.html)
 - [Rust](https://www.rust-lang.org/tools/install)
 - [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 
 To deploy the app, you'll additionally need to install:
 
 - [Podman](https://podman.io/docs/installation#installing-on-linux)
-- [Nu](https://www.nushell.sh/book/installation.html)
 - [flyctl](https://fly.io/docs/flyctl/install/)
 - [OpenTofu](https://opentofu.org/docs/intro/install/)
 - [SOPS](https://getsops.io/)
