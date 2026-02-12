@@ -1,3 +1,4 @@
+set shell := ["nu", "-c"]
 set dotenv-load
 
 # list recipes
@@ -227,4 +228,4 @@ start-playwright:
 [group("run playwright")]
 [working-directory: "./playwright/"]
 run-playwright *args: _install-playwright
-  PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3001/ npx playwright@1.55.0 test {{ args }}
+  with-env { PW_TEST_CONNECT_WS_ENDPOINT: "ws://127.0.0.1:3001/" } { npx playwright@1.55.0 test {{ args }} }
