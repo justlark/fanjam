@@ -12,13 +12,10 @@ def main [env_name: string] {
 
   # TODO: We can remove this once we have fully migrated off of the upstream
   # NocoDB image.
-  let base_image = $noco_image | split row ":" | get 0
-  let assets_path = if ($base_image | str starts-with "ghcr.io/justlark/nocodb-fanjam") {
+  let assets_path = if ($noco_image | str starts-with "ghcr.io/justlark/nocodb-fanjam") {
     "/usr/src/app/docker/nc-gui/"
-  } else if ($base_image | str starts-with "nocodb/nocodb") {
-    "/usr/src/app/node_modules/nc-lib-gui/lib/dist/"
   } else {
-    error make { msg: $"This is not a valid NocoDB image: ($noco_image)" }
+    error make { msg: $"This is not a supported NocoDB image: ($noco_image)" }
   }
 
 

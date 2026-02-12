@@ -1,7 +1,7 @@
 app: sparklefish-noco-ane2026-944691
 primary_region: iad
 build:
-  image: nocodb/nocodb:0.264.9
+  image: ghcr.io/justlark/nocodb-fanjam:0.265.6
 http_service:
   internal_port: 8080
   force_https: true
