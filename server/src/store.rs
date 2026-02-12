@@ -74,7 +74,6 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
-
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
 // We're using the Cloudflare cache API with a short TTL (configurable per-environment, but likely

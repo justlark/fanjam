@@ -19,7 +19,7 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
 
 const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   await mockApiResponse(page, endpoint, {
-    retry_after_ms: null,
+    stale: false,
     value: body,
   });
 };
