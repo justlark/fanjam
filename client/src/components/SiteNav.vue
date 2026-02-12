@@ -61,29 +61,14 @@ const copyLink = async () => {
 };
 
 const refresh = async () => {
-  let isDone = false;
-
-  // Fetching the latest data from the server can either be quick (if it's
-  // cached) or slow (if it needs to request it from NocoDB). If it's quick, we
-  // want to avoid spamming the user with a double toast. So we show them this
-  // toast only if fetching the data is taking a while. If the data is cached
-  // and returns quickly, they'll only see the seconds toast, which will appear
-  // near-instantaneously.
-  setTimeout(() => {
-    if (isDone) return;
-
-    toast.add({
-      severity: "info",
-      summary: "Refreshing",
-      detail: "Grabbing the latest schedule.",
-      life: 1500,
-    });
-  }, 200);
+  toast.add({
+    severity: "info",
+    summary: "Refreshing",
+    detail: "Grabbing the latest schedule.",
+    life: 1500,
+  });
 
   await reload();
-
-  isDone = true;
-  toast.add({ severity: "success", summary: "Done", detail: "You're all up to date!", life: 1500 });
 };
 
 const headerHeadingId = useId();
