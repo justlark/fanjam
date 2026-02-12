@@ -28,23 +28,32 @@ def get-secret-global-config [] {
 }
 
 def check-advisory-permissions [stage: string] {
+  let config = get-global-config
   let secret_globals = get-secret-global-config
   let current_user = get-user-email
   let stage_admins = $secret_globals.advisory_stage_admins | default [] | get $stage
 
   if (not ($current_user in $stage_admins)) {
-    error make { msg: $"You are not authorized to make changes in the `($stage)` stage. This is only an advisory check." }
+    error make { msg: $"You are not authorized to make changes in the `($stage)` stage. This is only an advisory check and can be overridden." }
+  }
+
+  let needs_confirmation = $config.stages | where name == $stage | first | get "confirm"
+
+  if (not $needs_confirmation) {
+    return
+  }
+
+  let given_stage = input $"Enter the name of the stage \(`($stage)`\) to confirm: "
+
+  if ($given_stage != $stage) {
+    error make { msg: "Stage name does not match. Aborting." }
   }
 }
 
 def get-env-config [env_name: string] {
   let repo_path = $env.FILE_PWD | path dirname
   let env_file = $repo_path | path join "infra" "environments" $env_name "env.yaml"
-  let env_config = open $env_file
-
-  check-advisory-permissions $env_config.stage
-
-  $env_config
+  open $env_file
 }
 
 def get-tofu-env [] {

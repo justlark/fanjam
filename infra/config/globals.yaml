@@ -21,4 +21,6 @@ dashboard_path: "dashboard"
 # there is more involved than just appending to this array.
 stages:
   - name: prod
+    confirm: true
   - name: test
+    confirm: false

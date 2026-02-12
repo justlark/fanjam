@@ -9,8 +9,6 @@ def get-api-base [stage_name: string] {
 }
 
 def get-api-headers [stage_name: string] {
-  check-advisory-permissions $stage_name
-
   let admin_api_tokens = with-env (get-tofu-env) {
     tofu -chdir=./infra/ output -json worker_admin_api_tokens | from json
   }

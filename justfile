@@ -15,6 +15,14 @@ _install-client:
 _install-playwright:
   npm install
 
+# prompt the user to confirm before they modify this environment
+_confirm-env env:
+  ./tools/check-env-permissions.nu {{ env }}
+
+# prompt the user to confirm before they modify this stage
+_confirm-stage stage:
+  ./tools/check-stage-permissions.nu {{ stage }}
+
 # run the client locally
 [working-directory: "./client/"]
 [group("test locally")]
@@ -47,16 +55,14 @@ check-server:
 [working-directory: "./client/"]
 [group("deploy changes")]
 [confirm("Deploy the client now?")]
-deploy-client stage: _install-client
-  ../tools/check-advisory-permissions.nu {{ stage }}
+deploy-client stage: (_confirm-stage stage) _install-client
   npm run deploy:{{ stage }}
 
 # deploy the server
 [working-directory: "./server/"]
 [group("deploy changes")]
 [confirm("Deploy the server now?")]
-deploy-server stage:
-  ../tools/check-advisory-permissions.nu {{ stage }}
+deploy-server stage: (_confirm-stage stage)
   npx wrangler@latest deploy --env {{ stage }}
 
 # tail the server logs
@@ -78,12 +84,12 @@ configure-env env stage:
 
 # update environment secrets passed to the NocoDB instance
 [group("manage environments")]
-update-secrets env:
+update-secrets env: (_confirm-env env)
   ./tools/update-secrets.nu {{ env }}
 
 # create a new NocoDB instance
 [group("manage environments")]
-create-env env:
+create-env env: (_confirm-env env)
   ./tools/graphile-migrate.nu {{ env }} migrate
   ./tools/create-fly-app.nu {{ env }}
   ./tools/update-secrets.nu {{ env }}
@@ -99,7 +105,7 @@ get-creds env:
 
 # redeploy an existing NocoDB instance
 [group("manage environments")]
-deploy-env env:
+deploy-env env: (_confirm-env env)
   ./tools/create-deploy-backup.nu {{ env }}
   fly -c ./infra/environments/{{ env }}/fly.yaml deploy
   ./nocodb/build.nu {{ env }}
@@ -107,18 +113,18 @@ deploy-env env:
 
 # configure an environment with a NocoDB API token
 [group("manage environments")]
-set-noco-token env:
+set-noco-token env: (_confirm-env env)
   ./tools/set-noco-token.nu {{ env }}
 
 # create a new empty base in a NocoDB instance
 [group("manage environments")]
-create-base env:
+create-base env: (_confirm-env env)
   ./tools/create-noco-base.nu {{ env }}
 
 # initialize a new environment
 [group("manage environments")]
 [confirm("Are you sure? Make sure you're only using this recipe for one-time setup of new environments.")]
-init-env env slug:
+init-env env slug: (_confirm-env env)
   ./tools/set-noco-token.nu {{ env }}
   ./tools/create-noco-base.nu {{ env }}
   ./tools/set-app-slug.nu {{ env }} {{ slug }}
@@ -126,7 +132,7 @@ init-env env slug:
 # update the app link for an environment
 [group("manage environments")]
 [confirm("Are you sure? The app will no longer be accessible via the original link. If you want a redirect, you will need to add an alias manually.")]
-set-app-link env slug:
+set-app-link env slug: (_confirm-env env)
   ./tools/set-app-slug.nu {{ env }} {{ slug }}
 
 # list app link aliases across all environments
@@ -137,19 +143,19 @@ list-app-aliases stage:
 # add an app link alias
 [group("manage environments")]
 [confirm("Are you sure? The app will be accessible via this link.")]
-add-app-alias stage alias target:
+add-app-alias stage alias target: (_confirm-stage stage)
   ./tools/add-app-alias.nu {{ stage }} {{ alias }} {{ target }}
 
 # delete an app link alias
 [group("manage environments")]
 [confirm("Are you sure? The app will no longer be accessible via this link.")]
-delete-app-alias stage alias:
+delete-app-alias stage alias: (_confirm-stage stage)
   ./tools/delete-app-alias.nu {{ stage }} {{ alias }}
 
 # delete an environment's NocoDB base and all its data
 [group("manage environments")]
 [confirm("Are you sure? This will delete all data in the environment.")]
-delete-base env:
+delete-base env: (_confirm-env env)
   ./tools/delete-base.nu {{ env }}
 
 # get the app and dashboard link for an environment
@@ -160,12 +166,12 @@ get-links env:
 # apply any pending schema migrations to an environment
 [group("manage environments")]
 [confirm("Are you sure? This will apply any pending schema migrations to the environment.")]
-migrate-env env:
+migrate-env env: (_confirm-env env)
   ./tools/migrate-env.nu {{ env }}
 
 # run a graphile-migrate command
 [group("manage environments")]
-graphile-migrate env +params:
+graphile-migrate env +params: (_confirm-env env)
   ./tools/graphile-migrate.nu {{ env }} {{ params }}
 
 # get the current schema version of an environment
@@ -175,12 +181,12 @@ get-schema-version env:
 
 # clear the server cache for an environment
 [group("manage environments")]
-clear-cache env:
+clear-cache env: (_confirm-env env)
   ./tools/clear-cache.nu {{ env }}
 
 # upload an environment-specific asset (from stdin)
 [group("manage environments")]
-upload-asset env name:
+upload-asset env name: (_confirm-env env)
   ./tools/upload-asset.nu {{ env }} {{ name }}
 
 # show the documentation for the environment config
@@ -195,7 +201,7 @@ get-config env:
 
 # edit the config for an environment interactively
 [group("configure environments")]
-edit-config env:
+edit-config env: (_confirm-env env)
   ./tools/edit-config.nu {{ env }}
 
 # run an OpenTofu command
