@@ -136,14 +136,15 @@ stages where they shouldn't, this repo implements _advisory checks_, where you
 can configure for each stage which users (by their git email address) have
 permission to make changes in that stage.
 
+Similarly, you can configure which users have permission to run OpenTofu
+commands via `just tofu`.
+
 By "advisory", we mean that these checks are not enforced. Any user whose SSH
 key is registered in `./infra/config/.sops.yaml` is assumed to be trusted and
 could override it.
 
-Note that these checks do not apply to deploying infrastructure with OpenTofu.
-
-To change which users have permission to which stages, edit the relevant config
-file, like this:
+To change which users have which permissions, edit the relevant config file,
+like this:
 
 ```
 just sops edit ./infra/config/secret_globals.enc.yaml

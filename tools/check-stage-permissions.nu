@@ -3,5 +3,5 @@
 source ./config.nu
 
 def main [stage: string] {
-  check-advisory-permissions $stage
+  check-stage-permissions $stage
 }

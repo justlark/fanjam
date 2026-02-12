@@ -27,7 +27,7 @@ def get-secret-global-config [] {
   sops --config $sops_config_file decrypt $secrets_file | from yaml
 }
 
-def check-advisory-permissions [stage: string] {
+def check-stage-permissions [stage: string] {
   let config = get-global-config
   let secret_globals = get-secret-global-config
   let current_user = get-user-email
@@ -47,6 +47,16 @@ def check-advisory-permissions [stage: string] {
 
   if ($given_stage != $stage) {
     error make { msg: "Stage name does not match. Aborting." }
+  }
+}
+
+def check-tofu-permissions [] {
+  let secret_globals = get-secret-global-config
+  let current_user = get-user-email
+  let tofu_admins = $secret_globals.advisory_tofu_admins | default []
+
+  if (not ($current_user in $tofu_admins)) {
+    error make { msg: $"You are not authorized to modify infrastructure. This is only an advisory check and can be overridden." }
   }
 }
 
