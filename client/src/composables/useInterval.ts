@@ -12,7 +12,7 @@ const useInterval = (action: () => void, interval: number): Ref<number | undefin
       clearInterval(intervalId.value);
     }
   });
-  
+
   return intervalId;
 };
 

@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import useDatetimeFormats from '@/composables/useDatetimeFormats';
-import useInterval from '@/composables/useInterval';
-import type { Event } from '@/utils/api';
-import { dateIsBetween, earliest, groupByTime, latest } from '@/utils/time';
-import { computed, ref, type DeepReadonly } from 'vue';
+import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useInterval from "@/composables/useInterval";
+import type { Event } from "@/utils/api";
+import { dateIsBetween, earliest, groupByTime, latest } from "@/utils/time";
+import { computed, ref, type DeepReadonly } from "vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
-import useIncremental from '@/composables/useIncremental';
+import useIncremental from "@/composables/useIncremental";
 
 const focusedEventId = defineModel<string | undefined>("focused");
 
 const props = defineProps<{
   events: DeepReadonly<Event>[];
   allCategories: Array<string>;
-  viewType: "daily" | "all"; 
+  viewType: "daily" | "all";
 }>();
 
 const datetimeFormats = useDatetimeFormats();
@@ -27,8 +27,8 @@ const timeSlots = computed(() => {
     (time) => {
       const timeString = formats.shortTime.format(time);
       const dayName = formats.shortWeekday.format(time);
-      return props.viewType === 'daily' ? timeString : `${dayName} ${timeString}`;
-    }
+      return props.viewType === "daily" ? timeString : `${dayName} ${timeString}`;
+    },
   );
   return [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
     localizedTime,
@@ -40,13 +40,13 @@ const now = ref(new Date());
 
 const currentTimeSlotIndex = computed(() => {
   const index = timeSlots.value.findIndex((thisSlot, i, allSlots) => {
-    const thisSlotStartTimes = thisSlot.events.map(event => event.startTime);
+    const thisSlotStartTimes = thisSlot.events.map((event) => event.startTime);
     const startTime = earliest(...thisSlotStartTimes);
 
-    const thisSlotEndTimes = thisSlot.events.map(event => event.endTime);
+    const thisSlotEndTimes = thisSlot.events.map((event) => event.endTime);
     const thisEndTime = latest(...thisSlotEndTimes);
 
-    const nextSlotStartTimes = allSlots[i + 1]?.events.map(event => event.startTime) ?? [];
+    const nextSlotStartTimes = allSlots[i + 1]?.events.map((event) => event.startTime) ?? [];
     const nextStartTime = earliest(...nextSlotStartTimes);
 
     const endTime = earliest(thisEndTime, nextStartTime);
@@ -59,27 +59,23 @@ const currentTimeSlotIndex = computed(() => {
 });
 
 const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
-useInterval(() => now.value = new Date(), REFRESH_NOW_TIME_INTERVAL_MILLIS);
+useInterval(() => (now.value = new Date()), REFRESH_NOW_TIME_INTERVAL_MILLIS);
 
 const incrementalTimeSlots = useIncremental(timeSlots);
-
 </script>
 
 <template>
-<div
-  v-if="incrementalTimeSlots.length > 0"
-  :class="['flex flex-col gap-6']"
->
-  <ScheduleTimeSlot
-    v-for="(timeSlot, index) in timeSlots"
-    v-model:focused="focusedEventId"
-    :key="index"
-    :localized-time="timeSlot.localizedTime"
-    :events="timeSlot.events"
-    :all-categories="allCategories"
-    :is-current-time-slot="index === currentTimeSlotIndex"
-    :view-type="viewType"
-    data-testid="schedule-time-slot"
-  />
-</div>
+  <div v-if="incrementalTimeSlots.length > 0" :class="['flex flex-col gap-6']">
+    <ScheduleTimeSlot
+      v-for="(timeSlot, index) in timeSlots"
+      v-model:focused="focusedEventId"
+      :key="index"
+      :localized-time="timeSlot.localizedTime"
+      :events="timeSlot.events"
+      :all-categories="allCategories"
+      :is-current-time-slot="index === currentTimeSlotIndex"
+      :view-type="viewType"
+      data-testid="schedule-time-slot"
+    />
+  </div>
 </template>

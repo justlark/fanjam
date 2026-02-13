@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-  ref,
-  type DeepReadonly,
-  onMounted,
-  toRef,
-  computed,
-  watch,
-  watchEffect,
-} from "vue";
+import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect } from "vue";
 import { datesToDayNames, dateIsBetween, isSameDay, earliest } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
@@ -143,11 +135,11 @@ const filteredEventIdsSet = computed(() =>
 );
 
 const filteredEventsForCurrentDay = computed(() =>
-  currentDayEvents.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true)
+  currentDayEvents.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
 );
 
 const filteredEventsForAllDays = computed(() =>
-  events.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true)
+  events.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
 );
 
 const filteredEvents = computed(() => {
@@ -177,7 +169,9 @@ watch(viewType, async (newViewType, oldViewType) => {
   });
 });
 
-const firstEventEndTime = computed(() => earliest(...currentDayEvents.value.map(event => event.endTime)));
+const firstEventEndTime = computed(() =>
+  earliest(...currentDayEvents.value.map((event) => event.endTime)),
+);
 
 const isDayFilteringPastEvents = computed(() => {
   if (firstEventEndTime.value === undefined) {
@@ -275,10 +269,7 @@ watchEffect(() => {
         <SimpleIcon class="text-lg" icon="eye-slash-fill" />
         <span class="italic">past events hidden</span>
       </span>
-      <div
-        v-if="viewType !== undefined"
-        :class="[{ 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
-      >
+      <div v-if="viewType !== undefined" :class="[{ 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]">
         <ScheduleList
           v-model:focused="focusedEventId"
           :events="filteredEvents"

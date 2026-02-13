@@ -219,4 +219,4 @@ export const latest = (...dates: (Date | undefined)[]): Date | undefined => {
     if (b === undefined) return a;
     return a.valueOf() > b.valueOf() ? a : b;
   }, undefined);
-} 
+};
