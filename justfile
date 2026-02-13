@@ -184,6 +184,12 @@ get-schema-version env:
 clear-cache env: (_confirm-env env)
   ./tools/clear-cache.nu {{ env }}
 
+# seed an environment with demo data from a SQL dump
+[group("manage environments")]
+[confirm("Are you sure? This will overwrite the environment's data with demo data.")]
+seed-data env dump: (_confirm-env env)
+  ./tools/seed-data.nu {{ env }} {{ dump }}
+
 # upload an environment-specific asset (from stdin)
 [group("manage environments")]
 upload-asset env name: (_confirm-env env)

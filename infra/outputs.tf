@@ -92,6 +92,18 @@ output "env_config" {
   sensitive = true
 }
 
+output "psql" {
+  value = {
+    for env in keys(local.environments) : env => {
+      host     = neon_project.env[env].database_host
+      port     = 5432
+      user     = neon_project.env[env].database_user
+      password = neon_project.env[env].database_password
+    }
+  }
+  sensitive = true
+}
+
 output "stages" {
   value = {
     for name, config in local.stages : name => {
