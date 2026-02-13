@@ -39,23 +39,18 @@ const timeSlots = computed(() => {
 const now = ref(new Date());
 
 const currentTimeSlotIndex = computed(() => {
-  const index = timeSlots.value.findIndex((thisSlot, i, allSlots) => {
+  return timeSlots.value.reduce<number | undefined>((prev, thisSlot, index) => {
     const thisSlotStartTimes = thisSlot.events.map((event) => event.startTime);
     const startTime = earliest(...thisSlotStartTimes);
 
     const thisSlotEndTimes = thisSlot.events.map((event) => event.endTime);
-    const thisEndTime = latest(...thisSlotEndTimes);
+    const endTime = latest(...thisSlotEndTimes);
 
-    const nextSlotStartTimes = allSlots[i + 1]?.events.map((event) => event.startTime) ?? [];
-    const nextStartTime = earliest(...nextSlotStartTimes);
-
-    const endTime = earliest(thisEndTime, nextStartTime);
-    // Returning false for now, but hitting this condition probably means something is very weird with the data -
+    // Skipping the entry for now, but hitting this condition probably means something is very weird with the data -
     // A timeslot either has no events, or no events with defined end times.
-    if (startTime === undefined || endTime === undefined) return false;
-    return dateIsBetween(now.value, startTime, endTime);
-  });
-  return index >= 0 ? index : undefined;
+    if (startTime === undefined || endTime === undefined) return prev;
+    return dateIsBetween(now.value, startTime, endTime) ? index : prev;
+  }, undefined);
 });
 
 const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
@@ -77,5 +72,12 @@ const incrementalTimeSlots = useIncremental(timeSlots);
       :view-type="viewType"
       data-testid="schedule-time-slot"
     />
+  </div>
+  <div
+    v-else
+    class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8"
+    data-testid="schedule-no-events"
+  >
+    No events
   </div>
 </template>
