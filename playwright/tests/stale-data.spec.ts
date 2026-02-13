@@ -14,7 +14,15 @@ test.describe("stale data retry behavior", () => {
   }) => {
     await mockTime(page);
 
+    // Mock other endpoints first
+    await mockApi(page, {
+      events: [],
+      pages: [],
+      announcements: [],
+    });
+
     // Mock the info endpoint to return stale data first, then fresh data
+    // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
         stale: true,
@@ -37,13 +45,6 @@ test.describe("stale data retry behavior", () => {
         },
       },
     ]);
-
-    // Mock other endpoints normally (fresh data)
-    await mockApi(page, {
-      events: [],
-      pages: [],
-      announcements: [],
-    });
 
     await infoPage.goto();
 
@@ -88,7 +89,15 @@ test.describe("stale data retry behavior", () => {
 
     const requestCounter = countRequestsTo(page, "/info");
 
+    // Mock other endpoints first
+    await mockApi(page, {
+      events: [],
+      pages: [],
+      announcements: [],
+    });
+
     // Mock the info endpoint: stale twice, then fresh
+    // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
         stale: true,
@@ -122,12 +131,6 @@ test.describe("stale data retry behavior", () => {
       },
     ]);
 
-    await mockApi(page, {
-      events: [],
-      pages: [],
-      announcements: [],
-    });
-
     await infoPage.goto();
 
     // Fast-forward through first retry (1500ms)
@@ -155,7 +158,15 @@ test.describe("stale data retry behavior", () => {
 
     const requestCounter = countRequestsTo(page, "/info");
 
+    // Mock other endpoints first
+    await mockApi(page, {
+      events: [],
+      pages: [],
+      announcements: [],
+    });
+
     // Mock the info endpoint to always return stale data
+    // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
         stale: true,
@@ -168,12 +179,6 @@ test.describe("stale data retry behavior", () => {
         },
       },
     ]);
-
-    await mockApi(page, {
-      events: [],
-      pages: [],
-      announcements: [],
-    });
 
     await infoPage.goto();
 
