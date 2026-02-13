@@ -220,6 +220,13 @@ the API token interactively. Once you've done this, you can lose the token.
 just init-env foo bar
 ```
 
+**Optional:** If we're setting up a demo environment for a prospective client,
+we can seed the environment with our demo dataset like this:
+
+```
+just seed-data foo geekcon
+```
+
 ## Releases
 
 When releasing a new version of FanJam, the server and client must always be
