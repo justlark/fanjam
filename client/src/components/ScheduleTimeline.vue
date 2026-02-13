@@ -90,6 +90,12 @@ const currentDayTimeSlots = computed(() => {
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
+const dayDate = computed(() => {
+  if (currentDayIndex.value === undefined || namedDays.value === undefined) {
+    return undefined;
+  }
+  return namedDays.value[currentDayIndex.value]?.dayStart;
+});
 
 const allDates = computed(() =>
   events.value.reduce((set, event) => {
@@ -194,6 +200,56 @@ const filteredTimeSlots = computed(() => {
   return [];
 });
 
+const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
+interface DayGroup {
+  dayName: string;
+  dayDate: Date | undefined;
+  timeSlots: Array<TimeSlot>;
+}
+
+const filteredDayGroups = computed<Array<DayGroup>>(() => {
+  if (viewType.value === "daily") {
+    if (currentDayIndex.value === undefined) return [];
+    return [
+      {
+        dayName: dayNames.value[currentDayIndex.value] ?? "",
+        dayDate: namedDays.value?.[currentDayIndex.value]?.dayStart,
+        timeSlots: incrementalFilteredTimeSlots.value as Array<TimeSlot>,
+      },
+    ];
+  }
+
+  if (viewType.value === "all") {
+    const groups: Array<DayGroup> = [];
+    let currentGroup: DayGroup | undefined;
+
+    for (const timeSlot of incrementalFilteredTimeSlots.value) {
+      const matchingDayIndex = days.value.findIndex((day) =>
+        timeSlot.localizedTime.startsWith(day.dayName),
+      );
+
+      const day = matchingDayIndex !== -1 ? days.value[matchingDayIndex] : undefined;
+      const dayName = day?.dayName ?? "";
+
+      if (!currentGroup || currentGroup.dayName !== dayName) {
+        currentGroup = {
+          dayName,
+          dayDate:
+            matchingDayIndex !== -1 ? namedDays.value?.[matchingDayIndex]?.dayStart : undefined,
+          timeSlots: [],
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.timeSlots.push(timeSlot as TimeSlot);
+    }
+
+    return groups;
+  }
+
+  return [];
+});
+
 watch(viewType, async (newViewType, oldViewType) => {
   if (oldViewType === undefined || route.name !== "schedule") {
     return;
@@ -208,8 +264,6 @@ watch(viewType, async (newViewType, oldViewType) => {
     replace: true,
   });
 });
-
-const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
 
 const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
 
@@ -332,13 +386,15 @@ watchEffect(() => {
 
 <template>
   <div>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col">
       <ScheduleHeader v-if="viewType" v-model:view="viewType" v-model:ids="searchResultEventIds" />
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
         v-model:day="currentDayIndex"
         :day-names="dayNames"
         :today-index="todayIndex"
+        :day-date="dayDate"
+        :view-type="viewType"
       />
       <span
         class="text-muted-color flex gap-2 justify-center"
@@ -352,19 +408,30 @@ watchEffect(() => {
         v-if="filteredTimeSlots.length > 0 && viewType !== undefined"
         :class="['flex flex-col gap-6', { 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
       >
-        <ScheduleTimeSlot
-          v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
-          v-model:focused="focusedEventId"
-          :key="index"
-          :localized-time="timeSlot.localizedTime"
-          :events="timeSlot.events"
-          :all-categories="allCategories"
-          :is-current-time-slot="
-            (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
-          "
-          :view-type="viewType"
-          data-testid="schedule-time-slot"
-        />
+        <template v-for="(group, groupIndex) in filteredDayGroups" :key="groupIndex">
+          <DayPicker
+            v-if="viewType === 'all' && currentDayIndex !== undefined && days.length > 0"
+            v-model:day="currentDayIndex"
+            :day-names="dayNames"
+            :today-index="todayIndex"
+            :day-date="dayDate"
+            :view-type="viewType"
+          />
+          <ScheduleTimeSlot
+            v-for="(timeSlot, index) in group.timeSlots"
+            v-model:focused="focusedEventId"
+            :key="`${groupIndex}-${index}`"
+            :localized-time="timeSlot.localizedTime"
+            :events="timeSlot.events"
+            :all-categories="allCategories"
+            :is-current-time-slot="
+              (viewType === 'all' || currentDayIndex === todayIndex) &&
+              index === currentTimeSlotIndex
+            "
+            :view-type="viewType"
+            data-testid="schedule-time-slot"
+          />
+        </template>
       </div>
       <div class="m-auto" v-else-if="eventsStatus === 'pending'">
         <ProgressSpinner />
