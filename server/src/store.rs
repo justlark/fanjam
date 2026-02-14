@@ -74,10 +74,6 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
-// If we return stale data to the client, we instruct the client to retry the request after this
-// delay, by which point the upstream request to NocoDB should have completed.
-const NOCO_RETRY_DELAY: Duration = Duration::from_secs(5);
-
 // This macro generates a method on the `Store` for fetching data from NocoDB with caching.
 //
 // We're using the Cloudflare cache API with a short TTL (configurable per-environment, but likely
@@ -168,12 +164,11 @@ macro_rules! get_data {
                     console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
                 }
 
-                // We consider responses that hit the edge cache to be fresh, so we do not pass a
-                // `retry_after_ms` here. Otherwise the client would get caught in an infinite
-                // retry loop.
+                // We consider responses that hit the edge cache to be fresh, so we set `stale` to
+                // false. Otherwise the client would get caught in an infinite retry loop.
                 let response_for_edge_cache_result = worker::Response::try_from(
                     EtagJson(DataResponseEnvelope {
-                        retry_after_ms: None,
+                        stale: false,
                         value: body,
                     })
                     .into_response()
@@ -220,7 +215,7 @@ macro_rules! get_data {
                     }
 
                     Ok(EtagJson(DataResponseEnvelope {
-                        retry_after_ms: Some(NOCO_RETRY_DELAY.as_millis() as u64),
+                        stale: true,
                         value: body,
                     })
                     .into_response())
@@ -238,7 +233,7 @@ macro_rules! get_data {
                         });
 
                         Ok(EtagJson(DataResponseEnvelope {
-                            retry_after_ms: Some(NOCO_RETRY_DELAY.as_millis() as u64),
+                            stale: true,
                             value: body,
                         })
                         .into_response())
