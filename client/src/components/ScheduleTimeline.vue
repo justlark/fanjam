@@ -1,17 +1,7 @@
 <script setup lang="ts">
-import {
-  ref,
-  type DeepReadonly,
-  onMounted,
-  onUnmounted,
-  toRef,
-  computed,
-  watch,
-  watchEffect,
-} from "vue";
-import { datesToDayNames, dateIsBetween, groupByTime, isSameDay } from "@/utils/time";
+import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect } from "vue";
+import { datesToDayNames, dateIsBetween, isSameDay, earliest } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
-import useIncremental from "@/composables/useIncremental";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -19,10 +9,10 @@ import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
 import SimpleIcon from "./SimpleIcon.vue";
-import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";
 import EventSummaryDrawer from "./EventSummaryDrawer.vue";
+import ScheduleList from "./ScheduleList.vue";
 
 // TODO: Break up the logic in this component. This component has *way* too
 // much going on.
@@ -63,14 +53,9 @@ watch(eventSummaryIsVisible, (newIsVisible, oldIsVisible) => {
   }
 });
 
-interface TimeSlot {
-  localizedTime: string;
-  events: Array<DeepReadonly<Event>>;
-}
-
 interface Day {
   dayName: string;
-  timeSlots: Array<TimeSlot>;
+  events: Array<DeepReadonly<Event>>;
 }
 
 const currentDayIndex = defineModel<number>("day");
@@ -80,12 +65,12 @@ const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 const viewType = ref<"daily" | "all">();
 
-const currentDayTimeSlots = computed(() => {
+const currentDayEvents = computed(() => {
   if (currentDayIndex.value === undefined) {
     return [];
   }
 
-  return days.value[currentDayIndex.value]?.timeSlots ?? [];
+  return days.value[currentDayIndex.value]?.events ?? [];
 });
 
 const dayNames = computed(() => days.value.map((day) => day.dayName));
@@ -122,25 +107,16 @@ const todayIndex = computed(() => {
 watchEffect(() => {
   dayIndexByEventId.value = {};
 
-  if (datetimeFormats.value === undefined || namedDays.value === undefined) return;
+  if (namedDays.value === undefined) return;
 
   // Until all events have loaded, continue using the previous `days`.
   // Otherwise, calculations for things like whether we should enable the Next
   // Day button would have to wait until all the days have loaded.
   if (eventsStatus.value !== "success") return;
 
-  // The type narrowing won't carry into the closure body.
-  const datetimeFormatsValue = datetimeFormats.value;
-
   days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
     const eventsThisDay = events.value.filter((event) =>
       dateIsBetween(event.startTime, dayStart, dayEnd),
-    );
-
-    const groupedEvents = groupByTime(
-      datetimeFormatsValue,
-      eventsThisDay,
-      (event) => event.startTime,
     );
 
     for (const event of eventsThisDay) {
@@ -149,10 +125,7 @@ watchEffect(() => {
 
     return {
       dayName,
-      timeSlots: [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
-        localizedTime,
-        events: eventsInThisTimeSlot,
-      })),
+      events: eventsThisDay,
     };
   });
 });
@@ -161,34 +134,21 @@ const filteredEventIdsSet = computed(() =>
   searchResultEventIds.value !== undefined ? new Set(searchResultEventIds.value) : undefined,
 );
 
-const filteredTimeSlotsForCurrentDay = computed(() =>
-  currentDayTimeSlots.value
-    .map((timeSlot) => ({
-      events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
-      localizedTime: timeSlot.localizedTime,
-    }))
-    .filter((timeSlot) => timeSlot.events.length > 0),
+const filteredEventsForCurrentDay = computed(() =>
+  currentDayEvents.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
 );
 
-const filteredTimeSlotsForAllDays = computed(() =>
-  days.value
-    .map((day) =>
-      day.timeSlots.map((timeSlot) => ({
-        events: timeSlot.events.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
-        localizedTime: `${day.dayName} ${timeSlot.localizedTime}`,
-      })),
-    )
-    .flat()
-    .filter((timeSlot) => timeSlot.events.length > 0),
+const filteredEventsForAllDays = computed(() =>
+  events.value.filter((event) => filteredEventIdsSet.value?.has(event.id) ?? true),
 );
 
-const filteredTimeSlots = computed(() => {
+const filteredEvents = computed(() => {
   if (viewType.value === "daily") {
-    return filteredTimeSlotsForCurrentDay.value;
+    return filteredEventsForCurrentDay.value;
   }
 
   if (viewType.value === "all") {
-    return filteredTimeSlotsForAllDays.value;
+    return filteredEventsForAllDays.value;
   }
 
   return [];
@@ -209,9 +169,9 @@ watch(viewType, async (newViewType, oldViewType) => {
   });
 });
 
-const incrementalFilteredTimeSlots = useIncremental(filteredTimeSlots);
-
-const firstEventEndTime = computed(() => currentDayTimeSlots.value[0]?.events[0]?.endTime);
+const firstEventEndTime = computed(() =>
+  earliest(...currentDayEvents.value.map((event) => event.endTime)),
+);
 
 const isDayFilteringPastEvents = computed(() => {
   if (firstEventEndTime.value === undefined) {
@@ -219,45 +179,6 @@ const isDayFilteringPastEvents = computed(() => {
   }
 
   return filterCriteria.hidePastEvents && firstEventEndTime.value < new Date();
-});
-
-const getCurrentTimeSlotIndices = () =>
-  [...filteredTimeSlots.value.entries()]
-    .filter(([, timeSlot]) => {
-      const firstEventStartTime = timeSlot.events[0].startTime;
-      const lastEvent = timeSlot.events[timeSlot.events.length - 1];
-      const lastEventEndTime = lastEvent.endTime ?? lastEvent.startTime;
-      const now = new Date();
-
-      return dateIsBetween(now, firstEventStartTime, lastEventEndTime);
-    })
-    .map(([index]) => index);
-
-const currentTimeSlotIndex = ref<number>();
-
-watchEffect(() => {
-  const currentIndices = getCurrentTimeSlotIndices();
-  if (currentIndices.length === 0) return;
-  currentTimeSlotIndex.value = currentIndices[currentIndices.length - 1];
-});
-
-const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
-
-const refreshNowTimeIntervalId = ref<number>();
-
-// Refresh the current time slot indicator periodically.
-onMounted(() => {
-  refreshNowTimeIntervalId.value = setInterval(() => {
-    const currentIndices = getCurrentTimeSlotIndices();
-    if (currentIndices.length === 0) return;
-    currentTimeSlotIndex.value = currentIndices[currentIndices.length - 1];
-  }, REFRESH_NOW_TIME_INTERVAL_MILLIS);
-});
-
-onUnmounted(() => {
-  if (refreshNowTimeIntervalId.value !== undefined) {
-    clearInterval(refreshNowTimeIntervalId.value);
-  }
 });
 
 // Do not fire when the query params change. Otherwise, if the user is viewing
@@ -323,7 +244,7 @@ watchEffect(() => {
   if (
     route.name === "schedule" &&
     eventsStatus.value === "success" &&
-    currentDayTimeSlots.value.length === 0
+    currentDayEvents.value.length === 0
   ) {
     currentDayIndex.value = 0;
   }
@@ -348,33 +269,16 @@ watchEffect(() => {
         <SimpleIcon class="text-lg" icon="eye-slash-fill" />
         <span class="italic">past events hidden</span>
       </span>
-      <div
-        v-if="filteredTimeSlots.length > 0 && viewType !== undefined"
-        :class="['flex flex-col gap-6', { 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]"
-      >
-        <ScheduleTimeSlot
-          v-for="(timeSlot, index) in incrementalFilteredTimeSlots"
+      <div v-if="viewType !== undefined" :class="[{ 'mb-[15rem] lg:mb-0': eventSummaryIsVisible }]">
+        <ScheduleList
           v-model:focused="focusedEventId"
-          :key="index"
-          :localized-time="timeSlot.localizedTime"
-          :events="timeSlot.events"
-          :all-categories="allCategories"
-          :is-current-time-slot="
-            (viewType === 'all' || currentDayIndex === todayIndex) && index === currentTimeSlotIndex
-          "
-          :view-type="viewType"
-          data-testid="schedule-time-slot"
+          :events="filteredEvents"
+          :allCategories="allCategories"
+          :viewType="viewType"
         />
       </div>
       <div class="m-auto" v-else-if="eventsStatus === 'pending'">
         <ProgressSpinner />
-      </div>
-      <div
-        v-else
-        class="text-center text-lg italic text-surface-500 dark:text-surface-400 mt-8"
-        data-testid="schedule-no-events"
-      >
-        No events
       </div>
       <EventSummaryDrawer
         class="lg:!hidden"
