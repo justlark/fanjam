@@ -26,7 +26,7 @@ const timeSlots = computed(() => {
     (event) => event.startTime,
     (time) => {
       const timeString = formats.shortTime.format(time);
-      const dayName = formats.shortWeekday.format(time);
+      const dayName = formats.longWeekday.format(time);
       return props.viewType === "daily" ? timeString : `${dayName} ${timeString}`;
     },
   );

@@ -218,7 +218,7 @@ test.describe("the schedule timeline view", () => {
         {
           name: "Event 1",
           start_time: hoursFromNow(-25).toISOString(),
-          end_time: hoursFromNow(24).toISOString(),
+          end_time: hoursFromNow(-24).toISOString(),
         },
         {
           name: "Event 2",
