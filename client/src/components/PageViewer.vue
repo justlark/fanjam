@@ -78,7 +78,13 @@ const pageHeadingId = useId();
           class="max-w-140 w-full mx-auto mt-6"
           v-if="page.files.length > 0"
           :links="[]"
-          :files="[...page.files]"
+          :files="
+            page.files.map((file) => ({
+              name: file.name,
+              mediaType: file.mediaType,
+              url: `${pageId}/files/${file.id}`,
+            }))
+          "
           :pages="[]"
         />
       </div>
