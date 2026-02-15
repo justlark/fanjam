@@ -100,12 +100,12 @@ const useRemoteDataInner = <T, S>({
   const MAX_RETRIES = 5;
 
   let retryCount = 0;
-  let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+  let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const cancelRetry = () => {
-    if (retryTimeout !== null) {
+    if (retryTimeout !== undefined) {
       clearTimeout(retryTimeout);
-      retryTimeout = null;
+      retryTimeout = undefined;
     }
   };
 
@@ -114,7 +114,7 @@ const useRemoteDataInner = <T, S>({
     const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount);
     retryCount++;
     retryTimeout = setTimeout(() => {
-      retryTimeout = null;
+      retryTimeout = undefined;
       void reload();
     }, delay);
   };
