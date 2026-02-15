@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "origin-cache",
               plugins: [
                 {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).href),
                   cacheWillUpdate: ({ response }) => {
                     return Promise.resolve(response.status === 200 ? response : null);
                   },
@@ -77,7 +77,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "origin-test-cache",
               plugins: [
                 {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).href),
                   cacheWillUpdate: ({ response }) => {
                     return Promise.resolve(response.status === 200 ? response : null);
                   },
