@@ -22,6 +22,10 @@ const headerPatterns = {
   },
 };
 
+interface ResponseEnvelope<T> {
+  value: T;
+}
+
 interface AppInfo {
   env_name?: string;
   name?: string;
@@ -37,7 +41,7 @@ const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> =>
 
   try {
     const body = await response.json();
-    return body as AppInfo;
+    return (body as ResponseEnvelope<AppInfo>).value;
   } catch {
     return {};
   }
