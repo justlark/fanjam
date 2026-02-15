@@ -3,7 +3,7 @@ import LinkButton from "./LinkButton.vue";
 
 const props = defineProps<{
   links: Array<{ name: string; url: string }>;
-  files: Array<{ name: string; mediaType: string; signedUrl: string }>;
+  files: Array<{ name: string; mediaType: string; url: string }>;
   pages: Array<{
     id: string;
     title: string;
@@ -37,7 +37,7 @@ const props = defineProps<{
         :name="file.name"
         :target="{
           kind: 'file',
-          url: file.signedUrl,
+          url: file.url,
           mediaType: file.mediaType,
         }"
         icon="download"

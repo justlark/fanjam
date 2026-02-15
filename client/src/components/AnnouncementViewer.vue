@@ -120,7 +120,13 @@ const announcementHeadingId = useId();
           class="max-w-140 w-full mx-auto mt-6"
           v-if="announcement.attachments.length > 0"
           :links="[]"
-          :files="[...announcement.attachments]"
+          :files="
+            announcement.attachments.map((file) => ({
+              name: file.name,
+              mediaType: file.mediaType,
+              url: `${announcementId}/files/${file.id}`,
+            }))
+          "
           :pages="[]"
           data-testid="announcement-attachments-list"
         />

@@ -137,6 +137,8 @@ struct LinkResponse {
 
 #[derive(Debug, Deserialize)]
 struct FileBodyResponse {
+    #[serde(rename = "id")]
+    pub id: String,
     #[serde(rename = "title")]
     pub title: String,
     #[serde(rename = "mimetype")]
@@ -209,6 +211,7 @@ pub struct Info {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct File {
+    pub id: String,
     pub name: String,
     pub media_type: String,
     pub signed_url: String,
@@ -322,6 +325,7 @@ pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<
                 .unwrap_or_default()
                 .into_iter()
                 .map(|f| File {
+                    id: f.id,
                     name: f.title,
                     media_type: f.media_type,
                     signed_url: f.signed_url,
@@ -366,6 +370,7 @@ pub async fn get_pages(client: &Client, table_ids: &TableIds) -> anyhow::Result<
                 .unwrap_or_default()
                 .into_iter()
                 .map(|f| File {
+                    id: f.id,
                     name: f.title,
                     media_type: f.media_type,
                     signed_url: f.signed_url,
@@ -394,6 +399,7 @@ pub async fn get_announcements(
                 .unwrap_or_default()
                 .into_iter()
                 .map(|f| File {
+                    id: f.id,
                     name: f.title,
                     media_type: f.media_type,
                     signed_url: f.signed_url,

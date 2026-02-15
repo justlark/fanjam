@@ -20,9 +20,9 @@ interface RawInfo {
     url: string;
   }>;
   files: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
 }
 
@@ -31,9 +31,9 @@ interface RawPage {
   title: string;
   body: string;
   files: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
 }
 
@@ -42,9 +42,9 @@ interface RawAnnouncement {
   title: string;
   body: string;
   attachments: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
   created_at: string;
   updated_at: string;
@@ -88,9 +88,9 @@ export interface Link {
 }
 
 export interface File {
+  id: string;
   name: string;
   mediaType: string;
-  signedUrl: string;
 }
 
 export interface Page {
@@ -216,9 +216,9 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       url: link.url,
     })),
     files: rawInfo.value.files.map((file) => ({
+      id: file.id,
       name: file.name,
       mediaType: file.media_type,
-      signedUrl: file.signed_url,
     })),
   };
 
@@ -255,9 +255,9 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     title: page.title,
     body: page.body,
     files: page.files.map((file) => ({
+      id: file.id,
       name: file.name,
       mediaType: file.media_type,
-      signedUrl: file.signed_url,
     })),
   }));
 
@@ -299,9 +299,9 @@ const getAnnouncements = async (
       title: announcement.title,
       body: announcement.body,
       attachments: announcement.attachments.map((attachment) => ({
+        id: attachment.id,
         name: attachment.name,
         mediaType: attachment.media_type,
-        signedUrl: attachment.signed_url,
       })),
       createdAt: new Date(announcement.created_at),
       updatedAt: new Date(announcement.updated_at),

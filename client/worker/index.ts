@@ -26,24 +26,97 @@ interface ResponseEnvelope<T> {
   value: T;
 }
 
+const cloneResponseWithHeaders = (
+  response: Response,
+  headers: Record<string, string>,
+): Response => {
+  // Copy response headers from upstream request.
+  const newHeaders = new Headers();
+  for (const [key, value] of response.headers.entries()) {
+    newHeaders.set(key, value);
+  }
+
+  const newResponse = new Response(response.body as ReadableStream<Uint8Array> | null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+
+  for (const [key, value] of Object.entries(headers)) {
+    newResponse.headers.set(key, value);
+  }
+
+  return newResponse;
+};
+
+interface File {
+  id: string;
+  name: string;
+  media_type: string;
+  signed_url: string;
+}
+
 interface AppInfo {
   env_name?: string;
   name?: string;
   description?: string;
+  files: Array<File>;
+}
+
+interface Page {
+  id: string;
+  files: Array<File>;
+}
+
+interface Announcement {
+  id: string;
+  attachments: Array<File>;
 }
 
 const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
   const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
 
   if (!response.ok) {
-    return {};
+    return { files: [] };
   }
 
   try {
     const body = await response.json();
     return (body as ResponseEnvelope<AppInfo>).value;
   } catch {
-    return {};
+    return {
+      files: [],
+    };
+  }
+};
+
+const getPages = async (apiDomain: string, envId: string): Promise<Array<Page>> => {
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/pages`);
+
+  if (!response.ok) {
+    return [];
+  }
+
+  try {
+    const body = await response.json();
+    return (body as ResponseEnvelope<{ pages: Array<Page> }>).value.pages;
+  } catch {
+    return [];
+  }
+};
+
+const getAnnouncements = async (apiDomain: string, envId: string): Promise<Array<Announcement>> => {
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/announcements`);
+
+  if (!response.ok) {
+    return [];
+  }
+
+  try {
+    const body = await response.json();
+    return (body as ResponseEnvelope<{ announcements: Array<Announcement> }>).value.announcements;
+  } catch {
+    return [];
   }
 };
 
@@ -82,11 +155,71 @@ const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig
   }
 };
 
+const fileToResponseHeaders = (file: File): Record<string, string> => ({
+  "Content-Type": file.media_type,
+  "Content-Disposition": `inline; filename="${file.name}"`,
+});
+
 const assetUrl = (apiDomain: string, envId: string, assetName: string): string =>
   `https://${apiDomain}/apps/${envId}/assets/${assetName}`;
 
 const appPathRegex = new RegExp(`^/app/([^/]+)/`);
-const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest$`);
+const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest/?$`);
+const infoFilesPathRegex = new RegExp(`^/app/([^/]+)/info/files/([^/]+)/?$`);
+const pagesFilesPathRegex = new RegExp(`^/app/([^/]+)/pages/([^/]+)/files/([^/]+)/?$`);
+const announcementFilesPathRegex = new RegExp(
+  `^/app/([^/]+)/announcements/([^/]+)/files/([^/]+)/?$`,
+);
+
+const getFileForUrl = async (requestUrl: URL, env: Env): Promise<File | undefined> => {
+  let matches = infoFilesPathRegex.exec(requestUrl.pathname);
+  if (matches) {
+    const [, envId, fileId] = matches;
+    const appInfo = await getAppInfo(env.API_DOMAIN, envId);
+    const file = appInfo.files.find((f) => f.id === fileId);
+
+    if (file) {
+      return file;
+    }
+  }
+
+  matches = pagesFilesPathRegex.exec(requestUrl.pathname);
+  if (matches) {
+    const [, envId, pageId, fileId] = matches;
+    const pages = await getPages(env.API_DOMAIN, envId);
+    const page = pages.find((p) => p.id === pageId);
+
+    if (page) {
+      const file = page.files.find((f) => f.id === fileId);
+      if (file) {
+        return file;
+      }
+    }
+  }
+
+  matches = announcementFilesPathRegex.exec(requestUrl.pathname);
+  if (matches) {
+    const [, envId, announcementId, fileId] = matches;
+    const announcements = await getAnnouncements(env.API_DOMAIN, envId);
+    const announcement = announcements.find((p) => p.id === announcementId);
+
+    if (announcement) {
+      const file = announcement.attachments.find((f) => f.id === fileId);
+      if (file) {
+        return file;
+      }
+    }
+  }
+};
+
+const interceptFileRequest = async (requestUrl: URL, env: Env): Promise<Response | undefined> => {
+  const file = await getFileForUrl(requestUrl, env);
+
+  if (file) {
+    const fileResponse = await fetch(file.signed_url);
+    return cloneResponseWithHeaders(fileResponse, fileToResponseHeaders(file));
+  }
+};
 
 const webManifestResponse = async (requestUrl: URL, env: Env): Promise<Response | undefined> => {
   const matches = manifestPathRegex.exec(requestUrl.pathname);
@@ -320,6 +453,16 @@ export default {
       return await fetch("https://umami.fanjam.live/script.js");
     }
 
+    // If this is the URL of a NocoDB attachment, get its signed URL and return
+    // the file instead of forwarding the request to the CDN. We do this so
+    // that attachments from NocoDB are served from this domain (instead of
+    // from the signed S3 URL) and therefore can be cached by the service
+    // worker.
+    const fileResponse = await interceptFileRequest(requestUrl, env);
+    if (fileResponse) {
+      return fileResponse;
+    }
+
     // If this is the URL of a web manifest, generate it instead of forwarding
     // the request to the CDN.
     const webManifest = await webManifestResponse(requestUrl, env);
@@ -329,18 +472,7 @@ export default {
     }
 
     const response = await env.ASSETS.fetch(request);
-
-    // Copy response headers from origin.
-    const newHeaders = new Headers();
-    for (const [key, value] of response.headers.entries()) {
-      newHeaders.set(key, value);
-    }
-
-    let newResponse = new Response(response.body as ReadableStream<Uint8Array> | null, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: newHeaders,
-    });
+    let newResponse = cloneResponseWithHeaders(response, {});
 
     // Add response headers.
     for (const [prefix, patternHeaders] of Object.entries(headerPatterns)) {

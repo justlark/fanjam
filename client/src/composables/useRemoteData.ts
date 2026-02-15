@@ -324,9 +324,9 @@ interface StoredInfo {
     url: string;
   }>;
   files: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
 }
 
@@ -348,9 +348,9 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
       website_url: data.websiteUrl,
       links: data.links.map((link) => ({ name: link.name, url: link.url })),
       files: data.files.map((file) => ({
+        id: file.id,
         name: file.name,
         media_type: file.mediaType,
-        signed_url: file.signedUrl,
       })),
     }),
     fromCache: (data) => ({
@@ -359,9 +359,9 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
       websiteUrl: data.website_url,
       links: data.links.map((link) => ({ name: link.name, url: link.url })),
       files: data.files.map((file) => ({
+        id: file.id,
         name: file.name,
         mediaType: file.media_type,
-        signedUrl: file.signed_url,
       })),
     }),
   });
@@ -379,9 +379,9 @@ interface StoredPage {
   title: string;
   body: string;
   files: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
 }
 
@@ -403,9 +403,9 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
         title: page.title,
         body: page.body,
         files: page.files.map((file) => ({
+          id: file.id,
           name: file.name,
           media_type: file.mediaType,
-          signed_url: file.signedUrl,
         })),
       })),
     fromCache: (data) =>
@@ -414,9 +414,9 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
         title: page.title,
         body: page.body,
         files: page.files.map((file) => ({
+          id: file.id,
           name: file.name,
           mediaType: file.media_type,
-          signedUrl: file.signed_url,
         })),
       })),
   });
@@ -434,9 +434,9 @@ interface StoredAnnouncement {
   title: string;
   body: string;
   attachments: Array<{
+    id: string;
     name: string;
     media_type: string;
-    signed_url: string;
   }>;
   created_at: string;
   updated_at: string;
@@ -460,9 +460,9 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
         title: announcement.title,
         body: announcement.body,
         attachments: announcement.attachments.map((attachment) => ({
+          id: attachment.id,
           name: attachment.name,
           media_type: attachment.mediaType,
-          signed_url: attachment.signedUrl,
         })),
         created_at: announcement.createdAt.toISOString(),
         updated_at: announcement.updatedAt.toISOString(),
@@ -473,9 +473,9 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
         title: announcement.title,
         body: announcement.body,
         attachments: announcement.attachments.map((attachment) => ({
+          id: attachment.id,
           name: attachment.name,
           mediaType: attachment.media_type,
-          signedUrl: attachment.signed_url,
         })),
         createdAt: new Date(announcement.created_at),
         updatedAt: new Date(announcement.updated_at),

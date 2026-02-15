@@ -51,7 +51,13 @@ const conName = computed(() => info.value?.name || "FanJam");
         class="max-w-140 w-full mx-auto"
         v-if="info || pages"
         :links="info?.links ?? []"
-        :files="info?.files ?? []"
+        :files="
+          info?.files?.map((file) => ({
+            name: file.name,
+            mediaType: file.mediaType,
+            url: `info/files/${file.id}`,
+          })) ?? []
+        "
         :pages="pages"
       />
     </div>
