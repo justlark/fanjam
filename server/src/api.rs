@@ -122,6 +122,7 @@ pub struct Link {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct File {
+    pub id: String,
     pub name: String,
     pub media_type: String,
     pub signed_url: String,

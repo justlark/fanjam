@@ -502,6 +502,7 @@ async fn get_info(
                 .files
                 .into_iter()
                 .map(|file| File {
+                    id: file.id,
                     name: file.name,
                     media_type: file.media_type,
                     signed_url: file.signed_url,
@@ -539,6 +540,7 @@ async fn get_pages(
                         .files
                         .into_iter()
                         .map(|file| File {
+                            id: file.id,
                             name: file.name,
                             media_type: file.media_type,
                             signed_url: file.signed_url,
@@ -578,6 +580,7 @@ async fn get_announcements(
                         .files
                         .into_iter()
                         .map(|file| File {
+                            id: file.id,
                             name: file.name,
                             media_type: file.media_type,
                             signed_url: file.signed_url,
