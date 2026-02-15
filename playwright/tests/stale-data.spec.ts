@@ -1,15 +1,20 @@
-import { test, expect } from "@playwright/test";
+import { test as base, expect } from "@playwright/test";
 import { mockApi, mockWrappedApiResponseSequence, countRequestsTo, mockTime } from "./common";
 import { InfoPage } from "./fixtures";
 
+type Fixtures = {
+  infoPage: InfoPage;
+};
+
+export const test = base.extend<Fixtures>({
+  infoPage: async ({ page }, use) => {
+    await use(new InfoPage(page));
+  },
+});
+
 test.describe("stale data retry behavior", () => {
-  let infoPage: InfoPage;
-
-  test.beforeEach(async ({ page }) => {
-    infoPage = new InfoPage(page);
-  });
-
   test("updates the page when fresh data arrives after a stale response", async ({
+    infoPage,
     page,
   }) => {
     await mockTime(page);
@@ -61,7 +66,7 @@ test.describe("stale data retry behavior", () => {
     await expect(infoPage.name).toHaveText("New Convention Name");
   });
 
-  test("does not retry when data is fresh", async ({ page }) => {
+  test("does not retry when data is fresh", async ({ page, infoPage }) => {
     await mockTime(page);
 
     const requestCounter = countRequestsTo(page, "/info");
@@ -84,7 +89,7 @@ test.describe("stale data retry behavior", () => {
     expect(requestCounter.count).toBeLessThanOrEqual(2);
   });
 
-  test("stops retrying after receiving fresh data", async ({ page }) => {
+  test("stops retrying after receiving fresh data", async ({ page, infoPage }) => {
     await mockTime(page);
 
     const requestCounter = countRequestsTo(page, "/info");
@@ -153,7 +158,7 @@ test.describe("stale data retry behavior", () => {
     expect(requestCounter.count).toBe(countAfterFreshData);
   });
 
-  test("caps retries at maximum count", async ({ page }) => {
+  test("caps retries at maximum count", async ({ page, infoPage }) => {
     await mockTime(page);
 
     const requestCounter = countRequestsTo(page, "/info");
