@@ -19,7 +19,7 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
 
 const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   await mockApiResponse(page, endpoint, {
-    retry_after_ms: null,
+    stale: false,
     value: body,
   });
 };
@@ -158,4 +158,35 @@ export const mockApiError = async (
 
 export const mockInfoError = async (page: Page, statusCode: number = 500) => {
   await mockApiError(page, "/info", statusCode);
+};
+
+export const mockWrappedApiResponseSequence = async (
+  page: Page,
+  endpoint: string,
+  responses: Array<{ stale: boolean; body: unknown }>,
+) => {
+  let callCount = 0;
+  const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
+
+  await page.route(url, async (route) => {
+    const index = Math.min(callCount, responses.length - 1);
+    callCount++;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        stale: responses[index].stale,
+        value: responses[index].body,
+      }),
+    });
+  });
+};
+
+export const countRequestsTo = (page: Page, endpoint: string): { count: number } => {
+  const counter = { count: 0 };
+  const pattern = new RegExp(endpoint.replace(/^\//, ""));
+  page.on("request", (request) => {
+    if (pattern.test(request.url())) counter.count++;
+  });
+  return counter;
 };

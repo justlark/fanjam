@@ -96,8 +96,32 @@ const useRemoteDataInner = <T, S>({
   const route = useRoute();
   const router = useRouter();
 
+  const BASE_RETRY_DELAY_MS = 1500;
+  const MAX_RETRIES = 5;
+
+  let retryCount = 0;
+  let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  const cancelRetry = () => {
+    if (retryTimeout !== undefined) {
+      clearTimeout(retryTimeout);
+      retryTimeout = undefined;
+    }
+  };
+
+  const scheduleRetry = () => {
+    if (retryCount >= MAX_RETRIES) return;
+    const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount);
+    retryCount++;
+    retryTimeout = setTimeout(() => {
+      retryTimeout = undefined;
+      void reload();
+    }, delay);
+  };
+
   // Fetch the most recent data from the server and update the ref.
   const reload = async (): Promise<void> => {
+    cancelRetry();
     const fetchApiResult = await fetcher();
     const fetchResult: FetchResult<T> = fetchApiResult.ok
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
@@ -163,6 +187,12 @@ const useRemoteDataInner = <T, S>({
       };
 
       setItem(key, storedValue);
+
+      if (fetchApiResult.ok && fetchApiResult.stale) {
+        scheduleRetry();
+      } else {
+        retryCount = 0;
+      }
     } else if (result.value.status === "pending") {
       // If the API request succeeded previously, we can just keep displaying
       // the data that's currently cached.
@@ -181,6 +211,9 @@ const useRemoteDataInner = <T, S>({
     watch(
       instance,
       () => {
+        cancelRetry();
+        retryCount = 0;
+
         const storedValue = getItem<S>(key);
 
         if (!storedValue || storedValue.instance !== instance.value) {
