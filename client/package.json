@@ -50,6 +50,6 @@
     "vite-plugin-pwa": "^1.0.1",
     "vite-plugin-vue-devtools": "^7.7.2",
     "vue-tsc": "^2.2.8",
-    "wrangler": "^4.14.3"
+    "wrangler": "^4.65.0"
   }
 }
