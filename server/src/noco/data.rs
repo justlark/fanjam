@@ -385,10 +385,10 @@ pub async fn get_announcements(
     client: &Client,
     table_ids: &TableIds,
 ) -> anyhow::Result<Vec<Announcement>> {
-    let page_records =
+    let announcement_records =
         list_records::<AnnouncementResponse>(client, &table_ids.announcements).await?;
 
-    Ok(page_records
+    Ok(announcement_records
         .into_iter()
         .map(|a| Announcement {
             id: a.id.to_string(),
@@ -409,4 +409,53 @@ pub async fn get_announcements(
             updated_at: a.updated_at,
         })
         .collect())
+}
+
+#[worker::send]
+pub async fn get_files(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<File>> {
+    let (about_records_result, page_records_result, announcement_records_result) = futures::join!(
+        list_records::<AboutResponse>(client, &table_ids.about),
+        list_records::<PageResponse>(client, &table_ids.pages),
+        list_records::<AnnouncementResponse>(client, &table_ids.announcements),
+    );
+
+    let about_files = about_records_result?
+        .into_iter()
+        .next_back()
+        .map(|r| r.files.unwrap_or_default())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|f| File {
+            id: f.id,
+            name: f.title,
+            media_type: f.media_type,
+            signed_url: f.signed_url,
+        })
+        .collect::<Vec<_>>();
+
+    let page_files = page_records_result?
+        .into_iter()
+        .flat_map(|r| {
+            r.files.unwrap_or_default().into_iter().map(|f| File {
+                id: f.id,
+                name: f.title,
+                media_type: f.media_type,
+                signed_url: f.signed_url,
+            })
+        })
+        .collect();
+
+    let announcement_files = announcement_records_result?
+        .into_iter()
+        .flat_map(|r| {
+            r.files.unwrap_or_default().into_iter().map(|f| File {
+                id: f.id,
+                name: f.title,
+                media_type: f.media_type,
+                signed_url: f.signed_url,
+            })
+        })
+        .collect();
+
+    Ok([about_files, page_files, announcement_files].concat())
 }

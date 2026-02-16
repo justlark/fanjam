@@ -14,8 +14,8 @@ use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper
 use crate::{
     api::{
         Announcement, Event, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
-        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetInfoResponse,
-        GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
+        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetFilesResponse,
+        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
         PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
         PutAliasRequest, PutLinkResponse, PutTokenRequest,
     },
@@ -96,6 +96,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
         .route("/apps/{env_id}/announcements", get(get_announcements))
+        .route("/apps/{env_id}/files", get(get_files))
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .route("/aliases/{env_id}", get(get_alias))
@@ -588,6 +589,37 @@ async fn get_announcements(
                         .collect::<Vec<_>>(),
                     created_at: announcement.created_at,
                     updated_at: announcement.updated_at,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_files(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+
+    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_files(uri, |files| GetFilesResponse {
+            files: files
+                .into_iter()
+                .map(|file| File {
+                    id: file.id,
+                    name: file.name,
+                    media_type: file.media_type,
+                    signed_url: file.signed_url,
                 })
                 .collect::<Vec<_>>(),
         })

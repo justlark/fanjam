@@ -154,6 +154,11 @@ pub struct GetAnnouncementsResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct GetFilesResponse {
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Page {
     pub id: String,
     pub title: String,

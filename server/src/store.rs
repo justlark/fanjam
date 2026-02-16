@@ -375,6 +375,15 @@ impl Store {
         cache_key: "announcements",
     }
 
+    get_data! {
+        fn_name: get_files,
+        type_name: Vec<noco::File>,
+        get_api_fn: noco::get_files,
+        get_cached_fn: kv::get_cached_files,
+        put_cached_fn: kv::put_cached_files,
+        cache_key: "files",
+    }
+
     #[worker::send]
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
         let backup_branch = match kind {
