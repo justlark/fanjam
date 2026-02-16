@@ -10,8 +10,6 @@ def main [env_name: string] {
   let fly_config = open $fly_file
   let noco_image = $fly_config.build.image
 
-  # TODO: We can remove this once we have fully migrated off of the upstream
-  # NocoDB image.
   let assets_path = if ($noco_image | str starts-with "ghcr.io/justlark/nocodb-fanjam") {
     "/usr/src/app/docker/nc-gui/"
   } else {
