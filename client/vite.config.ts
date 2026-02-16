@@ -54,6 +54,21 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: null,
         runtimeCaching: [
           {
+            urlPattern: ({ url }) =>
+              (url.origin === "https://fanjam.live" || url.origin === "https://test.fanjam.live") &&
+              url.pathname.includes("/files/"),
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "files-cache",
+              expiration: {
+                maxEntries: 10,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
             urlPattern: ({ request, url }) =>
               request.destination === "document" && url.origin === "https://fanjam.live",
             handler: "NetworkFirst",
@@ -61,7 +76,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "origin-cache",
               plugins: [
                 {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).href),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
                   cacheWillUpdate: ({ response }) => {
                     return Promise.resolve(response.status === 200 ? response : null);
                   },
@@ -77,7 +92,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "origin-test-cache",
               plugins: [
                 {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).href),
+                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
                   cacheWillUpdate: ({ response }) => {
                     return Promise.resolve(response.status === 200 ? response : null);
                   },
