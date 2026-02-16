@@ -21,6 +21,7 @@ const {
   status: { announcements: announcementsStatus },
 } = useRemoteData();
 
+const envId = computed(() => route.params.envId as string);
 const announcementId = computed(() => route.params.announcementId as string);
 
 const announcement = computed(() => {
@@ -124,7 +125,7 @@ const announcementHeadingId = useId();
             announcement.attachments.map((file) => ({
               name: file.name,
               mediaType: file.mediaType,
-              url: `${announcementId}/files/${file.id}`,
+              url: `/app/${envId}/files/${file.id}`,
             }))
           "
           :pages="[]"

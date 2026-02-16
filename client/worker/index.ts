@@ -60,38 +60,25 @@ interface AppInfo {
   env_name?: string;
   name?: string;
   description?: string;
-  files: Array<File>;
-}
-
-interface Page {
-  id: string;
-  files: Array<File>;
-}
-
-interface Announcement {
-  id: string;
-  attachments: Array<File>;
 }
 
 const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
   const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
 
   if (!response.ok) {
-    return { files: [] };
+    return {};
   }
 
   try {
     const body = await response.json();
     return (body as ResponseEnvelope<AppInfo>).value;
   } catch {
-    return {
-      files: [],
-    };
+    return {};
   }
 };
 
-const getPages = async (apiDomain: string, envId: string): Promise<Array<Page>> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/pages`);
+const getFiles = async (apiDomain: string, envId: string): Promise<Array<File>> => {
+  const response = await fetch(`https://${apiDomain}/apps/${envId}/files`);
 
   if (!response.ok) {
     return [];
@@ -99,22 +86,7 @@ const getPages = async (apiDomain: string, envId: string): Promise<Array<Page>> 
 
   try {
     const body = await response.json();
-    return (body as ResponseEnvelope<{ pages: Array<Page> }>).value.pages;
-  } catch {
-    return [];
-  }
-};
-
-const getAnnouncements = async (apiDomain: string, envId: string): Promise<Array<Announcement>> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/announcements`);
-
-  if (!response.ok) {
-    return [];
-  }
-
-  try {
-    const body = await response.json();
-    return (body as ResponseEnvelope<{ announcements: Array<Announcement> }>).value.announcements;
+    return (body as ResponseEnvelope<{ files: Array<File> }>).value.files;
   } catch {
     return [];
   }
@@ -165,49 +137,17 @@ const assetUrl = (apiDomain: string, envId: string, assetName: string): string =
 
 const appPathRegex = new RegExp(`^/app/([^/]+)/`);
 const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest/?$`);
-const infoFilesPathRegex = new RegExp(`^/app/([^/]+)/info/files/([^/]+)/?$`);
-const pagesFilesPathRegex = new RegExp(`^/app/([^/]+)/pages/([^/]+)/files/([^/]+)/?$`);
-const announcementFilesPathRegex = new RegExp(
-  `^/app/([^/]+)/announcements/([^/]+)/files/([^/]+)/?$`,
-);
+const filesPathRegex = new RegExp(`^/app/([^/]+)/files/([^/]+)/?$`);
 
 const getFileForUrl = async (requestUrl: URL, env: Env): Promise<File | undefined> => {
-  let matches = infoFilesPathRegex.exec(requestUrl.pathname);
+  const matches = filesPathRegex.exec(requestUrl.pathname);
   if (matches) {
     const [, envId, fileId] = matches;
-    const appInfo = await getAppInfo(env.API_DOMAIN, envId);
-    const file = appInfo.files.find((f) => f.id === fileId);
+    const files = await getFiles(env.API_DOMAIN, envId);
+    const file = files.find((f) => f.id === fileId);
 
     if (file) {
       return file;
-    }
-  }
-
-  matches = pagesFilesPathRegex.exec(requestUrl.pathname);
-  if (matches) {
-    const [, envId, pageId, fileId] = matches;
-    const pages = await getPages(env.API_DOMAIN, envId);
-    const page = pages.find((p) => p.id === pageId);
-
-    if (page) {
-      const file = page.files.find((f) => f.id === fileId);
-      if (file) {
-        return file;
-      }
-    }
-  }
-
-  matches = announcementFilesPathRegex.exec(requestUrl.pathname);
-  if (matches) {
-    const [, envId, announcementId, fileId] = matches;
-    const announcements = await getAnnouncements(env.API_DOMAIN, envId);
-    const announcement = announcements.find((p) => p.id === announcementId);
-
-    if (announcement) {
-      const file = announcement.attachments.find((f) => f.id === fileId);
-      if (file) {
-        return file;
-      }
     }
   }
 };

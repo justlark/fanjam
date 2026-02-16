@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => ({
           {
             urlPattern: ({ url }) =>
               (url.origin === "https://fanjam.live" || url.origin === "https://test.fanjam.live") &&
-              url.pathname.includes("/files/"),
+              url.pathname.match(new RegExp(`^/app/([^/]+)/files/([^/]+)/?$`)),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "files-cache",

@@ -15,6 +15,7 @@ const {
   status: { pages: pagesStatus },
 } = useRemoteData();
 
+const envId = computed(() => route.params.envId as string);
 const pageId = computed(() => route.params.pageId as string);
 
 const page = computed(() => {
@@ -82,7 +83,7 @@ const pageHeadingId = useId();
             page.files.map((file) => ({
               name: file.name,
               mediaType: file.mediaType,
-              url: `${pageId}/files/${file.id}`,
+              url: `/app/${envId}/files/${file.id}`,
             }))
           "
           :pages="[]"

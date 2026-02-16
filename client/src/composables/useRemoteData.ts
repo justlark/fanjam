@@ -19,6 +19,7 @@ import api, {
   type Event,
   type Info,
   type Page,
+  type File,
 } from "@/utils/api";
 
 export type FetchResult<T> =
@@ -490,6 +491,46 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
   };
 };
 
+interface StoredFile {
+  id: string;
+  name: string;
+  media_type: string;
+}
+
+const filesRef = ref<FetchResult<Array<File>>>({ status: "pending" });
+
+const useRemoteFiles: DataSource<Readonly<Ref<Array<DeepReadonly<File>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+) => {
+  const storedValue: StoredValue<unknown> | undefined = getItem("files");
+
+  const { reload, clear } = useRemoteDataInner<Array<File>, Array<StoredFile>>({
+    key: "files",
+    instance: toRef(envId),
+    result: filesRef,
+    fetcher: () => api.getFiles(toValue(envId), storedValue?.etag),
+    toCache: (data) =>
+      data.map((file) => ({
+        id: file.id,
+        name: file.name,
+        media_type: file.mediaType,
+      })),
+    fromCache: (data) =>
+      data.map((file) => ({
+        id: file.id,
+        name: file.name,
+        mediaType: file.media_type,
+      })),
+  });
+
+  return {
+    reload,
+    clear,
+    status: unwrapFetchStatus(filesRef),
+    data: unwrapFetchArray(filesRef),
+  };
+};
+
 interface StoredConfig {
   timezone?: string;
   hide_announcements?: boolean;
@@ -543,6 +584,7 @@ const dataSources = {
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
+  files: useRemoteFiles,
   config: useRemoteConfig,
 } as const;
 
