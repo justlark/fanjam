@@ -128,19 +128,7 @@ const useRemoteDataInner = <T, S>({
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
       : { status: "error", code: fetchApiResult.code };
 
-    const storedValue = getItem<S>(key);
-
-    if (fetchResult.status === "error" && fetchResult.code === 304 && storedValue !== undefined) {
-      // If the server returns a 304 Not Modified, we can just keep displaying
-      // the data we already have cached locally.
-      setResultIfModified(result, fromCache(storedValue.value), toCache);
-
-      if (storedValue.instance !== instance.value) {
-        // This can happen if an environment ID is renamed.
-        storedValue.instance = instance.value;
-        setItem(key, storedValue);
-      }
-    } else if (fetchResult.status === "error" && fetchResult.code === 404) {
+    if (fetchResult.status === "error" && fetchResult.code === 404) {
       // If the API request returned a 404, that may mean the environment ID
       // has changed. Check if the current environment ID is an alias, in which
       // case we need to redirect.

@@ -139,6 +139,8 @@ export interface Config {
   feedbackUrl?: string;
 }
 
+const isOk = (response: Response): boolean => response.ok || response.status === 304;
+
 export type ApiResult<T> =
   | {
       ok: true;
@@ -172,7 +174,7 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
     },
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -213,7 +215,7 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
     },
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -256,7 +258,7 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     },
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -298,7 +300,7 @@ const getAnnouncements = async (
     },
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -342,7 +344,7 @@ const getFiles = async (envId: string, etag?: string): Promise<ApiResult<Array<F
     },
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -367,7 +369,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
@@ -391,7 +393,7 @@ const getAlias = async (aliasId: string): Promise<ApiResult<string>> => {
     `https://${import.meta.env.VITE_API_HOST as string}/aliases/${aliasId}`,
   );
 
-  if (!response.ok) {
+  if (!isOk(response)) {
     return { ok: false, code: response.status };
   }
 
