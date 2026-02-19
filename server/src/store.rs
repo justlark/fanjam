@@ -107,7 +107,7 @@ macro_rules! get_data {
         pub async fn $fn_name<T, F>(&self, uri: Uri, to_body: F) -> Result<http::Response<Body>, Error>
         where
             T: Serialize + Clone + 'static,
-            F: FnOnce($type_name) -> T + 'static,
+            F: FnOnce($type_name) -> T + Clone + 'static,
         {
 
             let cached_value = match $get_cached_fn(&self.kv, &self.env_name).await {
@@ -190,6 +190,7 @@ macro_rules! get_data {
 
             match cached_value {
                 Some(cached_value) => {
+                    let to_body_for_cache = to_body.clone();
                     let body = to_body(cached_value);
 
                     let refresh_key = format!("{}:{}", self.env_name, $cache_key);
@@ -199,11 +200,10 @@ macro_rules! get_data {
                     };
 
                     if !already_refreshing {
-                        let body_for_cache = body.clone();
-
                         self.ctx.wait_until(async move {
                             if let Some(latest_value) = upstream_request.await {
-                                put_cache(latest_value, body_for_cache).await;
+                                let latest_body = to_body_for_cache(latest_value.clone());
+                                put_cache(latest_value, latest_body).await;
                             }
                             inflight_refreshes().lock().unwrap().remove(&refresh_key);
                         });
