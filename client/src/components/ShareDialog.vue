@@ -13,6 +13,8 @@ const visible = defineModel<boolean>("visible", {
   required: true,
 });
 
+defineEmits(["share-schedule"]);
+
 const route = useRoute();
 const toast = useToast();
 
@@ -64,7 +66,7 @@ const copyAppUrl = async () => {
       </div>
       <div class="flex flex-col gap-2">
         <p>Share your schedule with a friend or move it to another device.</p>
-        <Button label="Share My Schedule" icon="bi bi-star" />
+        <Button @click="$emit('share-schedule')" label="Share My Schedule" icon="bi bi-star" />
       </div>
     </div>
   </Dialog>

@@ -9,6 +9,7 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
+import ScheduleShareModal from "./ScheduleShareModal.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
 import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
@@ -18,6 +19,7 @@ import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
 const shareDialogVisible = ref(false);
+const scheduleShareDialogVisible = ref(false);
 
 const toast = useToast();
 const route = useRoute();
@@ -61,6 +63,11 @@ const refresh = async () => {
 };
 
 const headerHeadingId = useId();
+
+const shareSchedule = () => {
+  shareDialogVisible.value = false;
+  scheduleShareDialogVisible.value = true;
+};
 </script>
 
 <template>
@@ -161,7 +168,8 @@ const headerHeadingId = useId();
       -->
       <ScrollTop class="lg:hidden" />
     </div>
-    <ShareDialog v-model:visible="shareDialogVisible" />
+    <ShareDialog @share-schedule="shareSchedule" v-model:visible="shareDialogVisible" />
+    <ScheduleShareModal v-model:visible="scheduleShareDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />
   </div>
