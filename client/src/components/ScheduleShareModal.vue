@@ -22,8 +22,11 @@ const shareUrl = computed(() => {
   <LinkShareDialog
     v-model:visible="visible"
     :link="shareUrl"
+    title="Share Your Schedule"
     toast-message="Share this URL to share your schedule."
   >
-    Share your schedule with a friend or move it to another device.
+    <template #header>
+      <p>Use this link to share your schedule with a friend or move it to another device.</p>
+    </template>
   </LinkShareDialog>
 </template>

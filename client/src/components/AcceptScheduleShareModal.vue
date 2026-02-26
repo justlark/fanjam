@@ -18,6 +18,8 @@ const props = defineProps<{
     v-model:visible="visible"
     modal
     dismissable-mask
+    block-scroll
+    :draggable="false"
     header="View Schedule"
   >
     <p>

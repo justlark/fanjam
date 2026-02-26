@@ -16,6 +16,7 @@ const toast = useToast();
 
 const props = defineProps<{
   link: string;
+  title: string;
   toastMessage: string;
 }>();
 
@@ -37,9 +38,11 @@ const copyShareUrl = async () => {
     v-model:visible="visible"
     modal
     dismissable-mask
-    header="Share Schedule"
+    block-scroll
+    :draggable="false"
+    :header="props.title"
   >
-    <p><slot /></p>
+    <slot name="header" />
     <div class="rounded-3xl overflow-hidden mx-auto w-fit my-6 shadow-md">
       <QrcodeVue
         :value="props.link"
@@ -56,5 +59,6 @@ const copyShareUrl = async () => {
       </InputGroupAddon>
       <InputText :value="props.link" disabled />
     </InputGroup>
+    <slot name="footer" />
   </Dialog>
 </template>
