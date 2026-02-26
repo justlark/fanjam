@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useRoute } from "vue-router";
 import useStarredEvents from "@/composables/useStarredEvents";
 import { encodeBase64url } from "@/utils/encoding";
 import LinkShareDialog from "@/components/LinkShareDialog.vue";
@@ -10,11 +11,14 @@ const visible = defineModel<boolean>("visible", {
 });
 
 const starredEvents = useStarredEvents();
+const route = useRoute();
+
+const envId = computed(() => route.params.envId as string);
 
 const shareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
   starredEventIds.sort();
-  return `${window.location.origin}/share/?s=${encodeBase64url(starredEventIds.join(","))}`;
+  return `${window.location.origin}/app/${envId.value}/?share=${encodeBase64url(starredEventIds.join(","))}`;
 });
 </script>
 

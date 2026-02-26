@@ -3,7 +3,7 @@ import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect 
 import { datesToDayNames, dateIsBetween, isSameDay, earliest } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
-import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import useFilterQuery from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
@@ -235,7 +235,7 @@ watchEffect(async () => {
   // 0-based.
   await router.push({
     params: { dayIndex: currentDayIndex.value + 1 },
-    query: toFilterQueryParams(filterCriteria),
+    query: route.query,
   });
 });
 

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import Divider from "primevue/divider";
 import { RouterLink, useRoute } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
+import ShareViewFooter from "./ShareViewFooter.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import ScheduleShareModal from "./ScheduleShareModal.vue";
@@ -24,6 +26,7 @@ const scheduleShareDialogVisible = ref(false);
 const toast = useToast();
 const route = useRoute();
 const unreadAnnouncements = useUnreadAnnouncements();
+const isSharedSchedule = useIsSharedSchedule();
 
 const hasUnreadAnnouncements = computed(() => unreadAnnouncements.value.size > 0);
 const showNotificationBadge = computed(
@@ -161,11 +164,12 @@ const shareSchedule = () => {
           <slot />
         </main>
       </div>
-      <!--
-      <footer class="flex justify-center sticky bottom-0 lg:fixed lg:inset-x-0 lg:z-2">
+      <footer
+        v-if="isSharedSchedule"
+        class="flex justify-center sticky bottom-0 lg:fixed lg:inset-x-0 lg:z-2"
+      >
         <ShareViewFooter />
       </footer>
-      -->
       <ScrollTop class="lg:hidden" />
     </div>
     <ShareDialog @share-schedule="shareSchedule" v-model:visible="shareDialogVisible" />

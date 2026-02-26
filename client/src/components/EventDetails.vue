@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useId, type DeepReadonly, onMounted } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRoute, useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
-import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
+import { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
@@ -13,7 +13,7 @@ import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 
 const datetimeFormats = useDatetimeFormats();
-const filterCriteria = useFilterQuery();
+const route = useRoute();
 const router = useRouter();
 
 const props = defineProps<{
@@ -44,7 +44,7 @@ const back = async () => {
     params: {
       dayIndex: fromViewType.value === "daily" ? props.day + 1 : "all",
     },
-    query: toFilterQueryParams(filterCriteria),
+    query: route.query,
   });
 };
 

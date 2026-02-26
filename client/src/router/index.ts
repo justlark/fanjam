@@ -55,4 +55,22 @@ const router = createRouter({
   ],
 });
 
+let _exitingShare = false;
+
+export const exitShareMode = () => {
+  _exitingShare = true;
+};
+
+// Preserve the `share` query param across in-app navigations so the shared
+// schedule view stays active until the user explicitly dismisses it.
+router.beforeEach((to, from) => {
+  if (_exitingShare) {
+    _exitingShare = false;
+    return;
+  }
+  if (from.query.share && !to.query.share) {
+    return { ...to, query: { ...to.query, share: from.query.share } };
+  }
+});
+
 export default router;
