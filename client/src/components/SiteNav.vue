@@ -10,12 +10,14 @@ import IconButton from "./IconButton.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
+import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
-const visible = ref(false);
+const menuVisible = ref(false);
+const shareDialogVisible = ref(false);
 
 const toast = useToast();
 const route = useRoute();
@@ -28,7 +30,7 @@ const showNotificationBadge = computed(
 );
 
 const toggleMenuDrawer = () => {
-  visible.value = !visible.value;
+  menuVisible.value = !menuVisible.value;
 };
 
 // Nav menu links don't necessarily change the active route path; they might
@@ -36,7 +38,7 @@ const toggleMenuDrawer = () => {
 // own, so we need to watch for changes in all parts of the route to make sure
 // the menu drawer closes.
 watch(route, () => {
-  visible.value = false;
+  menuVisible.value = false;
 });
 
 const {
@@ -46,19 +48,6 @@ const {
 } = useRemoteData();
 
 const conName = computed(() => info.value?.name ?? "FanJam");
-
-const copyLink = async () => {
-  // Do not include the query params or fragment; users likely aren't intending
-  // to share their current search/filter params.
-  await navigator.clipboard.writeText(window.location.origin + window.location.pathname);
-
-  toast.add({
-    severity: "info",
-    summary: "Link Copied",
-    detail: "A link to this page has been copied to your clipboard.",
-    life: 1500,
-  });
-};
 
 const refresh = async () => {
   toast.add({
@@ -113,7 +102,7 @@ const headerHeadingId = useId();
             <IconButton
               icon="link-45deg"
               label="Copy Link"
-              @click="copyLink"
+              @click="shareDialogVisible = true"
               :button-props="{ 'data-testid': 'site-nav-copy-link' }"
             />
             <IconButton
@@ -125,7 +114,7 @@ const headerHeadingId = useId();
           </div>
         </div>
         <Drawer
-          v-model:visible="visible"
+          v-model:visible="menuVisible"
           header="Menu"
           :block-scroll="true"
           class="!w-65"
@@ -172,6 +161,7 @@ const headerHeadingId = useId();
       -->
       <ScrollTop class="lg:hidden" />
     </div>
+    <ShareDialog v-model:visible="shareDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />
   </div>

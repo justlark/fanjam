@@ -37,7 +37,13 @@ const copyShareUrl = async () => {
 </script>
 
 <template>
-  <Dialog class="max-w-100 m-4" v-model:visible="visible" modal header="Share Schedule">
+  <Dialog
+    class="max-w-100 m-4"
+    v-model:visible="visible"
+    modal
+    dismissable-mask
+    header="Share Schedule"
+  >
     <p>Share your schedule with a friend or move it to another device.</p>
     <div class="rounded-3xl overflow-hidden mx-auto w-fit my-6 shadow-md">
       <QrcodeVue
