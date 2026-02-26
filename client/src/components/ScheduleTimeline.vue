@@ -8,6 +8,7 @@ import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
+import ScheduleShareModal from "./ScheduleShareModal.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";
@@ -250,7 +251,8 @@ watchEffect(() => {
   }
 });
 
-// const isShareModalVisible = ref(true);
+// const isAcceptShareModalVisible = ref(true);
+const isShareModalVisible = ref(true);
 </script>
 
 <template>
@@ -293,7 +295,8 @@ watchEffect(() => {
       />
     </div>
     <!--
-      <AcceptScheduleShareModal v-model:visible="isShareModalVisible" :events-count="12" />
+      <AcceptScheduleShareModal v-model:visible="isAcceptShareModalVisible" :events-count="12" />
     -->
+    <ScheduleShareModal v-model:visible="isShareModalVisible" />
   </div>
 </template>
