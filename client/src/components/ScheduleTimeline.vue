@@ -13,7 +13,6 @@ import ScheduleHeader from "./ScheduleHeader.vue";
 import ProgressSpinner from "primevue/progressspinner";
 import EventSummaryDrawer from "./EventSummaryDrawer.vue";
 import ScheduleList from "./ScheduleList.vue";
-import AcceptScheduleShareModal from "./AcceptScheduleShareModal.vue";
 
 // TODO: Break up the logic in this component. This component has *way* too
 // much going on.
@@ -251,7 +250,7 @@ watchEffect(() => {
   }
 });
 
-const isShareModalVisible = ref(true);
+// const isShareModalVisible = ref(true);
 </script>
 
 <template>
@@ -293,6 +292,8 @@ const isShareModalVisible = ref(true);
         :view-type="viewType"
       />
     </div>
-    <AcceptScheduleShareModal v-model:visible="isShareModalVisible" :events-count="12" />
+    <!--
+      <AcceptScheduleShareModal v-model:visible="isShareModalVisible" :events-count="12" />
+    -->
   </div>
 </template>

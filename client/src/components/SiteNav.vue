@@ -165,6 +165,11 @@ const headerHeadingId = useId();
           <slot />
         </main>
       </div>
+      <!--
+      <footer class="flex justify-center sticky bottom-0 lg:fixed lg:inset-x-0 lg:z-2">
+        <ShareViewFooter />
+      </footer>
+      -->
       <ScrollTop class="lg:hidden" />
     </div>
     <Toast position="bottom-center" />
