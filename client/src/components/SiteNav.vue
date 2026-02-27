@@ -16,12 +16,14 @@ import FeedbackCallout from "./FeedbackCallout.vue";
 import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
+import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
 const shareDialogVisible = ref(false);
 const scheduleShareDialogVisible = ref(false);
+const scheduleShareOptionsDialogVisible = ref(false);
 
 const toast = useToast();
 const route = useRoute();
@@ -168,12 +170,13 @@ const shareSchedule = () => {
         v-if="isSharedSchedule"
         class="flex justify-center sticky bottom-0 lg:fixed lg:inset-x-0 lg:z-2"
       >
-        <ShareViewFooter />
+        <ShareViewFooter @click="scheduleShareOptionsDialogVisible = true" />
       </footer>
       <ScrollTop class="lg:hidden" />
     </div>
     <ShareDialog @share-schedule="shareSchedule" v-model:visible="shareDialogVisible" />
     <ScheduleShareModal v-model:visible="scheduleShareDialogVisible" />
+    <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />
   </div>
