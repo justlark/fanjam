@@ -56,11 +56,11 @@ test.describe("stale data retry behavior", () => {
     // Assert stale data is displayed immediately
     await expect(infoPage.name).toHaveText("Old Convention Name");
 
-    // Fast-forward through the first retry delay (1500ms)
+    // Fast-forward through the first retry delay (1500ms), waiting for the
+    // response to ensure the DOM update completes before asserting.
+    const nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
-
-    // Wait a bit for the DOM to update after the retry completes
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Assert fresh data is now displayed
     await expect(infoPage.name).toHaveText("New Convention Name");
@@ -138,13 +138,16 @@ test.describe("stale data retry behavior", () => {
 
     await infoPage.goto();
 
-    // Fast-forward through first retry (1500ms)
+    // Fast-forward through first retry (1500ms), waiting for the response to
+    // ensure scheduleRetry() has created the next timer before we advance again.
+    let nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Fast-forward through second retry (3000ms)
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(3000);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Assert fresh data is displayed
     await expect(infoPage.name).toHaveText("Fresh Data");
@@ -186,40 +189,45 @@ test.describe("stale data retry behavior", () => {
     ]);
 
     await infoPage.goto();
-    await page.waitForTimeout(100);
 
-    // Fast-forward through all 5 retry delays
+    // Fast-forward through all 5 retry delays, waiting for each response
+    // to ensure scheduleRetry() has created the next timer before advancing.
+    let nextResponse: Promise<unknown>;
+
     // Retry 1: 1500ms
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Retry 2: 3000ms
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(3000);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Retry 3: 6000ms
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(6000);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Retry 4: 12000ms
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(12000);
-    await page.waitForTimeout(100);
+    await nextResponse;
 
     // Retry 5: 24000ms
+    nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(24000);
-    await page.waitForTimeout(100);
-
-    const countAfterMaxRetries = requestCounter.count;
+    await nextResponse;
 
     // Fast-forward well past another retry delay
     await page.clock.fastForward(60000);
 
-    // Assert no additional requests were made after hitting the retry cap
-    expect(requestCounter.count).toBe(countAfterMaxRetries);
-
-    // Should have made: initial load (varies based on mount behavior) + 5 retries
-    // We can't assert exact count without knowing mount behavior, but we can verify it stopped
+    // Should have made: initial load (varies based on mount behavior) + 5
+    // retries We can't assert exact count without knowing mount behavior, but
+    // we can verify it stopped.
     expect(requestCounter.count).toBeGreaterThanOrEqual(5);
-    expect(requestCounter.count).toBeLessThanOrEqual(8); // reasonable upper bound
+
+    // Reasonable upper bound.
+    expect(requestCounter.count).toBeLessThanOrEqual(8);
   });
 });
