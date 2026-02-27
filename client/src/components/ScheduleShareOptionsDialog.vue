@@ -4,27 +4,54 @@ import Button from "primevue/button";
 import { exitShareMode } from "@/router";
 import { useToast } from "primevue/usetoast";
 import { useRoute, useRouter } from "vue-router";
+import useStarredEvents from "@/composables/useStarredEvents";
 
 const router = useRouter();
 const toast = useToast();
 const route = useRoute();
+const starredEvents = useStarredEvents();
 
 const visible = defineModel<boolean>("visible", {
   type: Boolean,
   required: true,
 });
 
-const exitSharedSchedule = async () => {
+const clearSharedSchedule = async () => {
   exitShareMode();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { share: _, ...query } = route.query;
   await router.replace({ query });
+};
+
+const exitSharedSchedule = async () => {
+  await clearSharedSchedule();
 
   toast.add({
     severity: "info",
     summary: "Returning to your schedule",
     detail: "You are no longer viewing someone else's schedule.",
+    life: 2000,
+  });
+
+  visible.value = false;
+};
+
+const addToSchedule = async () => {
+  const sharedSchedule = new Set([...starredEvents.value]);
+  await clearSharedSchedule();
+  const originalSchedule = new Set([...starredEvents.value]);
+
+  starredEvents.value = sharedSchedule.union(originalSchedule);
+  const eventsAdded = sharedSchedule.difference(originalSchedule);
+
+  toast.add({
+    severity: "info",
+    summary: "Added to your schedule",
+    detail:
+      eventsAdded.size === 0
+        ? `You already have all these events in your schedule.`
+        : `This schedule has been merged with yours. Added ${eventsAdded.size.toString()} events.`,
     life: 2000,
   });
 
@@ -40,7 +67,7 @@ const exitSharedSchedule = async () => {
     dismissable-mask
     block-scroll
     :draggable="false"
-    header="Options"
+    header="Schedule Options"
   >
     <p>
       You are currently viewing a schedule someone shared with you. Do you want to exit and return
@@ -49,7 +76,7 @@ const exitSharedSchedule = async () => {
     <template #footer>
       <div class="flex flex-col gap-2 w-full justify-stretch">
         <Button @click="exitSharedSchedule" label="Return to My Schedule" icon="bi bi-x-lg" />
-        <Button label="Add to My Schedule" icon="bi bi-star" />
+        <Button @click="addToSchedule" label="Add to My Schedule" icon="bi bi-star" />
       </div>
     </template>
   </Dialog>

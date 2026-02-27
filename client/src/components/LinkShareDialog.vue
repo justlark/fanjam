@@ -25,7 +25,7 @@ const copyShareUrl = async () => {
 
   toast.add({
     severity: "info",
-    summary: "Link Copied",
+    summary: "Link copied",
     detail: props.toastMessage,
     life: 1500,
   });
