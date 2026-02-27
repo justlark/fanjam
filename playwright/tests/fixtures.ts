@@ -239,7 +239,7 @@ export class StarredEvents {
   }
 
   async set(eventIds: Array<string>) {
-    this.page.evaluate(
+    await this.page.evaluate(
       ([envId, eventIds]) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)),
       [this.envId, eventIds],
     );
@@ -377,14 +377,12 @@ export class CustomPage {
 }
 
 export class SiteNav {
-  private readonly page: Page;
   readonly heading: Locator;
   readonly copyLinkButton: Locator;
   readonly refreshButton: Locator;
   readonly errorState: Locator;
 
   constructor(page: Page) {
-    this.page = page;
     this.heading = page.getByTestId("site-nav-heading");
     this.copyLinkButton = page.getByTestId("site-nav-copy-link");
     this.refreshButton = page.getByTestId("site-nav-refresh");
@@ -397,6 +395,60 @@ export class SiteNav {
 
   async refresh() {
     await this.refreshButton.click();
+  }
+}
+
+export class ShareDialog {
+  readonly dialog: Locator;
+  readonly description: Locator;
+  readonly urlInput: Locator;
+  readonly copyButton: Locator;
+  readonly shareScheduleButton: Locator;
+
+  constructor(page: Page) {
+    this.dialog = page.getByTestId("share-dialog");
+    this.description = this.dialog.getByTestId("share-dialog-description");
+    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
+    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
+    this.shareScheduleButton = this.dialog.getByTestId("share-dialog-share-schedule-button");
+  }
+
+  async copyLink() {
+    await this.copyButton.click();
+  }
+
+  async openScheduleShare() {
+    await this.shareScheduleButton.click();
+  }
+}
+
+export class ScheduleShareDialog {
+  readonly dialog: Locator;
+  readonly urlInput: Locator;
+  readonly copyButton: Locator;
+
+  constructor(page: Page) {
+    this.dialog = page.getByTestId("schedule-share-dialog");
+    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
+    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
+  }
+
+  async copyLink() {
+    await this.copyButton.click();
+  }
+}
+
+export class ShareViewFooter {
+  readonly footer: Locator;
+  readonly exitButton: Locator;
+
+  constructor(page: Page) {
+    this.footer = page.getByTestId("share-view-footer");
+    this.exitButton = page.getByTestId("share-view-footer-exit-button");
+  }
+
+  async exit() {
+    await this.exitButton.click();
   }
 }
 

@@ -186,6 +186,7 @@ test.describe("stale data retry behavior", () => {
     ]);
 
     await infoPage.goto();
+    await page.waitForTimeout(100);
 
     // Fast-forward through all 5 retry delays
     // Retry 1: 1500ms

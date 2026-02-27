@@ -55,9 +55,14 @@ const copyShareUrl = async () => {
     </div>
     <InputGroup>
       <InputGroupAddon>
-        <Button @click="copyShareUrl" label="Copy" icon="bi bi-clipboard" />
+        <Button
+          data-testid="link-share-dialog-copy-button"
+          @click="copyShareUrl"
+          label="Copy"
+          icon="bi bi-clipboard"
+        />
       </InputGroupAddon>
-      <InputText :value="props.link" disabled />
+      <InputText data-testid="link-share-dialog-url" :value="props.link" disabled />
     </InputGroup>
     <slot name="footer" />
   </Dialog>

@@ -28,6 +28,7 @@ const shareUrl = computed(() => {
     :link="shareUrl"
     title="Share Your Schedule"
     toast-message="Share this URL to share your schedule."
+    data-testid="schedule-share-dialog"
   >
     <template #header>
       <p>Use this link to share your schedule with a friend or move it to another device.</p>

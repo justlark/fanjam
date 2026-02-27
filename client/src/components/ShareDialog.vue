@@ -37,9 +37,12 @@ const appUrl = computed(() => window.location.origin + window.location.pathname)
     :link="appUrl"
     title="Share"
     :toast-message="`A link to ${pageLinkDescription} has been copied to your clipboard.`"
+    data-testid="share-dialog"
   >
     <template #header>
-      <p>Send someone a link to {{ pageLinkDescription }}.</p>
+      <p data-testid="share-dialog-description">
+        Send someone a link to {{ pageLinkDescription }}.
+      </p>
     </template>
     <template #footer>
       <div class="flex justify-center items-center my-6">
@@ -50,6 +53,7 @@ const appUrl = computed(() => window.location.origin + window.location.pathname)
       <div class="flex flex-col gap-2">
         <p>Share your schedule with a friend or move it to another device.</p>
         <Button
+          data-testid="share-dialog-share-schedule-button"
           @click="$emit('share-schedule')"
           label="Share My Schedule"
           icon="bi bi-star"

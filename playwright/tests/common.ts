@@ -158,6 +158,18 @@ export const mockApiError = async (
 
 export const mockInfoError = async (page: Page, statusCode: number = 500) => {
   await mockApiError(page, "/info", statusCode);
+
+  // A 404 from the info endpoint triggers an alias lookup. Mock the alias
+  // endpoint so it doesn't hang on a real network request.
+  if (statusCode === 404) {
+    await page.route("https://api-test.fanjam.live/aliases/*", async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Not found" }),
+      });
+    });
+  }
 };
 
 export const mockWrappedApiResponseSequence = async (
