@@ -68,6 +68,7 @@ const addToSchedule = async () => {
     block-scroll
     :draggable="false"
     header="Schedule Options"
+    data-testid="schedule-share-options-dialog"
   >
     <p>
       You are currently viewing a schedule someone shared with you. Do you want to exit and return
@@ -75,8 +76,18 @@ const addToSchedule = async () => {
     </p>
     <template #footer>
       <div class="flex flex-col gap-2 w-full justify-stretch">
-        <Button @click="exitSharedSchedule" label="Return to My Schedule" icon="bi bi-x-lg" />
-        <Button @click="addToSchedule" label="Add to My Schedule" icon="bi bi-star" />
+        <Button
+          @click="exitSharedSchedule"
+          label="Return to My Schedule"
+          icon="bi bi-x-lg"
+          data-testid="schedule-share-options-return-button"
+        />
+        <Button
+          @click="addToSchedule"
+          label="Add to My Schedule"
+          icon="bi bi-star"
+          data-testid="schedule-share-options-add-button"
+        />
       </div>
     </template>
   </Dialog>
