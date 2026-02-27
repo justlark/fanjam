@@ -7,6 +7,7 @@ import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuery";
 import useIsEventStarred from "@/composables/useIsEventStarred";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { renderMarkdown } from "@/utils/markdown";
 
 const isVisible = defineModel<boolean>("visible", {
@@ -22,6 +23,7 @@ const props = defineProps<{
 
 const filterCriteria = useFilterQuery();
 const isStarred = useIsEventStarred(computed(() => props.event?.id));
+const isSharedSchedule = useIsSharedSchedule();
 
 const descriptionHtml = computed(() => {
   if (!props.event?.description) return undefined;
@@ -47,6 +49,7 @@ const descriptionHtml = computed(() => {
           </h2>
           <div class="flex">
             <IconButton
+              v-if="!isSharedSchedule"
               label="Star"
               :icon="isStarred ? 'star-fill' : 'star'"
               :button-props="{

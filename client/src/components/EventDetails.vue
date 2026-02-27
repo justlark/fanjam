@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterLink } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
 import { type Event } from "@/utils/api";
@@ -24,6 +25,7 @@ const props = defineProps<{
 
 const event = computed(() => props.event);
 const isStarred = useIsEventStarred(computed(() => event.value.id));
+const isSharedSchedule = useIsSharedSchedule();
 
 const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
@@ -72,6 +74,7 @@ onMounted(() => {
           @click="back()"
         />
         <IconButton
+          v-if="!isSharedSchedule"
           class="hidden lg:block"
           label="Star"
           :icon="isStarred ? 'star-fill' : 'star'"
@@ -139,6 +142,7 @@ onMounted(() => {
           </EventDetail>
         </dl>
         <IconButton
+          v-if="!isSharedSchedule"
           class="lg:hidden"
           label="Star"
           :icon="isStarred ? 'star-fill' : 'star'"

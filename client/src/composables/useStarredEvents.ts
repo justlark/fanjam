@@ -47,22 +47,26 @@ const useStarredEvents = () => {
     }
   });
 
-  watch(encodedSharedSchedule, (newEncodedSharedSchedule, oldEncodedSharedSchedule) => {
-    if (!newEncodedSharedSchedule) {
-      if (oldEncodedSharedSchedule) {
-        loadFromStorage();
+  watch(
+    encodedSharedSchedule,
+    (newEncodedSharedSchedule, oldEncodedSharedSchedule) => {
+      if (!newEncodedSharedSchedule) {
+        if (oldEncodedSharedSchedule) {
+          loadFromStorage();
+        }
+
+        return;
       }
 
-      return;
-    }
-
-    try {
-      const decoded = decodeBase64url(newEncodedSharedSchedule);
-      starredEvents.value = new Set([...decoded.split(",")]);
-    } catch {
-      starredEvents.value = new Set();
-    }
-  }, { immediate: true });
+      try {
+        const decoded = decodeBase64url(newEncodedSharedSchedule);
+        starredEvents.value = new Set([...decoded.split(",")]);
+      } catch {
+        starredEvents.value = new Set();
+      }
+    },
+    { immediate: true },
+  );
 
   return starredEvents;
 };
