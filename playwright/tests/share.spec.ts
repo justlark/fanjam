@@ -388,10 +388,11 @@ test.describe("localStorage not clobbered", () => {
   }) => {
     await schedulePage.goto();
     await starredEvents.set(["1"]);
+
+    await page.clock.fastForward(200);
+
     await page.goto("schedule?share=Miwz");
     await shareViewFooter.exit();
-
-    await page.clock.fastForward(2000);
 
     expect(await starredEvents.get()).toEqual(["1"]);
   });
