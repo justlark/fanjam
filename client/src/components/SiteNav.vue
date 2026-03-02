@@ -111,9 +111,14 @@ const shareSchedule = () => {
             </RouterLink>
           </div>
           <div class="flex lg:gap-2">
+            <!--
+              We're rendering these icons at different sizes because the share
+              icon visually looks larger than the refresh icon.
+            -->
             <IconButton
-              icon="link-45deg"
+              icon="share-fill"
               label="Copy Link"
+              size="md"
               @click="shareDialogVisible = true"
               :button-props="{ 'data-testid': 'site-nav-copy-link' }"
             />
