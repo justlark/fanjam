@@ -62,6 +62,26 @@ const preset = definePreset(Aura, {
         },
       },
     },
+    toast: {
+      colorScheme: {
+        light: {
+          root: { blur: "0" },
+          info: { background: "{blue.50}", borderColor: "{blue.200}" },
+          success: { background: "{green.50}", borderColor: "{green.200}" },
+          warn: { background: "{yellow.50}", borderColor: "{yellow.200}" },
+          error: { background: "{red.50}", borderColor: "{red.200}" },
+          secondary: { background: "{surface.100}", borderColor: "{surface.200}" },
+        },
+        dark: {
+          root: { blur: "0" },
+          info: { background: "{blue.950}", borderColor: "{blue.800}", color: "{blue.300}", detailColor: "{surface.100}" },
+          success: { background: "{green.950}", borderColor: "{green.800}", color: "{green.300}", detailColor: "{surface.100}" },
+          warn: { background: "{yellow.950}", borderColor: "{yellow.800}", color: "{yellow.300}", detailColor: "{surface.100}" },
+          error: { background: "{red.950}", borderColor: "{red.800}", color: "{red.300}", detailColor: "{surface.100}" },
+          secondary: { background: "{surface.800}", borderColor: "{surface.700}", color: "{surface.200}", detailColor: "{surface.100}" },
+        },
+      },
+    },
   },
 });
 
