@@ -54,7 +54,7 @@ watch(appShareDialogVisible, (newValue, oldValue) => {
           @click="appShareDialogVisible = true"
         />
       </div>
-      <div class="flex justify-center items-center my-4">
+      <div class="flex justify-center items-center my-6">
         <div class="border-b w-8 mr-4"></div>
         <span>or</span>
         <div class="border-b w-8 ml-4"></div>
