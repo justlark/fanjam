@@ -9,8 +9,7 @@ import {
   SchedulePage,
   ShareDialog,
   ScheduleShareDialog,
-  ScheduleShareOptionsDialog,
-  ShareViewFooter,
+  ScheduleShareFooter,
   SiteNav,
   StarredEvents,
 } from "./fixtures";
@@ -25,8 +24,7 @@ type Fixtures = {
   appShareDialog: AppShareDialog;
   eventShareDialog: EventShareDialog;
   scheduleShareDialog: ScheduleShareDialog;
-  scheduleShareOptionsDialog: ScheduleShareOptionsDialog;
-  shareViewFooter: ShareViewFooter;
+  scheduleShareFooter: ScheduleShareFooter;
   starredEvents: StarredEvents;
 };
 
@@ -58,11 +56,8 @@ export const test = base.extend<Fixtures>({
   scheduleShareDialog: async ({ page }, use) => {
     await use(new ScheduleShareDialog(page));
   },
-  scheduleShareOptionsDialog: async ({ page }, use) => {
-    await use(new ScheduleShareOptionsDialog(page));
-  },
-  shareViewFooter: async ({ page }, use) => {
-    await use(new ShareViewFooter(page));
+  scheduleShareFooter: async ({ page }, use) => {
+    await use(new ScheduleShareFooter(page));
   },
   starredEvents: async ({ page }, use) => {
     await use(new StarredEvents(page));
@@ -188,17 +183,20 @@ test.describe("viewing a shared schedule", () => {
     );
   });
 
-  test("shows share view footer", async ({ page, shareViewFooter }) => {
+  test("shows share view footer", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
 
-    await expect(shareViewFooter.footer).toBeVisible();
-    await expect(shareViewFooter.footer).toHaveText(/someone else's schedule/);
+    await expect(scheduleShareFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).toHaveText(/someone else's schedule/);
   });
 
-  test("does not show footer without share param", async ({ schedulePage, shareViewFooter }) => {
+  test("does not show footer without share param", async ({
+    schedulePage,
+    scheduleShareFooter,
+  }) => {
     await schedulePage.goto();
 
-    await expect(shareViewFooter.footer).not.toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
   });
 });
 
@@ -215,22 +213,22 @@ test.describe("share param preserved across navigation", () => {
     });
   });
 
-  test("preserved navigating to announcements", async ({ page, mainMenu, shareViewFooter }) => {
+  test("preserved navigating to announcements", async ({ page, mainMenu, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
     if (isMobile()) await mainMenu.open();
     await mainMenu.navigateToAnnouncements();
 
     await expect(page).toHaveURL(/share=Miwz/);
-    await expect(shareViewFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).toBeVisible();
   });
 
-  test("preserved navigating to info", async ({ page, mainMenu, shareViewFooter }) => {
+  test("preserved navigating to info", async ({ page, mainMenu, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
     if (isMobile()) await mainMenu.open();
     await mainMenu.navigateToInfo();
 
     await expect(page).toHaveURL(/share=Miwz/);
-    await expect(shareViewFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).toBeVisible();
   });
 
   test("preserved navigating to event details and back", async ({
@@ -261,19 +259,21 @@ test.describe("exiting shared schedule", () => {
     });
   });
 
-  test("exit removes share param", async ({ page, shareViewFooter }) => {
+  test("exit removes share param", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await expect(shareViewFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).toBeVisible();
 
-    await shareViewFooter.exit();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     await expect(page).not.toHaveURL(/share=/);
-    await expect(shareViewFooter.footer).not.toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
   });
 
-  test("exit shows toast", async ({ page, shareViewFooter }) => {
+  test("exit shows toast", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exit();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     await expect(page.getByText("Returning to your schedule")).toBeVisible();
   });
@@ -281,7 +281,7 @@ test.describe("exiting shared schedule", () => {
   test("exit restores user's own starred events", async ({
     page,
     schedulePage,
-    shareViewFooter,
+    scheduleShareFooter,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -294,7 +294,8 @@ test.describe("exiting shared schedule", () => {
       /^Starred:/,
     );
 
-    await shareViewFooter.exit();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     // After exit, user's own starred events are restored
     await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
@@ -310,9 +311,10 @@ test.describe("exiting shared schedule", () => {
     expect(await starredEvents.get()).toEqual(["1"]);
   });
 
-  test("share param not preserved after exit", async ({ page, mainMenu, shareViewFooter }) => {
+  test("share param not preserved after exit", async ({ page, mainMenu, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exit();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     if (isMobile()) await mainMenu.open();
     await mainMenu.navigateToAnnouncements();
@@ -396,7 +398,7 @@ test.describe("localStorage not clobbered", () => {
   test("localStorage preserved after exiting", async ({
     page,
     starredEvents,
-    shareViewFooter,
+    scheduleShareFooter,
     schedulePage,
   }) => {
     await schedulePage.goto();
@@ -405,7 +407,8 @@ test.describe("localStorage not clobbered", () => {
     await page.clock.fastForward(200);
 
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exit();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     expect(await starredEvents.get()).toEqual(["1"]);
   });
@@ -423,51 +426,41 @@ test.describe("schedule share options dialog", () => {
     });
   });
 
-  test("opens from footer button", async ({
-    page,
-    shareViewFooter,
-    scheduleShareOptionsDialog,
-  }) => {
+  test("opens from footer button", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
+    await scheduleShareFooter.openOptions();
 
-    await expect(scheduleShareOptionsDialog.dialog).toBeVisible();
+    await expect(scheduleShareFooter.dialog).toBeVisible();
   });
 
-  test("return exits share mode", async ({ page, shareViewFooter, scheduleShareOptionsDialog }) => {
+  test("return exits share mode", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.returnToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     await expect(page).not.toHaveURL(/share=/);
-    await expect(shareViewFooter.footer).not.toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
   });
 
-  test("return shows toast", async ({ page, shareViewFooter, scheduleShareOptionsDialog }) => {
+  test("return shows toast", async ({ page, scheduleShareFooter }) => {
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.returnToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.returnToMySchedule();
 
     await expect(page.getByText("Returning to your schedule")).toBeVisible();
   });
 
-  test("add merges events", async ({
-    page,
-    schedulePage,
-    shareViewFooter,
-    scheduleShareOptionsDialog,
-    starredEvents,
-  }) => {
+  test("add merges events", async ({ page, schedulePage, scheduleShareFooter, starredEvents }) => {
     await schedulePage.goto();
     await page.clock.fastForward(200);
     await starredEvents.set(["1"]);
 
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.addToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.addToMySchedule();
 
     await expect(page).not.toHaveURL(/share=/);
-    await expect(shareViewFooter.footer).not.toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
 
     await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
       /^Starred:/,
@@ -486,8 +479,7 @@ test.describe("schedule share options dialog", () => {
   test("add shows toast with count", async ({
     page,
     schedulePage,
-    shareViewFooter,
-    scheduleShareOptionsDialog,
+    scheduleShareFooter,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -495,8 +487,8 @@ test.describe("schedule share options dialog", () => {
     await starredEvents.set(["1"]);
 
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.addToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.addToMySchedule();
 
     await expect(page.getByText("Added 2 events")).toBeVisible();
   });
@@ -504,8 +496,7 @@ test.describe("schedule share options dialog", () => {
   test("add shows toast when no new events", async ({
     page,
     schedulePage,
-    shareViewFooter,
-    scheduleShareOptionsDialog,
+    scheduleShareFooter,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -513,8 +504,8 @@ test.describe("schedule share options dialog", () => {
     await starredEvents.set(["2", "3"]);
 
     await page.goto("schedule?share=Miwz");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.addToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.addToMySchedule();
 
     await expect(page.getByText("already have all these events")).toBeVisible();
   });
@@ -522,8 +513,7 @@ test.describe("schedule share options dialog", () => {
   test("add preserves existing starred events", async ({
     page,
     schedulePage,
-    shareViewFooter,
-    scheduleShareOptionsDialog,
+    scheduleShareFooter,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -531,8 +521,8 @@ test.describe("schedule share options dialog", () => {
     await starredEvents.set(["1"]);
 
     await page.goto("schedule?share=MQ");
-    await shareViewFooter.exitButton.click();
-    await scheduleShareOptionsDialog.addToMySchedule();
+    await scheduleShareFooter.openOptions();
+    await scheduleShareFooter.addToMySchedule();
 
     expect(await starredEvents.get()).toEqual(["1"]);
   });

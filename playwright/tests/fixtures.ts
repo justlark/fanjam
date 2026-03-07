@@ -472,32 +472,23 @@ export class ScheduleShareDialog {
   }
 }
 
-export class ShareViewFooter {
-  private readonly page: Page;
+export class ScheduleShareFooter {
   readonly footer: Locator;
-  readonly optionsButton: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    this.footer = page.getByTestId("share-view-footer");
-    this.optionsButton = page.getByTestId("share-view-footer-options-button");
-  }
-
-  async exit() {
-    await this.optionsButton.click();
-    await this.page.getByTestId("schedule-share-options-return-button").click();
-  }
-}
-
-export class ScheduleShareOptionsDialog {
   readonly dialog: Locator;
+  readonly optionsButton: Locator;
   readonly returnButton: Locator;
   readonly addButton: Locator;
 
   constructor(page: Page) {
+    this.footer = page.getByTestId("share-view-footer");
     this.dialog = page.getByTestId("schedule-share-options-dialog");
+    this.optionsButton = page.getByTestId("share-view-footer-options-button");
     this.returnButton = page.getByTestId("schedule-share-options-return-button");
     this.addButton = page.getByTestId("schedule-share-options-add-button");
+  }
+
+  async openOptions() {
+    await this.optionsButton.click();
   }
 
   async returnToMySchedule() {
