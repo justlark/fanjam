@@ -12,6 +12,7 @@ import ShareViewFooter from "./ShareViewFooter.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
+import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
@@ -19,6 +20,7 @@ import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
+const shareDialogVisible = ref(false);
 const scheduleShareOptionsDialogVisible = ref(false);
 
 const toast = useToast();
@@ -31,6 +33,8 @@ const showNotificationBadge = computed(
   () =>
     route.name !== "announcement" && route.name !== "announcements" && hasUnreadAnnouncements.value,
 );
+
+const showGlobalShareButton = computed(() => route.name !== "event");
 
 const toggleMenuDrawer = () => {
   menuVisible.value = !menuVisible.value;
@@ -103,6 +107,14 @@ const headerHeadingId = useId();
           </div>
           <div class="flex lg:gap-2">
             <IconButton
+              v-if="showGlobalShareButton"
+              icon="share-fill"
+              size="md"
+              label="Share"
+              @click="shareDialogVisible = true"
+              :button-props="{ 'data-testid': 'site-nav-share' }"
+            />
+            <IconButton
               icon="arrow-clockwise"
               label="Refresh"
               @click="refresh"
@@ -159,6 +171,7 @@ const headerHeadingId = useId();
       </footer>
       <ScrollTop class="lg:hidden" />
     </div>
+    <ShareDialog v-model:visible="shareDialogVisible" />
     <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />

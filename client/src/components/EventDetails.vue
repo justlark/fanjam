@@ -12,7 +12,7 @@ import EventDetail from "./EventDetail.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
-import ShareDialog from "./ShareDialog.vue";
+import LinkShareDialog from "./LinkShareDialog.vue";
 
 const datetimeFormats = useDatetimeFormats();
 const route = useRoute();
@@ -37,6 +37,10 @@ const sectionHeadingId = useId();
 
 const fromViewType = ref<"daily" | "all">();
 const shareDialogVisible = ref(false);
+
+// Do not include the query params or fragment; users likely aren't intending
+// to share their current search/filter params.
+const eventUrl = computed(() => window.location.origin + window.location.pathname);
 
 const back = async () => {
   if (!fromViewType.value) {
@@ -205,6 +209,13 @@ onMounted(() => {
         <span>No description</span>
       </div>
     </div>
-    <ShareDialog v-model:visible="shareDialogVisible" />
+    <LinkShareDialog
+      v-model:visible="shareDialogVisible"
+      title="Share Event"
+      :link="eventUrl"
+      message="Send someone a link to this event."
+      toast-message="A link to this event has been copied to your clipboard."
+      data-testid="event-share-dialog"
+    />
   </section>
 </template>
