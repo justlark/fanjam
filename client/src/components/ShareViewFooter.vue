@@ -12,9 +12,9 @@ defineEmits(["click"]);
       <IconButton
         @click="$emit('click')"
         icon="sliders"
-        label="Exit"
+        label="Options"
         size="md"
-        :button-props="{ 'data-testid': 'share-view-footer-exit-button' }"
+        :button-props="{ 'data-testid': 'share-view-footer-options-button' }"
       />
     </div>
   </div>

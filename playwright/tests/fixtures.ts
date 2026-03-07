@@ -171,6 +171,7 @@ export class EventDetailsPage {
   readonly personLinks: Locator;
   readonly locationLinks: Locator;
   readonly starButton: Locator;
+  readonly shareButton: Locator;
   readonly summary: Locator;
   readonly description: Locator;
   readonly noDescription: Locator;
@@ -188,6 +189,7 @@ export class EventDetailsPage {
     this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
     this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
+    this.shareButton = page.getByTestId("event-share-link").filter({ visible: true });
     this.summary = page.getByTestId("event-details-summary");
     this.description = page.getByTestId("event-details-description");
     this.noDescription = page.getByTestId("event-details-no-description");
@@ -378,19 +380,19 @@ export class CustomPage {
 
 export class SiteNav {
   readonly heading: Locator;
-  readonly copyLinkButton: Locator;
+  readonly shareButton: Locator;
   readonly refreshButton: Locator;
   readonly errorState: Locator;
 
   constructor(page: Page) {
     this.heading = page.getByTestId("site-nav-heading");
-    this.copyLinkButton = page.getByTestId("site-nav-copy-link");
+    this.shareButton = page.getByTestId("site-nav-share");
     this.refreshButton = page.getByTestId("site-nav-refresh");
     this.errorState = page.getByTestId("site-nav-error-state");
   }
 
-  async copyLink() {
-    await this.copyLinkButton.click();
+  async share() {
+    await this.shareButton.click();
   }
 
   async refresh() {
@@ -400,25 +402,57 @@ export class SiteNav {
 
 export class ShareDialog {
   readonly dialog: Locator;
-  readonly description: Locator;
-  readonly urlInput: Locator;
-  readonly copyButton: Locator;
+  readonly shareAppButton: Locator;
   readonly shareScheduleButton: Locator;
 
   constructor(page: Page) {
     this.dialog = page.getByTestId("share-dialog");
+    this.shareAppButton = this.dialog.getByTestId("share-dialog-share-app-button");
+    this.shareScheduleButton = this.dialog.getByTestId("share-dialog-share-schedule-button");
+  }
+
+  async openAppShare() {
+    await this.shareAppButton.click();
+  }
+
+  async openScheduleShare() {
+    await this.shareScheduleButton.click();
+  }
+}
+
+export class AppShareDialog {
+  readonly dialog: Locator;
+  readonly description: Locator;
+  readonly urlInput: Locator;
+  readonly copyButton: Locator;
+
+  constructor(page: Page) {
+    this.dialog = page.getByTestId("app-share-dialog");
     this.description = this.dialog.getByTestId("share-dialog-description");
     this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
     this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
-    this.shareScheduleButton = this.dialog.getByTestId("share-dialog-share-schedule-button");
   }
 
   async copyLink() {
     await this.copyButton.click();
   }
+}
 
-  async openScheduleShare() {
-    await this.shareScheduleButton.click();
+export class EventShareDialog {
+  readonly dialog: Locator;
+  readonly description: Locator;
+  readonly urlInput: Locator;
+  readonly copyButton: Locator;
+
+  constructor(page: Page) {
+    this.dialog = page.getByTestId("event-share-dialog");
+    this.description = this.dialog.getByTestId("share-dialog-description");
+    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
+    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
+  }
+
+  async copyLink() {
+    await this.copyButton.click();
   }
 }
 
@@ -441,16 +475,16 @@ export class ScheduleShareDialog {
 export class ShareViewFooter {
   private readonly page: Page;
   readonly footer: Locator;
-  readonly exitButton: Locator;
+  readonly optionsButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.footer = page.getByTestId("share-view-footer");
-    this.exitButton = page.getByTestId("share-view-footer-exit-button");
+    this.optionsButton = page.getByTestId("share-view-footer-options-button");
   }
 
   async exit() {
-    await this.exitButton.click();
+    await this.optionsButton.click();
     await this.page.getByTestId("schedule-share-options-return-button").click();
   }
 }

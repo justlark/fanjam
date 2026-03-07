@@ -42,6 +42,7 @@ watch(appShareDialogVisible, (newValue, oldValue) => {
       block-scroll
       header="Share"
       :draggable="false"
+      data-testid="share-dialog"
     >
       <div class="flex flex-col gap-3">
         <p>Share a link to this app.</p>
