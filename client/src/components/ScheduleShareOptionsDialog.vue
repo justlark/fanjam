@@ -79,13 +79,13 @@ const addToSchedule = async () => {
         <Button
           @click="exitSharedSchedule"
           label="Return to My Schedule"
-          icon="bi bi-x-lg"
+          icon="bi bi-arrow-90deg-left"
           data-testid="schedule-share-options-return-button"
         />
         <Button
           @click="addToSchedule"
           label="Add to My Schedule"
-          icon="bi bi-star"
+          icon="bi bi-plus-circle"
           data-testid="schedule-share-options-add-button"
         />
       </div>

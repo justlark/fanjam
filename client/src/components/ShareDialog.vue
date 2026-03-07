@@ -50,7 +50,6 @@ watch(appShareDialogVisible, (newValue, oldValue) => {
           size="large"
           label="Share This App"
           icon="bi bi-share-fill"
-          variant="outlined"
           @click="appShareDialogVisible = true"
         />
       </div>
@@ -66,7 +65,6 @@ watch(appShareDialogVisible, (newValue, oldValue) => {
           size="large"
           label="Share My Schedule"
           icon="bi bi-star"
-          variant="outlined"
           @click="scheduleShareDialogVisible = true"
         />
       </div>
