@@ -15,7 +15,7 @@ const scheduleShareDialogVisible = ref(false);
 const appShareDialogVisible = ref(false);
 
 const route = useRoute();
-const envId = computed(() => route.params.envId);
+const envId = computed(() => route.params.envId as string);
 
 const appUrl = computed(() => `${window.location.origin}/app/${envId.value}`);
 
