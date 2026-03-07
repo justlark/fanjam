@@ -89,7 +89,7 @@ test.describe("share dialog", () => {
     await siteNav.share();
     await shareDialog.openAppShare();
 
-    const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}/schedule`;
+    const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
 
     await expect(appShareDialog.description).toBeVisible();
     await expect(appShareDialog.urlInput).toHaveValue(expectedShareUrl);
@@ -121,16 +121,6 @@ test.describe("share dialog", () => {
     await expect(appShareDialog.urlInput).toBeVisible();
     const urlValue = await appShareDialog.urlInput.inputValue();
     expect(urlValue).not.toContain("?");
-  });
-
-  test("URL points to app root", async ({ siteNav, shareDialog, appShareDialog, schedulePage }) => {
-    await schedulePage.goto();
-    await siteNav.share();
-    await shareDialog.openAppShare();
-
-    await expect(appShareDialog.urlInput).toBeVisible();
-    const appUrl = new URL(await appShareDialog.urlInput.inputValue());
-    expect(appUrl.pathname).toEqual(`/app/${envId}`);
   });
 });
 
