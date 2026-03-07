@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import LinkShareDialog from "./LinkShareDialog.vue";
 import ScheduleShareModal from "./ScheduleShareModal.vue";
 import Dialog from "primevue/dialog";
@@ -13,9 +14,10 @@ const visible = defineModel<boolean>("visible", {
 const scheduleShareDialogVisible = ref(false);
 const appShareDialogVisible = ref(false);
 
-// Do not include the query params or fragment; users likely aren't intending
-// to share their current search/filter params.
-const appUrl = computed(() => window.location.origin + window.location.pathname);
+const route = useRoute();
+const envId = computed(() => route.params.envId);
+
+const appUrl = computed(() => `${window.location.origin}/app/${envId.value}`);
 
 watch(scheduleShareDialogVisible, (newValue, oldValue) => {
   if (oldValue && !newValue) {
