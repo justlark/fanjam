@@ -12,6 +12,7 @@ import EventDetail from "./EventDetail.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
+import ShareDialog from "./ShareDialog.vue";
 
 const datetimeFormats = useDatetimeFormats();
 const route = useRoute();
@@ -35,6 +36,7 @@ const descriptionHtml = computed(() => {
 const sectionHeadingId = useId();
 
 const fromViewType = ref<"daily" | "all">();
+const shareDialogVisible = ref(false);
 
 const back = async () => {
   if (!fromViewType.value) {
@@ -83,6 +85,14 @@ onMounted(() => {
             'data-testid': 'event-details-star-button',
           }"
           @click="isStarred = !isStarred"
+        />
+        <IconButton
+          icon="share-fill"
+          class="hidden lg:block"
+          label="Copy Link"
+          size="md"
+          @click="shareDialogVisible = true"
+          :button-props="{ 'data-testid': 'event-share-link' }"
         />
       </span>
       <h2 :id="sectionHeadingId" class="text-xl font-bold" data-testid="event-details-name">
@@ -141,17 +151,25 @@ onMounted(() => {
             </RouterLink>
           </EventDetail>
         </dl>
-        <IconButton
-          v-if="!isSharedSchedule"
-          class="lg:hidden"
-          label="Star"
-          :icon="isStarred ? 'star-fill' : 'star'"
-          :button-props="{
-            'aria-pressed': isStarred,
-            'data-testid': 'event-details-star-button',
-          }"
-          @click="isStarred = !isStarred"
-        />
+        <div class="lg:hidden flex flex-col gap-1">
+          <IconButton
+            icon="share-fill"
+            label="Copy Link"
+            size="md"
+            @click="shareDialogVisible = true"
+            :button-props="{ 'data-testid': 'event-share-link' }"
+          />
+          <IconButton
+            v-if="!isSharedSchedule"
+            label="Star"
+            :icon="isStarred ? 'star-fill' : 'star'"
+            :button-props="{
+              'aria-pressed': isStarred,
+              'data-testid': 'event-details-star-button',
+            }"
+            @click="isStarred = !isStarred"
+          />
+        </div>
       </div>
       <TagBar
         class="mt-4"
@@ -187,5 +205,6 @@ onMounted(() => {
         <span>No description</span>
       </div>
     </div>
+    <ShareDialog v-model:visible="shareDialogVisible" />
   </section>
 </template>

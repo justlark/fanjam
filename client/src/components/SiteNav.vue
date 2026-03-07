@@ -11,9 +11,7 @@ import IconButton from "./IconButton.vue";
 import ShareViewFooter from "./ShareViewFooter.vue";
 import AppUpdater from "./AppUpdater.vue";
 import SiteAttribution from "./SiteAttribution.vue";
-import ScheduleShareModal from "./ScheduleShareModal.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
-import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
@@ -21,8 +19,6 @@ import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
-const shareDialogVisible = ref(false);
-const scheduleShareDialogVisible = ref(false);
 const scheduleShareOptionsDialogVisible = ref(false);
 
 const toast = useToast();
@@ -68,11 +64,6 @@ const refresh = async () => {
 };
 
 const headerHeadingId = useId();
-
-const shareSchedule = () => {
-  shareDialogVisible.value = false;
-  scheduleShareDialogVisible.value = true;
-};
 </script>
 
 <template>
@@ -111,17 +102,6 @@ const shareSchedule = () => {
             </RouterLink>
           </div>
           <div class="flex lg:gap-2">
-            <!--
-              We're rendering these icons at different sizes because the share
-              icon visually looks larger than the refresh icon.
-            -->
-            <IconButton
-              icon="share-fill"
-              label="Copy Link"
-              size="md"
-              @click="shareDialogVisible = true"
-              :button-props="{ 'data-testid': 'site-nav-copy-link' }"
-            />
             <IconButton
               icon="arrow-clockwise"
               label="Refresh"
@@ -179,8 +159,6 @@ const shareSchedule = () => {
       </footer>
       <ScrollTop class="lg:hidden" />
     </div>
-    <ShareDialog @share-schedule="shareSchedule" v-model:visible="shareDialogVisible" />
-    <ScheduleShareModal v-model:visible="scheduleShareDialogVisible" />
     <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />

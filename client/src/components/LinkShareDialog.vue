@@ -17,6 +17,7 @@ const toast = useToast();
 const props = defineProps<{
   link: string;
   title: string;
+  message: string;
   toastMessage: string;
 }>();
 
@@ -42,8 +43,7 @@ const copyShareUrl = async () => {
     :draggable="false"
     :header="props.title"
   >
-    <slot name="header" />
-    <div class="rounded-3xl overflow-hidden mx-auto w-fit my-6 shadow-md">
+    <div class="rounded-3xl overflow-hidden mx-auto w-fit mb-6 shadow-md">
       <QrcodeVue
         :value="props.link"
         :margin="3"
@@ -53,7 +53,10 @@ const copyShareUrl = async () => {
         render-as="svg"
       />
     </div>
-    <InputGroup>
+    <p data-testid="share-dialog-description">
+      {{ props.message }}
+    </p>
+    <InputGroup class="mt-3">
       <InputGroupAddon>
         <Button
           data-testid="link-share-dialog-copy-button"
@@ -64,6 +67,5 @@ const copyShareUrl = async () => {
       </InputGroupAddon>
       <InputText data-testid="link-share-dialog-url" :value="props.link" disabled />
     </InputGroup>
-    <slot name="footer" />
   </Dialog>
 </template>
