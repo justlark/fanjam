@@ -35,8 +35,6 @@ const showNotificationBadge = computed(
     route.name !== "announcement" && route.name !== "announcements" && hasUnreadAnnouncements.value,
 );
 
-const showGlobalShareButton = computed(() => route.name !== "event");
-
 const toggleMenuDrawer = () => {
   menuVisible.value = !menuVisible.value;
 };
@@ -109,7 +107,6 @@ const headerHeadingId = useId();
           </div>
           <div class="flex lg:gap-2">
             <IconButton
-              v-if="showGlobalShareButton"
               icon="share-fill"
               size="md"
               label="Share"
