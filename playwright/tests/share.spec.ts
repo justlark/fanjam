@@ -75,6 +75,7 @@ test.describe("share dialog", () => {
       ],
       announcements: [{ id: "a1", title: "Test Announcement" }],
       pages: [{ id: "p1", title: "Test Page" }],
+      config: { use_schedule_sharing: true },
     });
   });
 
@@ -133,6 +134,7 @@ test.describe("schedule share modal", () => {
         { id: "2", name: "Test Event 2", start_time: hoursFromNow(2).toISOString() },
         { id: "3", name: "Test Event 3", start_time: hoursFromNow(3).toISOString() },
       ],
+      config: { use_schedule_sharing: true },
     });
   });
 
@@ -154,6 +156,48 @@ test.describe("schedule share modal", () => {
     await expect(scheduleShareDialog.urlInput).toBeVisible();
     const urlValue = await scheduleShareDialog.urlInput.inputValue();
     expect(urlValue).toContain("?share=MSwz");
+  });
+});
+
+test.describe("share button (schedule sharing disabled)", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+    await mockApi(page, {
+      events: [
+        { id: "1", name: "Test Event 1", start_time: hoursFromNow(1).toISOString() },
+        { id: "2", name: "Test Event 2", start_time: hoursFromNow(2).toISOString() },
+        { id: "3", name: "Test Event 3", start_time: hoursFromNow(3).toISOString() },
+      ],
+      announcements: [{ id: "a1", title: "Test Announcement" }],
+      pages: [{ id: "p1", title: "Test Page" }],
+    });
+  });
+
+  test("opens app share modal directly from share button", async ({
+    page,
+    schedulePage,
+    siteNav,
+    shareDialog,
+    appShareDialog,
+  }) => {
+    await schedulePage.goto();
+    await siteNav.share();
+
+    await expect(shareDialog.dialog).not.toBeVisible();
+    await expect(appShareDialog.dialog).toBeVisible();
+
+    const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
+    await expect(appShareDialog.urlInput).toHaveValue(expectedShareUrl);
+    await expect(appShareDialog.description).toHaveText(/this app/);
+  });
+
+  test("URL does not include query params", async ({ page, siteNav, appShareDialog }) => {
+    await page.goto("schedule?c=Workshop&q=test");
+    await siteNav.share();
+
+    await expect(appShareDialog.urlInput).toBeVisible();
+    const urlValue = await appShareDialog.urlInput.inputValue();
+    expect(urlValue).not.toContain("?");
   });
 });
 
