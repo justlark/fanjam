@@ -45,6 +45,7 @@ pub struct Config {
     pub feedback_title: Option<String>,
     pub feedback_detail: Option<String>,
     pub feedback_url: Option<String>,
+    pub use_schedule_sharing: Option<bool>,
     pub config_db_host: Option<String>,
     pub config_db_port: Option<u16>,
     pub config_db_name: Option<String>,

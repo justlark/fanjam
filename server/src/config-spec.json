@@ -40,6 +40,11 @@
     "sensitive": false
   },
   {
+    "key": "use_schedule_sharing",
+    "help": "Whether to enable the schedule sharing feature.",
+    "sensitive": false
+  },
+  {
     "key": "config_db_host",
     "help": "The Postgres host for the configuration database.",
     "sensitive": false

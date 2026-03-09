@@ -180,6 +180,7 @@ pub struct GetConfigResponse {
     pub feedback_title: Option<String>,
     pub feedback_detail: Option<String>,
     pub feedback_url: Option<String>,
+    pub use_schedule_sharing: Option<bool>,
     pub use_custom_icon: Option<bool>,
     pub favicon_name: Option<String>,
     pub opengraph_icon_name: Option<String>,

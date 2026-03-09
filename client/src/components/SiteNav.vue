@@ -16,6 +16,7 @@ import ShareDialog from "./ShareDialog.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
+import AppShareModal from "./AppShareModal.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
@@ -49,12 +50,13 @@ watch(route, () => {
 });
 
 const {
-  data: { info },
+  data: { info, config },
   status: { info: infoStatus },
   reload,
 } = useRemoteData();
 
 const conName = computed(() => info.value?.name ?? "FanJam");
+const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? false);
 
 const refresh = async () => {
   toast.add({
@@ -171,7 +173,8 @@ const headerHeadingId = useId();
       </footer>
       <ScrollTop class="lg:hidden" />
     </div>
-    <ShareDialog v-model:visible="shareDialogVisible" />
+    <ShareDialog v-if="scheduleSharingEnabled" v-model:visible="shareDialogVisible" />
+    <AppShareModal v-else v-model:visible="shareDialogVisible" />
     <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />

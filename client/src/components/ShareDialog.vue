@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
-import LinkShareDialog from "./LinkShareDialog.vue";
+import { ref, watch } from "vue";
 import ScheduleShareModal from "./ScheduleShareModal.vue";
+import AppShareModal from "./AppShareModal.vue";
 import Dialog from "primevue/dialog";
 import Button from "primevue/button";
 
@@ -13,11 +12,6 @@ const visible = defineModel<boolean>("visible", {
 
 const scheduleShareDialogVisible = ref(false);
 const appShareDialogVisible = ref(false);
-
-const route = useRoute();
-const envId = computed(() => route.params.envId as string);
-
-const appUrl = computed(() => `${window.location.origin}/app/${envId.value}`);
 
 watch(scheduleShareDialogVisible, (newValue, oldValue) => {
   if (oldValue && !newValue) {
@@ -72,14 +66,7 @@ watch(appShareDialogVisible, (newValue, oldValue) => {
         />
       </div>
     </Dialog>
-    <LinkShareDialog
-      v-model:visible="appShareDialogVisible"
-      title="Share This App"
-      :link="appUrl"
-      message="Send someone a link to this app."
-      toast-message="A link to this app has been copied to your clipboard."
-      data-testid="app-share-dialog"
-    />
+    <AppShareModal v-model:visible="appShareDialogVisible" />
     <ScheduleShareModal v-model:visible="scheduleShareDialogVisible" />
   </div>
 </template>
