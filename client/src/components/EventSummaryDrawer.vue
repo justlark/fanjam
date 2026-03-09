@@ -9,6 +9,7 @@ import useFilterQuery, { toFilterQueryParams } from "@/composables/useFilterQuer
 import useIsEventStarred from "@/composables/useIsEventStarred";
 import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { renderMarkdown } from "@/utils/markdown";
+import { useToast } from "primevue/usetoast";
 
 const isVisible = defineModel<boolean>("visible", {
   required: true,
@@ -21,6 +22,7 @@ const props = defineProps<{
   viewType: "daily" | "all";
 }>();
 
+const toast = useToast();
 const filterCriteria = useFilterQuery();
 const isStarred = useIsEventStarred(computed(() => props.event?.id));
 const isSharedSchedule = useIsSharedSchedule();
@@ -29,6 +31,22 @@ const descriptionHtml = computed(() => {
   if (!props.event?.description) return undefined;
   return renderMarkdown(props.event.description);
 });
+
+const toggleStar = () => {
+  if (isSharedSchedule.value) {
+    toast.add({
+      severity: "warn",
+      summary: "You're viewing someone else's schedule",
+      detail:
+        "To go back to your own schedule and make changes, open the options menu at the bottom of the screen.",
+      life: 3000,
+    });
+
+    return;
+  }
+
+  isStarred.value = !isStarred.value;
+};
 </script>
 
 <template>
@@ -49,14 +67,13 @@ const descriptionHtml = computed(() => {
           </h2>
           <div class="flex">
             <IconButton
-              v-if="!isSharedSchedule"
               label="Star"
               :icon="isStarred ? 'star-fill' : 'star'"
               :button-props="{
                 'aria-pressed': isStarred,
                 'data-testid': 'event-summary-star-button',
               }"
-              @click="isStarred = !isStarred"
+              @click="toggleStar()"
             />
             <IconButton
               size="md"
