@@ -323,7 +323,7 @@ test.describe("exiting shared schedule", () => {
   });
 });
 
-test.describe("star buttons hidden in share mode", () => {
+test.describe("star buttons in share mode", () => {
   test.beforeEach(async ({ page }) => {
     await mockTime(page);
     await mockApi(page, {
@@ -334,11 +334,17 @@ test.describe("star buttons hidden in share mode", () => {
     });
   });
 
-  test("star button hidden on event details page", async ({ page, schedulePage, eventPage }) => {
+  test("star button shows toast on event details page in share mode", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
     await page.goto("schedule?share=MQ");
     await schedulePage.openEventDetailsPage("Test Event 1");
 
-    await expect(eventPage.starButton).toHaveCount(0);
+    await eventPage.starButton.click();
+
+    await expect(page.getByText("You're viewing someone else's schedule")).toBeVisible();
   });
 
   test("star button visible outside share mode", async ({ schedulePage, eventPage }) => {
@@ -348,15 +354,20 @@ test.describe("star buttons hidden in share mode", () => {
     await expect(eventPage.starButton).toBeVisible();
   });
 
-  test("star button hidden in summary drawer", async ({ page, schedulePage, summaryDrawer }) => {
+  test("star button shows toast in summary drawer in share mode", async ({
+    page,
+    schedulePage,
+    summaryDrawer,
+  }) => {
     if (!isMobile()) {
       test.skip();
     }
 
     await page.goto("schedule?share=MQ");
     await schedulePage.openEventSummaryDrawer("Test Event 1");
+    await summaryDrawer.starButton.click();
 
-    await expect(summaryDrawer.starButton).toHaveCount(0);
+    await expect(page.getByText("You're viewing someone else's schedule")).toBeVisible();
   });
 
   test("schedule list still shows star icons", async ({ page, schedulePage }) => {
