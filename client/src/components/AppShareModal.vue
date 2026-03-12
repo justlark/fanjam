@@ -24,7 +24,7 @@ const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?
 const scheduleShareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
   starredEventIds.sort();
-  return `${window.location.origin}/app/${envId.value}/?share=${encodeBase64url(starredEventIds.join(","))}`;
+  return `${window.location.origin}/app/${envId.value}/schedule/all/?star=true&share=${encodeBase64url(starredEventIds.join(","))}`;
 });
 
 const links = computed(() => [
