@@ -90,7 +90,7 @@ const shareSelectButtonOptions = computed(() =>
         </div>
       </div>
       <div class="h-20 flex flex-col justify-end">
-        <p data-testid="share-dialog-description">
+        <p data-testid="link-share-dialog-description">
           {{ link.message }}
         </p>
       </div>

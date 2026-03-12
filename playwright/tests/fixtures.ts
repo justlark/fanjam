@@ -400,71 +400,37 @@ export class SiteNav {
   }
 }
 
-export class ShareDialog {
-  readonly dialog: Locator;
-  readonly shareAppButton: Locator;
-  readonly shareScheduleButton: Locator;
-
-  constructor(page: Page) {
-    this.dialog = page.getByTestId("share-dialog");
-    this.shareAppButton = this.dialog.getByTestId("share-dialog-share-app-button");
-    this.shareScheduleButton = this.dialog.getByTestId("share-dialog-share-schedule-button");
-  }
-
-  async openAppShare() {
-    await this.shareAppButton.click();
-  }
-
-  async openScheduleShare() {
-    await this.shareScheduleButton.click();
-  }
-}
-
-export class AppShareDialog {
-  readonly dialog: Locator;
+export class ShareModal {
+  readonly selector: Locator;
   readonly description: Locator;
   readonly urlInput: Locator;
   readonly copyButton: Locator;
 
   constructor(page: Page) {
-    this.dialog = page.getByTestId("app-share-dialog");
-    this.description = this.dialog.getByTestId("share-dialog-description");
-    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
-    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
+    this.selector = page.getByTestId("link-share-selector");
+    // Use filter({ visible: true }) because v-for renders one element per link,
+    // with v-show toggling visibility. Only one is visible at a time.
+    this.description = page.getByTestId("link-share-dialog-description").filter({ visible: true });
+    this.urlInput = page.getByTestId("link-share-dialog-url").filter({ visible: true });
+    this.copyButton = page.getByTestId("link-share-dialog-copy-button").filter({ visible: true });
   }
 
-  async copyLink() {
-    await this.copyButton.click();
+  async selectTab(name: string) {
+    await this.selector.getByRole("button", { name }).click();
   }
 }
 
 export class EventShareDialog {
-  readonly dialog: Locator;
   readonly description: Locator;
   readonly urlInput: Locator;
   readonly copyButton: Locator;
 
   constructor(page: Page) {
-    this.dialog = page.getByTestId("event-share-dialog");
-    this.description = this.dialog.getByTestId("share-dialog-description");
-    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
-    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
-  }
-
-  async copyLink() {
-    await this.copyButton.click();
-  }
-}
-
-export class ScheduleShareDialog {
-  readonly dialog: Locator;
-  readonly urlInput: Locator;
-  readonly copyButton: Locator;
-
-  constructor(page: Page) {
-    this.dialog = page.getByTestId("schedule-share-dialog");
-    this.urlInput = this.dialog.getByTestId("link-share-dialog-url");
-    this.copyButton = this.dialog.getByTestId("link-share-dialog-copy-button");
+    // Event share always has one link, so no need for visible filter.
+    // Neither dialog is ever open simultaneously with the app share modal.
+    this.description = page.getByTestId("link-share-dialog-description");
+    this.urlInput = page.getByTestId("link-share-dialog-url");
+    this.copyButton = page.getByTestId("link-share-dialog-copy-button");
   }
 
   async copyLink() {

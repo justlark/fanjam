@@ -1,14 +1,12 @@
 import { test as base, expect } from "@playwright/test";
 import { isMobile, mockApi, mockTime, hoursFromNow, envId } from "./common";
 import {
-  AppShareDialog,
   EventDetailsPage,
   EventShareDialog,
   EventSummaryDrawer,
   MainMenu,
   SchedulePage,
-  ShareDialog,
-  ScheduleShareDialog,
+  ShareModal,
   ScheduleShareFooter,
   SiteNav,
   StarredEvents,
@@ -20,10 +18,8 @@ type Fixtures = {
   summaryDrawer: EventSummaryDrawer;
   mainMenu: MainMenu;
   siteNav: SiteNav;
-  shareDialog: ShareDialog;
-  appShareDialog: AppShareDialog;
+  shareModal: ShareModal;
   eventShareDialog: EventShareDialog;
-  scheduleShareDialog: ScheduleShareDialog;
   scheduleShareFooter: ScheduleShareFooter;
   starredEvents: StarredEvents;
 };
@@ -44,17 +40,11 @@ export const test = base.extend<Fixtures>({
   siteNav: async ({ page }, use) => {
     await use(new SiteNav(page));
   },
-  shareDialog: async ({ page }, use) => {
-    await use(new ShareDialog(page));
-  },
-  appShareDialog: async ({ page }, use) => {
-    await use(new AppShareDialog(page));
+  shareModal: async ({ page }, use) => {
+    await use(new ShareModal(page));
   },
   eventShareDialog: async ({ page }, use) => {
     await use(new EventShareDialog(page));
-  },
-  scheduleShareDialog: async ({ page }, use) => {
-    await use(new ScheduleShareDialog(page));
   },
   scheduleShareFooter: async ({ page }, use) => {
     await use(new ScheduleShareFooter(page));
@@ -79,22 +69,15 @@ test.describe("share dialog", () => {
     });
   });
 
-  test("opens from share button", async ({
-    page,
-    schedulePage,
-    siteNav,
-    shareDialog,
-    appShareDialog,
-  }) => {
+  test("opens from share button", async ({ page, schedulePage, siteNav, shareModal }) => {
     await schedulePage.goto();
     await siteNav.share();
-    await shareDialog.openAppShare();
 
     const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
 
-    await expect(appShareDialog.description).toBeVisible();
-    await expect(appShareDialog.urlInput).toHaveValue(expectedShareUrl);
-    await expect(appShareDialog.description).toHaveText(/this app/);
+    await expect(shareModal.description).toBeVisible();
+    await expect(shareModal.urlInput).toHaveValue(expectedShareUrl);
+    await expect(shareModal.description).toHaveText(/this app/);
   });
 
   test("event page has its own share button", async ({
@@ -109,18 +92,12 @@ test.describe("share dialog", () => {
     await expect(eventShareDialog.description).toHaveText(/this event/);
   });
 
-  test("URL does not include query params", async ({
-    page,
-    siteNav,
-    shareDialog,
-    appShareDialog,
-  }) => {
+  test("URL does not include query params", async ({ page, siteNav, shareModal }) => {
     await page.goto("schedule?c=Workshop&q=test");
     await siteNav.share();
-    await shareDialog.openAppShare();
 
-    await expect(appShareDialog.urlInput).toBeVisible();
-    const urlValue = await appShareDialog.urlInput.inputValue();
+    await expect(shareModal.urlInput).toBeVisible();
+    const urlValue = await shareModal.urlInput.inputValue();
     expect(urlValue).not.toContain("?");
   });
 });
@@ -142,8 +119,7 @@ test.describe("schedule share modal", () => {
     page,
     schedulePage,
     siteNav,
-    shareDialog,
-    scheduleShareDialog,
+    shareModal,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -151,11 +127,11 @@ test.describe("schedule share modal", () => {
     await starredEvents.set(["1", "3"]);
     await schedulePage.goto();
     await siteNav.share();
-    await shareDialog.openScheduleShare();
+    await shareModal.selectTab("My Schedule");
 
-    await expect(scheduleShareDialog.urlInput).toBeVisible();
-    const urlValue = await scheduleShareDialog.urlInput.inputValue();
-    expect(urlValue).toContain("?share=MSwz");
+    await expect(shareModal.urlInput).toBeVisible();
+    const urlValue = await shareModal.urlInput.inputValue();
+    expect(urlValue).toMatch(RegExp(`[?&]share=MSwz`));
   });
 });
 
@@ -177,26 +153,25 @@ test.describe("share button (schedule sharing disabled)", () => {
     page,
     schedulePage,
     siteNav,
-    shareDialog,
-    appShareDialog,
+    shareModal,
   }) => {
     await schedulePage.goto();
     await siteNav.share();
 
-    await expect(shareDialog.dialog).not.toBeVisible();
-    await expect(appShareDialog.dialog).toBeVisible();
+    await expect(shareModal.selector).not.toBeVisible();
+    await expect(shareModal.urlInput).toBeVisible();
 
     const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
-    await expect(appShareDialog.urlInput).toHaveValue(expectedShareUrl);
-    await expect(appShareDialog.description).toHaveText(/this app/);
+    await expect(shareModal.urlInput).toHaveValue(expectedShareUrl);
+    await expect(shareModal.description).toHaveText(/this app/);
   });
 
-  test("URL does not include query params", async ({ page, siteNav, appShareDialog }) => {
+  test("URL does not include query params", async ({ page, siteNav, shareModal }) => {
     await page.goto("schedule?c=Workshop&q=test");
     await siteNav.share();
 
-    await expect(appShareDialog.urlInput).toBeVisible();
-    const urlValue = await appShareDialog.urlInput.inputValue();
+    await expect(shareModal.urlInput).toBeVisible();
+    const urlValue = await shareModal.urlInput.inputValue();
     expect(urlValue).not.toContain("?");
   });
 });
