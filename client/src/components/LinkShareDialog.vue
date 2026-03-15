@@ -70,14 +70,14 @@ const shareSelectButtonOptions = computed(() =>
       fluid
       :allow-empty="false"
       data-testid="link-share-selector"
-      class="max-w-lg mx-auto"
+      class="max-w-lg mx-auto mb-6"
     />
     <div
       v-for="(link, index) in props.links"
       v-show="index === selectedShareIndex"
       :key="link.link"
     >
-      <div class="my-auto py-6">
+      <div class="my-auto mb-6">
         <div class="rounded-3xl overflow-hidden mx-auto w-fit shadow-md">
           <QrcodeVue
             :value="link.link"
