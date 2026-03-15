@@ -21,40 +21,53 @@ where
 {
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
+        let stale = self.0.stale;
 
-        // We canonicalize the response object before computing an etag so that semantically
-        // equivalent JSON produces the same etag, preventing cache misses due to differences in
-        // key ordering.
+        // We canonicalize the data value before computing an etag so that semantically equivalent
+        // JSON produces the same etag, preventing cache misses due to differences in key ordering.
         //
-        // We use a weak etag because we're only hashing the relevant data, not the entire HTTP
-        // response. We do not want changes in the response body envelope (e.g. whether the data is
-        // marked stale) to change the etag.
-        let mut hash_buf = Vec::new();
-        serde_json_canonicalizer::to_writer(&self.0.value, &mut hash_buf).ok();
-        let hash = blake3::hash(&hash_buf);
+        // We use a weak etag because we're only hashing the data value, not the full response
+        // envelope. We do not want changes in the envelope (e.g. whether the data is marked stale)
+        // to change the etag.
+        //
+        // We omit the ETag entirely for stale responses.
+        let etag = if stale {
+            None
+        } else {
+            let mut hash_buf = Vec::new();
+            serde_json_canonicalizer::to_writer(&self.0.value, &mut hash_buf).ok();
+            let hash = blake3::hash(&hash_buf);
+            Some(
+                HeaderValue::from_str(&format!("W/\"{}\"", hash.to_hex()))
+                    .expect("Invalid ETag header value"),
+            )
+        };
 
         let serialize_result = serde_json::to_writer(&mut buf, &self.0);
 
         match serialize_result {
-            Ok(()) => (
-                [
-                    (
-                        header::CONTENT_TYPE,
-                        HeaderValue::from_static("application/json"),
-                    ),
-                    (
-                        header::ETAG,
-                        HeaderValue::from_str(&format!("W/\"{}\"", hash.to_hex()))
-                            .expect("Invalid ETag header value"),
-                    ),
-                    (
-                        header::CACHE_CONTROL,
-                        HeaderValue::from_static("public, no-cache"),
-                    ),
-                ],
-                buf,
-            )
-                .into_response(),
+            Ok(()) => {
+                let mut response = (
+                    [
+                        (
+                            header::CONTENT_TYPE,
+                            HeaderValue::from_static("application/json"),
+                        ),
+                        (
+                            header::CACHE_CONTROL,
+                            HeaderValue::from_static("public, no-cache"),
+                        ),
+                    ],
+                    buf,
+                )
+                    .into_response();
+
+                if let Some(etag) = etag {
+                    response.headers_mut().insert(header::ETAG, etag);
+                }
+
+                response
+            }
             Err(err) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"))],
