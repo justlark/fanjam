@@ -124,6 +124,13 @@ const useRemoteDataInner = <T, S>({
   const reload = async (): Promise<void> => {
     cancelRetry();
     const fetchApiResult = await fetcher();
+
+    if (!fetchApiResult.ok && fetchApiResult.code === 304) {
+      // Server returned Not Modified — the cached data is still current.
+      retryCount = 0;
+      return;
+    }
+
     const fetchResult: FetchResult<T> = fetchApiResult.ok
       ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
       : { status: "error", code: fetchApiResult.code };
@@ -261,13 +268,11 @@ const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
-  const storedValue: StoredValue<unknown> | undefined = getItem("events");
-
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: toRef(envId),
     result: eventsRef,
-    fetcher: () => api.getEvents(toValue(envId), storedValue?.etag),
+    fetcher: () => api.getEvents(toValue(envId), getItem<Array<StoredEvent>>("events")?.etag),
     toCache: (data) =>
       data.map((event) => ({
         id: event.id,
@@ -324,13 +329,11 @@ const infoRef = ref<FetchResult<Info>>({ status: "pending" });
 const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
-  const storedValue: StoredValue<unknown> | undefined = getItem("info");
-
   const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: toRef(envId),
     result: infoRef,
-    fetcher: () => api.getInfo(toValue(envId), storedValue?.etag),
+    fetcher: () => api.getInfo(toValue(envId), getItem<StoredInfo>("info")?.etag),
     toCache: (data) => ({
       name: data.name,
       description: data.description,
@@ -379,13 +382,11 @@ const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
 const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
-  const storedValue: StoredValue<unknown> | undefined = getItem("pages");
-
   const { reload, clear } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
     key: "pages",
     instance: toRef(envId),
     result: pagesRef,
-    fetcher: () => api.getPages(toValue(envId), storedValue?.etag),
+    fetcher: () => api.getPages(toValue(envId), getItem<Array<StoredPage>>("pages")?.etag),
     toCache: (data) =>
       data.map((page) => ({
         id: page.id,
@@ -436,13 +437,15 @@ const announcementsRef = ref<FetchResult<Array<Announcement>>>({ status: "pendin
 const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announcement>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
-  const storedValue: StoredValue<unknown> | undefined = getItem("announcements");
-
   const { reload, clear } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>({
     key: "announcements",
     instance: toRef(envId),
     result: announcementsRef,
-    fetcher: () => api.getAnnouncements(toValue(envId), storedValue?.etag),
+    fetcher: () =>
+      api.getAnnouncements(
+        toValue(envId),
+        getItem<Array<StoredAnnouncement>>("announcements")?.etag,
+      ),
     toCache: (data) =>
       data.map((announcement) => ({
         id: announcement.id,
@@ -490,13 +493,11 @@ const filesRef = ref<FetchResult<Array<File>>>({ status: "pending" });
 const useRemoteFiles: DataSource<Readonly<Ref<Array<DeepReadonly<File>>>>> = (
   envId: MaybeRefOrGetter<string>,
 ) => {
-  const storedValue: StoredValue<unknown> | undefined = getItem("files");
-
   const { reload, clear } = useRemoteDataInner<Array<File>, Array<StoredFile>>({
     key: "files",
     instance: toRef(envId),
     result: filesRef,
-    fetcher: () => api.getFiles(toValue(envId), storedValue?.etag),
+    fetcher: () => api.getFiles(toValue(envId), getItem<Array<StoredFile>>("files")?.etag),
     toCache: (data) =>
       data.map((file) => ({
         id: file.id,

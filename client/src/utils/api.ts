@@ -141,7 +141,7 @@ export interface Config {
   useScheduleSharing?: boolean;
 }
 
-const isOk = (response: Response): boolean => response.ok || response.status === 304;
+const isOk = (response: Response): boolean => response.ok;
 
 export type ApiResult<T> =
   | {
