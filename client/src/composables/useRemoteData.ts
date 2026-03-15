@@ -213,8 +213,7 @@ const useRemoteDataInner = <T, S>({
         const storedValue = getItem<S>(key);
 
         if (!storedValue || storedValue.instance !== instance.value) {
-          // Fetch the data on the initial page load, before it's cached
-          // locally.
+          removeItem(key);
           void reload();
           return;
         }
