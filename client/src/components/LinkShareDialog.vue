@@ -70,7 +70,7 @@ const shareSelectButtonOptions = computed(() =>
       fluid
       :allow-empty="false"
       data-testid="link-share-selector"
-      class="max-w-lg mx-auto mb-6"
+      class="max-w-lg mx-auto"
     />
     <div
       v-for="(link, index) in props.links"
@@ -89,7 +89,7 @@ const shareSelectButtonOptions = computed(() =>
           />
         </div>
       </div>
-      <div class="h-20 flex flex-col justify-end">
+      <div class="flex flex-col justify-end">
         <p data-testid="link-share-dialog-description">
           {{ link.message }}
         </p>
