@@ -22,10 +22,18 @@ where
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
 
-        // We canonicalize the JSON response so that semantically equivalent JSON produces the same
-        // response byte-for-byte which prevents cache misses due to differences in key ordering.
-        let serialize_result = serde_json_canonicalizer::to_writer(&self.0, &mut buf);
-        let hash = blake3::hash(&buf);
+        // We canonicalize the response object before computing an etag so that semantically
+        // equivalent JSON produces the same etag, preventing cache misses due to differences in
+        // key ordering.
+        //
+        // We use a weak etag because we're only hashing the relevant data, not the entire HTTP
+        // response. We do not want changes in the response body envelope (e.g. whether the data is
+        // marked stale) to change the etag.
+        let mut hash_buf = Vec::new();
+        serde_json_canonicalizer::to_writer(&self.0.value, &mut hash_buf).ok();
+        let hash = blake3::hash(&hash_buf);
+
+        let serialize_result = serde_json::to_writer(&mut buf, &self.0);
 
         match serialize_result {
             Ok(()) => (
@@ -36,7 +44,7 @@ where
                     ),
                     (
                         header::ETAG,
-                        HeaderValue::from_str(&format!("\"{}\"", hash.to_hex()))
+                        HeaderValue::from_str(&format!("W/\"{}\"", hash.to_hex()))
                             .expect("Invalid ETag header value"),
                     ),
                     (
@@ -72,12 +80,18 @@ pub async fn if_none_match_middleware(request: Request, next: Next) -> impl Into
         .and_then(|v| v.to_str().ok());
 
     if let (Some(request_etag), Some(response_etag)) = (request_etag, response_etag)
-        && request_etag == response_etag
+        && weak_etags_match(&request_etag, response_etag)
     {
         return StatusCode::NOT_MODIFIED.into_response();
     }
 
     response
+}
+
+fn weak_etags_match(a: &str, b: &str) -> bool {
+    let a = a.strip_prefix("W/").unwrap_or(a);
+    let b = b.strip_prefix("W/").unwrap_or(b);
+    a == b
 }
 
 pub async fn get_cdn_cache(cache: &Cache, uri: Uri) -> Result<Option<http::Response<Body>>, Error> {
