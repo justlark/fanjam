@@ -233,12 +233,8 @@ When releasing a new version of FanJam, the server and client must always be
 deployed together.
 
 FanJam releases don't get version numbers or a release page in GitHub. To keep
-track of production releases, we instead tag them with the date.
-
-Each production release gets a git tag of the form `prod/YYYY-MM-DD`. If a
-second production release happens on the same day, it gets a tag of the form
-`prod/YYYY-MM-DD/1`, then a third gets `prod/YYYY-MM-DD/2`, and so on. We
-generally will not be releasing multiple times per day.
+track of production releases, we instead tag them with the date. Each
+production release gets a git tag of the form `prod/YYYY-MM-DD`.
 
 ## Upgrade NocoDB
 
