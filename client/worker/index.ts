@@ -135,7 +135,7 @@ const fileToResponseHeaders = (file: File): Record<string, string> => ({
 const assetUrl = (apiDomain: string, envId: string, assetName: string): string =>
   `https://${apiDomain}/apps/${envId}/assets/${assetName}`;
 
-const appPathRegex = new RegExp(`^/app/([^/]+)/`);
+const appPathRegex = new RegExp(`^/app/([^/]+)(?:/|$)`);
 const manifestPathRegex = new RegExp(`^/app/([^/]+)/app.webmanifest/?$`);
 const filesPathRegex = new RegExp(`^/app/([^/]+)/files/([^/]+)/?$`);
 
