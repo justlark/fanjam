@@ -45,6 +45,15 @@ const router = createRouter({
       component: () => import("../views/PageView.vue"),
     },
     {
+      path: "/app/:envId/share",
+      name: "share",
+      redirect: (to) => ({
+        name: "schedule",
+        params: { envId: to.params.envId, dayIndex: "all" },
+        query: { star: "true", share: to.query.s },
+      }),
+    },
+    {
       path: "/app/:envId/:catchAll(.*)",
       redirect: { name: "app" },
     },
