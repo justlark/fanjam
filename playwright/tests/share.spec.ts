@@ -131,7 +131,7 @@ test.describe("schedule share modal", () => {
 
     await expect(shareModal.urlInput).toBeVisible();
     const urlValue = await shareModal.urlInput.inputValue();
-    expect(urlValue).toMatch(RegExp(`[?&]share=MSwz`));
+    expect(urlValue).toMatch(RegExp(`/share/\?s=MSwz$`));
   });
 });
 
