@@ -133,6 +133,12 @@ test.describe("schedule share modal", () => {
     const urlValue = await shareModal.urlInput.inputValue();
     expect(urlValue).toMatch(RegExp(`/share/\?s=MSwz$`));
   });
+
+  test("share URL redirects to schedule view", async ({ page }) => {
+    await page.goto("share/?s=MSwz");
+
+    await expect(page).toHaveURL(new RegExp(`/schedule/all/\?star=true&share=MSwz$`));
+  });
 });
 
 test.describe("share button (schedule sharing disabled)", () => {
