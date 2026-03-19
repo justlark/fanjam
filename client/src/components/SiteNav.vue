@@ -15,12 +15,10 @@ import FeedbackCallout from "./FeedbackCallout.vue";
 import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
-import AppShareModal from "./AppShareModal.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
-const shareDialogVisible = ref(false);
 const scheduleShareOptionsDialogVisible = ref(false);
 
 const toast = useToast();
@@ -103,21 +101,12 @@ const headerHeadingId = useId();
               </h1>
             </RouterLink>
           </div>
-          <div class="flex lg:gap-2">
-            <IconButton
-              icon="share-fill"
-              size="md"
-              label="Share"
-              @click="shareDialogVisible = true"
-              :button-props="{ 'data-testid': 'site-nav-share' }"
-            />
-            <IconButton
-              icon="arrow-clockwise"
-              label="Refresh"
-              @click="refresh"
-              :button-props="{ 'data-testid': 'site-nav-refresh' }"
-            />
-          </div>
+          <IconButton
+            icon="arrow-clockwise"
+            label="Refresh"
+            @click="refresh"
+            :button-props="{ 'data-testid': 'site-nav-refresh' }"
+          />
         </div>
         <Drawer
           v-model:visible="menuVisible"
@@ -154,7 +143,7 @@ const headerHeadingId = useId();
           </aside>
         </div>
         <div class="hidden lg:block">
-          <Divider class="!ms-0" layout="vertical" />
+          <Divider class="!ms-0 !me-[1px]" layout="vertical" />
         </div>
         <main class="grow">
           <slot />
@@ -168,7 +157,6 @@ const headerHeadingId = useId();
       </footer>
       <ScrollTop class="lg:hidden" />
     </div>
-    <AppShareModal v-model:visible="shareDialogVisible" />
     <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />

@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
 import InputText from "primevue/inputtext";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
-import SelectButton from "primevue/selectbutton";
 import Button from "primevue/button";
 import QrcodeVue from "qrcode.vue";
 import Dialog from "primevue/dialog";
@@ -16,38 +14,23 @@ const visible = defineModel<boolean>("visible", {
 
 const toast = useToast();
 
-export interface LinkProps {
-  link: string;
-  title?: string;
-  message: string;
-  toastMessage: string;
-}
-
 const props = defineProps<{
   title: string;
-  links: Array<LinkProps>;
+  link: string;
+  message: string;
+  toastMessage: string;
 }>();
 
 const copyShareUrl = async () => {
-  const linkProps = props.links[selectedShareIndex.value];
-  await navigator.clipboard.writeText(linkProps.link);
+  await navigator.clipboard.writeText(props.link);
 
   toast.add({
     severity: "info",
     summary: "Link copied",
-    detail: linkProps.toastMessage,
+    detail: props.toastMessage,
     life: 1500,
   });
 };
-
-const selectedShareIndex = ref(0);
-
-const shareSelectButtonOptions = computed(() =>
-  props.links.map((link, index) => ({
-    label: link.title,
-    value: index,
-  })),
-);
 </script>
 
 <template>
@@ -60,27 +43,11 @@ const shareSelectButtonOptions = computed(() =>
     :draggable="false"
     :header="props.title"
   >
-    <SelectButton
-      v-if="props.links.length > 1"
-      v-model="selectedShareIndex"
-      :options="shareSelectButtonOptions"
-      option-label="label"
-      option-value="value"
-      size="small"
-      fluid
-      :allow-empty="false"
-      data-testid="link-share-selector"
-      class="max-w-lg mx-auto mb-6"
-    />
-    <div
-      v-for="(link, index) in props.links"
-      v-show="index === selectedShareIndex"
-      :key="link.link"
-    >
+    <div>
       <div class="my-auto mb-6">
         <div class="rounded-3xl overflow-hidden mx-auto w-fit shadow-md">
           <QrcodeVue
-            :value="link.link"
+            :value="props.link"
             :margin="3"
             :size="220"
             foreground="#18181b"
@@ -91,7 +58,7 @@ const shareSelectButtonOptions = computed(() =>
       </div>
       <div class="flex flex-col justify-end">
         <p data-testid="link-share-dialog-description">
-          {{ link.message }}
+          {{ props.message }}
         </p>
       </div>
       <InputGroup class="mt-3">
@@ -103,7 +70,7 @@ const shareSelectButtonOptions = computed(() =>
             icon="bi bi-clipboard"
           />
         </InputGroupAddon>
-        <InputText data-testid="link-share-dialog-url" :value="link.link" disabled />
+        <InputText data-testid="link-share-dialog-url" :value="props.link" disabled />
       </InputGroup>
     </div>
   </Dialog>

@@ -4,12 +4,15 @@ import ProgressSpinner from "primevue/progressspinner";
 import { useRoute } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
+import useFilterQuery from "@/composables/useFilterQuery";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
+import MyScheduleBanner from "@/components/MyScheduleBanner.vue";
 import EventDetails from "@/components/EventDetails.vue";
 import ScrollTop from "primevue/scrolltop";
 
 const route = useRoute();
+const filterCriteria = useFilterQuery();
 const {
   data: { events },
 } = useRemoteData();
@@ -26,11 +29,14 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
   <div class="flex h-full">
     <div v-if="thisEvent" class="flex w-full">
       <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
-        <div class="p-6 grow lg:contain-strict lg:overflow-y-auto">
-          <ScheduleTimeline v-model:day="currentDayIndex" />
-          <ScrollTop target="parent" />
+        <div class="grow lg:contain-strict lg:overflow-y-auto">
+          <MyScheduleBanner v-if="filterCriteria.hideNotStarred" />
+          <div class="m-6">
+            <ScheduleTimeline v-model:day="currentDayIndex" />
+            <ScrollTop target="parent" />
+          </div>
         </div>
-        <Divider layout="vertical" />
+        <Divider layout="vertical" class="!ms-0" />
       </div>
       <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
         <EventDetails

@@ -228,13 +228,9 @@ onMounted(() => {
     <LinkShareDialog
       v-model:visible="shareDialogVisible"
       title="Share Event"
-      :links="[
-        {
-          link: eventUrl,
-          message: 'Send someone a link to this event.',
-          toastMessage: 'A link to this event has been copied to your clipboard.',
-        },
-      ]"
+      :link="eventUrl"
+      message="Send someone a link to this event."
+      toast-message="A link to this event has been copied to your clipboard."
     />
   </section>
 </template>
