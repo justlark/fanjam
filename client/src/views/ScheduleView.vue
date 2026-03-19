@@ -1,11 +1,18 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import AppRoot from "@/components/AppRoot.vue";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 import ScrollTop from "primevue/scrolltop";
 import MyScheduleBanner from "@/components/MyScheduleBanner.vue";
+import ShareViewFooter from "@/components/ShareViewFooter.vue";
+import ScheduleShareOptionsDialog from "@/components/ScheduleShareOptionsDialog.vue";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import useFilterQuery from "@/composables/useFilterQuery";
 
+const isSharedSchedule = useIsSharedSchedule();
 const filterCriteria = useFilterQuery();
+
+const scheduleShareOptionsDialogVisible = ref(false);
 </script>
 
 <template>
@@ -18,6 +25,10 @@ const filterCriteria = useFilterQuery();
         </div>
         <ScrollTop target="parent" />
       </div>
+      <footer v-if="isSharedSchedule" class="hidden lg:flex justify-center lg:sticky bottom-0">
+        <ShareViewFooter @click="scheduleShareOptionsDialogVisible = true" />
+      </footer>
+      <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     </div>
   </AppRoot>
 </template>

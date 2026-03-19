@@ -150,8 +150,8 @@ const headerHeadingId = useId();
         </main>
       </div>
       <footer
-        v-if="isSharedSchedule"
-        class="flex justify-center sticky bottom-0 lg:fixed lg:inset-x-0 lg:z-2"
+        v-if="isSharedSchedule && (route.name === 'schedule' || route.name === 'event')"
+        class="flex justify-center sticky bottom-0 lg:hidden"
       >
         <ShareViewFooter @click="scheduleShareOptionsDialogVisible = true" />
       </footer>

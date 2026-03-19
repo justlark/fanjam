@@ -5,20 +5,25 @@ import { useRoute } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { getSortedCategories } from "@/utils/tags";
 import useFilterQuery from "@/composables/useFilterQuery";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import Divider from "primevue/divider";
 import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
 import MyScheduleBanner from "@/components/MyScheduleBanner.vue";
 import EventDetails from "@/components/EventDetails.vue";
 import ScrollTop from "primevue/scrolltop";
+import ShareViewFooter from "@/components/ShareViewFooter.vue";
+import ScheduleShareOptionsDialog from "@/components/ScheduleShareOptionsDialog.vue";
 
 const route = useRoute();
 const filterCriteria = useFilterQuery();
+const isSharedSchedule = useIsSharedSchedule();
 const {
   data: { events },
 } = useRemoteData();
 
 const eventId = computed(() => route.params.eventId as string);
 const currentDayIndex = ref<number>();
+const scheduleShareOptionsDialogVisible = ref(false);
 
 const allCategories = computed(() => getSortedCategories(events.value));
 
@@ -35,6 +40,10 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
             <ScheduleTimeline v-model:day="currentDayIndex" />
             <ScrollTop target="parent" />
           </div>
+          <footer v-if="isSharedSchedule" class="hidden lg:flex justify-center lg:sticky bottom-0">
+            <ShareViewFooter @click="scheduleShareOptionsDialogVisible = true" />
+          </footer>
+          <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
         </div>
         <Divider layout="vertical" class="!ms-0" />
       </div>
