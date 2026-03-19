@@ -42,9 +42,6 @@ const isTagSelected = (tag: string) => selectedTags.value.has(tag);
 
 const hidePastEventsToggleId = useId();
 const hidePastEventsLabelId = useId();
-
-const hideNotStarredToggleId = useId();
-const hideNotStarredLabelId = useId();
 </script>
 
 <template>
@@ -57,15 +54,6 @@ const hideNotStarredLabelId = useId();
         pt:input:data-testid="hide-past-events-button"
       />
       <label :id="hidePastEventsLabelId" :for="hidePastEventsToggleId">Hide past events</label>
-    </span>
-    <span class="flex items-center gap-4">
-      <ToggleSwitch
-        :id="hideNotStarredToggleId"
-        :aria-labelledby="hideNotStarredLabelId"
-        v-model="criteria.hideNotStarred"
-        pt:input:data-testid="hide-not-starred-events-button"
-      />
-      <label :id="hideNotStarredLabelId" :for="hideNotStarredToggleId">Only my schedule</label>
     </span>
     <div v-if="hasCategories" class="flex flex-col md:flex-row gap-x-12 gap-y-6">
       <div class="flex flex-col gap-2 md:min-w-[20%]">
