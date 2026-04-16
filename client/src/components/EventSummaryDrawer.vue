@@ -10,6 +10,7 @@ import useIsEventStarred from "@/composables/useIsEventStarred";
 import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { renderMarkdown } from "@/utils/markdown";
 import { useToast } from "primevue/usetoast";
+import { TOAST_TTL_LONG } from "@/utils/toast";
 
 const isVisible = defineModel<boolean>("visible", {
   required: true,
@@ -39,7 +40,7 @@ const toggleStar = () => {
       summary: "You're viewing someone else's schedule",
       detail:
         "To go back to your own schedule and make changes, open the options menu at the bottom of the screen.",
-      life: 5000,
+      life: TOAST_TTL_LONG,
     });
 
     return;

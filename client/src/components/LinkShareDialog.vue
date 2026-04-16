@@ -5,6 +5,7 @@ import InputGroupAddon from "primevue/inputgroupaddon";
 import Button from "primevue/button";
 import QrcodeVue from "qrcode.vue";
 import Dialog from "primevue/dialog";
+import { TOAST_TTL_MEDIUM } from "@/utils/toast";
 import { useToast } from "primevue/usetoast";
 
 const visible = defineModel<boolean>("visible", {
@@ -28,7 +29,7 @@ const copyShareUrl = async () => {
     severity: "info",
     summary: "Link copied",
     detail: props.toastMessage,
-    life: 1500,
+    life: TOAST_TTL_MEDIUM,
   });
 };
 </script>

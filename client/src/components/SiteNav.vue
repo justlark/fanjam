@@ -16,6 +16,7 @@ import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
+import { TOAST_TTL_SHORT } from "@/utils/toast";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
@@ -57,7 +58,7 @@ const refresh = async () => {
     severity: "info",
     summary: "Refreshing",
     detail: "Grabbing the latest schedule.",
-    life: 1500,
+    life: TOAST_TTL_SHORT,
   });
 
   await reload();

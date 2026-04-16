@@ -4,6 +4,7 @@ import Button from "primevue/button";
 import { exitShareMode } from "@/router";
 import { useToast } from "primevue/usetoast";
 import { useRoute, useRouter } from "vue-router";
+import { TOAST_TTL_LONG } from "@/utils/toast";
 import useStarredEvents from "@/composables/useStarredEvents";
 
 const router = useRouter();
@@ -31,7 +32,7 @@ const exitSharedSchedule = async () => {
     severity: "info",
     summary: "Returning to your schedule",
     detail: "You are no longer viewing someone else's schedule.",
-    life: 5000,
+    life: TOAST_TTL_LONG,
   });
 
   visible.value = false;
@@ -52,7 +53,7 @@ const addToSchedule = async () => {
       eventsAdded.size === 0
         ? `You already have all these events in your schedule.`
         : `This schedule has been merged with yours. Added ${eventsAdded.size.toString()} events.`,
-    life: 5000,
+    life: TOAST_TTL_LONG,
   });
 
   visible.value = false;

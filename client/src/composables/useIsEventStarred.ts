@@ -1,6 +1,7 @@
 import { computed, type Ref } from "vue";
 import useStarredEvents from "./useStarredEvents";
 import { useToast } from "primevue/usetoast";
+import { TOAST_TTL_SHORT } from "@/utils/toast";
 
 const useIsEventStarred = (eventId: Ref<string | undefined>) => {
   const starredEvents = useStarredEvents();
@@ -10,14 +11,14 @@ const useIsEventStarred = (eventId: Ref<string | undefined>) => {
     severity: "info",
     summary: "Added",
     detail: "Event added to your schedule.",
-    life: 1000,
+    life: TOAST_TTL_SHORT,
   } as const;
 
   const removeStarToastMessage = {
     severity: "info",
     summary: "Removed",
     detail: "Event removed from your schedule.",
-    life: 1000,
+    life: TOAST_TTL_SHORT,
   } as const;
 
   return computed({
