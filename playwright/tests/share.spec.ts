@@ -152,6 +152,7 @@ test.describe("share button (schedule sharing disabled)", () => {
       ],
       announcements: [{ id: "a1", title: "Test Announcement" }],
       pages: [{ id: "p1", title: "Test Page" }],
+      config: { use_schedule_sharing: false },
     });
   });
 
