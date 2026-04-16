@@ -15,7 +15,7 @@ const {
   data: { config },
 } = useRemoteData();
 
-const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? false);
+const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? true);
 const scheduleShareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
   starredEventIds.sort();
