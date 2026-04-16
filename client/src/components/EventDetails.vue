@@ -65,7 +65,7 @@ const toggleStar = () => {
       summary: "You're viewing someone else's schedule",
       detail:
         "To go back to your own schedule and make changes, open the options menu at the bottom of the screen.",
-      life: 3000,
+      life: 5000,
     });
 
     return;
