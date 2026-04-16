@@ -111,14 +111,13 @@ test.describe("filtering events", () => {
     await expect(schedulePage.hiddenNotice).not.toBeVisible();
   });
 
-  test("only show starred events", async ({ filterMenu, schedulePage, eventPage }) => {
+  test("only show starred events", async ({ page, filterMenu, schedulePage, eventPage }) => {
     await schedulePage.openEventDetailsPage("Test Event 2");
     await eventPage.toggleStar();
     await eventPage.navigateBack();
 
-    await filterMenu.toggleOpen();
-    await filterMenu.toggleHideNotStarredEvents();
-    await filterMenu.toggleOpen();
+    await page.clock.fastForward(200);
+    await page.goto("schedule?star=true");
 
     await expect(schedulePage.events).toHaveAccessibleName("Starred: Test Event 2");
   });
@@ -180,10 +179,11 @@ test.describe("filtering events", () => {
     await expect(schedulePage.events).toHaveCount(0);
   });
 
-  test("filter description", async ({ filterMenu }) => {
+  test("filter description", async ({ page, filterMenu }) => {
+    await page.goto("schedule?star=true");
+
     await filterMenu.toggleOpen();
 
-    await filterMenu.toggleHideNotStarredEvents();
     await filterMenu.toggleCategory("Category 1");
     await filterMenu.toggleCategory("Category 2");
     await filterMenu.toggleTag("Tag 1");
@@ -195,8 +195,6 @@ test.describe("filtering events", () => {
     await expect(filterMenu.description).toHaveText(
       [
         "Only showing:",
-        "My Schedule",
-        "and",
         "(",
         "Category 1",
         "or",

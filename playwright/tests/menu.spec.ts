@@ -76,13 +76,11 @@ test.describe("main menu", () => {
   test("the main nav menu in the schedule view shows you're filtering by starred events", async ({
     mainMenu,
     schedulePage,
-    filterMenu,
   }) => {
     await schedulePage.goto();
 
-    await filterMenu.toggleOpen();
-    await filterMenu.toggleHideNotStarredEvents();
-    await filterMenu.toggleOpen();
+    if (isMobile()) await mainMenu.open();
+    await mainMenu.navigateToMySchedule();
 
     if (isMobile()) {
       await mainMenu.open();
@@ -109,13 +107,11 @@ test.describe("main menu", () => {
   test("the main nav menu in the event view shows you're filtering by starred events", async ({
     mainMenu,
     schedulePage,
-    filterMenu,
   }) => {
     await schedulePage.goto();
 
-    await filterMenu.toggleOpen();
-    await filterMenu.toggleHideNotStarredEvents();
-    await filterMenu.toggleOpen();
+    if (isMobile()) await mainMenu.open();
+    await mainMenu.navigateToMySchedule();
 
     await schedulePage.openEventDetailsPage("Starred Event");
 

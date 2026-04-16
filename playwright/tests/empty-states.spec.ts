@@ -141,11 +141,7 @@ test.describe("empty states", () => {
       ],
     });
 
-    await schedulePage.goto();
-
-    // Enable "My Schedule" filter (show only starred events)
-    await filterMenu.toggleOpen();
-    await filterMenu.toggleHideNotStarredEvents();
+    await page.goto("schedule?star=true");
 
     await expect(schedulePage.noEventsNotice).toBeVisible();
     await expect(schedulePage.events).toHaveCount(0);
@@ -231,16 +227,12 @@ test.describe("empty states", () => {
       ],
     });
 
-    await schedulePage.goto();
-
-    // Filter by starred events (none are starred)
-    await filterMenu.toggleOpen();
-    await filterMenu.toggleHideNotStarredEvents();
+    await page.goto("schedule?star=true");
 
     await expect(schedulePage.noEventsNotice).toBeVisible();
 
     // Remove the filter
-    await filterMenu.toggleHideNotStarredEvents();
+    await page.goto("schedule");
 
     await expect(schedulePage.noEventsNotice).not.toBeVisible();
     await expect(schedulePage.events).toHaveCount(1);

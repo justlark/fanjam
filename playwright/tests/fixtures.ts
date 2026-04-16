@@ -4,7 +4,6 @@ import { envId, isMobile } from "./common";
 export class FilterMenu {
   private readonly filterMenuButton: Locator;
   private readonly hidePastEventsButton: Locator;
-  private readonly hideNotStarredEventsButton: Locator;
   private readonly categoryFilterList: Locator;
   private readonly tagFilterList: Locator;
   readonly searchInput: Locator;
@@ -13,7 +12,6 @@ export class FilterMenu {
   constructor(page: Page) {
     this.filterMenuButton = page.getByTestId("filter-menu-button");
     this.hidePastEventsButton = page.getByTestId("hide-past-events-button");
-    this.hideNotStarredEventsButton = page.getByTestId("hide-not-starred-events-button");
     this.categoryFilterList = page.getByTestId("category-filter-list");
     this.tagFilterList = page.getByTestId("tag-filter-list");
     this.searchInput = page.getByTestId("filter-search-input");
@@ -26,10 +24,6 @@ export class FilterMenu {
 
   async toggleHidePastEvents() {
     await this.hidePastEventsButton.click();
-  }
-
-  async toggleHideNotStarredEvents() {
-    await this.hideNotStarredEventsButton.click();
   }
 
   async toggleCategory(category: string) {
@@ -380,19 +374,13 @@ export class CustomPage {
 
 export class SiteNav {
   readonly heading: Locator;
-  readonly shareButton: Locator;
   readonly refreshButton: Locator;
   readonly errorState: Locator;
 
   constructor(page: Page) {
     this.heading = page.getByTestId("site-nav-heading");
-    this.shareButton = page.getByTestId("site-nav-share");
     this.refreshButton = page.getByTestId("site-nav-refresh");
     this.errorState = page.getByTestId("site-nav-error-state");
-  }
-
-  async share() {
-    await this.shareButton.click();
   }
 
   async refresh() {
@@ -446,9 +434,9 @@ export class ScheduleShareFooter {
   readonly addButton: Locator;
 
   constructor(page: Page) {
-    this.footer = page.getByTestId("share-view-footer");
+    this.footer = page.getByTestId("share-view-footer").filter({ visible: true });
     this.dialog = page.getByTestId("schedule-share-options-dialog");
-    this.optionsButton = page.getByTestId("share-view-footer-options-button");
+    this.optionsButton = page.getByTestId("share-view-footer-options-button").filter({ visible: true });
     this.returnButton = page.getByTestId("schedule-share-options-return-button");
     this.addButton = page.getByTestId("schedule-share-options-add-button");
   }

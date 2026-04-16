@@ -54,7 +54,6 @@ test.describe("error states", () => {
     await page.goto("schedule");
 
     await expect(siteNav.errorState).toBeVisible();
-    await expect(siteNav.shareButton).not.toBeVisible();
     await expect(siteNav.refreshButton).not.toBeVisible();
   });
 

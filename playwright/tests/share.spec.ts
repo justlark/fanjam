@@ -69,17 +69,6 @@ test.describe("share dialog", () => {
     });
   });
 
-  test("opens from share button", async ({ page, schedulePage, siteNav, shareModal }) => {
-    await schedulePage.goto();
-    await siteNav.share();
-
-    const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
-
-    await expect(shareModal.description).toBeVisible();
-    await expect(shareModal.urlInput).toHaveValue(expectedShareUrl);
-    await expect(shareModal.description).toHaveText(/this app/);
-  });
-
   test("event page has its own share button", async ({
     schedulePage,
     eventPage,
@@ -90,15 +79,6 @@ test.describe("share dialog", () => {
     await expect(eventPage.name).toHaveText("Test Event 1");
     await eventPage.shareButton.click();
     await expect(eventShareDialog.description).toHaveText(/this event/);
-  });
-
-  test("URL does not include query params", async ({ page, siteNav, shareModal }) => {
-    await page.goto("schedule?c=Workshop&q=test");
-    await siteNav.share();
-
-    await expect(shareModal.urlInput).toBeVisible();
-    const urlValue = await shareModal.urlInput.inputValue();
-    expect(urlValue).not.toContain("?");
   });
 });
 
@@ -115,23 +95,43 @@ test.describe("schedule share modal", () => {
     });
   });
 
-  test("opens from share dialog", async ({
+  test("opens from share dialog", async ({ page, schedulePage, starredEvents }) => {
+    await schedulePage.goto();
+    await page.clock.fastForward(200);
+    await starredEvents.set(["1", "3"]);
+    await page.goto("schedule?star=true");
+
+    await page.getByTestId("schedule-share-button").click();
+
+    const urlInput = page.getByTestId("link-share-dialog-url");
+    await expect(urlInput).toBeVisible();
+    const urlValue = await urlInput.inputValue();
+    expect(urlValue).toMatch(RegExp(`/share/\\?s=MSwz$`));
+  });
+
+  test("share button is not shown on regular schedule", async ({ schedulePage, page }) => {
+    await schedulePage.goto();
+
+    await expect(page.getByTestId("schedule-share-button")).not.toBeVisible();
+  });
+
+  test("URL does not include filter query params", async ({
     page,
     schedulePage,
-    siteNav,
-    shareModal,
     starredEvents,
   }) => {
     await schedulePage.goto();
     await page.clock.fastForward(200);
     await starredEvents.set(["1", "3"]);
-    await schedulePage.goto();
-    await siteNav.share();
-    await shareModal.selectTab("My Schedule");
+    await page.goto("schedule?star=true&category=Category+1");
 
-    await expect(shareModal.urlInput).toBeVisible();
-    const urlValue = await shareModal.urlInput.inputValue();
-    expect(urlValue).toMatch(RegExp(`/share/\\?s=MSwz$`));
+    await page.getByTestId("schedule-share-button").click();
+
+    const urlInput = page.getByTestId("link-share-dialog-url");
+    await expect(urlInput).toBeVisible();
+    const urlValue = await urlInput.inputValue();
+    const parsed = new URL(urlValue);
+    expect([...parsed.searchParams.keys()]).toEqual(["s"]);
   });
 
   test("share URL redirects to schedule view", async ({ page }) => {
@@ -141,7 +141,7 @@ test.describe("schedule share modal", () => {
   });
 });
 
-test.describe("share button (schedule sharing disabled)", () => {
+test.describe("schedule share modal (schedule sharing disabled)", () => {
   test.beforeEach(async ({ page }) => {
     await mockTime(page);
     await mockApi(page, {
@@ -150,36 +150,14 @@ test.describe("share button (schedule sharing disabled)", () => {
         { id: "2", name: "Test Event 2", start_time: hoursFromNow(2).toISOString() },
         { id: "3", name: "Test Event 3", start_time: hoursFromNow(3).toISOString() },
       ],
-      announcements: [{ id: "a1", title: "Test Announcement" }],
-      pages: [{ id: "p1", title: "Test Page" }],
       config: { use_schedule_sharing: false },
     });
   });
 
-  test("opens app share modal directly from share button", async ({
-    page,
-    schedulePage,
-    siteNav,
-    shareModal,
-  }) => {
-    await schedulePage.goto();
-    await siteNav.share();
+  test("share button is not shown on My Schedule", async ({ page }) => {
+    await page.goto("schedule?star=true");
 
-    await expect(shareModal.selector).not.toBeVisible();
-    await expect(shareModal.urlInput).toBeVisible();
-
-    const expectedShareUrl = `${new URL(page.url()).origin}/app/${envId}`;
-    await expect(shareModal.urlInput).toHaveValue(expectedShareUrl);
-    await expect(shareModal.description).toHaveText(/this app/);
-  });
-
-  test("URL does not include query params", async ({ page, siteNav, shareModal }) => {
-    await page.goto("schedule?c=Workshop&q=test");
-    await siteNav.share();
-
-    await expect(shareModal.urlInput).toBeVisible();
-    const urlValue = await shareModal.urlInput.inputValue();
-    expect(urlValue).not.toContain("?");
+    await expect(page.getByTestId("schedule-share-button")).not.toBeVisible();
   });
 });
 
@@ -245,7 +223,7 @@ test.describe("share param preserved across navigation", () => {
     await mainMenu.navigateToAnnouncements();
 
     await expect(page).toHaveURL(/share=Miwz/);
-    await expect(scheduleShareFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
   });
 
   test("preserved navigating to info", async ({ page, mainMenu, scheduleShareFooter }) => {
@@ -254,7 +232,7 @@ test.describe("share param preserved across navigation", () => {
     await mainMenu.navigateToInfo();
 
     await expect(page).toHaveURL(/share=Miwz/);
-    await expect(scheduleShareFooter.footer).toBeVisible();
+    await expect(scheduleShareFooter.footer).not.toBeVisible();
   });
 
   test("preserved navigating to event details and back", async ({
@@ -423,9 +401,8 @@ test.describe("localStorage not clobbered", () => {
     schedulePage,
   }) => {
     await schedulePage.goto();
-    await starredEvents.set(["1"]);
-
     await page.clock.fastForward(200);
+    await starredEvents.set(["1"]);
 
     await page.goto("schedule?share=Miwz");
 
