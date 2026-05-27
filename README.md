@@ -179,13 +179,13 @@ These additional env vars are used to configure the Postgres state backend.
 ## Deployment
 
 These are the instructions for deploying a new instance of FanJam in the `prod`
-environment with the organizer app at `https://foo.fanjam.live` and the
-attendee app at `https://fanjam.live/app/bar`
+environment with the organizer app at `https://mycon2026.fanjam.live` and the
+attendee app at `https://fanjam.live/app/mycon`
 
 Start by generating the necessary configuration for the environment.
 
 ```
-just configure-env foo prod
+just configure-env mycon2026 prod
 ```
 
 This will generate some files, which can be edited as necessary. Check them
@@ -201,13 +201,13 @@ just tofu apply
 Create a new NocoDB instance.
 
 ```
-just create-env foo
+just create-env mycon2026
 ```
 
 View the NocoDB system user login credentials for the new environment.
 
 ```
-just get-creds foo
+just get-creds mycon2026
 ```
 
 At this point, you'll need to log into the NocoDB instance manually to generate
@@ -217,14 +217,14 @@ Finally, initialize the NocoDB instance with a new base. It will prompt you for
 the API token interactively. Once you've done this, you can lose the token.
 
 ```
-just init-env foo bar
+just init-env mycon2026 mycon
 ```
 
 **Optional:** If we're setting up a demo environment for a prospective client,
-we can seed the environment with our demo dataset like this:
+we can seed the environment with a demo dataset like this:
 
 ```
-just seed-data foo geekcon
+just seed-data mycon2026 ./demos/geekcon.sql
 ```
 
 ## Releases

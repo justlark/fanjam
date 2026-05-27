@@ -173,9 +173,8 @@ def clean-and-restore [
   })
 }
 
-def main [env_name: string, dump_name: string] {
+def main [env_name: string, dump_file: string] {
   let repo_path = $env.FILE_PWD | path dirname
-  let dump_file = $repo_path | path join "data" $"($dump_name).sql"
 
   let pg = get-pg-creds $env_name
   let base_id = get-base-id $pg $env_name
