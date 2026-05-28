@@ -23,6 +23,8 @@ planning software.
 - The SMTP provider for NocoDB is [MailerSend](https://mailersend.com).
 - The privacy-preserving analytics solution is a self-hosted instance of
   [Umami](https://umami.is/).
+- We use a custom fork of NocoDB, hosted at
+  [justlark/nocodb-fanjam](https://github.com/justlark/nocodb-fanjam).
 
 Out of the box, NocoDB hosts static assets from within the container via a Node
 server. When deploying a NocoDB instance for FanJam, we instead host those
