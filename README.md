@@ -229,6 +229,27 @@ we can seed the environment with a demo dataset like this:
 just seed-data mycon2026 ./demos/geekcon.sql
 ```
 
+## Teardown
+
+These are the instructions for tearing down a FanJam instance.
+
+First, delete the directory for the environment in
+[./infra/environments/](./infra/environments/).
+
+Tear down the infrastructure managed with OpenTofu:
+
+```
+just tofu plan
+just tofu apply
+```
+
+Go into the [Fly.io console](https://fly.io/dashboard/sparklefish) and delete
+the Fly app for the NocoDB instance.
+
+Go into the [Cloudflare
+dashboard](https://dash.cloudflare.com/151bc8670b862fa7d694cf7246a2c0dc/workers-and-pages)
+and delete the frontend worker for the NocoDB instance.
+
 ## Releases
 
 When releasing a new version of FanJam, the server and client must always be
