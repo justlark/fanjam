@@ -277,6 +277,19 @@ version tag (not `latest`).
 We use [RedLine13](https://www.redline13.com) for load testing, using the
 JMeter test plan at [./docs/load-testing.jmx](./docs/load-testing.jmx).
 
+By default this test plan simulates 500 users per server, so to simulate 10,000
+concurrent users we would spin up 20 servers. The test runs for 10 minutes.
+These parameters are configurable.
+
+We've found the AWS `c5.large` EC2 instance tier works well for this. These EC2
+instances only exist for the lifespan of the load test, so the actual monetary
+cost should be fairly minimal. RedLine13 will estimate the cost for you before
+you start the test.
+
+RedLine13's free plan limits you to 10 vCPUs per test, which caps us at 5x
+`c5.large` instances, for a total of 2,500 users. Larger tests require a paid
+plan, which start at $75/mo.
+
 ## Copyright
 
 Copyright © 2025-2026 Lark Aster
