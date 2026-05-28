@@ -249,6 +249,11 @@ should always be pinned to a specific version, not `latest`.
 Finally, update the [globals.yaml](./infra/config/globals.yaml) with the latest
 version tag (not `latest`).
 
+## Load Testing
+
+We use [RedLine13](https://www.redline13.com) for load testing, using the
+JMeter test plan at [./docs/load-testing.jmx](./docs/load-testing.jmx).
+
 ## Copyright
 
 Copyright © 2025-2026 Lark Aster
