@@ -208,7 +208,7 @@ Listeners:
       <hashTree>
         <SyncTimer guiclass="TestBeanGUI" testclass="SyncTimer"
           testname="Thundering Herd (release in batches)" enabled="true">
-          <intProp name="groupSize">${__P(syncGroupSize,50)}</intProp>
+          <stringProp name="groupSize">${__P(syncGroupSize,50)}</stringProp>
           <longProp name="timeoutInMs">10000</longProp>
         </SyncTimer>
         <hashTree />
