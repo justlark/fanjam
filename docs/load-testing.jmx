@@ -1,43 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="FanJam API Load Test" enabled="true">
-      <stringProp name="TestPlan.comments">Load test for the FanJam user-facing API (Cloudflare Workers + CDN -&gt; NocoDB -&gt; Neon Postgres).
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="FanJam API Load Test"
+      enabled="true">
+      <stringProp name="TestPlan.comments">Load test for the FanJam user-facing API.
 
-WHAT THIS PROVES
-  Goal: demonstrate 10,000 concurrent users. A single JMeter/RedLine13 agent cannot
-  comfortably run 10,000 threads, so this plan is designed to be FANNED OUT across
-  RedLine13 load agents. Total concurrent users = (threads per agent) x (number of agents).
-  With the defaults below (~500 users/agent), 20 RedLine13 agents = 10,000 concurrent users.
+Thread Groups:
+  1. Realistic App Load — Each user loads every data endpoint in parallel.
+  2. Hot Endpoint — Hammer `GET /events`, the endpoint which will be receiving the most
+  traffic.
+  3. Alias Resolution (disabled by default) — Exercise `GET /aliases/{id}`.
 
-CACHE STRATEGY: REALISTIC (CDN cache allowed)
-  Every simulated user requests the same cacheable URLs for one environment, exactly like
-  real attendees opening the app. Cloudflare's edge cache absorbs most reads, so this
-  measures end-to-end behavior as users actually experience it. NO cache-busting query
-  params and NO If-None-Match are sent. To instead stress the origin worker/DB, you would
-  add a unique query param per request -- intentionally NOT done here.
-
-REQUIRED CONFIGURATION
-  Set these as JMeter properties in RedLine13 (Advanced -&gt; JMeter properties) or via -J:
-    -Jhost=api-test.fanjam.live   (default; targets the TEST deployment, not prod)
-    -JenvId=load-test             (the environment id used in /apps/{envId}/...; default: load-test)
-    -JaliasId=REPLACE_WITH_ALIAS_ID  (only needed if you enable the Alias Resolution group)
-  Tuning properties (all optional, defaults shown):
-    -JjourneyUsers=450  -JhotspotUsers=50  -JrampSeconds=120  -JdurationSeconds=600
-    -JsyncGroupSize=50
-
-THREAD GROUPS
-  1. Realistic App Load  -- each user loads all 6 data endpoints (multiple endpoints at once).
-  2. Hotspot: GET /events -- many users hammer the single heaviest endpoint together.
-  3. Alias Resolution    -- DISABLED by default; enable to exercise GET /aliases/{id}.
-  Sustained load over several minutes is driven by the scheduler (durationSeconds) on each group.
-
-LISTENERS
-  GUI listeners are disabled (they cripple throughput). RedLine13 collects its own metrics.</stringProp>
+Listeners:
+  GUI listeners are disabled, as they impact throughput. RedLine13 collects its own metrics.</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
-      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments"
+        guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables"
+        enabled="true">
         <collectionProp name="Arguments.arguments">
           <elementProp name="HOST" elementType="Argument">
             <stringProp name="Argument.name">HOST</stringProp>
@@ -51,16 +32,19 @@ LISTENERS
           </elementProp>
           <elementProp name="ALIAS_ID" elementType="Argument">
             <stringProp name="Argument.name">ALIAS_ID</stringProp>
-            <stringProp name="Argument.value">${__P(aliasId,REPLACE_WITH_ALIAS_ID)}</stringProp>
+            <stringProp name="Argument.value">${__P(aliasId,load-test-alias)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
     <hashTree>
-      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
-        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
-          <collectionProp name="Arguments.arguments"/>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement"
+        testname="HTTP Request Defaults" enabled="true">
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments"
+          guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables"
+          enabled="true">
+          <collectionProp name="Arguments.arguments" />
         </elementProp>
         <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
         <stringProp name="HTTPSampler.port">443</stringProp>
@@ -72,8 +56,9 @@ LISTENERS
         <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
         <boolProp name="HTTPSampler.image_parser">false</boolProp>
       </ConfigTestElement>
-      <hashTree/>
-      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+      <hashTree />
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager"
+        enabled="true">
         <collectionProp name="HeaderManager.headers">
           <elementProp name="" elementType="Header">
             <stringProp name="Header.name">Accept</stringProp>
@@ -89,10 +74,13 @@ LISTENERS
           </elementProp>
         </collectionProp>
       </HeaderManager>
-      <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="1. Realistic App Load (all endpoints)" enabled="true">
+      <hashTree />
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
+        testname="1. Realistic App Load" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController"
+          guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller"
+          enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <intProp name="LoopController.loops">-1</intProp>
         </elementProp>
@@ -104,9 +92,10 @@ LISTENERS
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/config" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/config" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/config</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -115,10 +104,11 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/events" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/events" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/events</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -127,10 +117,11 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/info" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/info" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/info</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -139,10 +130,11 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/pages" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/pages" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/pages</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -151,10 +143,11 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/announcements" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/announcements" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/announcements</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -163,10 +156,11 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/files" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/files" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/files</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -175,14 +169,16 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Think Time (read the schedule)" enabled="true">
+        <hashTree />
+        <TestAction guiclass="TestActionGui" testclass="TestAction"
+          testname="Think Time (read the schedule)" enabled="true">
           <intProp name="ActionProcessor.action">1</intProp>
           <intProp name="ActionProcessor.target">0</intProp>
           <stringProp name="ActionProcessor.duration">${__Random(3000,12000)}</stringProp>
         </TestAction>
-        <hashTree/>
-        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert HTTP 200" enabled="true">
+        <hashTree />
+        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+          testname="Assert HTTP 200" enabled="true">
           <collectionProp name="Asserion.test_strings">
             <stringProp name="49586">200</stringProp>
           </collectionProp>
@@ -191,11 +187,14 @@ LISTENERS
           <boolProp name="Assertion.assume_success">false</boolProp>
           <intProp name="Assertion.test_type">8</intProp>
         </ResponseAssertion>
-        <hashTree/>
+        <hashTree />
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="2. Hotspot: many users on GET /events" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
+        testname="2. Hot Endpoint" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController"
+          guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller"
+          enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <intProp name="LoopController.loops">-1</intProp>
         </elementProp>
@@ -207,14 +206,16 @@ LISTENERS
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <SyncTimer guiclass="TestBeanGUI" testclass="SyncTimer" testname="Thundering Herd (release in batches)" enabled="true">
+        <SyncTimer guiclass="TestBeanGUI" testclass="SyncTimer"
+          testname="Thundering Herd (release in batches)" enabled="true">
           <intProp name="groupSize">${__P(syncGroupSize,50)}</intProp>
           <longProp name="timeoutInMs">10000</longProp>
         </SyncTimer>
-        <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /apps/{env}/events" enabled="true">
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /apps/{env}/events" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/apps/${ENV_ID}/events</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -223,14 +224,16 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Short pace between bursts" enabled="true">
+        <hashTree />
+        <TestAction guiclass="TestActionGui" testclass="TestAction"
+          testname="Short pace between bursts" enabled="true">
           <intProp name="ActionProcessor.action">1</intProp>
           <intProp name="ActionProcessor.target">0</intProp>
           <stringProp name="ActionProcessor.duration">${__Random(250,1000)}</stringProp>
         </TestAction>
-        <hashTree/>
-        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert HTTP 200" enabled="true">
+        <hashTree />
+        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+          testname="Assert HTTP 200" enabled="true">
           <collectionProp name="Asserion.test_strings">
             <stringProp name="49586">200</stringProp>
           </collectionProp>
@@ -239,11 +242,14 @@ LISTENERS
           <boolProp name="Assertion.assume_success">false</boolProp>
           <intProp name="Assertion.test_type">8</intProp>
         </ResponseAssertion>
-        <hashTree/>
+        <hashTree />
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="3. Alias Resolution (short-link entry)" enabled="false">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="3. Alias Resolution"
+        enabled="false">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController"
+          guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller"
+          enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <intProp name="LoopController.loops">-1</intProp>
         </elementProp>
@@ -255,9 +261,10 @@ LISTENERS
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /aliases/{alias}" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+          testname="GET /aliases/{alias}" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments"/>
+            <collectionProp name="Arguments.arguments" />
           </elementProp>
           <stringProp name="HTTPSampler.path">/aliases/${ALIAS_ID}</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -266,14 +273,16 @@ LISTENERS
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
         </HTTPSamplerProxy>
-        <hashTree/>
-        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Think Time" enabled="true">
+        <hashTree />
+        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Think Time"
+          enabled="true">
           <intProp name="ActionProcessor.action">1</intProp>
           <intProp name="ActionProcessor.target">0</intProp>
           <stringProp name="ActionProcessor.duration">${__Random(3000,12000)}</stringProp>
         </TestAction>
-        <hashTree/>
-        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert HTTP 200" enabled="true">
+        <hashTree />
+        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+          testname="Assert HTTP 200" enabled="true">
           <collectionProp name="Asserion.test_strings">
             <stringProp name="49586">200</stringProp>
           </collectionProp>
@@ -282,9 +291,10 @@ LISTENERS
           <boolProp name="Assertion.assume_success">false</boolProp>
           <intProp name="Assertion.test_type">8</intProp>
         </ResponseAssertion>
-        <hashTree/>
+        <hashTree />
       </hashTree>
-      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report (disabled - RedLine13 collects metrics)" enabled="false">
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector"
+        testname="Summary Report (disabled - RedLine13 collects metrics)" enabled="false">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -320,7 +330,7 @@ LISTENERS
         </objProp>
         <stringProp name="filename"></stringProp>
       </ResultCollector>
-      <hashTree/>
+      <hashTree />
     </hashTree>
   </hashTree>
 </jmeterTestPlan>
