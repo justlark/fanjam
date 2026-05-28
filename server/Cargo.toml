@@ -35,7 +35,7 @@ tower-http = { version = "0.6.4", features = ["auth", "cors"] }
 futures = "0.3.31"
 constant_time_eq = "0.4.2"
 base64 = "0.22.1"
-wasm-bindgen = "0.2.100"
+wasm-bindgen = "0.2.122"
 thiserror = "2.0.12"
 blake3 = "1.8.2"
 tokio-postgres = { version = "0.7.13", default-features = false, features = [
