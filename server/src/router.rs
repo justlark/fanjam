@@ -269,6 +269,11 @@ async fn post_base(
                 "The NocoDB base was deleted externally. Updating the backend state to match."
             );
 
+            // We cache the base ID in KV.
+            kv::delete_cache(&state.kv, &env_name)
+                .await
+                .map_err(Error::Internal)?;
+
             db_client
                 .delete_base(&base_id)
                 .await
@@ -355,7 +360,9 @@ async fn post_backup(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn post_restore_backup(
+    State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
     Json(body): Json<PostRestoreBackupRequest>,
 ) -> Result<NoContent, ErrorResponse> {
@@ -369,6 +376,24 @@ async fn post_restore_backup(
 
     neon_client
         .restore_backup(&env_name.clone().into(), backup_kind)
+        .await
+        .map_err(Error::Internal)?;
+
+    // A Postgres rollback can change which `base_id` is current, so the cached `base_id` and any
+    // data caches derived from it (`tables`, plus the per-endpoint data caches) must be wiped --
+    // otherwise user-facing GETs will read a stale `base_id` from KV and the CDN will keep
+    // serving pre-restore responses for the cache TTL window.
+    kv::delete_cache(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let cloudflare_client = cf::Client::new();
+
+    cloudflare_client
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(&env_name),
+        )
         .await
         .map_err(Error::Internal)?;
 

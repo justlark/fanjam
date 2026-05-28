@@ -4,7 +4,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     api::Alias,
     env::{Config, EnvId, EnvName},
-    noco::{Announcement, ApiToken, Event, File, Info, Page, TableInfo},
+    noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, TableInfo},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -43,6 +43,15 @@ fn api_token_key(env_name: &EnvName) -> String {
 // The cached IDs of the known tables in NocoDB.
 fn tables_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:tables")
+}
+
+// The cached ID of the current NocoDB base for this environment.
+//
+// The Postgres database is the source of truth for this, but we cache it in KV to avoid needing to
+// open a new Postgres connection per incoming request. This cache must be invalidated whenever the
+// base changes, such as when we restore from a database backup.
+fn base_id_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:base-id")
 }
 
 // Environment-specific config values.
@@ -243,6 +252,36 @@ async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[worker::send]
+pub async fn put_base_id(kv: &KvStore, env_name: &EnvName, base_id: &BaseId) -> anyhow::Result<()> {
+    kv.put(&base_id_key(env_name), base_id.to_string())
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<BaseId>> {
+    Ok(kv
+        .get(&base_id_key(env_name))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?
+        .map(BaseId::from))
+}
+
+#[worker::send]
+async fn delete_base_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    kv.delete(&base_id_key(env_name))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
 macro_rules! put_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]
@@ -306,6 +345,7 @@ pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()
     }
 
     delete_tables(kv, env_name).await?;
+    delete_base_id(kv, env_name).await?;
 
     Ok(())
 }

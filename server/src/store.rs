@@ -51,7 +51,6 @@ fn inflight_refreshes() -> &'static Mutex<HashSet<String>> {
 pub struct Store {
     noco_client: NocoClient,
     neon_client: NeonClient,
-    db_client: DbClient,
     kv: KvStore,
     ctx: Arc<Context>,
     env_name: EnvName,
@@ -260,18 +259,36 @@ impl Store {
             .await
             .map_err(Error::Internal)?;
 
-        let db_client = DbClient::connect(
-            &Option::<DbConnectionConfig>::from(env_config.clone())
-                .ok_or(Error::MissingEnvConfig)?,
-        )
-        .await
-        .map_err(Error::Internal)?;
-
-        let base_id = db_client
-            .get_base()
+        // The Postgres database is the source of truth for the base ID, but we cache it in KV to
+        // avoid needing to open a separate Postgres connection per request. Otherwise, heavy load
+        // would exhaust the connection pool and cause this worker to start returning 500 errors.
+        let base_id = match kv::get_base_id(&kv, &env_name)
             .await
             .map_err(Error::Internal)?
-            .ok_or(Error::NoBaseId)?;
+        {
+            Some(base_id) => base_id,
+            None => {
+                let db_client = DbClient::connect(
+                    &Option::<DbConnectionConfig>::from(env_config.clone())
+                        .ok_or(Error::MissingEnvConfig)?,
+                )
+                .await
+                .map_err(Error::Internal)?;
+
+                let base_id = db_client
+                    .get_base()
+                    .await
+                    .map_err(Error::Internal)?
+                    .ok_or(Error::NoBaseId)?;
+
+                if let Err(e) = kv::put_base_id(&kv, &env_name, &base_id).await {
+                    // This need not be a fatal error.
+                    console_warn!("Failed to cache base_id in KV: {}", e);
+                }
+
+                base_id
+            }
+        };
 
         let dash_origin = url::dash_origin(&env_name).map_err(Error::Internal)?;
 
@@ -281,13 +298,21 @@ impl Store {
         Ok(Self {
             noco_client,
             neon_client,
-            db_client,
             kv,
             ctx,
             env_name,
             base_id,
             env_config,
         })
+    }
+
+    async fn connect_db(&self) -> Result<DbClient, Error> {
+        DbClient::connect(
+            &Option::<DbConnectionConfig>::from(self.env_config.clone())
+                .ok_or(Error::MissingEnvConfig)?,
+        )
+        .await
+        .map_err(Error::Internal)
     }
 
     pub async fn from_env_id(state: &AppState, env_id: &EnvId) -> Result<Self, Error> {
@@ -405,15 +430,16 @@ impl Store {
     }
 
     pub async fn migrate(&self) -> Result<MigrationChange, Error> {
-        let old_version = self
-            .db_client
+        let db_client = self.connect_db().await?;
+
+        let old_version = db_client
             .get_current_migration()
             .await
             .map_err(Error::Internal)?;
 
         let migration_state = MigrationState::existing(old_version, self.base_id.clone());
 
-        let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &self.db_client);
+        let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &db_client);
 
         let ExistingMigrationState {
             version: new_version,
@@ -450,11 +476,13 @@ impl Store {
             .await
             .map_err(Error::Internal)?;
 
+        let db_client = self.connect_db().await?;
+
         self.neon_client
             .with_rollback(&self.env_name, async || {
                 let result = {
                     noco::delete_base(&self.noco_client, &self.base_id).await?;
-                    self.db_client.delete_base(&self.base_id).await?;
+                    db_client.delete_base(&self.base_id).await?;
                     Ok(())
                 };
 
