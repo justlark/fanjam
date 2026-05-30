@@ -1,8 +1,8 @@
 # User Guide
 
-This is a guide for convention organizers planning to use FanJam for their con.
-It outlines some of FanJam's less obvious features and things you should keep
-in mind when using it.
+This is a guide for convention organizers planning to use
+[FanJam](https://fanjam.live) for their con. It outlines some of FanJam's less
+obvious features and things you should keep in mind when using it.
 
 ## Terminology
 
