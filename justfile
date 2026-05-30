@@ -152,6 +152,18 @@ add-app-alias stage alias target: (_confirm-stage stage)
 delete-app-alias stage alias: (_confirm-stage stage)
   ./tools/delete-app-alias.nu {{ stage }} {{ alias }}
 
+# set a custom domain for an environment
+[group("manage environments")]
+[confirm("Are you sure? The app will be served from this domain, and the default app link will redirect to it.")]
+set-app-domain env domain: (_confirm-env env)
+  ./tools/set-app-domain.nu {{ env }} {{ domain }}
+
+# clear the custom domain for an environment
+[group("manage environments")]
+[confirm("Are you sure? The app will stop being served from the custom domain, and the default app link will stop redirecting.")]
+delete-app-domain env: (_confirm-env env)
+  ./tools/delete-app-domain.nu {{ env }}
+
 # delete an environment's NocoDB base and all its data
 [group("manage environments")]
 [confirm("Are you sure? This will delete all data in the environment.")]
