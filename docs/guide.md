@@ -9,6 +9,27 @@ obvious features and things you should keep in mind when using it.
 FanJam is two things: a _dashboard_ where staff can edit the con schedule, and
 an _app_ where attendees can view it. We'll use these terms going forward.
 
+## Using FanJam offline
+
+The app works completely offline. Once attendees have it open in their browser
+or installed on their phone, they can browse the schedule without an internet
+connection. Obviously they will not receive updates to the schedule until they
+are back online.
+
+## Installing FanJam on your phone
+
+The app for attendees works fine in the web browser, but it can also be
+installed on your phone. You don't have to go through the App Store or Google
+Play; you open the app in your browser first, and then you have the option of
+installing it directly from there. The exact steps depend on the browser you're
+using and whether you're on iOS or Android. If you open the app in Chrome on
+Android, it will prompt you to install it with a popup. Firefox currently
+doesn't support this feature.
+
+If you want to customize FanJam to use your con's logo as the app icon when
+it's installed on a phone, let us know; that's something we have to set up on
+our end.
+
 ## Using the dashboard
 
 ![Screenshot](https://static.fanjam.live/guide-nocodb-linked-records-screenshot.png)
