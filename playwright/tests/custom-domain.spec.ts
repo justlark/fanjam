@@ -47,8 +47,8 @@ test.describe("custom domain mode", () => {
   });
 
   test("unprefixed deep link loads the schedule", async ({ page, schedulePage }) => {
-    await page.goto("/schedule/0");
-    await expect(page).toHaveURL(/\/schedule\/0$/);
+    await page.goto("/schedule/1");
+    await expect(page).toHaveURL(/\/schedule\/1$/);
     await expect(schedulePage.events.first()).toBeVisible();
   });
 
