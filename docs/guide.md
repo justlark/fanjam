@@ -7,7 +7,7 @@ obvious features and things you should keep in mind when using it.
 ## Terminology
 
 FanJam is two things: a _dashboard_ where staff can edit the con schedule, and
-an _app_ where attendees can view it. We'll use these terms doing forward.
+an _app_ where attendees can view it. We'll use these terms going forward.
 
 ## Using the dashboard
 
