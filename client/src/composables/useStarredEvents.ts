@@ -2,6 +2,7 @@ import { ref, watch, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import { debounce } from "@/utils/debounce";
 import { decodeBase64url } from "@/utils/encoding";
+import useEnvId from "./useEnvId";
 
 const starredEvents = ref<Set<string>>(new Set());
 const currentEnvId = ref<string>();
@@ -12,7 +13,7 @@ const debouncedSetItem = debounce((storageKey: string, starredEvents: Set<string
 
 const useStarredEvents = () => {
   const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+  const envId = useEnvId();
 
   const storageKey = computed(() => `starred:${envId.value}`);
 

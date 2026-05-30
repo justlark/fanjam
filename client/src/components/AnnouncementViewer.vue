@@ -2,6 +2,7 @@
 import { useId, watchEffect, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
+import { useAppPath } from "@/composables/useAppUrl";
 import IconButton from "./IconButton.vue";
 import ProgressSpinner from "primevue/progressspinner";
 import LinksList from "./LinksList.vue";
@@ -21,7 +22,7 @@ const {
   status: { announcements: announcementsStatus },
 } = useRemoteData();
 
-const envId = computed(() => route.params.envId as string);
+const appPath = useAppPath();
 const announcementId = computed(() => route.params.announcementId as string);
 
 const announcement = computed(() => {
@@ -125,7 +126,7 @@ const announcementHeadingId = useId();
             announcement.attachments.map((file) => ({
               name: file.name,
               mediaType: file.mediaType,
-              url: `/app/${envId}/files/${file.id}`,
+              url: appPath(`files/${file.id}`),
             }))
           "
           :pages="[]"

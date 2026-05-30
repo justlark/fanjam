@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
+import { useAppPath } from "@/composables/useAppUrl";
 import SimpleIcon from "./SimpleIcon.vue";
 import LinksList from "./LinksList.vue";
 
@@ -9,8 +9,7 @@ const {
   data: { info, pages },
 } = useRemoteData();
 
-const route = useRoute();
-const envId = computed(() => route.params.envId as string);
+const appPath = useAppPath();
 
 const websiteUrl = computed(() => {
   try {
@@ -59,7 +58,7 @@ const conName = computed(() => info.value?.name || "FanJam");
           info?.files?.map((file) => ({
             name: file.name,
             mediaType: file.mediaType,
-            url: `/app/${envId}/files/${file.id}`,
+            url: appPath(`files/${file.id}`),
           })) ?? []
         "
         :pages="pages"

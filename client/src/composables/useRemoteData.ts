@@ -21,6 +21,8 @@ import api, {
   type Page,
   type File,
 } from "@/utils/api";
+import { envContext } from "@/context";
+import useEnvId from "./useEnvId";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -150,14 +152,21 @@ const useRemoteDataInner = <T, S>({
           setItem(key, currentStoredValue);
         }
 
-        await router.push({
-          name: route.name as string,
-          params: {
-            ...route.params,
-            envId: aliasResult.value,
-          },
-          query: route.query,
-        });
+        if (envContext.mode === "custom") {
+          // When using a custom domain, the env ID is baked into the DOM by
+          // the client worker. If the env ID changes server-side, we need to reload the
+          // page.
+          window.location.reload();
+        } else {
+          await router.push({
+            name: route.name as string,
+            params: {
+              ...route.params,
+              envId: aliasResult.value,
+            },
+            query: route.query,
+          });
+        }
       } else {
         // This environment ID is not a valid alias; it just doesn't exist.
         result.value = { status: "error", code: fetchResult.code };
@@ -593,8 +602,7 @@ type CombinedDataSource = () => {
 // We fetch *all* data from the server eagerly on first page load and when
 // `reload()` is called. This is primarily so the app works offline.
 const useRemoteData: CombinedDataSource = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+  const envId = useEnvId();
 
   const dataSourceResponses = Object.fromEntries(
     Object.entries(dataSources).map(([key, ds]) => [key, ds(envId)]),

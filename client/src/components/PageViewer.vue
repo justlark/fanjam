@@ -2,6 +2,7 @@
 import { useId, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
+import { useAppPath } from "@/composables/useAppUrl";
 import ProgressSpinner from "primevue/progressspinner";
 import LinksList from "@/components/LinksList.vue";
 import IconButton from "@/components/IconButton.vue";
@@ -15,7 +16,7 @@ const {
   status: { pages: pagesStatus },
 } = useRemoteData();
 
-const envId = computed(() => route.params.envId as string);
+const appPath = useAppPath();
 const pageId = computed(() => route.params.pageId as string);
 
 const page = computed(() => {
@@ -83,7 +84,7 @@ const pageHeadingId = useId();
             page.files.map((file) => ({
               name: file.name,
               mediaType: file.mediaType,
-              url: `/app/${envId}/files/${file.id}`,
+              url: appPath(`files/${file.id}`),
             }))
           "
           :pages="[]"

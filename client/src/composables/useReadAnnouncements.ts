@@ -1,12 +1,11 @@
 import { ref, computed, watchEffect } from "vue";
-import { useRoute } from "vue-router";
+import useEnvId from "./useEnvId";
 
 const readAnnouncements = ref<Array<string>>();
 const readAnnouncementsSet = ref<Set<string>>(new Set());
 
 const useReadAnnouncements = () => {
-  const route = useRoute();
-  const envId = computed(() => route.params.envId as string);
+  const envId = useEnvId();
   const storageKey = computed(() => `announcements:${envId.value}`);
 
   watchEffect(() => {

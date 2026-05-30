@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRoute } from "vue-router";
 import { encodeBase64url } from "@/utils/encoding";
 import useStarredEvents from "@/composables/useStarredEvents";
 import useRemoteData from "@/composables/useRemoteData";
+import { useAppUrl } from "@/composables/useAppUrl";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import LinkShareDialog from "./LinkShareDialog.vue";
 
-const route = useRoute();
 const starredEvents = useStarredEvents();
-const envId = computed(() => route.params.envId as string);
+const appUrl = useAppUrl();
 const {
   data: { config },
 } = useRemoteData();
@@ -19,7 +18,7 @@ const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?
 const scheduleShareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
   starredEventIds.sort();
-  return `${window.location.origin}/app/${envId.value}/share/?s=${encodeBase64url(starredEventIds.join(","))}`;
+  return appUrl(`share/?s=${encodeBase64url(starredEventIds.join(","))}`);
 });
 
 const shareDialogVisible = ref(false);
