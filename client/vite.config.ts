@@ -8,6 +8,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
+// This file is type-checked under node where `self` is not a known global.
+declare const self: { location: { origin: string } };
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
@@ -55,8 +58,10 @@ export default defineConfig(({ mode }) => ({
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
-              (url.origin === "https://fanjam.live" || url.origin === "https://test.fanjam.live") &&
-              url.pathname.match(new RegExp(`^/app/([^/]+)/files/([^/]+)/?$`)),
+              url.origin === self.location.origin &&
+              // The pathname will be different depending on whether the app is
+              // deployed with a custom domain.
+              url.pathname.match(new RegExp(`^/(?:app/[^/]+/)?files/([^/]+)/?$`)) !== null,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "files-cache",
@@ -70,26 +75,10 @@ export default defineConfig(({ mode }) => ({
           },
           {
             urlPattern: ({ request, url }) =>
-              request.destination === "document" && url.origin === "https://fanjam.live",
+              request.destination === "document" && url.origin === self.location.origin,
             handler: "NetworkFirst",
             options: {
               cacheName: "origin-cache",
-              plugins: [
-                {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
-                  cacheWillUpdate: ({ response }) => {
-                    return Promise.resolve(response.status === 200 ? response : null);
-                  },
-                },
-              ],
-            },
-          },
-          {
-            urlPattern: ({ request, url }) =>
-              request.destination === "document" && url.origin === "https://test.fanjam.live",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "origin-test-cache",
               plugins: [
                 {
                   cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
