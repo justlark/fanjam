@@ -111,3 +111,13 @@ output "stages" {
     }
   }
 }
+
+output "custom_domain_status" {
+  value = {
+    for env_name, hostname in cloudflare_custom_hostname.client :
+    env_name => {
+      domain = hostname.hostname
+      status = hostname.status
+    }
+  }
+}

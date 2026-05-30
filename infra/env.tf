@@ -10,6 +10,15 @@ locals {
   environments = {
     for env_file in fileset("${path.module}/environments", "*/env.yaml") : dirname(env_file) => yamldecode(file("${path.module}/environments/${env_file}"))
   }
+
+  custom_client_domains = {
+    for env_name, env in local.environments :
+    env_name => {
+      stage  = env.stage
+      domain = env.custom_domain
+    }
+    if try(env.custom_domain, "") != ""
+  }
 }
 
 resource "random_password" "noco_admin_password" {

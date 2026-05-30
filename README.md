@@ -229,6 +229,46 @@ we can seed the environment with a demo dataset like this:
 just seed-data mycon2026 ./demos/geekcon.sql
 ```
 
+## Custom Domains
+
+We can optionally host the FanJam attendee app at a client-owned domain (e.g.
+`https://app.example.org`). The only configuration necessary on their side is
+adding a `CNAME` to `fanjam.live`. FanJam doesn't support being hosted under a
+path prefix, so it should have its own subdomain. To set this up:
+
+Add a `custom_domain` field to the env config in
+`infra/environments/<env>/env.yaml`.
+
+```yaml
+custom_domain: app.example.org
+```
+
+Apply the necessary infrastructure changes with OpenTofu.
+
+```
+just tofu plan
+just tofu apply
+```
+
+Ask the client to add a `CNAME` record at `app.example.org` pointing to
+`fanjam.live`. You can check the progress of the TLS cert issuance like this:
+
+```
+just tofu output custom_domain_status
+
+```
+
+Finally, you need to configure their instance of the app to use the custom
+domain and redirect the default domain to it.
+
+```
+just set-app-domain mycon2026 app.example.org
+```
+
+To revert from a custom domain back to the default domain, run `just
+delete-app-domain mycon2026`, then remove the `custom_domain` field from the
+`env.yaml`, then run `just tofu apply`.
+
 ## Teardown
 
 These are the instructions for tearing down a FanJam instance.
