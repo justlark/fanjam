@@ -202,3 +202,29 @@ export const countRequestsTo = (page: Page, endpoint: string): { count: number }
   });
   return counter;
 };
+
+// Boot the SPA in custom-domain mode by intercepting every document request and injecting the
+// `fanjam-env` meta tag the client worker would normally add when serving from a custom
+// hostname. The SPA reads the tag synchronously at module load to pick its routing mode, so the
+// tag must be present in the HTML before any `<script>` runs.
+export const customDomainMode = async (page: Page, env: string = envId) => {
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() !== "document") {
+      await route.continue();
+      return;
+    }
+
+    const response = await route.fetch();
+    const body = await response.text();
+    const injected = body.replace(
+      "</head>",
+      `<meta name="fanjam-env" content="${env}" /></head>`,
+    );
+
+    await route.fulfill({
+      response,
+      body: injected,
+      headers: response.headers(),
+    });
+  });
+};
