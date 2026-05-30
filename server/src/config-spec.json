@@ -1,5 +1,10 @@
 [
   {
+    "key": "app_domain",
+    "help": "The domain where the app is hosted, which can be either a custom domain or the default domain.",
+    "sensitive": false
+  },
+  {
     "key": "timezone",
     "help": "The timezone for localizing dates and times in the application. This is an IANA timezone identifier (e.g. America/New_York). If null, dates and times are localized to the user's local timezone.",
     "sensitive": false
