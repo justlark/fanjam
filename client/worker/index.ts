@@ -434,7 +434,10 @@ export default {
       return await fetch("https://umami.fanjam.live/script.js");
     }
 
-    const onDefaultHostname = requestUrl.hostname === env.CLIENT_DOMAIN;
+    const onDefaultHostname =
+      requestUrl.hostname === env.CLIENT_DOMAIN ||
+      requestUrl.hostname === "localhost" ||
+      requestUrl.hostname === "hostmachine";
 
     // Resolve the env ID and the path prefix the app is mounted at from the
     // request hostname and path.
@@ -518,8 +521,12 @@ export default {
       if (env.INJECT_METADATA === "true") {
         newResponse = await injectAppMetadata(env, envId, newResponse);
       }
+
       newResponse = injectWebManifestLink(requestUrl, publicPrefix, newResponse);
-      newResponse = injectEnvIdMeta(envId, newResponse);
+
+      if (!onDefaultHostname) {
+        newResponse = injectEnvIdMeta(envId, newResponse);
+      }
     } else if (!envId && isHtmlResponse(newResponse) && env.INJECT_METADATA === "true") {
       newResponse = injectHomeMetadata(newResponse);
     }
