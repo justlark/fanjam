@@ -10,14 +10,27 @@ pub struct ErrorResponse {
 #[derive(Debug, Serialize)]
 pub struct PutLinkResponse {
     pub dash_url: String,
+    // When no custom domain is configured, this will be the same as `default_app_url`.
     pub app_url: String,
+    pub default_app_url: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct GetLinkResponse {
     pub dash_url: String,
     pub app_url: String,
+    pub default_app_url: String,
     pub local_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetDomainResponse {
+    pub domain: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetDomainEnvResponse {
+    pub env_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -173,6 +186,7 @@ pub struct GetPagesResponse {
 
 #[derive(Debug, Serialize)]
 pub struct GetConfigResponse {
+    pub app_domain: Option<String>,
     pub timezone: Option<String>,
     pub hide_announcements: Option<bool>,
     pub use_feedback: Option<bool>,

@@ -2,7 +2,7 @@ use worker::Url;
 
 use crate::{
     config,
-    env::{EnvId, EnvName},
+    env::{EnvDomain, EnvId, EnvName},
 };
 
 // The origin of the NocoDB instance.
@@ -20,13 +20,21 @@ pub fn dash_url(env_name: &EnvName) -> anyhow::Result<Url> {
     ))?)
 }
 
-// The URL of the client app for attendees.
-pub fn app_url(env_id: &EnvId) -> anyhow::Result<Url> {
+// The default URL of the client app.
+pub fn default_app_url(env_id: &EnvId) -> anyhow::Result<Url> {
     let client_domain = config::client_domain();
 
     Ok(Url::parse(&format!(
         "https://{client_domain}/app/{env_id}"
     ))?)
+}
+
+// The custom domain if one is configured, and the default name otherwise.
+pub fn app_url(env_id: &EnvId, custom_domain: Option<&EnvDomain>) -> anyhow::Result<Url> {
+    match custom_domain {
+        Some(domain) => Ok(Url::parse(&format!("https://{domain}/"))?),
+        None => default_app_url(env_id),
+    }
 }
 
 // The URL of a local instance of the client app for testing.

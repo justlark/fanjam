@@ -1,6 +1,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+use worker::Url;
 
 // A random ID that forms part of the app URL gives to attendees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +30,61 @@ impl From<String> for EnvName {
 }
 
 impl fmt::Display for EnvName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// A custom hostname ("vanity domain") that an instance of the client can be served from.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct EnvDomain(String);
+
+impl EnvDomain {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for EnvDomain {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let trimmed = value.trim();
+
+        if trimmed.is_empty() {
+            anyhow::bail!("Custom domain must not be empty.");
+        }
+
+        let parsed = Url::parse(&format!("https://{trimmed}/"))
+            .map_err(|err| anyhow::anyhow!("Custom domain is not a valid hostname: {err}"))?;
+
+        let host = parsed
+            .host_str()
+            .ok_or_else(|| anyhow::anyhow!("Custom domain is missing a hostname."))?;
+
+        if parsed.port().is_some() {
+            anyhow::bail!("Custom domain must not include a port.");
+        }
+        if parsed.path() != "/" {
+            anyhow::bail!("Custom domain must not include a path.");
+        }
+        if parsed.query().is_some() || parsed.fragment().is_some() {
+            anyhow::bail!("Custom domain must not include a query string or fragment.");
+        }
+        if !parsed.username().is_empty() || parsed.password().is_some() {
+            anyhow::bail!("Custom domain must not include userinfo.");
+        }
+
+        // Require at least one dot so we don't accept single-label hostnames like `localhost`.
+        if !host.contains('.') {
+            anyhow::bail!("Custom domain must contain at least one dot.");
+        }
+
+        Ok(Self(host.to_ascii_lowercase()))
+    }
+}
+
+impl fmt::Display for EnvDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }

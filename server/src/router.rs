@@ -14,16 +14,17 @@ use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper
 use crate::{
     api::{
         Announcement, Event, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
-        GetConfigResponse, GetCurrentMigrationResponse, GetEventsResponse, GetFilesResponse,
-        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
-        PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
-        PutAliasRequest, PutLinkResponse, PutTokenRequest,
+        GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
+        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse,
+        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
+        PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
-    env::{CONFIG_SPEC, Config, EnvId, EnvName},
+    env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName},
     error::Error,
     http::http_headers_from_object,
     kv, neon,
@@ -67,6 +68,9 @@ pub fn new(state: AppState) -> Router {
         // ADMIN API (AUTHENTICATED)
         .route("/admin/env/{env_name}/links/{env_id}", put(put_link))
         .route("/admin/env/{env_name}/links", get(get_link))
+        .route("/admin/env/{env_name}/domain/{domain}", put(put_env_domain))
+        .route("/admin/env/{env_name}/domain", get(get_env_domain))
+        .route("/admin/env/{env_name}/domain", delete(delete_env_domain))
         .route("/admin/env/{env_name}/tokens", put(put_token))
         .route("/admin/env/{env_name}/bases", post(post_base))
         .route("/admin/env/{env_name}/bases", delete(delete_base))
@@ -100,6 +104,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .route("/aliases/{env_id}", get(get_alias))
+        .route("/domains/{domain}", get(get_domain_env))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
         .with_state(Arc::new(state))
@@ -114,32 +119,32 @@ async fn put_link(
         .await
         .map_err(Error::Internal)?;
 
-    if let Some(current_env_id) = &current_env_id
-        && &new_env_id == current_env_id
-    {
-        let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
-        let app_url = url::app_url(&new_env_id).map_err(Error::Internal)?;
+    let already_current = current_env_id
+        .as_ref()
+        .is_some_and(|current| current == &new_env_id);
 
-        return Ok(Json(PutLinkResponse {
-            dash_url: dash_url.to_string(),
-            app_url: app_url.to_string(),
-        }));
+    if !already_current {
+        kv::put_id_env(&state.kv, &new_env_id, &env_name)
+            .await
+            .map_err(Error::Internal)?;
+
+        kv::put_env_id(&state.kv, &env_name, &new_env_id)
+            .await
+            .map_err(Error::Internal)?;
     }
 
-    kv::put_id_env(&state.kv, &new_env_id, &env_name)
-        .await
-        .map_err(Error::Internal)?;
-
-    kv::put_env_id(&state.kv, &env_name, &new_env_id)
+    let custom_domain = kv::get_env_domain(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?;
 
     let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
-    let app_url = url::app_url(&new_env_id).map_err(Error::Internal)?;
+    let app_url = url::app_url(&new_env_id, custom_domain.as_ref()).map_err(Error::Internal)?;
+    let default_app_url = url::default_app_url(&new_env_id).map_err(Error::Internal)?;
 
     Ok(Json(PutLinkResponse {
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
+        default_app_url: default_app_url.to_string(),
     }))
 }
 
@@ -187,14 +192,116 @@ async fn get_link(
         .map_err(Error::Internal)?
         .ok_or(Error::NoEnvId)?;
 
+    let custom_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
     let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
-    let app_url = url::app_url(&env_id).map_err(Error::Internal)?;
+    let app_url = url::app_url(&env_id, custom_domain.as_ref()).map_err(Error::Internal)?;
+    let default_app_url = url::default_app_url(&env_id).map_err(Error::Internal)?;
     let local_url = url::local_url(&env_id).map_err(Error::Internal)?;
 
     Ok(Json(GetLinkResponse {
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
+        default_app_url: default_app_url.to_string(),
         local_url: local_url.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn put_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path((env_name, domain)): Path<(EnvName, String)>,
+) -> Result<NoContent, ErrorResponse> {
+    let domain = EnvDomain::try_from(domain).map_err(Error::InvalidDomain)?;
+
+    // Refuse to clobber a custom domain that is mapped to a different environment.
+    if let Some(existing_owner) = kv::get_domain_env(&state.kv, &domain)
+        .await
+        .map_err(Error::Internal)?
+        && existing_owner.to_string() != env_name.to_string()
+    {
+        Err(Error::DomainInUse)?;
+    }
+
+    // Remove the old reverse mapping.
+    if let Some(previous_domain) = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        && previous_domain != domain
+    {
+        kv::delete_domain_env(&state.kv, &previous_domain)
+            .await
+            .map_err(Error::Internal)?;
+    }
+
+    kv::put_env_domain(&state.kv, &env_name, &domain)
+        .await
+        .map_err(Error::Internal)?;
+
+    kv::put_domain_env(&state.kv, &domain, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<GetDomainResponse>, ErrorResponse> {
+    let domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvDomain)?;
+
+    Ok(Json(GetDomainResponse {
+        domain: domain.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn delete_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    if let Some(domain) = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+    {
+        kv::delete_domain_env(&state.kv, &domain)
+            .await
+            .map_err(Error::Internal)?;
+    }
+
+    kv::delete_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_domain_env(
+    State(state): State<Arc<AppState>>,
+    Path(domain): Path<String>,
+) -> Result<Json<GetDomainEnvResponse>, ErrorResponse> {
+    let domain = EnvDomain::try_from(domain).map_err(Error::InvalidDomain)?;
+
+    let env_name = kv::get_domain_env(&state.kv, &domain)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvDomain)?;
+
+    let env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    Ok(Json(GetDomainEnvResponse {
+        env_id: env_id.to_string(),
     }))
 }
 
@@ -666,7 +773,13 @@ async fn get_config(
         .await
         .map_err(Error::Internal)?;
 
+    let app_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .map(|domain| domain.to_string());
+
     Ok(Json(GetConfigResponse {
+        app_domain,
         timezone: config.timezone,
         hide_announcements: config.hide_announcements,
         use_feedback: config.use_feedback,

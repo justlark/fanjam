@@ -33,6 +33,15 @@ pub enum Error {
     #[error("The requested asset was not found.")]
     AssetNotFound,
 
+    #[error("Invalid custom domain: {0}")]
+    InvalidDomain(anyhow::Error),
+
+    #[error("That custom domain is already assigned to a different environment.")]
+    DomainInUse,
+
+    #[error("No custom domain is configured for this environment.")]
+    NoEnvDomain,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -49,6 +58,9 @@ impl Error {
             Error::NocoUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Error::MissingEnvConfig => StatusCode::INTERNAL_SERVER_ERROR,
             Error::AssetNotFound => StatusCode::NOT_FOUND,
+            Error::InvalidDomain(_) => StatusCode::BAD_REQUEST,
+            Error::DomainInUse => StatusCode::CONFLICT,
+            Error::NoEnvDomain => StatusCode::NOT_FOUND,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

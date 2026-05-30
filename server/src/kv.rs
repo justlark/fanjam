@@ -3,7 +3,7 @@ use worker::kv::{KvError, KvStore};
 
 use crate::{
     api::Alias,
-    env::{Config, EnvId, EnvName},
+    env::{Config, EnvDomain, EnvId, EnvName},
     noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, TableInfo},
 };
 
@@ -33,6 +33,16 @@ const ALIAS_ID_KEY_SUFFIX: &str = ":id";
 // to the new one.
 fn alias_id_key(env_id: &EnvId) -> String {
     format!("{ALIAS_KEY_PREFIX}{env_id}{ALIAS_ID_KEY_SUFFIX}")
+}
+
+// The custom domain for an environment. Absent for environments without a custom domain.
+fn env_domain_key(env_name: &EnvName) -> String {
+    format!("env:{env_name}:domain")
+}
+
+// The environment with a given custom domain.
+fn domain_env_key(domain: &EnvDomain) -> String {
+    format!("domain:{domain}:env")
 }
 
 // The NocoDB API token for the environment. This is used to authenticate with the NocoDB API.
@@ -191,6 +201,75 @@ pub async fn get_env_id(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Opti
         .await
         .map_err(wrap_kv_err)?
         .map(EnvId::from))
+}
+
+#[worker::send]
+pub async fn put_env_domain(
+    kv: &KvStore,
+    env_name: &EnvName,
+    domain: &EnvDomain,
+) -> anyhow::Result<()> {
+    kv.put(&env_domain_key(env_name), domain.as_str())
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_env_domain(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Option<EnvDomain>> {
+    let raw = kv
+        .get(&env_domain_key(env_name))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    raw.map(EnvDomain::try_from).transpose()
+}
+
+#[worker::send]
+pub async fn delete_env_domain(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+    kv.delete(&env_domain_key(env_name))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn put_domain_env(
+    kv: &KvStore,
+    domain: &EnvDomain,
+    env_name: &EnvName,
+) -> anyhow::Result<()> {
+    kv.put(&domain_env_key(domain), env_name.to_string())
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_domain_env(kv: &KvStore, domain: &EnvDomain) -> anyhow::Result<Option<EnvName>> {
+    Ok(kv
+        .get(&domain_env_key(domain))
+        .text()
+        .await
+        .map_err(wrap_kv_err)?
+        .map(EnvName::from))
+}
+
+#[worker::send]
+pub async fn delete_domain_env(kv: &KvStore, domain: &EnvDomain) -> anyhow::Result<()> {
+    kv.delete(&domain_env_key(domain))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
 }
 
 #[worker::send]
