@@ -290,23 +290,6 @@ RedLine13's free plan limits you to 10 vCPUs per test, which caps us at 5x
 `c5.large` instances, for a total of 2,500 users. Larger tests require a paid
 plan, which start at $75/mo.
 
-## User Guide
-
-### Data Import
-
-Organizers can import their data from another platform into FanJam by uploading
-a CSV file. In NocoDB, navigate to `Events > ⋮ > Upload > CSV`. The CSV file
-must have the following format:
-
-```csv
-Event Name,Summary,Description,Start Time,End Time,Locations,People,Categories,Tags
-Event 1,My event summary,My event description,2026-01-01T00:00:00Z,2026-01-01T01:00:00Z,Location 1,"Person 1, Person 2",Category 1,"Tag 1, Tag 2, Tag 3"
-```
-
-NocoDB will prompt you to manually map the column names if they don't match the
-format above exactly. You can also change the delimiter for the People and Tags
-columns from commas to something else.
-
 ## Copyright
 
 Copyright © 2025-2026 Lark Aster
