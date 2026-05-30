@@ -3,11 +3,6 @@ locals {
   umami_neon_region        = "aws-us-east-1"
 }
 
-# TODO: Once this issue in the Neon Terraform provider is addressed, we can
-# protect the default branch so it cannot be deleted.
-#
-# https://github.com/kislerdm/terraform-provider-neon/issues/153
-
 resource "neon_project" "env" {
   for_each  = local.environments
   name      = each.key
