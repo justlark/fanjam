@@ -127,6 +127,12 @@ schedule, we can change it to something more friendly.
 If you need your app's URL changed at any point, let us know. Also let us know
 if you want the old URL to redirect to the new one.
 
+If you prefer, you can also host FanJam at your own domain (e.g.
+`https://app.example.org`). All you need to do is add a `CNAME` record pointing
+to `fanjam.live`; whoever runs your website will know how to do this. Then let
+us know when you would like to make the switch. Your old
+`https://fanjam.live/app/geekcon` URL will redirect to the new one.
+
 ## Preparing to announce your schedule
 
 When you're editing the con schedule, changes you make in the dashboard should
