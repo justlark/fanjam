@@ -14,6 +14,7 @@ const {
   data: { config },
 } = useRemoteData();
 
+const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? true);
 const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? true);
 const scheduleShareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
@@ -31,14 +32,23 @@ const shareDialogVisible = ref(false);
     </div>
     <div class="pl-5 pr-3 lg:pr-5 h-16 flex gap-2 items-center justify-between lg:justify-start">
       <span class="text-xl lg:text-2xl">My Schedule</span>
-      <IconButton
-        v-if="scheduleSharingEnabled"
-        icon="share-fill"
-        size="md"
-        label="Share"
-        @click="shareDialogVisible = true"
-        :button-props="{ 'data-testid': 'schedule-share-button' }"
-      />
+      <div class="flex">
+        <IconButton
+          v-if="calendarExportEnabled"
+          icon="calendar-plus"
+          size="md"
+          label="Add to Calendar"
+          :button-props="{ 'data-testid': 'calendar-download-button' }"
+        />
+        <IconButton
+          v-if="scheduleSharingEnabled"
+          icon="share-fill"
+          size="md"
+          label="Share"
+          @click="shareDialogVisible = true"
+          :button-props="{ 'data-testid': 'schedule-share-button' }"
+        />
+      </div>
     </div>
     <Divider class="!my-0" />
     <LinkShareDialog

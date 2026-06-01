@@ -537,6 +537,7 @@ interface StoredConfig {
   feedback_detail?: string;
   feedback_url?: string;
   use_schedule_sharing?: boolean;
+  use_calendar_export?: boolean;
 }
 
 const configRef = ref<FetchResult<Config>>({ status: "pending" });
@@ -558,6 +559,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       feedback_detail: data.feedbackDetail,
       feedback_url: data.feedbackUrl,
       use_schedule_sharing: data.useScheduleSharing,
+      use_calendar_export: data.useCalendarExport,
     }),
     fromCache: (data) => ({
       timezone: data.timezone,
@@ -568,6 +570,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       feedbackDetail: data.feedback_detail,
       feedbackUrl: data.feedback_url,
       useScheduleSharing: data.use_schedule_sharing,
+      useCalendarExport: data.use_calendar_export,
     }),
   });
 

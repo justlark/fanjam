@@ -69,6 +69,7 @@ interface RawConfig {
   feedback_detail: string | null;
   feedback_url: string | null;
   use_schedule_sharing: boolean | null;
+  use_calendar_export: boolean | null;
 }
 
 interface Envelope<T> {
@@ -139,6 +140,7 @@ export interface Config {
   feedbackDetail?: string;
   feedbackUrl?: string;
   useScheduleSharing?: boolean;
+  useCalendarExport?: boolean;
 }
 
 const isOk = (response: Response): boolean => response.ok;
@@ -386,6 +388,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     feedbackDetail: rawConfig.feedback_detail ?? undefined,
     feedbackUrl: rawConfig.feedback_url ?? undefined,
     useScheduleSharing: rawConfig.use_schedule_sharing ?? undefined,
+    useCalendarExport: rawConfig.use_calendar_export ?? undefined,
   };
 
   return { ok: true, value: config };
