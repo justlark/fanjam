@@ -316,9 +316,9 @@ version tag (not `latest`).
 We use [RedLine13](https://www.redline13.com) for load testing, using the
 JMeter test plan at [./docs/load-testing.jmx](./docs/load-testing.jmx).
 
-By default this test plan simulates 500 users per server, so to simulate 10,000
-concurrent users we would spin up 20 servers. The test runs for 10 minutes.
-These parameters are configurable.
+By default this test plan spins up 500 threads per server, so to simulate
+10,000 concurrent users we would spin up 20 servers. The test runs for 10
+minutes. These parameters are configurable.
 
 We've found the AWS `c5.large` EC2 instance tier works well for this. These EC2
 instances only exist for the lifespan of the load test, so the actual monetary
@@ -326,21 +326,27 @@ cost should be fairly minimal. RedLine13 will estimate the cost for you before
 you start the test.
 
 RedLine13's free plan limits you to 10 vCPUs per test, which caps us at 5x
-`c5.large` instances, for a total of 2,500 users. Larger tests require a paid
-plan, which start at $75/mo.
+`c5.large` instances, for a total of 2,500 threads. Larger tests require a paid
+plan.
 
 A large enough test will trigger Cloudflare's DDoS protections, blocking
-requests with a 403 Forbidden. We've added a rule to our Cloudflare config
-which theoretically should allow requests containing a `X-Load-Test-Secret`
-header to bypass these protections. This secret is a parameter you can pass
-into the JMeter test plan. You can retrieve this secret by running:
+requests with a 403 Forbidden. In an attempt to get around this, we set up a
+firewall rule to disable some of these protections when the request contains a
+secret header. This doesn't seem to be having the intended effect, but if you
+want to experiment, you can retrieve the secret by running `just tofu output
+load_test_secret` and you can pass it to JMeter via the `loadTestSecret` param.
 
-```
-just tofu output load_test_secret
-```
+Here are the results of a load test using 5 servers:
 
-As of time of writing, this workaround does not actually seem to be working as
-intended; Cloudflare is still blocking requests.
+| Metric | Value |
+| --- | --- |
+| Test Time | 10min 11s |
+| Total Threads | 2500 |
+| Requests (All) | 1,009,027 |
+| Requests (Failed) | 3 |
+| Requests / Second | 1,651 |
+| Total Data Sent | 879 MB |
+| Total Data Recieved | 13.65 GB |
 
 ## Copyright
 
