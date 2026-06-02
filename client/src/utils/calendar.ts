@@ -47,9 +47,6 @@ const triggerDownload = (icsText: string, filename: string): void => {
   URL.revokeObjectURL(url);
 };
 
-// Build a .ics file containing one VEVENT per starred event and trigger a
-// browser download. Events without an `endTime` are skipped (we don't guess
-// durations). If no events remain after that filter, nothing is downloaded.
 export const downloadStarredEventsIcs = (
   events: ReadonlyArray<DeepReadonly<Event>>,
   envId: string,
