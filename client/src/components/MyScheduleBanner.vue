@@ -17,7 +17,7 @@ const {
   data: { config, events },
 } = useRemoteData();
 
-const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? true);
+const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? false);
 const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? true);
 const hasStarredEvents = computed(() => starredEvents.value.size > 0);
 const scheduleShareUrl = computed(() => {
