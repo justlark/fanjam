@@ -65,7 +65,9 @@ test.describe("calendar export button", () => {
     for await (const chunk of stream) {
       chunks.push(chunk as Buffer);
     }
-    const body = Buffer.concat(chunks).toString("utf-8");
+    // Unfold per RFC 5545: long property values are split with CRLF + a
+    // leading space/tab and must be rejoined before content assertions.
+    const body = Buffer.concat(chunks).toString("utf-8").replace(/\r?\n[ \t]/g, "");
 
     // Both events with end_times are present.
     expect(body).toMatch(/SUMMARY:Test Event 1/);
@@ -77,8 +79,8 @@ test.describe("calendar export button", () => {
     expect(body.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(2);
 
     // Each entry's description ends with a link back to the app.
-    expect(body).toMatch(/View in app:\s*\S*\/events\/1/);
-    expect(body).toMatch(/View in app:\s*\S*\/events\/2/);
+    expect(body).toMatch(/View in app: \S+\/events\/1/);
+    expect(body).toMatch(/View in app: \S+\/events\/2/);
 
     // Dates serialize in UTC `Z` form.
     expect(body).toMatch(/DTSTART:\d{8}T\d{6}Z/);
