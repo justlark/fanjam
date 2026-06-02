@@ -121,3 +121,8 @@ output "custom_domain_status" {
     }
   }
 }
+
+output "load_test_secret" {
+  value     = random_password.load_test_secret.result
+  sensitive = true
+}
