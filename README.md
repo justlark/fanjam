@@ -329,6 +329,16 @@ RedLine13's free plan limits you to 10 vCPUs per test, which caps us at 5x
 `c5.large` instances, for a total of 2,500 users. Larger tests require a paid
 plan, which start at $75/mo.
 
+A large enough test will trigger Cloudflare's DDoS protections, blocking
+requests with a 403 Forbidden. We've added a rule to our Cloudflare config
+which allows requests containing a `X-Load-Test-Secret` header to bypass these
+protections. This secret is a parameter you can pass into the JMeter test plan.
+You can retrieve this secret by running:
+
+```
+just tofu output load_test_secret
+```
+
 ## Copyright
 
 Copyright © 2025-2026 Lark Aster

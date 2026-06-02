@@ -35,6 +35,11 @@ Listeners:
             <stringProp name="Argument.value">${__P(aliasId,load-test-alias)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
+          <elementProp name="LOAD_TEST_SECRET" elementType="Argument">
+            <stringProp name="Argument.name">LOAD_TEST_SECRET</stringProp>
+            <stringProp name="Argument.value">${__P(loadTestSecret,)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
@@ -71,6 +76,10 @@ Listeners:
           <elementProp name="" elementType="Header">
             <stringProp name="Header.name">User-Agent</stringProp>
             <stringProp name="Header.value">Mozilla/5.0 (FanJam-LoadTest; +RedLine13)</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">x-load-test-secret</stringProp>
+            <stringProp name="Header.value">${LOAD_TEST_SECRET}</stringProp>
           </elementProp>
         </collectionProp>
       </HeaderManager>
