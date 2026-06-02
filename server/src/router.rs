@@ -788,6 +788,7 @@ async fn get_config(
         feedback_detail: config.feedback_detail,
         feedback_url: config.feedback_url,
         use_schedule_sharing: config.use_schedule_sharing,
+        use_calendar_export: config.use_calendar_export,
         use_custom_icon: config.use_custom_icon,
         favicon_name: config.favicon_name,
         opengraph_icon_name: config.opengraph_icon_name,
