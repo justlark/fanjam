@@ -331,13 +331,16 @@ plan, which start at $75/mo.
 
 A large enough test will trigger Cloudflare's DDoS protections, blocking
 requests with a 403 Forbidden. We've added a rule to our Cloudflare config
-which allows requests containing a `X-Load-Test-Secret` header to bypass these
-protections. This secret is a parameter you can pass into the JMeter test plan.
-You can retrieve this secret by running:
+which theoretically should allow requests containing a `X-Load-Test-Secret`
+header to bypass these protections. This secret is a parameter you can pass
+into the JMeter test plan. You can retrieve this secret by running:
 
 ```
 just tofu output load_test_secret
 ```
+
+As of time of writing, this workaround does not actually seem to be working as
+intended; Cloudflare is still blocking requests.
 
 ## Copyright
 
