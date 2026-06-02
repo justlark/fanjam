@@ -1,6 +1,6 @@
 resource "random_password" "load_test_secret" {
-  length           = 32
-  special          = false
+  length  = 32
+  special = false
 }
 
 resource "cloudflare_ruleset" "load_test_bypass" {
@@ -26,6 +26,11 @@ resource "cloudflare_ruleset" "load_test_bypass" {
         "http_request_firewall_managed",
         "http_request_sbfm",
       ]
+    }
+
+    # See: https://github.com/cloudflare/terraform-provider-cloudflare/issues/2749
+    logging {
+      enabled = true
     }
   }
 }

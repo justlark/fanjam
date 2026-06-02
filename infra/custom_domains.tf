@@ -13,6 +13,15 @@ resource "cloudflare_custom_hostname" "client" {
       http2           = "on"
     }
   }
+
+  # The v4 provider sends the default for `ssl.certificate_authority` on every
+  # apply, which the API rejects on non-Enterprise plans because they don't
+  # support custom CAs. Ignore the computed drift.
+  lifecycle {
+    ignore_changes = [
+      ssl[0].certificate_authority,
+    ]
+  }
 }
 
 resource "cloudflare_custom_hostname_fallback_origin" "client" {
