@@ -35,16 +35,11 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
 <template>
   <section :aria-labelledby="sectionHeadingId">
     <div class="flex items-center gap-3">
-      <h2
-        :id="sectionHeadingId"
-        :class="{
-          'text-xl': true,
-          'w-full': true,
-          'font-bold': props.isCurrentTimeSlot,
-        }"
-      >
+      <h2 :id="sectionHeadingId" class="text-xl w-full">
         <span v-if="props.viewType === 'all'" class="flex items-end justify-between">
-          <span class="flex flex-col items-start gap-1">
+          <span
+            :class="['flex flex-col items-start gap-1', { 'font-bold': props.isCurrentTimeSlot }]"
+          >
             <span>
               {{ props.dayName.weekday }}
             </span>
@@ -52,13 +47,18 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
               {{ props.dayName.date }}
             </span>
           </span>
-          <span>{{ props.dayName.time }}</span>
+          <span class="flex gap-3 items-center">
+            <span :class="{ 'font-bold': props.isCurrentTimeSlot }">{{ props.dayName.time }}</span>
+            <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
+          </span>
         </span>
-        <span v-else-if="props.viewType === 'daily'">
-          {{ props.dayName.time }}
+        <span v-else-if="props.viewType === 'daily'" class="flex gap-3 items-center">
+          <span :class="{ 'font-bold': props.isCurrentTimeSlot }">
+            {{ props.dayName.time }}
+          </span>
+          <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
         </span>
       </h2>
-      <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
     </div>
     <Divider
       :class="{
