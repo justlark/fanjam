@@ -53,10 +53,14 @@ watch(eventSummaryIsVisible, (newIsVisible, oldIsVisible) => {
   }
 });
 
-interface Day {
+export interface DayName {
   dayName: string;
-  events: Array<DeepReadonly<Event>>;
+  dateName: string;
 }
+
+type Day = {
+  events: Array<DeepReadonly<Event>>;
+} & DayName;
 
 const currentDayIndex = defineModel<number>("day");
 
@@ -73,7 +77,6 @@ const currentDayEvents = computed(() => {
   return days.value[currentDayIndex.value]?.events ?? [];
 });
 
-const dayNames = computed(() => days.value.map((day) => day.dayName));
 const allCategories = computed(() => getSortedCategories(events.value));
 
 const allDates = computed(() =>
@@ -114,20 +117,23 @@ watchEffect(() => {
   // Day button would have to wait until all the days have loaded.
   if (eventsStatus.value !== "success") return;
 
-  days.value = [...namedDays.value.entries()].map(([dayIndex, { dayName, dayStart, dayEnd }]) => {
-    const eventsThisDay = events.value.filter((event) =>
-      dateIsBetween(event.startTime, dayStart, dayEnd),
-    );
+  days.value = [...namedDays.value.entries()].map(
+    ([dayIndex, { dayName, dateName, dayStart, dayEnd }]) => {
+      const eventsThisDay = events.value.filter((event) =>
+        dateIsBetween(event.startTime, dayStart, dayEnd),
+      );
 
-    for (const event of eventsThisDay) {
-      dayIndexByEventId.value[event.id] = dayIndex;
-    }
+      for (const event of eventsThisDay) {
+        dayIndexByEventId.value[event.id] = dayIndex;
+      }
 
-    return {
-      dayName,
-      events: eventsThisDay,
-    };
-  });
+      return {
+        dayName,
+        dateName,
+        events: eventsThisDay,
+      };
+    },
+  );
 });
 
 const filteredEventIdsSet = computed(() =>
@@ -258,7 +264,7 @@ watchEffect(() => {
       <DayPicker
         v-if="viewType === 'daily' && currentDayIndex !== undefined && days.length > 0"
         v-model:day="currentDayIndex"
-        :day-names="dayNames"
+        :day-names="days"
         :today-index="todayIndex"
       />
       <span

@@ -24,14 +24,19 @@ const timeSlots = computed(() => {
   const groupedEvents = groupByTime(
     props.events,
     (event) => event.startTime,
+    (time) => `${formats.mediumDate.format(time)} ${formats.shortTime.format(time)}`,
     (time) => {
-      const timeString = formats.shortTime.format(time);
-      const dayName = formats.longWeekday.format(time);
-      return props.viewType === "daily" ? timeString : `${dayName} ${timeString}`;
+      return {
+        weekday: formats.longWeekday.format(time),
+        date: formats.mediumDate.format(time),
+        time: formats.shortTime.format(time),
+      };
     },
   );
-  return [...groupedEvents.entries()].map(([localizedTime, eventsInThisTimeSlot]) => ({
-    localizedTime,
+  return groupedEvents.map(([{ weekday, date, time }, eventsInThisTimeSlot]) => ({
+    weekday,
+    date,
+    time,
     events: eventsInThisTimeSlot,
   }));
 });
@@ -65,7 +70,7 @@ const incrementalTimeSlots = useIncremental(timeSlots);
       v-for="(timeSlot, index) in timeSlots"
       v-model:focused="focusedEventId"
       :key="index"
-      :localized-time="timeSlot.localizedTime"
+      :day-name="timeSlot"
       :events="timeSlot.events"
       :all-categories="allCategories"
       :is-current-time-slot="index === currentTimeSlotIndex"

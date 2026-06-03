@@ -1,7 +1,5 @@
 import { type DatetimeFormats } from "@/composables/useDatetimeFormats";
 
-const daysInAWeek = 7;
-
 export const localizeTime = (formats: DatetimeFormats, time: Date) =>
   formats.shortTime.format(time);
 
@@ -32,20 +30,6 @@ export const dateIsBetween = (date: Date, start: Date, end: Date): boolean => {
 
 export const timeIsNearlyEqual = (a: Date, b: Date, thresholdMillis = 1000): boolean => {
   return Math.abs(a.valueOf() - b.valueOf()) <= thresholdMillis;
-};
-
-const dateRange = (dates: Set<Date>): { start: Date; end: Date } => {
-  const sortedDates = [...dates];
-  sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
-
-  const [start, end] = [sortedDates[0], sortedDates[sortedDates.length - 1]];
-
-  return { start, end };
-};
-
-const daysBetween = (start: Date, end: Date): number => {
-  const dayMillis = 24 * 60 * 60 * 1000;
-  return Math.round(Math.abs(start.valueOf() - end.valueOf()) / dayMillis);
 };
 
 // Extracts year, month, and date components from a Date in a specific
@@ -126,6 +110,7 @@ const startAndEndOfDay = (date: Date, timezone: string): { start: Date; end: Dat
 
 export interface NamedDay {
   dayName: string;
+  dateName: string;
   dayStart: Date;
   dayEnd: Date;
 }
@@ -135,10 +120,6 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
     return [];
   }
 
-  const { start: earliest, end: latest } = dateRange(dates);
-  const dayRange = daysBetween(earliest, latest);
-  const rangeIsLongerThanAWeek = dayRange >= daysInAWeek;
-
   const sortedDates = [...dates];
   sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
 
@@ -146,10 +127,6 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
 
   for (let i = 0; i < sortedDates.length; i++) {
     const start = sortedDates[i];
-
-    const dayName = rangeIsLongerThanAWeek
-      ? formats.shortDate.format(start)
-      : formats.longWeekday.format(start);
 
     const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start, formats.timezone);
 
@@ -164,7 +141,8 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
     }
 
     namedDays.push({
-      dayName,
+      dayName: formats.longWeekday.format(start),
+      dateName: formats.mediumDate.format(start),
       dayStart: startOfThisDay,
       dayEnd: endOfThisDay,
     });
@@ -173,29 +151,34 @@ export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Arr
   return namedDays;
 };
 
-export const groupByTime = <T>(
+export const groupByTime = <T, V>(
   values: Array<T>,
   getTime: (value: T) => Date,
-  formatTime: (value: Date) => string,
-): Map<string, Array<T>> => {
+  getKey: (time: Date) => string,
+  getValue: (time: Date) => V,
+): Array<[V, Array<T>]> => {
   // Maps in JS preserve insertion order, so as long as we sort the values, the
   // groups will be ordered temporally as well.
-  const grouped: Map<string, Array<T>> = new Map();
+  const grouped: Map<string, [V, Array<T>]> = new Map();
 
   const sortedValues = [...values].sort((a, b) => getTime(a).valueOf() - getTime(b).valueOf());
 
   for (const value of sortedValues) {
     const time = getTime(value);
-    const timeString = formatTime(time);
+    const key = getKey(time);
+    const resolvedValue = getValue(time);
 
-    if (!grouped.has(timeString)) {
-      grouped.set(timeString, []);
+    if (!grouped.has(key)) {
+      grouped.set(key, [resolvedValue, []]);
     }
 
-    grouped.get(timeString)?.push(value);
+    const resolvedValueAndTime = grouped.get(key);
+    if (resolvedValueAndTime) {
+      resolvedValueAndTime[1].push(value);
+    }
   }
 
-  return grouped;
+  return [...grouped.values()];
 };
 
 export const isSameDay = (a: Date, b: Date, timezone: string): boolean => {

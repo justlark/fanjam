@@ -6,6 +6,7 @@ export interface DatetimeFormats {
   timezone: string;
   shortTime: Intl.DateTimeFormat;
   shortDate: Intl.DateTimeFormat;
+  mediumDate: Intl.DateTimeFormat;
   shortDatetime: Intl.DateTimeFormat;
   shortWeekday: Intl.DateTimeFormat;
   longWeekday: Intl.DateTimeFormat;
@@ -29,6 +30,10 @@ const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
       }),
       shortDate: new Intl.DateTimeFormat(undefined, {
         dateStyle: "short",
+        timeZone: timezone,
+      }),
+      mediumDate: new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
         timeZone: timezone,
       }),
       shortDatetime: new Intl.DateTimeFormat(undefined, {

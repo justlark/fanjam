@@ -11,8 +11,14 @@ const filterCriteria = useFilterQuery();
 
 const focusedEventId = defineModel<string | undefined>("focused");
 
+export interface DayName {
+  weekday: string;
+  date: string;
+  time: string;
+}
+
 const props = defineProps<{
-  localizedTime: string;
+  dayName: DayName;
   events: Array<DeepReadonly<Event>>;
   isCurrentTimeSlot: boolean;
   allCategories: Array<string>;
@@ -33,10 +39,24 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
         :id="sectionHeadingId"
         :class="{
           'text-xl': true,
+          'w-full': true,
           'font-bold': props.isCurrentTimeSlot,
         }"
       >
-        {{ props.localizedTime }}
+        <span v-if="props.viewType === 'all'" class="flex items-end justify-between">
+          <span class="flex flex-col items-start gap-1">
+            <span>
+              {{ props.dayName.weekday }}
+            </span>
+            <span class="text-sm text-muted-color">
+              {{ props.dayName.date }}
+            </span>
+          </span>
+          <span>{{ props.dayName.time }}</span>
+        </span>
+        <span v-else-if="props.viewType === 'daily'">
+          {{ props.dayName.time }}
+        </span>
       </h2>
       <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
     </div>

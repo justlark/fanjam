@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import IconButton from "./IconButton.vue";
+import { type DayName } from "./ScheduleTimeline.vue";
 
 const currentDayIndex = defineModel<number>("day", { required: true });
 
 const props = defineProps<{
-  dayNames: Array<string>;
+  dayNames: Array<DayName>;
   todayIndex: number | undefined;
 }>();
 
@@ -29,8 +30,13 @@ const selectToday = () => {
 
 <template>
   <nav class="flex items-center justify-between gap-4">
-    <span class="text-2xl font-bold" data-testid="schedule-day-name">
-      {{ props.dayNames[currentDayIndex] }}
+    <span class="flex flex-col items-start gap-1">
+      <span class="text-2xl font-bold" data-testid="schedule-day-name">
+        {{ props.dayNames[currentDayIndex].dayName }}
+      </span>
+      <span class="text-muted-color" data-testid="schedule-date-name">
+        {{ props.dayNames[currentDayIndex].dateName }}
+      </span>
     </span>
     <span class="flex items-center">
       <IconButton
