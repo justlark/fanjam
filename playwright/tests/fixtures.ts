@@ -56,6 +56,7 @@ export class SchedulePage {
   readonly prevDayButton: Locator;
   readonly nextDayButton: Locator;
   readonly dayName: Locator;
+  readonly dateName: Locator;
   readonly viewSelector: Locator;
   readonly noEventsNotice: Locator;
 
@@ -68,6 +69,7 @@ export class SchedulePage {
     this.prevDayButton = page.getByTestId("schedule-prev-day-button");
     this.nextDayButton = page.getByTestId("schedule-next-day-button");
     this.dayName = page.getByTestId("schedule-day-name");
+    this.dateName = page.getByTestId("schedule-date-name");
     this.viewSelector = page.getByTestId("schedule-view-selector");
     this.noEventsNotice = page.getByTestId("schedule-no-events");
   }
