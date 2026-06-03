@@ -37,11 +37,11 @@ jobs:
 
       - name: "Install Playwright Browsers"
         working-directory: ./playwright/
-        run: npx playwright@1.55.0 install --with-deps
+        run: npx playwright install --with-deps
 
       - name: "Run Playwright Tests"
         working-directory: ./playwright/
-        run: npx playwright@1.55.0 test
+        run: npx playwright test
 
       - name: "Upload Artifacts"
         if: ${{ !cancelled() }}
