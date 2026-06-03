@@ -316,9 +316,9 @@ version tag (not `latest`).
 We use [RedLine13](https://www.redline13.com) for load testing, using the
 JMeter test plan at [./docs/load-testing.jmx](./docs/load-testing.jmx).
 
-By default this test plan spins up 500 threads per server, so to simulate
-10,000 concurrent users we would spin up 20 servers. The test runs for 10
-minutes. These parameters are configurable.
+By default this test plan spins up 500 threads per server, so to simulate 5,000
+concurrent users we would spin up 10 servers. The test runs for 10 minutes.
+These parameters are configurable.
 
 We've found the AWS `c5.large` EC2 instance tier works well for this. These EC2
 instances only exist for the lifespan of the load test, so the actual monetary
@@ -336,17 +336,17 @@ secret header. This doesn't seem to be having the intended effect, but if you
 want to experiment, you can retrieve the secret by running `just tofu output
 load_test_secret` and you can pass it to JMeter via the `loadTestSecret` param.
 
-Here are the results of a load test using 5 servers:
+Here are the results of a load test using 10 servers:
 
 | Metric | Value |
 | --- | --- |
-| Test Time | 10min 11s |
-| Total Threads | 2500 |
-| Requests (All) | 1,009,027 |
-| Requests (Failed) | 3 |
-| Requests / Second | 1,651 |
-| Total Data Sent | 879 MB |
-| Total Data Recieved | 13.65 GB |
+| Test Time | 10min 30s |
+| Total Threads | 5,000 |
+| Requests (All) | 2,039,177 |
+| Requests (Failed) | 0 |
+| Requests / Second | 3,236 |
+| Total Data Sent | 1.75 GB |
+| Total Data Recieved | 26.85 GB |
 
 ## Copyright
 
