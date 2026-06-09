@@ -8,9 +8,6 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-// This file is type-checked under node where `self` is not a known global.
-declare const self: { location: { origin: string } };
-
 export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
@@ -19,7 +16,10 @@ export default defineConfig(({ mode }) => ({
     ...[mode === "playwright" ? [] : [vueDevTools()]],
     cloudflare(),
     tailwindcss(),
-    // This plugin installs a service worker to allow this app to work offline.
+    // This plugin installs a service worker to allow this app to work offline
+    // and to receive Web Push notifications. We use `injectManifest` rather
+    // than `generateSW` because we need a custom `push` event handler, which
+    // Workbox's auto-generated worker doesn't provide.
     VitePWA({
       // This is confusing; let me explain.
       //
@@ -33,6 +33,9 @@ export default defineConfig(({ mode }) => ({
       // We need to lie to the type system here, but this is not the same thing
       // as actually passing the string "production".
       mode: mode as "production",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       // We generate the manifest dynamically at the edge, so don't let the
       // plugin do it.
       manifest: false,
@@ -40,95 +43,9 @@ export default defineConfig(({ mode }) => ({
       // manifest. However, because we're generating the manifest ourselves, we
       // need to tell it where to find them.
       includeAssets: ["icons/*"],
-      // This is all quite complicated and I don't fully grok it, but this
-      // configuration accomplishes a few things:
-      //
-      // - It ensures the service worker fetches the `index.html` from the edge
-      // function instead of bundling the default/static one, which it would
-      // otherwise prefer.
-      // - It ensures headers from upstream aren't clobbered by the service
-      // worker.
-      // - It caches resources fetched from CDNs, which aren't included in the
-      // bundle.
-      // - The app can work completely offline and transition seamlessly.
-      workbox: {
+      injectManifest: {
         // Exclude `**/*.html`, which is an implicit default.
         globPatterns: ["**/*.{js,css}"],
-        navigateFallback: null,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              url.origin === self.location.origin &&
-              // The pathname will be different depending on whether the app is
-              // deployed with a custom domain.
-              url.pathname.match(new RegExp(`^/(?:app/[^/]+/)?files/([^/]+)/?$`)) !== null,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "files-cache",
-              expiration: {
-                maxEntries: 10,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ request, url }) =>
-              request.destination === "document" && url.origin === self.location.origin,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "origin-cache",
-              plugins: [
-                {
-                  cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
-                  cacheWillUpdate: ({ response }) => {
-                    return Promise.resolve(response.status === 200 ? response : null);
-                  },
-                },
-              ],
-            },
-          },
-          {
-            urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com",
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "google-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) => url.origin === "https://fonts.gstatic.com",
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "gstatic-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) => url.origin === "https://cdn.jsdelivr.net",
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "jsdelivr-cache",
-              expiration: {
-                maxEntries: 10,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
       },
     }),
   ],
