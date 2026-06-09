@@ -10,6 +10,7 @@ mod http;
 mod kv;
 mod neon;
 mod noco;
+mod push;
 mod router;
 mod sql;
 mod store;

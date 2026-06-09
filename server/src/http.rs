@@ -95,6 +95,21 @@ impl RequestBuilder {
         Ok(self)
     }
 
+    /// Set a raw binary request body. Used for protocols (e.g. Web Push's
+    /// aes128gcm content-encoding) where the body is an opaque byte string
+    /// that must not be interpreted as JSON or UTF-8.
+    pub fn with_bytes(mut self, bytes: &[u8], content_type: &str) -> Self {
+        // `js_sys::Uint8Array` lives on the JS heap; converting via
+        // `into::<JsValue>()` lets `worker::Request`'s body accept it as a
+        // `BodyInit` view. The `Fetch` adapter handles the transfer to the
+        // outgoing request.
+        let array = js_sys::Uint8Array::from(bytes);
+        self.body = Some(array.into());
+        self.headers
+            .insert("Content-Type".to_string(), content_type.to_string());
+        self
+    }
+
     pub fn allow_status(mut self, code: StatusCode) -> Self {
         self.allowed_status.insert(code);
         self

@@ -31,11 +31,16 @@ secrecy = "0.10.3"
 serde_json = "1.0.140"
 rand = "0.9.1"
 getrandom = { version = "0.3.3", features = ["wasm_js"] }
+# `rand_core` (pulled in by p256 + our push module) depends on
+# `getrandom@0.2`, which doesn't enable a wasm32 backend by default. Force the
+# `js` feature on the transitively-selected v0.2 so it compiles on Workers.
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
 tower-http = { version = "0.6.4", features = ["auth", "cors"] }
 futures = "0.3.31"
 constant_time_eq = "0.4.2"
 base64 = "0.22.1"
 wasm-bindgen = "0.2.122"
+js-sys = "0.3"
 thiserror = "2.0.12"
 blake3 = "1.8.2"
 tokio-postgres = { version = "0.7.13", default-features = false, features = [
@@ -44,3 +49,16 @@ tokio-postgres = { version = "0.7.13", default-features = false, features = [
 wasm-bindgen-futures = "0.4.50"
 chrono = "0.4.41"
 serde_json_canonicalizer = "0.3.1"
+# Web Push (RFC 8291 message encryption + RFC 8292 VAPID ES256 JWT).
+p256 = { version = "0.13", default-features = false, features = [
+  "ecdh",
+  "ecdsa",
+  "arithmetic",
+] }
+aes-gcm = { version = "0.10", default-features = false, features = [
+  "aes",
+  "alloc",
+] }
+hkdf = { version = "0.12", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+rand_core = { version = "0.6", features = ["getrandom"] }
