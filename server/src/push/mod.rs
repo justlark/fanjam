@@ -4,11 +4,13 @@
 //! autopush, Apple, Edge) from inside a Cloudflare Worker, where the
 //! existing Rust `web-push` crate doesn't compile.
 
+mod announce;
 mod client;
 mod encrypt;
+mod notification;
 mod vapid;
 
-#[allow(unused_imports)] // some of these get wired up across slices 2-3
-pub use client::{Client, DeliveryOutcome, Subscription, SubscriptionKeys, endpoint_id};
-#[allow(unused_imports)] // wired up in slice 2
+pub use announce::push_notifications;
+pub use client::{Client, Subscription, endpoint_id};
+pub use notification::{Payload, markdown_to_plain_text};
 pub use vapid::VapidKey;

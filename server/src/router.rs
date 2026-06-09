@@ -11,6 +11,8 @@ use axum::{
 };
 use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
 
+use serde::Deserialize;
+
 use crate::{
     api::{
         Announcement, DeleteSubscriptionRequest, Event, File, GetAliasResponse, GetAliasesResponse,
@@ -20,7 +22,7 @@ use crate::{
         PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
         PutAliasRequest, PutLinkResponse, PutTokenRequest,
     },
-    auth::admin_auth_layer,
+    auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
@@ -104,6 +106,10 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/subscription", post(post_subscription))
         .route("/apps/{env_id}/subscription", delete(delete_subscription))
+        .route(
+            "/apps/{env_id}/hooks/announcement-created",
+            post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
+        )
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .route("/aliases/{env_id}", get(get_alias))
         .route("/domains/{domain}", get(get_domain_env))
@@ -846,6 +852,80 @@ async fn delete_subscription(
     kv::delete_subscription(&state.kv, &env_name, &push::endpoint_id(&body.endpoint))
         .await
         .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementWebhook {
+    #[serde(default)]
+    rows: Vec<NocoAnnouncementRow>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementRow {
+    #[serde(rename = "Id", alias = "ID")]
+    id: u32,
+    #[serde(rename = "Title")]
+    title: String,
+    #[serde(rename = "Announcement", default)]
+    body: Option<String>,
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn post_announcement_created(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(webhook): Json<NocoAnnouncementWebhook>,
+) -> Result<NoContent, ErrorResponse> {
+    let Some(vapid) = config::vapid_key() else {
+        return Err(StatusCode::SERVICE_UNAVAILABLE.into());
+    };
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    if !env_config.use_push_notifications.unwrap_or(true) {
+        return Ok(NoContent);
+    }
+
+    let icon = env_config
+        .use_custom_icon
+        .unwrap_or(false)
+        .then_some(env_config.notifications_icon_name)
+        .flatten()
+        .map(|name| format!("https://{}/apps/{}/assets/{}", config::api_domain(), env_id, name));
+
+    let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.rows.len());
+    for row in &webhook.rows {
+        let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
+        let payload = push::Payload {
+            title: &row.title,
+            body,
+            url: format!("/announcements/{}", row.id),
+            icon: icon.clone(),
+        };
+        payloads.push(serde_json::to_vec(&payload).map_err(|e| Error::Internal(e.into()))?);
+    }
+
+    let kv = state.kv.clone();
+    let env_name_owned = env_name.clone();
+    let client = push::Client::new(vapid);
+    state.ctx.wait_until(async move {
+        for payload in payloads {
+            if let Err(e) = push::push_notifications(&kv, &env_name_owned, &client, &payload).await
+            {
+                worker::console_warn!("Announcement push fan-out failed: {e}");
+            }
+        }
+    });
 
     Ok(NoContent)
 }

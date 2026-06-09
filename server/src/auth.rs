@@ -38,8 +38,30 @@ type BoxFutureResponseResult<'a> = BoxFuture<'a, Result<Request<Body>, Response<
 
 pub fn admin_auth_layer<'a>()
 -> AsyncRequireAuthorizationLayer<impl Fn(Request<Body>) -> BoxFutureResponseResult<'a> + Clone> {
-    AsyncRequireAuthorizationLayer::new(|req: Request<Body>| {
+    bearer_auth_layer(|| Some(config::admin_api_token()))
+}
+
+// Configuring this worker with a token for webhooks is optional, because it
+// is currently only used for push notifications. If a token is not
+// configured, we reject with 503 Service Unavailable so that NocoDB doesn't
+// keep trying.
+pub fn noco_webhook_auth_layer<'a>()
+-> AsyncRequireAuthorizationLayer<impl Fn(Request<Body>) -> BoxFutureResponseResult<'a> + Clone> {
+    bearer_auth_layer(config::noco_webhook_token)
+}
+
+fn bearer_auth_layer<'a, F>(
+    expected: F,
+) -> AsyncRequireAuthorizationLayer<impl Fn(Request<Body>) -> BoxFutureResponseResult<'a> + Clone>
+where
+    F: Fn() -> Option<ApiToken> + Clone + Send + Sync + 'static,
+{
+    AsyncRequireAuthorizationLayer::new(move |req: Request<Body>| {
+        let expected = expected.clone();
         async move {
+            let expected_api_token = expected()
+                .ok_or_else(|| StatusCode::SERVICE_UNAVAILABLE.into_response())?;
+
             let auth_header = req
                 .headers()
                 .get(AUTHORIZATION)
@@ -54,8 +76,6 @@ pub fn admin_auth_layer<'a>()
                 .map(ApiToken::try_from)
                 .ok_or_else(|| StatusCode::UNAUTHORIZED.into_response())?
                 .map_err(|_| StatusCode::UNAUTHORIZED.into_response())?;
-
-            let expected_api_token = config::admin_api_token();
 
             let token_is_valid = constant_time_eq(
                 actual_api_token.0.expose_secret(),

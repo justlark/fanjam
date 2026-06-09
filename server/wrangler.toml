@@ -14,8 +14,11 @@ enabled = true
 [env.test.vars]
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "test.fanjam.live"
+API_DOMAIN = "api-test.fanjam.live"
 NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
 R2_ASSET_CACHE_TTL_SECONDS = "300"
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = "mailto:hello@fanjam.live"
 
 [env.test.route]
 pattern = "api-test.fanjam.live"
@@ -35,12 +38,16 @@ bucket_name = "sparklefish-assets-test"
 [env.prod.vars]
 BASE_DOMAIN = "fanjam.live"
 CLIENT_DOMAIN = "fanjam.live"
+API_DOMAIN = "api.fanjam.live"
 # The default cache TTL of the CDN cache used to absorb high load and reduce
 # the load on the NocoDB instance. This is a default which can be overridden on
 # a per-environment basis.
 NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
 # Assets in R2 (such as custom app icons) are cached at the edge.
 R2_ASSET_CACHE_TTL_SECONDS = "300"
+# VAPID identity for push notifications via the Web Push API.
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = "mailto:hello@fanjam.live"
 
 [env.prod.route]
 pattern = "api.fanjam.live"

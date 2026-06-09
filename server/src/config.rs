@@ -6,11 +6,12 @@ use worker::Env;
 use crate::auth;
 use crate::cf;
 use crate::neon;
+use crate::push;
 
-#[derive(Debug)]
 struct Config {
     base_domain: String,
     client_domain: String,
+    api_domain: String,
     cloudflare_api_token: cf::ApiToken,
     cloudflare_zone_id: cf::ZoneId,
     admin_api_token: auth::ApiToken,
@@ -19,6 +20,10 @@ struct Config {
     neon_default_branch_name: String,
     noco_default_cdn_cache_ttl_millis: u32,
     r2_asset_cache_ttl_seconds: u32,
+    // `None` if the VAPID secret for Web Push hasn't been set up. This
+    // isn't a fatal error; it just means push notifications won't work.
+    vapid: Option<push::VapidKey>,
+    noco_webhook_token: Option<auth::ApiToken>,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -28,6 +33,7 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
         .set(Config {
             base_domain: env.var("BASE_DOMAIN")?.to_string(),
             client_domain: env.var("CLIENT_DOMAIN")?.to_string(),
+            api_domain: env.var("API_DOMAIN")?.to_string(),
             cloudflare_api_token: env.secret("CLOUDFLARE_API_TOKEN")?.to_string().into(),
             cloudflare_zone_id: env.secret("CLOUDFLARE_ZONE_ID")?.to_string().into(),
             admin_api_token: env
@@ -46,10 +52,26 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
                 .var("R2_ASSET_CACHE_TTL_SECONDS")?
                 .to_string()
                 .parse()?,
+            vapid: init_vapid(env),
+            noco_webhook_token: env
+                .secret("NOCO_WEBHOOK_TOKEN")
+                .ok()
+                .and_then(|s| auth::ApiToken::try_from(s.to_string().as_str()).ok()),
         })
         .ok();
 
     Ok(())
+}
+
+fn init_vapid(env: &Env) -> Option<push::VapidKey> {
+    let private_key = env.secret("VAPID_PRIVATE_KEY").ok()?.to_string();
+    if private_key.is_empty() {
+        return None;
+    }
+    let subject = env.var("VAPID_SUBJECT").ok()?.to_string();
+    push::VapidKey::from_base64url(&private_key, subject)
+        .inspect_err(|e| worker::console_warn!("VAPID key not loaded: {e}"))
+        .ok()
 }
 
 fn get_config() -> &'static Config {
@@ -62,6 +84,18 @@ pub fn base_domain() -> &'static str {
 
 pub fn client_domain() -> &'static str {
     get_config().client_domain.as_str()
+}
+
+pub fn api_domain() -> &'static str {
+    get_config().api_domain.as_str()
+}
+
+pub fn vapid_key() -> Option<push::VapidKey> {
+    get_config().vapid.clone()
+}
+
+pub fn noco_webhook_token() -> Option<auth::ApiToken> {
+    get_config().noco_webhook_token.clone()
 }
 
 pub fn cloudflare_api_token() -> cf::ApiToken {

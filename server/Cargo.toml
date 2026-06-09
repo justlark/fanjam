@@ -48,6 +48,7 @@ tokio-postgres = { version = "0.7.13", default-features = false, features = [
 wasm-bindgen-futures = "0.4.73"
 chrono = "0.4.45"
 serde_json_canonicalizer = "0.3.2"
+pulldown-cmark = { version = "0.13", default-features = false }
 
 # Because there are no crates implementing the Web Push API that compile on
 # `wasm32-unknown-unknown`, we must implement the necessary functionality
