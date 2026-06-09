@@ -10,7 +10,7 @@ use p256::{
     PublicKey, SecretKey,
     elliptic_curve::{ecdh::diffie_hellman, sec1::ToEncodedPoint},
 };
-use rand_core::{OsRng, RngCore};
+use rand::Rng;
 use sha2::Sha256;
 
 /// Record size advertised in the RFC 8188 framing header. The application
@@ -56,10 +56,13 @@ pub struct Sender {
 impl Sender {
     /// Generate a fresh ephemeral keypair and salt for a single message.
     pub fn random() -> Self {
+        let mut rng = rand::thread_rng();
+
         let mut salt = [0u8; SALT_LEN];
-        OsRng.fill_bytes(&mut salt);
+        rng.fill(&mut salt);
+
         Self {
-            server_secret: SecretKey::random(&mut OsRng),
+            server_secret: SecretKey::random(&mut rng),
             salt,
         }
     }
@@ -71,7 +74,10 @@ impl Sender {
     pub fn from_raw(server_secret: [u8; 32], salt: [u8; SALT_LEN]) -> anyhow::Result<Self> {
         let server_secret = SecretKey::from_slice(&server_secret)
             .map_err(|e| anyhow::anyhow!("invalid server secret key: {e}"))?;
-        Ok(Self { server_secret, salt })
+        Ok(Self {
+            server_secret,
+            salt,
+        })
     }
 
     /// Encrypt a single message for the given subscription's user-agent
@@ -145,8 +151,7 @@ impl Sender {
             .map_err(|e| anyhow::anyhow!("AES-GCM encrypt failed: {e}"))?;
 
         // RFC 8188 §2.1 framing header followed by the ciphertext.
-        let mut body =
-            Vec::with_capacity(SALT_LEN + 4 + 1 + PUBLIC_KEY_LEN + ciphertext.len());
+        let mut body = Vec::with_capacity(SALT_LEN + 4 + 1 + PUBLIC_KEY_LEN + ciphertext.len());
         body.extend_from_slice(&self.salt);
         body.extend_from_slice(&RECORD_SIZE.to_be_bytes());
         body.push(PUBLIC_KEY_LEN as u8);
@@ -166,7 +171,9 @@ mod tests {
     use base64::prelude::*;
 
     fn b64u(s: &str) -> Vec<u8> {
-        BASE64_URL_SAFE_NO_PAD.decode(s).expect("invalid base64url test vector")
+        BASE64_URL_SAFE_NO_PAD
+            .decode(s)
+            .expect("invalid base64url test vector")
     }
 
     /// RFC 8291 Appendix A: end-to-end test of the aes128gcm Web Push

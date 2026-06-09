@@ -122,11 +122,11 @@ impl BackupSnapshot {
                 const LEN: usize = 4;
                 const POOL: &str = "0123456789";
 
-                let mut rng = rand::rng();
+                let mut rng = rand::thread_rng();
 
                 let prefix = Self::ARCHIVED_PREFIX;
                 let suffix = iter::repeat_with(|| {
-                    let idx = rng.random_range(0..POOL.len());
+                    let idx = rng.gen_range(0..POOL.len());
                     POOL.chars().nth(idx).unwrap()
                 })
                 .take(LEN)
