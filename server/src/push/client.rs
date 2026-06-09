@@ -91,8 +91,7 @@ impl Client {
         subscription: &Subscription,
         payload: &[u8],
     ) -> anyhow::Result<DeliveryOutcome> {
-        let p256dh =
-            decode_b64url_fixed::<PUBLIC_KEY_LEN>(&subscription.keys.p256dh, "p256dh")?;
+        let p256dh = decode_b64url_fixed::<PUBLIC_KEY_LEN>(&subscription.keys.p256dh, "p256dh")?;
         let auth = decode_b64url_fixed::<AUTH_LEN>(&subscription.keys.auth, "auth")?;
 
         let sender = Sender::random();
@@ -138,14 +137,9 @@ fn decode_b64url_fixed<const N: usize>(s: &str, name: &str) -> anyhow::Result<[u
     let bytes = BASE64_URL_SAFE_NO_PAD
         .decode(trimmed)
         .map_err(|e| anyhow::anyhow!("subscription {name} is not valid base64url: {e}"))?;
-    bytes
-        .try_into()
-        .map_err(|v: Vec<u8>| {
-            anyhow::anyhow!(
-                "subscription {name} is {} bytes, expected {N}",
-                v.len()
-            )
-        })
+    bytes.try_into().map_err(|v: Vec<u8>| {
+        anyhow::anyhow!("subscription {name} is {} bytes, expected {N}", v.len())
+    })
 }
 
 #[cfg(test)]

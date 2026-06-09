@@ -36,7 +36,10 @@ impl VapidKey {
     /// produced by the `openssl` recipe in the deploy docs) into a usable
     /// key, paired with the contact subject string (a `mailto:` or `https:`
     /// URL identifying us to the push service operator).
-    pub fn from_base64url(private_b64url: &str, subject: impl Into<String>) -> anyhow::Result<Self> {
+    pub fn from_base64url(
+        private_b64url: &str,
+        subject: impl Into<String>,
+    ) -> anyhow::Result<Self> {
         // Tolerate the occasional stray `=` if the secret was pasted with
         // padding from an external tool.
         let trimmed = private_b64url.trim().trim_end_matches('=');
@@ -141,10 +144,8 @@ mod tests {
     #[test]
     fn audience_strips_path() {
         assert_eq!(
-            audience_from_endpoint(
-                "https://updates.push.services.mozilla.com/wpush/v2/abcdef"
-            )
-            .unwrap(),
+            audience_from_endpoint("https://updates.push.services.mozilla.com/wpush/v2/abcdef")
+                .unwrap(),
             "https://updates.push.services.mozilla.com",
         );
     }
@@ -164,8 +165,7 @@ mod tests {
     fn header_payload_encodes_expected_claims() {
         let key = VapidKey::from_base64url(TEST_PRIVATE_B64, "mailto:test@example.com").unwrap();
         let issued_at = 1_700_000_000_i64;
-        let header =
-            build_authorization_header(&key, "https://example.push", issued_at).unwrap();
+        let header = build_authorization_header(&key, "https://example.push", issued_at).unwrap();
         let (jwt_parts, _) = parts(&header);
         let payload = BASE64_URL_SAFE_NO_PAD.decode(jwt_parts[1]).unwrap();
         let payload: serde_json::Value = serde_json::from_slice(&payload).unwrap();
