@@ -143,5 +143,15 @@
     "key": "pwa_icon_maskable_sizes",
     "help": "The dimensions of the app icon in the PWA manifest (maskable).",
     "sensitive": false
+  },
+  {
+    "key": "use_push_notifications",
+    "help": "Whether to enable push notifications for new announcements.",
+    "sensitive": false
+  },
+  {
+    "key": "notifications_icon_name",
+    "help": "The asset name of the icon to show with push notifications.",
+    "sensitive": false
   }
 ]

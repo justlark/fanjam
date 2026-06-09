@@ -23,13 +23,35 @@ const AUTH_LEN: usize = 16;
 /// JSON shape produced by `PushSubscription.toJSON()` in the browser; this
 /// is what the client POSTs to `/apps/{env}/subscription` and what we store
 /// in KV. Field names match the wire format exactly.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, serde::Serialize)]
 pub struct Subscription {
     pub endpoint: String,
     pub keys: SubscriptionKeys,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+impl Subscription {
+    /// Stable identifier for this subscription. Equivalent to
+    /// [`endpoint_id`] applied to `self.endpoint`.
+    pub fn id(&self) -> String {
+        endpoint_id(&self.endpoint)
+    }
+}
+
+/// Stable identifier derived from a subscription endpoint URL alone. Used
+/// as the KV key suffix so re-subscribing with the same endpoint (e.g. a
+/// tab reload reading the same `PushSubscription` back from the SW
+/// registration) overwrites in place instead of accumulating duplicates,
+/// and so the DELETE handler can locate a subscription from just the
+/// endpoint without having to round-trip the full `keys` object.
+///
+/// 16 bytes of blake3 in hex is collision-resistant well beyond any
+/// plausible per-environment subscription count.
+pub fn endpoint_id(endpoint: &str) -> String {
+    let hash = blake3::hash(endpoint.as_bytes());
+    hash.to_hex()[..32].to_string()
+}
+
+#[derive(Debug, Clone, Deserialize, serde::Serialize)]
 pub struct SubscriptionKeys {
     /// SEC1-uncompressed P-256 public key, base64url-encoded (65 bytes raw).
     pub p256dh: String,

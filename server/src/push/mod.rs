@@ -8,7 +8,7 @@ mod client;
 mod encrypt;
 mod vapid;
 
-#[allow(unused_imports)] // wired up in slice 2
-pub use client::{Client, DeliveryOutcome, Subscription, SubscriptionKeys};
+#[allow(unused_imports)] // some of these get wired up across slices 2-3
+pub use client::{Client, DeliveryOutcome, Subscription, SubscriptionKeys, endpoint_id};
 #[allow(unused_imports)] // wired up in slice 2
 pub use vapid::VapidKey;

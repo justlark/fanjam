@@ -70,6 +70,7 @@ interface RawConfig {
   feedback_url: string | null;
   use_schedule_sharing: boolean | null;
   use_calendar_export: boolean | null;
+  use_push_notifications: boolean | null;
 }
 
 interface Envelope<T> {
@@ -141,6 +142,7 @@ export interface Config {
   feedbackUrl?: string;
   useScheduleSharing?: boolean;
   useCalendarExport?: boolean;
+  usePushNotifications?: boolean;
 }
 
 const isOk = (response: Response): boolean => response.ok;
@@ -389,6 +391,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     feedbackUrl: rawConfig.feedback_url ?? undefined,
     useScheduleSharing: rawConfig.use_schedule_sharing ?? undefined,
     useCalendarExport: rawConfig.use_calendar_export ?? undefined,
+    usePushNotifications: rawConfig.use_push_notifications ?? undefined,
   };
 
   return { ok: true, value: config };
@@ -408,6 +411,43 @@ const getAlias = async (aliasId: string): Promise<ApiResult<string>> => {
   return { ok: true, value: rawConfig.env_id };
 };
 
+const postSubscription = async (
+  envId: string,
+  subscription: PushSubscriptionJSON,
+): Promise<ApiResult<void>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  return { ok: true, value: undefined };
+};
+
+const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiResult<void>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint }),
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  return { ok: true, value: undefined };
+};
+
 export default {
   getEvents,
   getInfo,
@@ -416,4 +456,6 @@ export default {
   getFiles,
   getConfig,
   getAlias,
+  postSubscription,
+  deleteSubscription,
 };

@@ -121,6 +121,8 @@ pub struct Config {
     pub pwa_icon_maskable_name: Option<String>,
     pub pwa_icon_maskable_type: Option<String>,
     pub pwa_icon_maskable_sizes: Option<String>,
+    pub use_push_notifications: Option<bool>,
+    pub notifications_icon_name: Option<String>,
 }
 
 // Documentation and metadata for each config key in the environment-specific configuration. Keep

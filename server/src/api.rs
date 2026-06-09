@@ -209,4 +209,11 @@ pub struct GetConfigResponse {
     pub pwa_icon_maskable_name: Option<String>,
     pub pwa_icon_maskable_type: Option<String>,
     pub pwa_icon_maskable_sizes: Option<String>,
+    pub use_push_notifications: Option<bool>,
+    pub notifications_icon_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteSubscriptionRequest {
+    pub endpoint: String,
 }

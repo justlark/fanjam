@@ -1,10 +1,12 @@
 use secrecy::ExposeSecret;
+use serde::{Deserialize, Serialize};
 use worker::kv::{KvError, KvStore};
 
 use crate::{
     api::Alias,
     env::{Config, EnvDomain, EnvId, EnvName},
     noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, TableInfo},
+    push,
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -67,6 +69,18 @@ fn base_id_key(env_name: &EnvName) -> String {
 // Environment-specific config values.
 fn env_config_key(env_name: &EnvName) -> String {
     format!("env:{env_name}:config")
+}
+
+// Per-environment push notification subscriptions. The suffix is a stable
+// hash of the subscription endpoint URL (see `push::Subscription::id`), so
+// re-POSTing the same subscription is idempotent and listing all
+// subscriptions for an environment is a single `prefix` scan.
+fn subscription_key_prefix(env_name: &EnvName) -> String {
+    format!("env:{env_name}:subscription:")
+}
+
+fn subscription_key(env_name: &EnvName, subscription_id: &str) -> String {
+    format!("{}{}", subscription_key_prefix(env_name), subscription_id)
 }
 
 fn cache_key_prefix(env_name: &EnvName) -> String {
@@ -450,4 +464,92 @@ pub async fn get_env_config(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<
         .await
         .map_err(wrap_kv_err)?
         .unwrap_or_default())
+}
+
+/// A push subscription as stored in KV: the wire-format subscription the
+/// client POSTed, plus a server-assigned `created_at` timestamp for ageing
+/// decisions (currently informational only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StoredSubscription {
+    #[serde(flatten)]
+    pub subscription: push::Subscription,
+    pub created_at: i64,
+}
+
+#[worker::send]
+pub async fn put_subscription(
+    kv: &KvStore,
+    env_name: &EnvName,
+    subscription: &push::Subscription,
+) -> anyhow::Result<()> {
+    let stored = StoredSubscription {
+        subscription: subscription.clone(),
+        created_at: chrono::Utc::now().timestamp(),
+    };
+    let key = subscription_key(env_name, &subscription.id());
+
+    kv.put(&key, &stored)
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn delete_subscription(
+    kv: &KvStore,
+    env_name: &EnvName,
+    subscription_id: &str,
+) -> anyhow::Result<()> {
+    kv.delete(&subscription_key(env_name, subscription_id))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+/// List every subscription stored under this environment, paginating through
+/// KV's 1000-keys-per-page limit. The webhook fan-out path (slice 3) iterates
+/// this list and sends a push to each subscription; a popular convention
+/// could plausibly cross 1000, so we handle the cursor properly even though
+/// every other `kv::list` caller in this codebase stops at one page.
+#[worker::send]
+#[allow(dead_code)] // consumed by the webhook fan-out in slice 3
+pub async fn list_subscriptions(
+    kv: &KvStore,
+    env_name: &EnvName,
+) -> anyhow::Result<Vec<StoredSubscription>> {
+    let prefix = subscription_key_prefix(env_name);
+    let mut cursor: Option<String> = None;
+    let mut out = Vec::new();
+
+    loop {
+        let mut list = kv.list().prefix(prefix.clone());
+        if let Some(c) = cursor.as_deref() {
+            list = list.cursor(c.to_string());
+        }
+        let page = list.execute().await.map_err(wrap_kv_err)?;
+
+        for key in &page.keys {
+            if let Some(stored) = kv
+                .get(&key.name)
+                .json::<StoredSubscription>()
+                .await
+                .map_err(wrap_kv_err)?
+            {
+                out.push(stored);
+            }
+            // If the key vanished between `list` and `get`, just skip it —
+            // a concurrent DELETE on the same subscription is benign.
+        }
+
+        match page.cursor {
+            Some(c) if !page.list_complete => cursor = Some(c),
+            _ => break,
+        }
+    }
+
+    Ok(out)
 }

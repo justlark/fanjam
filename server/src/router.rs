@@ -13,12 +13,12 @@ use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper
 
 use crate::{
     api::{
-        Announcement, Event, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
-        GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
-        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse,
-        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
-        PutTokenRequest,
+        Announcement, DeleteSubscriptionRequest, Event, File, GetAliasResponse, GetAliasesResponse,
+        GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
+        GetDomainEnvResponse, GetDomainResponse, GetEventsResponse, GetFilesResponse,
+        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page,
+        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostRestoreBackupKind,
+        PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse, PutTokenRequest,
     },
     auth::admin_auth_layer,
     cache::{get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -29,7 +29,7 @@ use crate::{
     http::http_headers_from_object,
     kv, neon,
     noco::{self, ApiToken, MigrationState},
-    sql,
+    push, sql,
     store::{MigrationChange, Store},
     url,
 };
@@ -102,6 +102,8 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/announcements", get(get_announcements))
         .route("/apps/{env_id}/files", get(get_files))
         .route("/apps/{env_id}/config", get(get_config))
+        .route("/apps/{env_id}/subscription", post(post_subscription))
+        .route("/apps/{env_id}/subscription", delete(delete_subscription))
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
         .route("/aliases/{env_id}", get(get_alias))
         .route("/domains/{domain}", get(get_domain_env))
@@ -802,7 +804,50 @@ async fn get_config(
         pwa_icon_maskable_name: config.pwa_icon_maskable_name,
         pwa_icon_maskable_type: config.pwa_icon_maskable_type,
         pwa_icon_maskable_sizes: config.pwa_icon_maskable_sizes,
+        use_push_notifications: config.use_push_notifications,
+        notifications_icon_name: config.notifications_icon_name,
     }))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn post_subscription(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(subscription): Json<push::Subscription>,
+) -> Result<NoContent, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    kv::put_subscription(&state.kv, &env_name, &subscription)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn delete_subscription(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(body): Json<DeleteSubscriptionRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    // Idempotent: deleting a subscription that isn't present is still a
+    // success — the desired state ("this subscription isn't stored") holds
+    // either way, and the SW reliably retries on transient failures.
+    kv::delete_subscription(&state.kv, &env_name, &push::endpoint_id(&body.endpoint))
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
 }
 
 #[axum::debug_handler]
