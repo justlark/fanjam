@@ -862,6 +862,11 @@ async fn delete_subscription(
 
 #[derive(Debug, Deserialize)]
 struct NocoAnnouncementWebhook {
+    data: NocoAnnouncementWebhookData,
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementWebhookData {
     #[serde(default)]
     rows: Vec<NocoAnnouncementRow>,
 }
@@ -914,8 +919,8 @@ async fn post_announcement_created(
             )
         });
 
-    let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.rows.len());
-    for row in &webhook.rows {
+    let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.data.rows.len());
+    for row in &webhook.data.rows {
         let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
         let payload = push::Payload {
             title: &row.title,

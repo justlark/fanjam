@@ -74,25 +74,39 @@ impl<'a> Migration<'a> {
         );
 
         let bearer = BASE64_STANDARD.encode(token.expose_secret());
-        // The `{{ json data }}` Handlebars template renders the inserted rows when the hook fires.
+
+        let notification = serde_json::to_string(&json!({
+            "type": "URL",
+            "include_user": false,
+            "payload": {
+                "method": "POST",
+                "path": url,
+                "auth": "",
+                "body": "{{ json event }}",
+                "headers": [
+                    {
+                        "enabled": true,
+                        "name": "Authorization",
+                        "value": format!("Bearer {bearer}"),
+                    },
+                    {
+                        "enabled": true,
+                        "name": "Content-Type",
+                        "value": "application/json",
+                    },
+                ],
+                "parameters": [],
+            },
+            "trigger_form": false,
+        }))?;
+
         let body = json!({
             "title": HOOK_TITLE,
             "event": "after",
-            "operation": "insert",
-            "version": "v2",
+            "operation": ["insert"],
+            "version": "v3",
             "active": true,
-            "notification": {
-                "type": "URL",
-                "payload": {
-                    "method": "POST",
-                    "path": url,
-                    "headers": [
-                        { "name": "Authorization", "value": format!("Bearer {bearer}") },
-                        { "name": "Content-Type", "value": "application/json" },
-                    ],
-                    "body": "{{ json data }}",
-                },
-            },
+            "notification": notification,
         });
 
         self.client
