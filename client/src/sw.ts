@@ -96,7 +96,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: payload.icon ?? "/icons/icon.png",
+      icon: payload.icon ?? "/icons/icon-padded.png",
       data: { url: payload.url },
     }),
   );
