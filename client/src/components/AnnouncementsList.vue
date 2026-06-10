@@ -26,7 +26,8 @@ const enablePush = async () => {
   if (result === "granted-subscribed") {
     toast.add({
       severity: "success",
-      summary: "Notifications enabled! You'll get updates when there's a new announcement.",
+      summary: "Notifications enabled",
+      detail: "You'll get updates when there's a new announcement.",
       life: TOAST_TTL_LONG,
     });
   } else if (result === "granted-unsubscribed") {
@@ -34,7 +35,8 @@ const enablePush = async () => {
     // likely means the user is offline.
     toast.add({
       severity: "error",
-      summary: "Could not set up notifications. Are you offline?",
+      summary: "Could not set up notifications",
+      detail: "Are you offline?",
       life: TOAST_TTL_LONG,
     });
   }
