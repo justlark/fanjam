@@ -905,7 +905,14 @@ async fn post_announcement_created(
         .unwrap_or(false)
         .then_some(env_config.notifications_icon_name)
         .flatten()
-        .map(|name| format!("https://{}/apps/{}/assets/{}", config::api_domain(), env_id, name));
+        .map(|name| {
+            format!(
+                "https://{}/apps/{}/assets/{}",
+                config::api_domain(),
+                env_id,
+                name
+            )
+        });
 
     let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.rows.len());
     for row in &webhook.rows {

@@ -29,19 +29,8 @@ const AUTH_LEN: usize = 16;
 /// Length of an uncompressed SEC1 P-256 public key (`0x04 || X || Y`).
 pub const PUBLIC_KEY_LEN: usize = 65;
 
-/// An encrypted Web Push payload, ready to be POSTed to the subscription
-/// endpoint as the request body.
 pub struct Encrypted {
-    /// The full encrypted body: RFC 8188 framing header (salt, rs, idlen,
-    /// keyid) followed by the AES-128-GCM ciphertext.
     pub body: Vec<u8>,
-
-    /// SEC1-uncompressed public key of the ephemeral keypair used to derive
-    /// the shared secret for this message. Same bytes that are embedded in
-    /// `body` as the `keyid`; we expose it separately because the VAPID
-    /// `Authorization` header carries the *VAPID* (long-lived) public key in
-    /// its `k=` parameter, which is unrelated to this ephemeral one.
-    pub server_public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 /// A one-shot encryption context: a fresh ephemeral P-256 keypair plus a
@@ -158,10 +147,7 @@ impl Sender {
         body.extend_from_slice(&server_public);
         body.extend_from_slice(&ciphertext);
 
-        Ok(Encrypted {
-            body,
-            server_public_key: server_public,
-        })
+        Ok(Encrypted { body })
     }
 }
 
@@ -208,15 +194,6 @@ mod tests {
         let encrypted = sender.encrypt(&ua_public, &auth, plaintext).unwrap();
 
         assert_eq!(encrypted.body, expected_body, "encrypted body mismatch");
-
-        // The expected sender public key is encoded as the `keyid` portion of
-        // the framing header; confirm we return it separately, too.
-        let expected_as_public: [u8; 65] = b64u(
-            "BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8",
-        )
-        .try_into()
-        .unwrap();
-        assert_eq!(encrypted.server_public_key, expected_as_public);
     }
 
     /// Sanity check: a freshly generated sender should produce a body of the

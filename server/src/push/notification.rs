@@ -40,10 +40,7 @@ pub fn markdown_to_plain_text(markdown: &str) -> String {
                 needs_space = true;
             }
             Event::End(
-                TagEnd::Paragraph
-                | TagEnd::Heading(_)
-                | TagEnd::Item
-                | TagEnd::BlockQuote(_),
+                TagEnd::Paragraph | TagEnd::Heading(_) | TagEnd::Item | TagEnd::BlockQuote(_),
             ) => {
                 needs_space = true;
             }

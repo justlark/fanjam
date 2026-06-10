@@ -14,7 +14,6 @@ pub struct MigrationContext {
     pub noco_webhook_token: Option<auth::ApiToken>,
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Version(u32);

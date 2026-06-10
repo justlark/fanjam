@@ -65,8 +65,8 @@ where
     AsyncRequireAuthorizationLayer::new(move |req: Request<Body>| {
         let expected = expected.clone();
         async move {
-            let expected_api_token = expected()
-                .ok_or_else(|| StatusCode::SERVICE_UNAVAILABLE.into_response())?;
+            let expected_api_token =
+                expected().ok_or_else(|| StatusCode::SERVICE_UNAVAILABLE.into_response())?;
 
             let auth_header = req
                 .headers()
