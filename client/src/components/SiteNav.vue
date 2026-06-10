@@ -10,6 +10,7 @@ import MainMenu from "./MainMenu.vue";
 import IconButton from "./IconButton.vue";
 import ShareViewFooter from "./ShareViewFooter.vue";
 import AppUpdater from "./AppUpdater.vue";
+import PushNotificationPrompter from "./PushNotificationPrompter.vue";
 import SiteAttribution from "./SiteAttribution.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
 import Toast from "primevue/toast";
@@ -161,5 +162,6 @@ const headerHeadingId = useId();
     <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
     <Toast position="bottom-center" />
     <AppUpdater />
+    <PushNotificationPrompter />
   </div>
 </template>

@@ -1,19 +1,32 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import Button from "primevue/button";
 import SimpleIcon from "./SimpleIcon.vue";
 import OverlayBadge from "primevue/overlaybadge";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import useRemoteData from "@/composables/useRemoteData";
+import usePushNotifications from "@/composables/usePushNotifications";
 import { localizeDatetime } from "@/utils/time";
 
 const datetimeFormats = useDatetimeFormats();
 
 const {
-  data: { announcements },
+  data: { announcements, config },
 } = useRemoteData();
 
 const unreadAnnouncements = useUnreadAnnouncements();
+const { state: pushState, requestAndSubscribe } = usePushNotifications();
+
+// Show the persistent enable button when push notifications are configured
+// for this env and the user can still act on it — either they haven't
+// answered the OS prompt yet, or they granted permission but no subscription
+// exists yet (e.g. they cleared site data or switched browsers).
+const canEnablePush = computed(
+  () =>
+    (config.value?.usePushNotifications ?? true) &&
+    (pushState.value === "default" || pushState.value === "granted-unsubscribed"),
+);
 
 const filteredAnnouncements = computed(() => {
   const withTitle = announcements.value.filter((announcement) => announcement.title.trim() !== "");
@@ -30,6 +43,14 @@ const filteredAnnouncements = computed(() => {
   <div class="mt-8 text-center flex flex-col gap-10 px-6">
     <div class="flex flex-col items-center gap-4">
       <h1 class="text-3xl">Announcements</h1>
+      <Button
+        v-if="canEnablePush"
+        size="small"
+        severity="secondary"
+        icon="pi pi-bell"
+        label="Enable push notifications"
+        @click="requestAndSubscribe()"
+      />
     </div>
     <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4">
       <RouterLink

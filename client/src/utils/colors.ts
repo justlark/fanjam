@@ -1,15 +1,4 @@
-// A hash algorithm that converts a string to a number.
-const djb2Hash = (str: string) => {
-  // This magic number is specified by the djb2 algorithm; we didn't choose it,
-  // and shouldn't try to change it.
-  let hash = 5381;
-
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) + hash + str.charCodeAt(i);
-  }
-
-  return hash >>> 0;
-};
+import { djb2Hash } from "./encoding";
 
 const allPaletteColors = [
   "red",
