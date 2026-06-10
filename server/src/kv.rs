@@ -1,5 +1,4 @@
 use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize};
 use worker::kv::{KvError, KvStore};
 
 use crate::{
@@ -466,29 +465,15 @@ pub async fn get_env_config(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<
         .unwrap_or_default())
 }
 
-/// A push subscription as stored in KV: the wire-format subscription the
-/// client POSTed, plus a server-assigned `created_at` timestamp for ageing
-/// decisions (currently informational only).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StoredSubscription {
-    #[serde(flatten)]
-    pub subscription: push::Subscription,
-    pub created_at: i64,
-}
-
 #[worker::send]
 pub async fn put_subscription(
     kv: &KvStore,
     env_name: &EnvName,
     subscription: &push::Subscription,
 ) -> anyhow::Result<()> {
-    let stored = StoredSubscription {
-        subscription: subscription.clone(),
-        created_at: chrono::Utc::now().timestamp(),
-    };
     let key = subscription_key(env_name, &subscription.id());
 
-    kv.put(&key, &stored)
+    kv.put(&key, subscription)
         .map_err(wrap_kv_err)?
         .execute()
         .await
@@ -520,7 +505,7 @@ pub async fn delete_subscription(
 pub async fn list_subscriptions(
     kv: &KvStore,
     env_name: &EnvName,
-) -> anyhow::Result<Vec<StoredSubscription>> {
+) -> anyhow::Result<Vec<push::Subscription>> {
     let prefix = subscription_key_prefix(env_name);
     let mut cursor: Option<String> = None;
     let mut out = Vec::new();
@@ -533,13 +518,13 @@ pub async fn list_subscriptions(
         let page = list.execute().await.map_err(wrap_kv_err)?;
 
         for key in &page.keys {
-            if let Some(stored) = kv
+            if let Some(subscription) = kv
                 .get(&key.name)
-                .json::<StoredSubscription>()
+                .json::<push::Subscription>()
                 .await
                 .map_err(wrap_kv_err)?
             {
-                out.push(stored);
+                out.push(subscription);
             }
             // If the key vanished between `list` and `get`, just skip it —
             // a concurrent DELETE on the same subscription is benign.

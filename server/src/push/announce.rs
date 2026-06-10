@@ -11,23 +11,23 @@ pub async fn push_notifications(
     payload: &[u8],
 ) -> anyhow::Result<()> {
     let subscriptions = kv::list_subscriptions(kv, env_name).await?;
-    for stored in subscriptions {
-        match client.send(&stored.subscription, payload).await {
+    for subscription in subscriptions {
+        match client.send(&subscription, payload).await {
             Ok(DeliveryOutcome::Delivered) => {}
             Ok(DeliveryOutcome::SubscriptionGone) => {
-                kv::delete_subscription(kv, env_name, &stored.subscription.id()).await?;
+                kv::delete_subscription(kv, env_name, &subscription.id()).await?;
             }
             Ok(DeliveryOutcome::OtherStatus(code)) => {
                 console_warn!(
                     "Push service returned {} for endpoint {}",
                     code,
-                    stored.subscription.endpoint,
+                    subscription.endpoint,
                 );
             }
             Err(e) => {
                 console_warn!(
                     "Push send failed for endpoint {}: {e}",
-                    stored.subscription.endpoint,
+                    subscription.endpoint,
                 );
             }
         }
