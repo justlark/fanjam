@@ -3,6 +3,7 @@
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { googleFontsCache } from "workbox-recipes";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 
@@ -55,23 +56,20 @@ registerRoute(
   }),
 );
 
-// Assets from CDNs must be available offline.
-for (const [cacheName, origin] of [
-  ["google-fonts-cache", "https://fonts.googleapis.com"],
-  ["gstatic-fonts-cache", "https://fonts.gstatic.com"],
-  ["jsdelivr-cache", "https://cdn.jsdelivr.net"],
-] as const) {
-  registerRoute(
-    ({ url }) => url.origin === origin,
-    new StaleWhileRevalidate({
-      cacheName,
-      plugins: [
-        new ExpirationPlugin({ maxEntries: 10 }),
-        new CacheableResponsePlugin({ statuses: [0, 200] }),
-      ],
-    }),
-  );
-}
+// This is a workbox-provided recipe for caching Google fonts.
+googleFontsCache();
+
+// We need to cache assets from CDNs for offline use.
+registerRoute(
+  ({ url }) => url.origin === "https://cdn.jsdelivr.net",
+  new StaleWhileRevalidate({
+    cacheName: "jsdelivr-cache",
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 10 }),
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+    ],
+  }),
+);
 
 // This is the shape of the JSON payload for push notifications. `url` is a
 // relative path so it works whether or not the environment is being served
