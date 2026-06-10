@@ -74,13 +74,12 @@ impl<'a> Migration<'a> {
         );
 
         let bearer = BASE64_STANDARD.encode(token.expose_secret());
-
-        // NocoDB v2 hook schema. `{{ json data }}` is a Handlebars template
-        // NocoDB evaluates at fire time; `data` contains the inserted rows.
+        // The `{{ json data }}` Handlebars template renders the inserted rows when the hook fires.
         let body = json!({
             "title": HOOK_TITLE,
             "event": "after",
             "operation": "insert",
+            "version": "v2",
             "active": true,
             "notification": {
                 "type": "URL",
