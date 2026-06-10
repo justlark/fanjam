@@ -55,10 +55,17 @@ const enable = async () => {
   const result = await requestAndSubscribe();
 
   if (result === "granted-subscribed") {
-    console.log("DEBUG: time to add the toast");
     toast.add({
       severity: "success",
       summary: "Notifications enabled! You'll get updates when there's a new announcement.",
+      life: TOAST_TTL_LONG,
+    });
+  } else if (result === "granted-unsubscribed") {
+    // Permission was granted, but we could not send the subscription. This
+    // likely means the user is offline.
+    toast.add({
+      severity: "error",
+      summary: "Could not set up notifications. Are you offline?",
       life: TOAST_TTL_LONG,
     });
   }
