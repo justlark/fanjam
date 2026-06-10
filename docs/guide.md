@@ -65,8 +65,7 @@ is special in that trying to add more than one row doesn't do anything.
 
 You can use the dashboard to send out announcements that attendees can view in
 the app. They'll see a notification badge in the app when they have unread
-notifications, but they will not receive push notifications. We may add support
-for push notifications in the future.
+notifications, and if they opt in, they will also receive push notifications.
 
 If you would prefer to send out announcements through some other channel, like
 Telegram or Discord, let us know and we can hide the announcements section in
