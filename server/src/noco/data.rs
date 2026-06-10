@@ -171,8 +171,8 @@ struct AnnouncementResponse {
     pub files: Option<Vec<FileBodyResponse>>,
     #[serde(rename = "Created")]
     pub creatd_at: String,
-    #[serde(rename = "Last Edited")]
-    pub updated_at: String,
+    #[serde(rename = "Last Edited", default)]
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,7 +232,7 @@ pub struct Announcement {
     pub body: String,
     pub files: Vec<File>,
     pub created_at: String,
-    pub updated_at: String,
+    pub updated_at: Option<String>,
 }
 
 #[worker::send]

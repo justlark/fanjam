@@ -93,7 +93,10 @@ const announcementHeadingId = useId();
               </time>
             </EventDetail>
             <EventDetail
-              v-if="!timeIsNearlyEqual(announcement.createdAt, announcement.updatedAt)"
+              v-if="
+                announcement.updatedAt &&
+                !timeIsNearlyEqual(announcement.createdAt, announcement.updatedAt)
+              "
               class="text-muted-color"
               icon="arrow-clockwise"
               size="sm"

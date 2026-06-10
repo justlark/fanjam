@@ -158,7 +158,7 @@ pub struct Announcement {
     pub body: String,
     pub attachments: Vec<File>,
     pub created_at: String,
-    pub updated_at: String,
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -437,7 +437,7 @@ interface StoredAnnouncement {
     media_type: string;
   }>;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 const announcementsRef = ref<FetchResult<Array<Announcement>>>({ status: "pending" });
@@ -465,7 +465,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
           media_type: attachment.mediaType,
         })),
         created_at: announcement.createdAt.toISOString(),
-        updated_at: announcement.updatedAt.toISOString(),
+        updated_at: announcement.updatedAt?.toISOString() ?? null,
       })),
     fromCache: (data) =>
       data.map((announcement) => ({
@@ -478,7 +478,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
           mediaType: attachment.media_type,
         })),
         createdAt: new Date(announcement.created_at),
-        updatedAt: new Date(announcement.updated_at),
+        updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
       })),
   });
 

@@ -32,7 +32,7 @@ const filteredAnnouncements = computed(() => {
   const withTitle = announcements.value.filter((announcement) => announcement.title.trim() !== "");
 
   withTitle.sort((a, b) => {
-    return b.updatedAt.valueOf() - a.updatedAt.valueOf();
+    return (b.updatedAt ?? b.createdAt).valueOf() - (a.updatedAt ?? a.createdAt).valueOf();
   });
 
   return withTitle;
@@ -71,7 +71,7 @@ const filteredAnnouncements = computed(() => {
               {{ announcement.title }}
             </h2>
             <span v-if="datetimeFormats" class="text-muted-color">{{
-              localizeDatetime(datetimeFormats, announcement.updatedAt)
+              localizeDatetime(datetimeFormats, announcement.updatedAt ?? announcement.createdAt)
             }}</span>
           </div>
         </component>

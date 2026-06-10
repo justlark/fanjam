@@ -47,7 +47,7 @@ interface RawAnnouncement {
     media_type: string;
   }>;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 interface RawFile {
@@ -115,7 +115,7 @@ export interface Announcement {
   body: string;
   attachments: Array<File>;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface File {
@@ -324,7 +324,7 @@ const getAnnouncements = async (
         mediaType: attachment.media_type,
       })),
       createdAt: new Date(announcement.created_at),
-      updatedAt: new Date(announcement.updated_at),
+      updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
     }),
   );
 
