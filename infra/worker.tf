@@ -1,6 +1,11 @@
 locals {
   # Increment this to roll the worker admin API token.
   admin_api_token_counter = 1
+
+  # Increment this to roll the NocoDB → server webhook auth token. Rolling
+  # this also requires re-running the migration that registers the
+  # Announcements webhook so NocoDB starts sending the new value.
+  noco_webhook_token_counter = 1
 }
 
 resource "random_bytes" "worker_admin_api_token" {
@@ -8,6 +13,16 @@ resource "random_bytes" "worker_admin_api_token" {
 
   keepers = {
     counter = local.admin_api_token_counter
+  }
+
+  length = 32
+}
+
+resource "random_bytes" "noco_webhook_token" {
+  for_each = local.stages
+
+  keepers = {
+    counter = local.noco_webhook_token_counter
   }
 
   length = 32
@@ -49,6 +64,15 @@ resource "cloudflare_workers_secret" "admin_api_token" {
   name        = "ADMIN_API_TOKEN"
   script_name = "sparklefish-server-${each.key}"
   secret_text = random_bytes.worker_admin_api_token[each.key].base64
+}
+
+resource "cloudflare_workers_secret" "noco_webhook_token" {
+  for_each = local.stages
+
+  account_id  = var.cloudflare_account_id
+  name        = "NOCO_WEBHOOK_TOKEN"
+  script_name = "sparklefish-server-${each.key}"
+  secret_text = random_bytes.noco_webhook_token[each.key].base64
 }
 
 resource "cloudflare_workers_secret" "cloudflare_api_token" {

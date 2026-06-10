@@ -439,13 +439,17 @@ impl Store {
 
         let migration_state = MigrationState::existing(old_version, self.base_id.clone());
 
+        let env_id = kv::get_env_id(&self.kv, &self.env_name)
+            .await
+            .map_err(Error::Internal)?;
+
         let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &db_client);
 
         let ExistingMigrationState {
             version: new_version,
             ..
         } = migrator
-            .migrate(&self.env_name, migration_state)
+            .migrate(&self.env_name, env_id, migration_state)
             .await
             .map_err(Error::Internal)?;
 

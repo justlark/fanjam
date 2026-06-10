@@ -71,7 +71,7 @@ impl<'a> Migration<'a> {
 impl<'a> common::Migration<'a> for Migration<'a> {
     const INDEX: Version = n3::Migration::INDEX.next();
 
-    fn new(client: &'a Client) -> Self {
+    fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
         Self { client }
     }
 

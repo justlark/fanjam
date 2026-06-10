@@ -34,6 +34,12 @@ impl TryFrom<&str> for ApiToken {
     }
 }
 
+impl ExposeSecret<[u8]> for ApiToken {
+    fn expose_secret(&self) -> &[u8] {
+        self.0.expose_secret()
+    }
+}
+
 type BoxFutureResponseResult<'a> = BoxFuture<'a, Result<Request<Body>, Response<Body>>>;
 
 pub fn admin_auth_layer<'a>()

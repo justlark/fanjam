@@ -398,10 +398,14 @@ async fn post_base(
 
     let migration_state = MigrationState::new(body.title, body.email);
 
+    let env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
     let migrator = noco::Migrator::new(&noco_client, &neon_client, &db_client);
 
     migrator
-        .migrate(&env_name, migration_state)
+        .migrate(&env_name, env_id, migration_state)
         .await
         .map_err(Error::Internal)?;
 

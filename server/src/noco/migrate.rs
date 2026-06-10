@@ -1,10 +1,11 @@
 use worker::console_error;
 
-use crate::env::EnvName;
+use crate::config;
+use crate::env::{EnvId, EnvName};
 
 use super::{
     create_base,
-    migrations::{self, BaseId, Client as NocoClient, Version},
+    migrations::{self, BaseId, Client as NocoClient, MigrationContext, Version},
 };
 use crate::neon::Client as NeonClient;
 use crate::sql::Client as DbClient;
@@ -64,8 +65,15 @@ impl<'a> Migrator<'a> {
     pub async fn migrate(
         &self,
         env_name: &EnvName,
+        env_id: Option<EnvId>,
         state: MigrationState,
     ) -> anyhow::Result<ExistingMigrationState> {
+        let ctx = MigrationContext {
+            env_id,
+            api_domain: config::api_domain(),
+            noco_webhook_token: config::noco_webhook_token(),
+        };
+
         let (mut version, base_id) = match state {
             MigrationState::New(NewMigrationState {
                 title,
@@ -101,7 +109,9 @@ impl<'a> Migrator<'a> {
             let is_up_to_date = self
                 .neon_client
                 .with_rollback(env_name, async || {
-                    match migrations::run(self.noco_client, base_id.clone(), version.next()).await {
+                    match migrations::run(self.noco_client, base_id.clone(), version.next(), &ctx)
+                        .await
+                    {
                         Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
                         Err(error) => {
                             console_error!("Migration {} failed. Rolling back.", version.next());

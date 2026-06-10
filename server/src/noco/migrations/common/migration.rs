@@ -2,9 +2,18 @@ use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
+use crate::auth;
+use crate::env::EnvId;
 use crate::noco::Client;
 
 use super::BaseId;
+
+pub struct MigrationContext {
+    pub env_id: Option<EnvId>,
+    pub api_domain: &'static str,
+    pub noco_webhook_token: Option<auth::ApiToken>,
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -49,7 +58,7 @@ impl From<u32> for Version {
 pub trait Migration<'a> {
     const INDEX: Version;
 
-    fn new(client: &'a Client) -> Self;
+    fn new(client: &'a Client, ctx: &'a MigrationContext) -> Self;
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()>;
 }
