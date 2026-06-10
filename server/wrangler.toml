@@ -17,7 +17,7 @@ CLIENT_DOMAIN = "test.fanjam.live"
 API_DOMAIN = "api-test.fanjam.live"
 NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
 R2_ASSET_CACHE_TTL_SECONDS = "300"
-VAPID_PUBLIC_KEY = ""
+VAPID_PUBLIC_KEY = "BKKC3PSkXbB9mapDXLk0-UgCl8URIAwkLmpxj-W-nkDuRi4RjOgOa56C4USa8UBGyLef3npZH-el-SJWLJBAxR4"
 VAPID_SUBJECT = "mailto:hello@fanjam.live"
 
 [env.test.route]
@@ -46,7 +46,7 @@ NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
 # Assets in R2 (such as custom app icons) are cached at the edge.
 R2_ASSET_CACHE_TTL_SECONDS = "300"
 # VAPID identity for push notifications via the Web Push API.
-VAPID_PUBLIC_KEY = ""
+VAPID_PUBLIC_KEY = "BKKC3PSkXbB9mapDXLk0-UgCl8URIAwkLmpxj-W-nkDuRi4RjOgOa56C4USa8UBGyLef3npZH-el-SJWLJBAxR4"
 VAPID_SUBJECT = "mailto:hello@fanjam.live"
 
 [env.prod.route]
