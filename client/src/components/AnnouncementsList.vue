@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Button from "primevue/button";
+import { useToast } from "primevue/usetoast";
 import SimpleIcon from "./SimpleIcon.vue";
 import OverlayBadge from "primevue/overlaybadge";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
@@ -8,8 +9,10 @@ import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import useRemoteData from "@/composables/useRemoteData";
 import usePushNotifications from "@/composables/usePushNotifications";
 import { localizeDatetime } from "@/utils/time";
+import { TOAST_TTL_LONG } from "@/utils/toast";
 
 const datetimeFormats = useDatetimeFormats();
+const toast = useToast();
 
 const {
   data: { announcements, config },
@@ -18,6 +21,17 @@ const {
 const unreadAnnouncements = useUnreadAnnouncements();
 const { state: pushState, requestAndSubscribe } = usePushNotifications();
 
+const enablePush = async () => {
+  const result = await requestAndSubscribe();
+  if (result === "granted-subscribed") {
+    toast.add({
+      severity: "success",
+      summary: "Notifications enabled! You'll get updates when there's a new announcement.",
+      life: TOAST_TTL_LONG,
+    });
+  }
+};
+
 // Show the persistent enable button when push notifications are configured
 // for this env and the user can still act on it — either they haven't
 // answered the OS prompt yet, or they granted permission but no subscription
@@ -25,6 +39,7 @@ const { state: pushState, requestAndSubscribe } = usePushNotifications();
 const canEnablePush = computed(
   () =>
     (config.value?.usePushNotifications ?? true) &&
+    config.value?.hideAnnouncements !== true &&
     (pushState.value === "default" || pushState.value === "granted-unsubscribed"),
 );
 
@@ -49,7 +64,7 @@ const filteredAnnouncements = computed(() => {
         severity="secondary"
         icon="pi pi-bell"
         label="Enable push notifications"
-        @click="requestAndSubscribe()"
+        @click="enablePush()"
       />
     </div>
     <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4">

@@ -6,6 +6,7 @@ import { useToast } from "primevue/usetoast";
 import useEnvId from "@/composables/useEnvId";
 import useRemoteData from "@/composables/useRemoteData";
 import usePushNotifications from "@/composables/usePushNotifications";
+import { TOAST_TTL_LONG } from "@/utils/toast";
 
 // Delay before showing the toast so it doesn't fire as the first thing a
 // visitor sees on cold load — gives the schedule/announcement views a
@@ -21,7 +22,8 @@ const { state, requestAndSubscribe } = usePushNotifications();
 
 const dismissedKey = () => `push-prompt-dismissed:${envId.value}`;
 
-const isFeatureOn = () => config.value?.usePushNotifications ?? true;
+const isFeatureOn = () =>
+  (config.value?.usePushNotifications ?? true) && config.value?.hideAnnouncements !== true;
 const isPromptable = () => state.value === "default" && isFeatureOn();
 
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -31,9 +33,8 @@ onMounted(() => {
   if (localStorage.getItem(dismissedKey()) === "true") return;
 
   timer = setTimeout(() => {
-    // Re-check at fire time — the user may have granted/denied or navigated
-    // away in the meantime.
     if (!isPromptable()) return;
+
     toast.add({
       severity: "secondary",
       summary: "Get notified when there's a new announcement?",
@@ -51,31 +52,47 @@ watchEffect(() => {
 
 const enable = async () => {
   toast.removeGroup("push-prompt");
-  await requestAndSubscribe();
+  const result = await requestAndSubscribe();
+
+  if (result === "granted-subscribed") {
+    console.log("DEBUG: time to add the toast");
+    toast.add({
+      severity: "success",
+      summary: "Notifications enabled! You'll get updates when there's a new announcement.",
+      life: TOAST_TTL_LONG,
+    });
+  }
 };
 
 const dismiss = () => {
   toast.removeGroup("push-prompt");
   localStorage.setItem(dismissedKey(), "true");
+
+  toast.add({
+    severity: "info",
+    summary:
+      "You won't receive notifications. You can always enable them from the Announcements page.",
+    life: TOAST_TTL_LONG,
+  });
 };
 </script>
 
 <template>
   <Toast position="bottom-center" group="push-prompt">
     <template #message="slotProps">
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-col justify-between gap-4">
         <div>{{ slotProps.message.summary }}</div>
-        <div class="flex gap-2">
+        <div class="flex gap-4">
           <Button
-            class="break-normal"
+            class="grow break-normal"
             size="small"
             label="Not now"
             severity="secondary"
-            text
+            outlined
             @click="dismiss()"
           />
           <Button
-            class="break-normal"
+            class="grow break-normal"
             size="small"
             label="Enable"
             severity="primary"
