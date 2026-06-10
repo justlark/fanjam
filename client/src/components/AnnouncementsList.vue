@@ -23,6 +23,8 @@ const { state: pushState, requestAndSubscribe } = usePushNotifications();
 
 const enablePush = async () => {
   const result = await requestAndSubscribe();
+
+  // TODO: DRY this up.
   if (result === "granted-subscribed") {
     toast.add({
       severity: "success",
