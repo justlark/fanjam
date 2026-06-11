@@ -108,10 +108,8 @@ ability to edit the schedule itself.
 ![Screenshot](https://static.fanjam.live/guide-nocodb-hidden-screenshot.png)
 
 You can check the **Hidden** box next to an event to hide it from attendees in
-the app. If you're trying to add a last-minute event after your schedule has
-been announced, this lets you hide the new event until you're done editing. If
-an event is cancelled last-minute, this lets you remove it from the app while
-keeping the information visible to staff in the dashboard.
+the app. If an event is cancelled last-minute, this lets you remove it from the
+app while keeping the information visible to staff in the dashboard.
 
 ## Publishing your con app
 
