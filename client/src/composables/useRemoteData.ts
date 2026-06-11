@@ -598,7 +598,10 @@ type CombinedDataSource = () => {
   status: {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["status"];
   };
-  reload: () => Promise<void>;
+  reload: {
+    [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["reload"];
+  };
+  reloadAll: () => Promise<void>;
   clear: () => void;
 };
 
@@ -611,7 +614,7 @@ const useRemoteData: CombinedDataSource = () => {
     Object.entries(dataSources).map(([key, ds]) => [key, ds(envId)]),
   );
 
-  const reload = async () => {
+  const reloadAll = async () => {
     await Promise.all(Object.values(dataSourceResponses).map((ds) => ds.reload()));
   };
 
@@ -622,8 +625,11 @@ const useRemoteData: CombinedDataSource = () => {
   };
 
   return {
-    reload,
+    reloadAll,
     clear,
+    reload: Object.fromEntries(
+      Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.reload]),
+    ) as ReturnType<CombinedDataSource>["reload"],
     status: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.status]),
     ) as ReturnType<CombinedDataSource>["status"],
@@ -636,7 +642,18 @@ const useRemoteData: CombinedDataSource = () => {
 const remoteDataKey = Symbol("data");
 
 export const provideRemoteData = () => {
-  provide(remoteDataKey, useRemoteData());
+  const remoteData = useRemoteData();
+  provide(remoteDataKey, remoteData);
+
+  // When the service worker receives a push for a new announcement, it
+  // messages us to refetch the announcements list.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if ((event.data as { type?: string } | undefined)?.type === "announcement") {
+        void remoteData.reload.announcements();
+      }
+    });
+  }
 };
 
 const injectRemoteData = () => {

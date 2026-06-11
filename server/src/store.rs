@@ -409,6 +409,24 @@ impl Store {
         cache_key: "files",
     }
 
+    // Refresh the persistent cache specifically with the latest announcements from NocoDB. This is
+    // necessary because we send out push notifications for announcements.
+    #[worker::send]
+    pub async fn refresh_announcements_cache(&self) -> Result<(), Error> {
+        let table_ids =
+            Self::get_table_ids(&self.kv, &self.env_name, &self.noco_client, &self.base_id).await?;
+
+        let announcements = noco::get_announcements(&self.noco_client, &table_ids)
+            .await
+            .map_err(Error::Internal)?;
+
+        kv::put_cached_announcements(&self.kv, &self.env_name, &announcements)
+            .await
+            .map_err(Error::Internal)?;
+
+        Ok(())
+    }
+
     #[worker::send]
     pub async fn create_backup(&self, kind: PostBackupKind) -> Result<(), Error> {
         let backup_branch = match kind {

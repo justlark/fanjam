@@ -49,7 +49,7 @@ watch(route, () => {
 const {
   data: { info },
   status: { info: infoStatus },
-  reload,
+  reloadAll,
 } = useRemoteData();
 
 const conName = computed(() => info.value?.name ?? "FanJam");
@@ -62,7 +62,7 @@ const refresh = async () => {
     life: TOAST_TTL_SHORT,
   });
 
-  await reload();
+  await reloadAll();
 };
 
 const headerHeadingId = useId();

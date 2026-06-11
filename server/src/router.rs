@@ -924,12 +924,31 @@ async fn post_announcement_created(
         let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
         let payload = push::Payload {
             title: &row.title,
+            // This query param tells the client the user was sent here from a notification.
+            url: format!("/announcements/{}?notified=1", row.id),
             body,
-            url: format!("/announcements/{}", row.id),
             icon: icon.clone(),
         };
         payloads.push(serde_json::to_vec(&payload).map_err(|e| Error::Internal(e.into()))?);
     }
+
+    // Because they may be receiving a push notification about it, the new announcement should be
+    // visible to clients immediately. We first reseed the persistent cache from NocoDB, then purge
+    // the edge cache for this environment. Announcements should be infrequent enough that purging
+    // the edge cache shouldn't be a performance nightmare. If this becomes a problem in the future,
+    // we can do a more selective purge of only announcements.
+    Store::from_env_id(&state, &env_id)
+        .await?
+        .refresh_announcements_cache()
+        .await?;
+
+    cf::Client::new()
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(&env_name),
+        )
+        .await
+        .map_err(Error::Internal)?;
 
     let kv = state.kv.clone();
     let env_name_owned = env_name.clone();

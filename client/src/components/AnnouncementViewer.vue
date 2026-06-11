@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, watchEffect, onMounted, computed } from "vue";
+import { useId, watch, watchEffect, onMounted, computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { useAppPath } from "@/composables/useAppUrl";
@@ -20,6 +20,7 @@ const readAnnouncementsSet = useReadAnnouncements();
 const {
   data: { announcements },
   status: { announcements: announcementsStatus },
+  reload: { announcements: reloadAnnouncements },
 } = useRemoteData();
 
 const appPath = useAppPath();
@@ -28,6 +29,14 @@ const announcementId = computed(() => route.params.announcementId as string);
 const announcement = computed(() => {
   return announcements.value.find((p) => p.id === announcementId.value);
 });
+
+// If the user was linked here from a push notification, the new announcement
+// may not be cached locally yet. The link in the notification includes this
+// query param, which tells us to force a fresh fetch and block waiting for the
+// new announcement rather than immediately bouncing the user back to the
+// announcements list.
+const cameFromNotification = route.query.notified === "1";
+const resolving = ref(cameFromNotification && !announcement.value);
 
 const bodyHtml = computed(() => {
   if (!announcement.value?.body) return undefined;
@@ -42,6 +51,7 @@ const back = async () => {
 
 watchEffect(async () => {
   if (
+    !resolving.value &&
     announcementsStatus.value === "success" &&
     announcements.value.length > 0 &&
     !announcement.value
@@ -50,8 +60,29 @@ watchEffect(async () => {
   }
 });
 
-onMounted(() => {
+// Drop the query param once we've landed on the announcement.
+watch(
+  announcement,
+  (current) => {
+    if (current && cameFromNotification) {
+      const query = { ...route.query };
+      delete query.notified;
+      void router.replace({ name: route.name as string, params: route.params, query });
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(async () => {
   readAnnouncementsSet.value.add(announcementId.value);
+
+  if (resolving.value) {
+    try {
+      await reloadAnnouncements();
+    } finally {
+      resolving.value = false;
+    }
+  }
 });
 
 const markUnread = async () => {

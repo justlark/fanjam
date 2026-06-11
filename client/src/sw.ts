@@ -92,11 +92,22 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: payload.icon ?? "/icons/icon-padded.png",
-      data: { url: payload.url },
-    }),
+    (async () => {
+      await self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: payload.icon ?? "/icons/icon-padded.png",
+        data: { url: payload.url },
+      });
+
+      // Nudge any open clients to refetch the announcement list.
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: "announcement" });
+      }
+    })(),
   );
 });
 
