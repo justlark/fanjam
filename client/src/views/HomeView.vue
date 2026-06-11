@@ -32,11 +32,11 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           </div>
         </template>
       </Card>
-      <div class="flex flex-wrap gap-8 justify-evenly">
-        <Card class="overflow-hidden">
+      <div class="flex flex-wrap gap-8 justify-evenly items-start max-w-full">
+        <Card class="overflow-auto">
           <template #header>
             <img
-              class="max-h-100 object-contain"
+              class="w-full max-w-200 overflow-auto"
               alt="Organizer app screenshot"
               :src="`${staticDomain}/nocodb-demo-screenshot.webp`"
             />
@@ -49,8 +49,10 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             <ul class="mb-2 list-disc list-inside">
               <li>Keep track of who's running what, when, and where.</li>
               <li>Publish event info, FAQs, policies, maps, socials, flyers, and anything else.</li>
-              <li>Have as many organizers in the app as you want, and control who has access.</li>
+              <li>Have as many organizers in the app as you want, with controllable access permissions.</li>
               <li>Leave comments and notes that only organizers can see.</li>
+              <li>Import your data from another system.</li>
+              <li>Host the app under your own domain.</li>
             </ul>
           </template>
           <template #footer>
@@ -71,16 +73,16 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             </div>
           </template>
         </Card>
-        <Card class="overflow-hidden">
+        <Card class="max-w-160 overflow-auto">
           <template #header>
-            <div class="h-100 object-contain flex">
+            <div class="flex">
               <img
-                class="w-full"
+                class="w-full max-w-80 overflow-auto"
                 alt="Attendee app screenshot"
                 :src="`${staticDomain}/fanjam-schedule-demo-screenshot.webp`"
               />
               <img
-                class="w-full"
+                class="w-full max-w-80 overflow-auto"
                 alt="Attendee app screenshot"
                 :src="`${staticDomain}/fanjam-info-demo-screenshot.webp`"
               />
@@ -91,8 +93,10 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           <template #content>
             <ul class="mb-2 list-disc list-inside">
               <li>See the schedule of events.</li>
-              <li>Filter, search, and build a personal itinerary.</li>
-              <li>See live announcements from the organizers.</li>
+              <li>Filter, search, and build your own personal itinerary.</li>
+              <li>Share your schedule with friends, add it to your calendar, and sync it between devices.</li>
+              <li>See live announcements from the organizers with push notifications.</li>
+              <li>Use the app on the web without installing anything.</li>
               <li>Works completely offline.</li>
             </ul>
           </template>
