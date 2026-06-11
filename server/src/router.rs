@@ -698,6 +698,26 @@ async fn get_pages(
         .map_err(Into::into)
 }
 
+// Whether the request carries the `?fresh=1` query param, which the client sets to force a read
+// straight from the persistent cache, bypassing the edge cache.
+fn wants_fresh(uri: &Uri) -> bool {
+    uri.query()
+        .into_iter()
+        .flat_map(|query| query.split('&'))
+        .any(|pair| pair == "fresh=1")
+}
+
+// Convert a URL to a cache key. We drop query params; our API endpoints don't use them.
+fn cache_key_uri(uri: &Uri) -> anyhow::Result<Uri> {
+    let mut parts = uri.clone().into_parts();
+    let path = parts
+        .path_and_query
+        .as_ref()
+        .map_or("/", |path_and_query| path_and_query.path());
+    parts.path_and_query = Some(path.parse()?);
+    Ok(Uri::from_parts(parts)?)
+}
+
 #[axum::debug_handler]
 #[worker::send]
 async fn get_announcements(
@@ -707,14 +727,20 @@ async fn get_announcements(
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
 
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    // A client that just received a push notification sets a query param triggering this endpoint
+    // to bypass the edge cache.
+    if !wants_fresh(&uri)
+        && let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await?
+    {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_announcements(uri, |announcements| GetAnnouncementsResponse {
+        .get_announcements(cache_uri, |announcements| GetAnnouncementsResponse {
             announcements: announcements
                 .into_iter()
                 .map(|announcement| Announcement {

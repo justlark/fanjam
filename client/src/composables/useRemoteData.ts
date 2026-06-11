@@ -29,6 +29,11 @@ export type FetchResult<T> =
   | { status: "pending" }
   | { status: "error"; code: number };
 
+export interface ReloadOptions {
+  // Ask the server to bypass the edge cache.
+  fresh?: boolean;
+}
+
 type FetchStatus = FetchResult<unknown>["status"];
 
 interface StoredValue<T> {
@@ -88,12 +93,12 @@ const useRemoteDataInner = <T, S>({
   key: string;
   instance: Readonly<Ref<string>>;
   result: Ref<FetchResult<T>>;
-  fetcher: () => Promise<ApiResult<T>>;
+  fetcher: (options?: ReloadOptions) => Promise<ApiResult<T>>;
   // Some values may need to be serialized manually before being stored.
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
 }): {
-  reload: () => Promise<void>;
+  reload: (options?: ReloadOptions) => Promise<void>;
   clear: () => void;
 } => {
   const route = useRoute();
@@ -123,9 +128,9 @@ const useRemoteDataInner = <T, S>({
   };
 
   // Fetch the most recent data from the server and update the ref.
-  const reload = async (): Promise<void> => {
+  const reload = async (options?: ReloadOptions): Promise<void> => {
     cancelRetry();
-    const fetchApiResult = await fetcher();
+    const fetchApiResult = await fetcher(options);
 
     if (!fetchApiResult.ok && fetchApiResult.code === 304) {
       // Server returned Not Modified — the cached data is still current.
@@ -254,7 +259,7 @@ const useRemoteDataInner = <T, S>({
 type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
   data: T;
   status: Readonly<Ref<FetchStatus>>;
-  reload: () => Promise<void>;
+  reload: (options?: ReloadOptions) => Promise<void>;
   clear: () => void;
 };
 
@@ -449,10 +454,11 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
     key: "announcements",
     instance: toRef(envId),
     result: announcementsRef,
-    fetcher: () =>
+    fetcher: (options) =>
       api.getAnnouncements(
         toValue(envId),
-        getItem<Array<StoredAnnouncement>>("announcements")?.etag,
+        options?.fresh ? undefined : getItem<Array<StoredAnnouncement>>("announcements")?.etag,
+        options,
       ),
     toCache: (data) =>
       data.map((announcement) => ({
@@ -650,7 +656,7 @@ export const provideRemoteData = () => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.addEventListener("message", (event) => {
       if ((event.data as { type?: string } | undefined)?.type === "announcement") {
-        void remoteData.reload.announcements();
+        void remoteData.reload.announcements({ fresh: true });
       }
     });
   }

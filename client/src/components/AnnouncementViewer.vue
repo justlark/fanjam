@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, watch, watchEffect, onMounted, computed, ref } from "vue";
+import { useId, watch, watchEffect, computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { useAppPath } from "@/composables/useAppUrl";
@@ -26,17 +26,23 @@ const {
 const appPath = useAppPath();
 const announcementId = computed(() => route.params.announcementId as string);
 
-const announcement = computed(() => {
-  return announcements.value.find((p) => p.id === announcementId.value);
+const liveAnnouncement = computed(() =>
+  announcements.value.find((p) => p.id === announcementId.value),
+);
+
+// Once we find the current announcement in the list, we latch onto it. This is
+// that latch. The purpose is to prevent a stale refresh that drops an
+// announcement from bouncing us back to the list page.
+const announcement = ref(liveAnnouncement.value);
+watch(liveAnnouncement, (current) => {
+  if (current) announcement.value = current;
 });
 
-// If the user was linked here from a push notification, the new announcement
-// may not be cached locally yet. The link in the notification includes this
-// query param, which tells us to force a fresh fetch and block waiting for the
-// new announcement rather than immediately bouncing the user back to the
-// announcements list.
-const cameFromNotification = route.query.notified === "1";
-const resolving = ref(cameFromNotification && !announcement.value);
+// This indicates we're initiating a fresh fetch because we were sent here from
+// a push notification, but have not yet found the announcement. We initialize
+// this synchronously so the redirect watcher doesn't fire before we've had a
+// chance to look.
+const resolving = ref(route.query.notified === "1" && liveAnnouncement.value === undefined);
 
 const bodyHtml = computed(() => {
   if (!announcement.value?.body) return undefined;
@@ -49,41 +55,49 @@ const back = async () => {
   });
 };
 
+// If the announcement doesn't exist, bounce the user back to the list page. If
+// the user was sent here from a push notification, we want to make sure we don't
+// bounce them until we've completed a fresh fetch of the latest announcements and
+// concluded that it definitely doesn't exist.
 watchEffect(async () => {
-  if (
-    !resolving.value &&
-    announcementsStatus.value === "success" &&
-    announcements.value.length > 0 &&
-    !announcement.value
-  ) {
+  if (resolving.value || announcement.value) return;
+  if (announcementsStatus.value === "success" && announcements.value.length > 0) {
     await back();
   }
 });
 
-// Drop the query param once we've landed on the announcement.
+// Navigate to the announcement.
 watch(
-  announcement,
-  (current) => {
-    if (current && cameFromNotification) {
-      const query = { ...route.query };
-      delete query.notified;
-      void router.replace({ name: route.name as string, params: route.params, query });
+  announcementId,
+  async (id) => {
+    readAnnouncementsSet.value.add(id);
+
+    // Reset the latch.
+    announcement.value = liveAnnouncement.value;
+
+    // Was the user sent here from a push notification?
+    if (route.query.notified !== "1") return;
+
+    // Strip the query param so a refresh doesn't re-trigger this path.
+    const query = { ...route.query };
+    delete query.notified;
+    void router.replace({ name: route.name as string, params: route.params, query });
+
+    // The announcement the push notification is for may not be cached locally
+    // yet.
+    if (announcement.value) return;
+
+    // Trigger a fresh read, bypassing the edge cache.
+    resolving.value = true;
+
+    try {
+      await reloadAnnouncements({ fresh: true });
+    } finally {
+      resolving.value = false;
     }
   },
   { immediate: true },
 );
-
-onMounted(async () => {
-  readAnnouncementsSet.value.add(announcementId.value);
-
-  if (resolving.value) {
-    try {
-      await reloadAnnouncements();
-    } finally {
-      resolving.value = false;
-    }
-  }
-});
 
 const markUnread = async () => {
   readAnnouncementsSet.value.delete(announcementId.value);
