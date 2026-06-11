@@ -49,7 +49,11 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             <ul class="mb-2 list-disc list-inside">
               <li>Keep track of who's running what, when, and where.</li>
               <li>Publish event info, FAQs, policies, maps, socials, flyers, and anything else.</li>
-              <li>Have as many organizers in the app as you want, with controllable access permissions.</li>
+              <li>
+                <!-- Avoid unnecessary whitespace due to prettier wrapping this.
+                -->Have as many organizers in the app as you want, with controllable access
+                permissions.
+              </li>
               <li>Leave comments and notes that only organizers can see.</li>
               <li>Import your data from another system.</li>
               <li>Host the app under your own domain.</li>
@@ -94,7 +98,11 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             <ul class="mb-2 list-disc list-inside">
               <li>See the schedule of events.</li>
               <li>Filter, search, and build your own personal itinerary.</li>
-              <li>Share your schedule with friends, add it to your calendar, and sync it between devices.</li>
+              <li>
+                <!-- Avoid unnecessary whitespace due to prettier wrapping this.
+                -->Share your schedule with friends, add it to your calendar, and sync it between
+                devices.
+              </li>
               <li>See live announcements from the organizers with push notifications.</li>
               <li>Use the app on the web without installing anything.</li>
               <li>Works completely offline.</li>
