@@ -583,15 +583,16 @@ async fn get_events(
     Path(env_id): Path<EnvId>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(response);
     };
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_events(uri, |events| GetEventsResponse {
+        .get_events(cache_uri, |events| GetEventsResponse {
             events: events
                 .into_iter()
                 .map(|event| Event {
@@ -620,8 +621,9 @@ async fn get_info(
     Path(env_id): Path<EnvId>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(response);
     };
 
@@ -629,7 +631,7 @@ async fn get_info(
     let env_name = store.env_name().to_string();
 
     store
-        .get_info(uri, |info| GetInfoResponse {
+        .get_info(cache_uri, |info| GetInfoResponse {
             env_name,
             name: info.about.name.clone(),
             description: info.about.description.clone(),
@@ -666,15 +668,16 @@ async fn get_pages(
     Path(env_id): Path<EnvId>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_pages(uri, |pages| GetPagesResponse {
+        .get_pages(cache_uri, |pages| GetPagesResponse {
             pages: pages
                 .into_iter()
                 .map(|page| Page {
@@ -774,15 +777,16 @@ async fn get_files(
     Path(env_id): Path<EnvId>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, uri.clone()).await? {
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_files(uri, |files| GetFilesResponse {
+        .get_files(cache_uri, |files| GetFilesResponse {
             files: files
                 .into_iter()
                 .map(|file| File {
@@ -958,23 +962,13 @@ async fn post_announcement_created(
         payloads.push(serde_json::to_vec(&payload).map_err(|e| Error::Internal(e.into()))?);
     }
 
-    // Because they may be receiving a push notification about it, the new announcement should be
-    // visible to clients immediately. We first reseed the persistent cache from NocoDB, then purge
-    // the edge cache for this environment. Announcements should be infrequent enough that purging
-    // the edge cache shouldn't be a performance nightmare. If this becomes a problem in the future,
-    // we can do a more selective purge of only announcements.
+    // Re-seed the persistent cache from NocoDB so the new announcement is available immediately.
+    // This does not invalidate the edge cache, but clients receiving the push will re-fetch the
+    // list of announcements using a special query param that forces the edge cache to update.
     Store::from_env_id(&state, &env_id)
         .await?
         .refresh_announcements_cache()
         .await?;
-
-    cf::Client::new()
-        .purge_cache(
-            &config::cloudflare_zone_id(),
-            &cf::CacheTag::for_env(&env_name),
-        )
-        .await
-        .map_err(Error::Internal)?;
 
     let kv = state.kv.clone();
     let env_name_owned = env_name.clone();
@@ -999,8 +993,9 @@ async fn get_asset(
     Path((env_id, name)): Path<(EnvId, String)>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(cached_response) = get_cdn_cache(&cache, uri.clone()).await? {
+    if let Some(cached_response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(cached_response);
     };
 
@@ -1053,7 +1048,7 @@ async fn get_asset(
             &cache,
             env_name,
             config::r2_asset_cache_ttl(),
-            uri,
+            cache_uri,
             response_to_cache,
         )
         .await;
