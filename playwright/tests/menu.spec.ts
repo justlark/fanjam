@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { isMobile, mockApi } from "./common";
+import { envId, isMobile, mockApi } from "./common";
 import { SchedulePage, MainMenu, EventDetailsPage, FilterMenu } from "./fixtures";
 
 type Fixtures = {
@@ -41,6 +41,11 @@ test.describe("main menu", () => {
 
     await eventPage.goto("2");
     await eventPage.toggleStar();
+
+    // Writing to `localStorage` is debounced. Wait for that write to complete.
+    await expect
+      .poll(() => page.evaluate((id) => localStorage.getItem(`starred:${id}`), envId))
+      .toContain('"2"');
   });
 
   test("navigating to the schedule does not only show starred events", async ({
