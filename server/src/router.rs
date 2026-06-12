@@ -903,8 +903,6 @@ struct NocoAnnouncementWebhookData {
 
 #[derive(Debug, Deserialize)]
 struct NocoAnnouncementRow {
-    #[serde(rename = "Id", alias = "ID")]
-    id: u32,
     #[serde(rename = "Title")]
     title: String,
     #[serde(rename = "Announcement", default)]
@@ -954,8 +952,7 @@ async fn post_announcement_created(
         let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
         let payload = push::Payload {
             title: &row.title,
-            // This query param tells the client the user was sent here from a notification.
-            url: format!("/announcements/{}?notified=1", row.id),
+            url: String::from("/announcements"),
             body,
             icon: icon.clone(),
         };
@@ -964,7 +961,7 @@ async fn post_announcement_created(
 
     // Re-seed the persistent cache from NocoDB so the new announcement is available immediately.
     // This does not invalidate the edge cache, but clients receiving the push will re-fetch the
-    // list of announcements using a special query param that forces the edge cache to update.
+    // list of announcements using a special query param that bypasses the edge cache.
     Store::from_env_id(&state, &env_id)
         .await?
         .refresh_announcements_cache()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId, watch, watchEffect, computed, ref } from "vue";
+import { useId, watchEffect, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import useRemoteData from "@/composables/useRemoteData";
 import { useAppPath } from "@/composables/useAppUrl";
@@ -20,25 +20,13 @@ const readAnnouncementsSet = useReadAnnouncements();
 const {
   data: { announcements },
   status: { announcements: announcementsStatus },
-  reload: { announcements: reloadAnnouncements },
 } = useRemoteData();
 
 const appPath = useAppPath();
 const announcementId = computed(() => route.params.announcementId as string);
 
-const isFromPushNotification = computed(() => route.query.notified === "1");
-const needsFreshFetch = ref(isFromPushNotification.value);
-
-const liveAnnouncement = computed(() =>
-  announcements.value.find((p) => p.id === announcementId.value),
-);
-
-// Once we find the current announcement in the list, we latch onto it. This is
-// that latch. The purpose is to prevent a stale refresh that drops an
-// announcement from bouncing us back to the list page.
-const announcement = ref(liveAnnouncement.value);
-watch(liveAnnouncement, (current) => {
-  if (current) announcement.value = current;
+const announcement = computed(() => {
+  return announcements.value.find((p) => p.id === announcementId.value);
 });
 
 const bodyHtml = computed(() => {
@@ -52,48 +40,19 @@ const back = async () => {
   });
 };
 
-// Bounce the user back to the list page only once the list has loaded and the
-// announcement isn't in it. If the user was sent here from a push
-// notification, we don't bounce them until we've retrieved the latest
-// announcement list from the server.
 watchEffect(async () => {
   if (
-    !needsFreshFetch.value &&
-    !announcement.value &&
-    !liveAnnouncement.value &&
-    announcementsStatus.value === "success"
+    announcementsStatus.value === "success" &&
+    announcements.value.length > 0 &&
+    !announcement.value
   ) {
     await back();
   }
 });
 
-watchEffect(() => {
-  // If the user was sent here from a push notification and we've found the
-  // announcement, we can strip the query param.
-  if (isFromPushNotification.value && !needsFreshFetch.value && announcement.value) {
-    const query = { ...route.query };
-    delete query.notified;
-    void router.replace({ name: route.name as string, params: route.params, query });
-  }
+onMounted(() => {
+  readAnnouncementsSet.value.add(announcementId.value);
 });
-
-watch(
-  announcementId,
-  async (id) => {
-    readAnnouncementsSet.value.add(id);
-
-    // Reset the latch.
-    announcement.value = liveAnnouncement.value;
-
-    // If the user was sent here from a push notification and we don't have the
-    // announcement cached locally, we should initiate a fresh fetch.
-    if (isFromPushNotification.value && !liveAnnouncement.value) {
-      await reloadAnnouncements({ fresh: true });
-      needsFreshFetch.value = false;
-    }
-  },
-  { immediate: true },
-);
 
 const markUnread = async () => {
   readAnnouncementsSet.value.delete(announcementId.value);
