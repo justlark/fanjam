@@ -23,7 +23,7 @@ use crate::{
         PutAliasRequest, PutLinkResponse, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
-    cache::{get_cdn_cache, if_none_match_middleware, put_cdn_cache},
+    cache::{cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
     env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName},
@@ -701,26 +701,6 @@ async fn get_pages(
         .map_err(Into::into)
 }
 
-// Whether the request carries the `?fresh=1` query param, which the client sets to force a read
-// straight from the persistent cache, bypassing the edge cache.
-fn wants_fresh(uri: &Uri) -> bool {
-    uri.query()
-        .into_iter()
-        .flat_map(|query| query.split('&'))
-        .any(|pair| pair == "fresh=1")
-}
-
-// Convert a URL to a cache key. We drop query params; our API endpoints don't use them.
-fn cache_key_uri(uri: &Uri) -> anyhow::Result<Uri> {
-    let mut parts = uri.clone().into_parts();
-    let path = parts
-        .path_and_query
-        .as_ref()
-        .map_or("/", |path_and_query| path_and_query.path());
-    parts.path_and_query = Some(path.parse()?);
-    Ok(Uri::from_parts(parts)?)
-}
-
 #[axum::debug_handler]
 #[worker::send]
 async fn get_announcements(
@@ -729,14 +709,9 @@ async fn get_announcements(
     Path(env_id): Path<EnvId>,
 ) -> Result<http::Response<Body>, ErrorResponse> {
     let cache = Cache::default();
-
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    // A client that just received a push notification sets a query param triggering this endpoint
-    // to bypass the edge cache.
-    if !wants_fresh(&uri)
-        && let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await?
-    {
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
         return Ok(response);
     }
 
@@ -947,25 +922,28 @@ async fn post_announcement_created(
             )
         });
 
+    // Re-seed the persistent cache from NocoDB and purge the edge cache for this environment so the
+    // new announcement is available immediately.
+    Store::from_env_id(&state, &env_id)
+        .await?
+        .refresh_announcements_cache()
+        .await?;
+
     let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.data.rows.len());
     for row in &webhook.data.rows {
         let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
         let payload = push::Payload {
             title: &row.title,
-            url: String::from("/announcements"),
+            // We send the user to the announcements list page rather than the page for the specific
+            // announcement because the new announcement won't be in their local cache by the time
+            // they get there. However, refreshing the cache ensures the new announcement should
+            // appear quickly.
+            url: "/announcements".into(),
             body,
             icon: icon.clone(),
         };
         payloads.push(serde_json::to_vec(&payload).map_err(|e| Error::Internal(e.into()))?);
     }
-
-    // Re-seed the persistent cache from NocoDB so the new announcement is available immediately.
-    // This does not invalidate the edge cache, but clients receiving the push will re-fetch the
-    // list of announcements using a special query param that bypasses the edge cache.
-    Store::from_env_id(&state, &env_id)
-        .await?
-        .refresh_announcements_cache()
-        .await?;
 
     let kv = state.kv.clone();
     let env_name_owned = env_name.clone();

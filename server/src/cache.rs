@@ -12,6 +12,17 @@ use worker::{Cache, console_error};
 
 use crate::{api::DataResponseEnvelope, env::EnvName, error::Error};
 
+// Convert a URL to a cache key. We drop query params; our API endpoints don't use them.
+pub fn cache_key_uri(uri: &Uri) -> anyhow::Result<Uri> {
+    let mut parts = uri.clone().into_parts();
+    let path = parts
+        .path_and_query
+        .as_ref()
+        .map_or("/", |path_and_query| path_and_query.path());
+    parts.path_and_query = Some(path.parse()?);
+    Ok(Uri::from_parts(parts)?)
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct EtagJson<T>(pub T);
 

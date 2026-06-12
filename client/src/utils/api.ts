@@ -292,10 +292,9 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
 const getAnnouncements = async (
   envId: string,
   etag?: string,
-  options?: { fresh?: boolean },
 ): Promise<ApiResult<Array<Announcement>>> => {
   const response = await fetch(
-    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements${options?.fresh ? "?fresh=1" : ""}`,
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements`,
     {
       headers: {
         ...(etag !== undefined

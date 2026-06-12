@@ -19,7 +19,7 @@ use crate::error::Error;
 use crate::neon::BackupSnapshot;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
 use crate::router::AppState;
-use crate::{config, kv, url};
+use crate::{cf, config, kv, url};
 use crate::{
     neon::Client as NeonClient,
     noco::Client as NocoClient,
@@ -409,8 +409,8 @@ impl Store {
         cache_key: "files",
     }
 
-    // Refresh the persistent cache specifically with the latest announcements from NocoDB. This is
-    // necessary because we send out push notifications for announcements.
+    // Refresh the cache specifically with the latest announcements from NocoDB. This is necessary
+    // because we send out push notifications for announcements.
     #[worker::send]
     pub async fn refresh_announcements_cache(&self) -> Result<(), Error> {
         let table_ids =
@@ -420,7 +420,17 @@ impl Store {
             .await
             .map_err(Error::Internal)?;
 
+        // Refresh the persistent cache.
         kv::put_cached_announcements(&self.kv, &self.env_name, &announcements)
+            .await
+            .map_err(Error::Internal)?;
+
+        // Purge the edge cache for this environment so incoming requests hit the persistent cache.
+        cf::Client::new()
+            .purge_cache(
+                &config::cloudflare_zone_id(),
+                &cf::CacheTag::for_env(&self.env_name),
+            )
             .await
             .map_err(Error::Internal)?;
 
