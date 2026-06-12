@@ -38,12 +38,6 @@ watch(liveAnnouncement, (current) => {
   if (current) announcement.value = current;
 });
 
-// This indicates we're initiating a fresh fetch because we were sent here from
-// a push notification, but have not yet found the announcement. We initialize
-// this synchronously so the redirect watcher doesn't fire before we've had a
-// chance to look.
-const resolving = ref(route.query.notified === "1" && liveAnnouncement.value === undefined);
-
 const bodyHtml = computed(() => {
   if (!announcement.value?.body) return undefined;
   return renderMarkdown(announcement.value.body);
@@ -55,18 +49,24 @@ const back = async () => {
   });
 };
 
-// If the announcement doesn't exist, bounce the user back to the list page. If
-// the user was sent here from a push notification, we want to make sure we don't
-// bounce them until we've completed a fresh fetch of the latest announcements and
-// concluded that it definitely doesn't exist.
+// Bounce the user back to the list page only once the list has loaded and the
+// announcement isn't in it. If the user was sent here from a push
+// notification, we don't bounce them until we've retrieved the latest
+// announcement list from the server.
 watchEffect(async () => {
-  if (resolving.value || announcement.value) return;
-  if (announcementsStatus.value === "success" && announcements.value.length > 0) {
+  if (
+    route.query.notified !== "1" &&
+    !announcement.value &&
+    !liveAnnouncement.value &&
+    announcementsStatus.value === "success"
+  ) {
     await back();
   }
 });
 
-// Navigate to the announcement.
+// When the user arrives from a push notification, the announcement may not be
+// in our cached list yet. Force a fresh fetch (bypassing the edge cache)
+// before removing the query param.
 watch(
   announcementId,
   async (id) => {
@@ -78,23 +78,16 @@ watch(
     // Was the user sent here from a push notification?
     if (route.query.notified !== "1") return;
 
-    // Strip the query param so a refresh doesn't re-trigger this path.
+    if (!liveAnnouncement.value) {
+      await reloadAnnouncements({ fresh: true });
+    }
+
+    // Strip the query param now that we've fetched the latest announcements.
+    // If we still can't find the announcement, *then* we can bounce the user back
+    // to the list page.
     const query = { ...route.query };
     delete query.notified;
     void router.replace({ name: route.name as string, params: route.params, query });
-
-    // The announcement the push notification is for may not be cached locally
-    // yet.
-    if (announcement.value) return;
-
-    // Trigger a fresh read, bypassing the edge cache.
-    resolving.value = true;
-
-    try {
-      await reloadAnnouncements({ fresh: true });
-    } finally {
-      resolving.value = false;
-    }
   },
   { immediate: true },
 );
