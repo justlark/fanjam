@@ -26,6 +26,9 @@ const {
 const appPath = useAppPath();
 const announcementId = computed(() => route.params.announcementId as string);
 
+const isFromPushNotification = computed(() => route.query.notified === "1");
+const needsFreshFetch = ref(isFromPushNotification.value);
+
 const liveAnnouncement = computed(() =>
   announcements.value.find((p) => p.id === announcementId.value),
 );
@@ -55,7 +58,7 @@ const back = async () => {
 // announcement list from the server.
 watchEffect(async () => {
   if (
-    route.query.notified !== "1" &&
+    !needsFreshFetch.value &&
     !announcement.value &&
     !liveAnnouncement.value &&
     announcementsStatus.value === "success"
@@ -64,9 +67,16 @@ watchEffect(async () => {
   }
 });
 
-// When the user arrives from a push notification, the announcement may not be
-// in our cached list yet. Force a fresh fetch (bypassing the edge cache)
-// before removing the query param.
+watchEffect(() => {
+  // If the user was sent here from a push notification and we've found the
+  // announcement, we can strip the query param.
+  if (isFromPushNotification.value && !needsFreshFetch.value && announcement.value) {
+    const query = { ...route.query };
+    delete query.notified;
+    void router.replace({ name: route.name as string, params: route.params, query });
+  }
+});
+
 watch(
   announcementId,
   async (id) => {
@@ -75,19 +85,12 @@ watch(
     // Reset the latch.
     announcement.value = liveAnnouncement.value;
 
-    // Was the user sent here from a push notification?
-    if (route.query.notified !== "1") return;
-
-    if (!liveAnnouncement.value) {
+    // If the user was sent here from a push notification and we don't have the
+    // announcement cached locally, we should initiate a fresh fetch.
+    if (isFromPushNotification.value && !liveAnnouncement.value) {
       await reloadAnnouncements({ fresh: true });
+      needsFreshFetch.value = false;
     }
-
-    // Strip the query param now that we've fetched the latest announcements.
-    // If we still can't find the announcement, *then* we can bounce the user back
-    // to the list page.
-    const query = { ...route.query };
-    delete query.notified;
-    void router.replace({ name: route.name as string, params: route.params, query });
   },
   { immediate: true },
 );
