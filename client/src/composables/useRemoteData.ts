@@ -109,7 +109,7 @@ const useRemoteDataInner = <T, S>({
 
   const shouldFetch = (): boolean => matchesRoute(fetchPolicy, route.name as string | undefined);
 
-  const BASE_RETRY_DELAY_MS = 1500;
+  const BASE_RETRY_DELAY_MS = 2000;
   const MAX_RETRIES = 5;
 
   let retryCount = 0;
