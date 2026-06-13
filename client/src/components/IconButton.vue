@@ -73,7 +73,7 @@ const variant = computed(() => {
         :disabled="props.disabled ?? false"
         :label="props.showLabel ? props.label : undefined"
         :icon-pos="props.showLabel ? 'left' : undefined"
-        @click="$emit('click')"
+        @click="(event) => $emit('click', event)"
         v-bind="props.buttonProps"
       />
       <span

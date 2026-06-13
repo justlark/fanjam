@@ -9,6 +9,8 @@ import { useAppUrl } from "@/composables/useAppUrl";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import LinkShareDialog from "./LinkShareDialog.vue";
+import SimpleIcon from "./SimpleIcon.vue";
+import Popover from "primevue/popover";
 
 const starredEvents = useStarredEvents();
 const envId = useEnvId();
@@ -26,7 +28,35 @@ const scheduleShareUrl = computed(() => {
   return appUrl(`share/?s=${encodeBase64url(starredEventIds.join(","))}`);
 });
 
+const shareOptionsPopover = ref();
 const shareDialogVisible = ref(false);
+
+const shareOptions = [
+  {
+    key: "share",
+    label: "Share Your Schedule",
+    icon: "share-fill",
+    testid: "schedule-share-button",
+    visible: () => scheduleSharingEnabled.value,
+  },
+  {
+    key: "calendar",
+    label: "Add To Calendar",
+    icon: "calendar-plus",
+    testid: "calendar-download-button",
+    visible: () => calendarExportEnabled.value,
+  },
+];
+
+const visibleShareOptions = computed(() => shareOptions.filter((option) => option.visible()));
+
+const selectShareOption = (key: string) => {
+  if (key === "share") {
+    shareDialogVisible.value = true;
+  } else if (key === "calendar") {
+    downloadCalendar();
+  }
+};
 
 const downloadCalendar = () => {
   const starred = starredEvents.value;
@@ -43,24 +73,28 @@ const downloadCalendar = () => {
     </div>
     <div class="pl-5 pr-3 lg:pr-5 h-16 flex gap-2 items-center justify-between lg:justify-start">
       <span class="text-xl lg:text-2xl">My Schedule</span>
-      <div class="flex">
-        <IconButton
-          v-if="calendarExportEnabled && hasStarredEvents"
-          icon="calendar-plus"
-          size="md"
-          label="Add to Calendar"
-          @click="downloadCalendar"
-          :button-props="{ 'data-testid': 'calendar-download-button' }"
-        />
-        <IconButton
-          v-if="scheduleSharingEnabled && hasStarredEvents"
-          icon="share-fill"
-          size="md"
-          label="Share"
-          @click="shareDialogVisible = true"
-          :button-props="{ 'data-testid': 'schedule-share-button' }"
-        />
-      </div>
+      <IconButton
+        v-if="hasStarredEvents && (calendarExportEnabled || scheduleSharingEnabled)"
+        icon="three-dots-vertical"
+        size="md"
+        label="Sharing Options"
+        @click="(event) => shareOptionsPopover.toggle(event)"
+        :button-props="{ 'data-testid': 'schedule-share-options-button' }"
+      />
+      <Popover ref="shareOptionsPopover">
+        <ul class="list-none p-0 m-0 flex flex-col gap-2">
+          <li v-for="option in visibleShareOptions" :key="option.key">
+            <IconButton
+              :icon="option.icon"
+              :label="option.label"
+              size="sm"
+              :show-label="true"
+              :button-props="{ 'data-testid': option.testid }"
+              @click="selectShareOption(option.key)"
+            />
+          </li>
+        </ul>
+      </Popover>
     </div>
     <Divider class="!my-0" />
     <LinkShareDialog
