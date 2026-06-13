@@ -19,7 +19,6 @@ import api, {
   type Event,
   type Info,
   type Page,
-  type File,
 } from "@/utils/api";
 import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
@@ -30,6 +29,13 @@ export type FetchResult<T> =
   | { status: "error"; code: number };
 
 type FetchStatus = FetchResult<unknown>["status"];
+
+// An API endpoint is either refetched on every reload (`"global"`), or only on
+// specific routes.
+type FetchPolicy = "global" | ReadonlyArray<string>;
+
+const matchesRoute = (policy: FetchPolicy, routeName: string | undefined): boolean =>
+  policy === "global" || (routeName !== undefined && policy.includes(routeName));
 
 interface StoredValue<T> {
   instance: string;
@@ -84,6 +90,7 @@ const useRemoteDataInner = <T, S>({
   fetcher,
   toCache,
   fromCache,
+  fetchPolicy,
 }: {
   key: string;
   instance: Readonly<Ref<string>>;
@@ -92,12 +99,15 @@ const useRemoteDataInner = <T, S>({
   // Some values may need to be serialized manually before being stored.
   toCache: (data: T) => S;
   fromCache: (data: S) => T;
+  fetchPolicy: FetchPolicy;
 }): {
   reload: () => Promise<void>;
   clear: () => void;
 } => {
   const route = useRoute();
   const router = useRouter();
+
+  const shouldFetch = (): boolean => matchesRoute(fetchPolicy, route.name as string | undefined);
 
   const BASE_RETRY_DELAY_MS = 1500;
   const MAX_RETRIES = 5;
@@ -223,7 +233,11 @@ const useRemoteDataInner = <T, S>({
 
         if (!storedValue || storedValue.instance !== instance.value) {
           removeItem(key);
-          void reload();
+          if (shouldFetch()) {
+            void reload();
+          } else {
+            result.value = { status: "pending" };
+          }
           return;
         }
 
@@ -234,15 +248,21 @@ const useRemoteDataInner = <T, S>({
         } catch {
           // This can happen if the shape of the cached data has changed and we
           // need to clear it and re-fetch from the server.
-          void reload();
+          if (shouldFetch()) {
+            void reload();
+          } else {
+            result.value = { status: "pending" };
+          }
           return;
         }
 
         setResultIfModified(result, value, toCache);
 
         // Once the cached data has been loaded, refetch the latest data in the
-        // background.
-        void reload();
+        // background, but only when it is relevant for the current route.
+        if (shouldFetch()) {
+          void reload();
+        }
       },
       { immediate: true },
     );
@@ -251,7 +271,10 @@ const useRemoteDataInner = <T, S>({
   return { reload, clear };
 };
 
-type DataSource<T> = (envId: MaybeRefOrGetter<string>) => {
+type DataSource<T> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
   data: T;
   status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
@@ -275,10 +298,12 @@ const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
 const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
 ) => {
   const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: toRef(envId),
+    fetchPolicy,
     result: eventsRef,
     fetcher: () => api.getEvents(toValue(envId), getItem<Array<StoredEvent>>("events")?.etag),
     toCache: (data) =>
@@ -336,10 +361,12 @@ const infoRef = ref<FetchResult<Info>>({ status: "pending" });
 
 const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
 ) => {
   const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: toRef(envId),
+    fetchPolicy,
     result: infoRef,
     fetcher: () => api.getInfo(toValue(envId), getItem<StoredInfo>("info")?.etag),
     toCache: (data) => ({
@@ -389,10 +416,12 @@ const pagesRef = ref<FetchResult<Array<Page>>>({ status: "pending" });
 
 const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
 ) => {
   const { reload, clear } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
     key: "pages",
     instance: toRef(envId),
+    fetchPolicy,
     result: pagesRef,
     fetcher: () => api.getPages(toValue(envId), getItem<Array<StoredPage>>("pages")?.etag),
     toCache: (data) =>
@@ -444,10 +473,12 @@ const announcementsRef = ref<FetchResult<Array<Announcement>>>({ status: "pendin
 
 const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announcement>>>>> = (
   envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
 ) => {
   const { reload, clear } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>({
     key: "announcements",
     instance: toRef(envId),
+    fetchPolicy,
     result: announcementsRef,
     fetcher: () =>
       api.getAnnouncements(
@@ -490,44 +521,6 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
   };
 };
 
-interface StoredFile {
-  id: string;
-  name: string;
-  media_type: string;
-}
-
-const filesRef = ref<FetchResult<Array<File>>>({ status: "pending" });
-
-const useRemoteFiles: DataSource<Readonly<Ref<Array<DeepReadonly<File>>>>> = (
-  envId: MaybeRefOrGetter<string>,
-) => {
-  const { reload, clear } = useRemoteDataInner<Array<File>, Array<StoredFile>>({
-    key: "files",
-    instance: toRef(envId),
-    result: filesRef,
-    fetcher: () => api.getFiles(toValue(envId), getItem<Array<StoredFile>>("files")?.etag),
-    toCache: (data) =>
-      data.map((file) => ({
-        id: file.id,
-        name: file.name,
-        media_type: file.mediaType,
-      })),
-    fromCache: (data) =>
-      data.map((file) => ({
-        id: file.id,
-        name: file.name,
-        mediaType: file.media_type,
-      })),
-  });
-
-  return {
-    reload,
-    clear,
-    status: unwrapFetchStatus(filesRef),
-    data: unwrapFetchArray(filesRef),
-  };
-};
-
 interface StoredConfig {
   timezone?: string;
   hide_announcements?: boolean;
@@ -545,10 +538,12 @@ const configRef = ref<FetchResult<Config>>({ status: "pending" });
 
 const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
 ) => {
   const { reload, clear } = useRemoteDataInner<Config, StoredConfig>({
     key: "config",
     instance: toRef(envId),
+    fetchPolicy,
     result: configRef,
     fetcher: () => api.getConfig(toValue(envId)),
     toCache: (data) => ({
@@ -590,9 +585,26 @@ const dataSources = {
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
-  files: useRemoteFiles,
   config: useRemoteConfig,
 } as const;
+
+// When each API endpoint is refetched from the server—either on every route,
+// or only on specific ones.
+//
+// The "global" routes provide information that's necessary for every page in
+// the app:
+//
+// - `info` contains the app title that appears in the header.
+// - `announcements` is necessary to keep the unread announcements count up to
+//   date.
+// - `config` is necessary for gating certain features.
+const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
+  events: ["schedule", "event"],
+  info: "global",
+  pages: ["info", "page"],
+  announcements: "global",
+  config: "global",
+};
 
 type CombinedDataSource = () => {
   data: {
@@ -608,17 +620,33 @@ type CombinedDataSource = () => {
   clear: () => void;
 };
 
-// We fetch *all* data from the server eagerly on first page load and when
-// `reload()` is called. This is primarily so the app works offline.
+// We fetch all the data for the current route from the server eagerly on
+// component mount and when `reload()` is called. This allows the app works
+// offline.
 const useRemoteData: CombinedDataSource = () => {
+  const route = useRoute();
   const envId = useEnvId();
 
   const dataSourceResponses = Object.fromEntries(
-    Object.entries(dataSources).map(([key, ds]) => [key, ds(envId)]),
+    Object.entries(dataSources).map(([key, ds]) => [
+      key,
+      ds(envId, FETCH_POLICIES[key as keyof typeof dataSources]),
+    ]),
   );
 
+  // Refresh only from the API endpoints the current route uses. This is used
+  // by the manual refresh button.
   const reloadAll = async () => {
-    await Promise.all(Object.values(dataSourceResponses).map((ds) => ds.reload()));
+    await Promise.all(
+      Object.entries(dataSourceResponses)
+        .filter(([key]) =>
+          matchesRoute(
+            FETCH_POLICIES[key as keyof typeof dataSources],
+            route.name as string | undefined,
+          ),
+        )
+        .map(([, ds]) => ds.reload()),
+    );
   };
 
   const clear = () => {
@@ -628,7 +656,7 @@ const useRemoteData: CombinedDataSource = () => {
   };
 
   return {
-    reloadAll,
+    reloadAll: reloadAll,
     clear,
     reload: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.reload]),

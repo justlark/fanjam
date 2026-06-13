@@ -50,12 +50,6 @@ interface RawAnnouncement {
   updated_at: string | null;
 }
 
-interface RawFile {
-  id: string;
-  name: string;
-  media_type: string;
-}
-
 interface RawAlias {
   env_id: string;
 }
@@ -336,40 +330,6 @@ const getAnnouncements = async (
   };
 };
 
-const getFiles = async (envId: string, etag?: string): Promise<ApiResult<Array<File>>> => {
-  const response = await fetch(
-    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/files`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
-  );
-
-  if (!isOk(response)) {
-    return { ok: false, code: response.status };
-  }
-
-  const rawFiles: Envelope<{ files: Array<RawFile> }> = await response.json();
-
-  const files: Array<File> = rawFiles.value.files.map((file) => ({
-    id: file.id,
-    name: file.name,
-    mediaType: file.media_type,
-  }));
-
-  return {
-    ok: true,
-    value: files,
-    etag: response.headers.get("ETag") ?? undefined,
-    stale: rawFiles.stale,
-  };
-};
-
 const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
@@ -453,7 +413,6 @@ export default {
   getInfo,
   getPages,
   getAnnouncements,
-  getFiles,
   getConfig,
   getAlias,
   postSubscription,
