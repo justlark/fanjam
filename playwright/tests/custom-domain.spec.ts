@@ -1,9 +1,10 @@
 import { test as base, expect } from "@playwright/test";
 import { customDomainMode, hoursFromNow, mockApi, mockTime } from "./common";
-import { SchedulePage, ShareModal, StarredEvents } from "./fixtures";
+import { MyScheduleBanner, SchedulePage, ShareModal, StarredEvents } from "./fixtures";
 
 type Fixtures = {
   schedulePage: SchedulePage;
+  myScheduleBanner: MyScheduleBanner;
   shareModal: ShareModal;
   starredEvents: StarredEvents;
 };
@@ -11,6 +12,9 @@ type Fixtures = {
 const test = base.extend<Fixtures>({
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
+  },
+  myScheduleBanner: async ({ page }, use) => {
+    await use(new MyScheduleBanner(page));
   },
   shareModal: async ({ page }, use) => {
     await use(new ShareModal(page));
@@ -55,6 +59,7 @@ test.describe("custom domain mode", () => {
   test("share URL is built without the /app/<envId>/ prefix", async ({
     page,
     schedulePage,
+    myScheduleBanner,
     shareModal,
     starredEvents,
   }) => {
@@ -63,7 +68,7 @@ test.describe("custom domain mode", () => {
     await starredEvents.set(["1"]);
     await page.goto("/schedule?star=true");
 
-    await page.getByTestId("schedule-share-button").click();
+    await myScheduleBanner.share();
 
     await expect(shareModal.urlInput).toBeVisible();
     const urlValue = await shareModal.urlInput.inputValue();

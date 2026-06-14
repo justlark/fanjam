@@ -1,15 +1,19 @@
 import { test as base, expect } from "@playwright/test";
 import { mockApi, mockTime, hoursFromNow } from "./common";
-import { SchedulePage, StarredEvents } from "./fixtures";
+import { MyScheduleBanner, SchedulePage, StarredEvents } from "./fixtures";
 
 type Fixtures = {
   schedulePage: SchedulePage;
+  myScheduleBanner: MyScheduleBanner;
   starredEvents: StarredEvents;
 };
 
 export const test = base.extend<Fixtures>({
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
+  },
+  myScheduleBanner: async ({ page }, use) => {
+    await use(new MyScheduleBanner(page));
   },
   starredEvents: async ({ page }, use) => {
     await use(new StarredEvents(page));
@@ -46,7 +50,12 @@ test.describe("calendar export button", () => {
     });
   });
 
-  test("downloads .ics with starred events", async ({ page, schedulePage, starredEvents }) => {
+  test("downloads .ics with starred events", async ({
+    page,
+    schedulePage,
+    myScheduleBanner,
+    starredEvents,
+  }) => {
     await schedulePage.goto();
     // Fast-forward must happen before set() so the debounced initial write
     // doesn't clobber the test's seeded value.
@@ -55,7 +64,7 @@ test.describe("calendar export button", () => {
     await page.goto("schedule?star=true");
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByTestId("calendar-download-button").click();
+    await myScheduleBanner.downloadCalendar();
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toBe("my-schedule.ics");
@@ -104,9 +113,21 @@ test.describe("calendar export button (feature flag disabled)", () => {
     });
   });
 
-  test("button is hidden when feature flag is disabled", async ({ page }) => {
+  test("button is hidden when feature flag is disabled", async ({
+    page,
+    schedulePage,
+    myScheduleBanner,
+    starredEvents,
+  }) => {
+    // Star an event so the menu is gated only by the disabled feature flags,
+    // not by the absence of starred events.
+    await schedulePage.goto();
+    await page.clock.fastForward(200);
+    await starredEvents.set(["1"]);
     await page.goto("schedule?star=true");
 
-    await expect(page.getByTestId("calendar-download-button")).toBeHidden();
+    // With both share options disabled, the kebab menu that gates the calendar
+    // download never renders.
+    await expect(myScheduleBanner.optionsButton).toBeHidden();
   });
 });

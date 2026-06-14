@@ -390,6 +390,36 @@ export class SiteNav {
   }
 }
 
+export class MyScheduleBanner {
+  // Kebab menu trigger on the "My Schedule" banner. Visible only when there are
+  // starred events and at least one share option is enabled.
+  readonly optionsButton: Locator;
+  // Share/calendar buttons live inside the popover, which renders its content
+  // lazily — they only exist in the DOM once the popover is open.
+  readonly shareButton: Locator;
+  readonly calendarButton: Locator;
+
+  constructor(page: Page) {
+    this.optionsButton = page.getByTestId("schedule-share-options-button");
+    this.shareButton = page.getByTestId("schedule-share-button");
+    this.calendarButton = page.getByTestId("calendar-download-button");
+  }
+
+  async openOptions() {
+    await this.optionsButton.click();
+  }
+
+  async share() {
+    await this.openOptions();
+    await this.shareButton.click();
+  }
+
+  async downloadCalendar() {
+    await this.openOptions();
+    await this.calendarButton.click();
+  }
+}
+
 export class ShareModal {
   readonly selector: Locator;
   readonly description: Locator;

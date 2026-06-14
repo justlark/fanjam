@@ -5,6 +5,7 @@ import {
   EventShareDialog,
   EventSummaryDrawer,
   MainMenu,
+  MyScheduleBanner,
   SchedulePage,
   ShareModal,
   ScheduleShareFooter,
@@ -18,6 +19,7 @@ type Fixtures = {
   summaryDrawer: EventSummaryDrawer;
   mainMenu: MainMenu;
   siteNav: SiteNav;
+  myScheduleBanner: MyScheduleBanner;
   shareModal: ShareModal;
   eventShareDialog: EventShareDialog;
   scheduleShareFooter: ScheduleShareFooter;
@@ -45,6 +47,9 @@ export const test = base.extend<Fixtures>({
   },
   eventShareDialog: async ({ page }, use) => {
     await use(new EventShareDialog(page));
+  },
+  myScheduleBanner: async ({ page }, use) => {
+    await use(new MyScheduleBanner(page));
   },
   scheduleShareFooter: async ({ page }, use) => {
     await use(new ScheduleShareFooter(page));
@@ -95,13 +100,18 @@ test.describe("schedule share modal", () => {
     });
   });
 
-  test("opens from share dialog", async ({ page, schedulePage, starredEvents }) => {
+  test("opens from share dialog", async ({
+    page,
+    schedulePage,
+    myScheduleBanner,
+    starredEvents,
+  }) => {
     await schedulePage.goto();
     await page.clock.fastForward(200);
     await starredEvents.set(["1", "3"]);
     await page.goto("schedule?star=true");
 
-    await page.getByTestId("schedule-share-button").click();
+    await myScheduleBanner.share();
 
     const urlInput = page.getByTestId("link-share-dialog-url");
     await expect(urlInput).toBeVisible();
@@ -109,15 +119,16 @@ test.describe("schedule share modal", () => {
     expect(urlValue).toMatch(RegExp(`/share/\\?s=MSwz$`));
   });
 
-  test("share button is not shown on regular schedule", async ({ schedulePage, page }) => {
+  test("share button is not shown on regular schedule", async ({ schedulePage, myScheduleBanner }) => {
     await schedulePage.goto();
 
-    await expect(page.getByTestId("schedule-share-button")).not.toBeVisible();
+    await expect(myScheduleBanner.optionsButton).not.toBeVisible();
   });
 
   test("URL does not include filter query params", async ({
     page,
     schedulePage,
+    myScheduleBanner,
     starredEvents,
   }) => {
     await schedulePage.goto();
@@ -125,7 +136,7 @@ test.describe("schedule share modal", () => {
     await starredEvents.set(["1", "3"]);
     await page.goto("schedule?star=true&category=Category+1");
 
-    await page.getByTestId("schedule-share-button").click();
+    await myScheduleBanner.share();
 
     const urlInput = page.getByTestId("link-share-dialog-url");
     await expect(urlInput).toBeVisible();
@@ -154,10 +165,20 @@ test.describe("schedule share modal (schedule sharing disabled)", () => {
     });
   });
 
-  test("share button is not shown on My Schedule", async ({ page }) => {
+  test("share button is not shown on My Schedule", async ({
+    page,
+    schedulePage,
+    myScheduleBanner,
+    starredEvents,
+  }) => {
+    // Star an event so the menu is gated only by the disabled feature flags,
+    // not by the absence of starred events.
+    await schedulePage.goto();
+    await page.clock.fastForward(200);
+    await starredEvents.set(["1"]);
     await page.goto("schedule?star=true");
 
-    await expect(page.getByTestId("schedule-share-button")).not.toBeVisible();
+    await expect(myScheduleBanner.optionsButton).not.toBeVisible();
   });
 });
 
