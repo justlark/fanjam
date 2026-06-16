@@ -18,7 +18,7 @@ const {
   data: { config, events },
 } = useRemoteData();
 
-const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? false);
+const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? true);
 const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? true);
 const hasStarredEvents = computed(() => starredEvents.value.size > 0);
 const scheduleShareUrl = computed(() => {
@@ -33,8 +33,8 @@ const shareDialogVisible = ref(false);
 const shareOptions = [
   {
     key: "share",
-    label: "Share Your Schedule",
-    icon: "share-fill",
+    label: "Share Schedule",
+    icon: "send-fill",
     testid: "schedule-share-button",
     visible: () => scheduleSharingEnabled.value,
   },
@@ -74,9 +74,10 @@ const downloadCalendar = () => {
       <span class="text-xl lg:text-2xl">My Schedule</span>
       <IconButton
         v-if="hasStarredEvents && (calendarExportEnabled || scheduleSharingEnabled)"
-        icon="three-dots-vertical"
-        size="md"
-        label="Sharing Options"
+        icon="share-fill"
+        size="sm"
+        label="Share"
+        :show-label="true"
         @click="(event) => shareOptionsPopover.toggle(event)"
         :button-props="{ 'data-testid': 'schedule-share-options-button' }"
       />
