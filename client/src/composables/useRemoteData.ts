@@ -17,6 +17,8 @@ import api, {
   type ApiResult,
   type Config,
   type Event,
+  type Location,
+  type Person,
   type Info,
   type Page,
 } from "@/utils/api";
@@ -342,6 +344,93 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   };
 };
 
+interface StoredLocation {
+  id: string;
+  name: string;
+  description?: string;
+  events: Array<string>;
+}
+
+const locationsRef = ref<FetchResult<Array<Location>>>({ status: "pending" });
+
+const useRemoteLocations: DataSource<Readonly<Ref<Array<DeepReadonly<Location>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { reload, clear } = useRemoteDataInner<Array<Location>, Array<StoredLocation>>({
+    key: "locations",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: locationsRef,
+    fetcher: () =>
+      api.getLocations(toValue(envId), getItem<Array<StoredLocation>>("locations")?.etag),
+    toCache: (data) =>
+      data.map((location) => ({
+        id: location.id,
+        name: location.name,
+        description: location.description,
+        events: location.events,
+      })),
+    fromCache: (data) =>
+      data.map((location) => ({
+        id: location.id,
+        name: location.name,
+        description: location.description,
+        events: location.events,
+      })),
+  });
+
+  return {
+    reload,
+    clear,
+    status: unwrapFetchStatus(locationsRef),
+    data: unwrapFetchArray(locationsRef),
+  };
+};
+
+interface StoredPerson {
+  id: string;
+  name: string;
+  description?: string;
+  events: Array<string>;
+}
+
+const peopleRef = ref<FetchResult<Array<Person>>>({ status: "pending" });
+
+const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { reload, clear } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
+    key: "people",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: peopleRef,
+    fetcher: () => api.getPeople(toValue(envId), getItem<Array<StoredPerson>>("people")?.etag),
+    toCache: (data) =>
+      data.map((person) => ({
+        id: person.id,
+        name: person.name,
+        description: person.description,
+        events: person.events,
+      })),
+    fromCache: (data) =>
+      data.map((person) => ({
+        id: person.id,
+        name: person.name,
+        description: person.description,
+        events: person.events,
+      })),
+  });
+
+  return {
+    reload,
+    clear,
+    status: unwrapFetchStatus(peopleRef),
+    data: unwrapFetchArray(peopleRef),
+  };
+};
+
 interface StoredInfo {
   name?: string;
   description?: string;
@@ -582,6 +671,8 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
 
 const dataSources = {
   events: useRemoteEvents,
+  locations: useRemoteLocations,
+  people: useRemotePeople,
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
@@ -599,7 +690,9 @@ const dataSources = {
 //   date.
 // - `config` is necessary for gating certain features.
 const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
-  events: ["schedule", "event"],
+  events: ["schedule", "event", "location", "person"],
+  locations: ["location"],
+  people: ["person"],
   info: "global",
   pages: ["info", "page"],
   announcements: "global",

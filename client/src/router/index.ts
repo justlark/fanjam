@@ -49,6 +49,16 @@ const defaultRoutes: Array<RouteRecordRaw> = [
     component: () => import("../views/PageView.vue"),
   },
   {
+    path: "/app/:envId/locations/:locationId",
+    name: "location",
+    component: () => import("../views/BioView.vue"),
+  },
+  {
+    path: "/app/:envId/people/:personId",
+    name: "person",
+    component: () => import("../views/BioView.vue"),
+  },
+  {
     path: "/app/:envId/share",
     name: "share",
     redirect: (to) => ({
@@ -104,6 +114,16 @@ const customRoutes: Array<RouteRecordRaw> = [
     path: "/pages/:pageId",
     name: "page",
     component: () => import("../views/PageView.vue"),
+  },
+  {
+    path: "/locations/:locationId",
+    name: "location",
+    component: () => import("../views/BioView.vue"),
+  },
+  {
+    path: "/people/:personId",
+    name: "person",
+    component: () => import("../views/BioView.vue"),
   },
   {
     path: "/share",

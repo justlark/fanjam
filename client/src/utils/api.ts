@@ -11,6 +11,20 @@ interface RawEvent {
   tags: Array<string>;
 }
 
+interface RawLocation {
+  id: string;
+  name: string;
+  description: string | null;
+  events: Array<string>;
+}
+
+interface RawPerson {
+  id: string;
+  name: string;
+  description: string | null;
+  events: Array<string>;
+}
+
 interface RawInfo {
   name: string | null;
   description: string | null;
@@ -85,6 +99,20 @@ export interface Event {
   tags: Array<string>;
 }
 
+export interface Location {
+  id: string;
+  name: string;
+  description?: string;
+  events: Array<string>;
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  description?: string;
+  events: Array<string>;
+}
+
 export interface Link {
   name: string;
   url: string;
@@ -143,15 +171,15 @@ const isOk = (response: Response): boolean => response.ok;
 
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-      etag?: string;
-      stale?: boolean;
-    }
+    ok: true;
+    value: T;
+    etag?: string;
+    stale?: boolean;
+  }
   | {
-      ok: false;
-      code: number;
-    };
+    ok: false;
+    code: number;
+  };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -167,8 +195,8 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -201,6 +229,76 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
   };
 };
 
+const getLocations = async (envId: string, etag?: string): Promise<ApiResult<Array<Location>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/locations`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+            "If-None-Match": etag,
+          }
+          : {}),
+      },
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawLocations: Envelope<{ locations: Array<RawLocation> }> = await response.json();
+
+  const locations: Array<Location> = rawLocations.value.locations.map((location) => ({
+    id: location.id,
+    name: location.name,
+    description: location.description ?? undefined,
+    events: location.events,
+  }));
+
+  return {
+    ok: true,
+    value: locations,
+    etag: response.headers.get("ETag") ?? undefined,
+    stale: rawLocations.stale,
+  };
+};
+
+const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<Person>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/people`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+            "If-None-Match": etag,
+          }
+          : {}),
+      },
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawPeople: Envelope<{ people: Array<RawPerson> }> = await response.json();
+
+  const people: Array<Location> = rawPeople.value.people.map((person) => ({
+    id: person.id,
+    name: person.name,
+    description: person.description ?? undefined,
+    events: person.events,
+  }));
+
+  return {
+    ok: true,
+    value: people,
+    etag: response.headers.get("ETag") ?? undefined,
+    stale: rawPeople.stale,
+  };
+};
+
 const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> => {
   const response = await fetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
@@ -208,8 +306,8 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -251,8 +349,8 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -293,8 +391,8 @@ const getAnnouncements = async (
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -410,6 +508,8 @@ const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiR
 
 export default {
   getEvents,
+  getLocations,
+  getPeople,
   getInfo,
   getPages,
   getAnnouncements,
