@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, type DeepReadonly, onMounted } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
+import useRemoteData from "@/composables/useRemoteData";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
@@ -14,12 +15,17 @@ import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 import LinkShareDialog from "./LinkShareDialog.vue";
+import BioDialog from "./BioDialog.vue";
 import { TOAST_TTL_LONG } from "@/utils/toast";
 
 const datetimeFormats = useDatetimeFormats();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+
+const {
+  data: { locations, people },
+} = useRemoteData();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -39,6 +45,7 @@ const descriptionHtml = computed(() => {
 const sectionHeadingId = useId();
 
 const fromViewType = ref<"daily" | "all">();
+const bioDialogVisible = ref(false);
 const shareDialogVisible = ref(false);
 
 // Do not include the query params or fragment; users likely aren't intending
@@ -74,6 +81,10 @@ const toggleStar = () => {
 
   isStarred.value = !isStarred.value;
 };
+
+const thisLocation = computed(() =>
+  locations.value.find((location) => location.events.some((eventId) => eventId === event.value.id)),
+);
 
 onMounted(() => {
   fromViewType.value = history.state.fromViewType;
@@ -228,6 +239,13 @@ onMounted(() => {
     </div>
     <LinkShareDialog
       v-model:visible="shareDialogVisible"
+      title="Share Event"
+      :link="eventUrl"
+      message="Send someone a link to this event."
+      toast-message="A link to this event has been copied to your clipboard."
+    />
+    <BioDialog
+      v-model:visible="bioDialogVisible"
       title="Share Event"
       :link="eventUrl"
       message="Send someone a link to this event."

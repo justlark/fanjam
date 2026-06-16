@@ -690,9 +690,9 @@ const dataSources = {
 //   date.
 // - `config` is necessary for gating certain features.
 const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
-  events: ["schedule", "event", "location", "person"],
-  locations: ["location"],
-  people: ["person"],
+  events: ["schedule", "event"],
+  locations: ["event"],
+  people: ["event"],
   info: "global",
   pages: ["info", "page"],
   announcements: "global",
