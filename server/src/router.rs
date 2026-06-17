@@ -18,15 +18,16 @@ use crate::{
         Announcement, DeleteSubscriptionRequest, Event, File, GetAliasResponse, GetAliasesResponse,
         GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
         GetDomainEnvResponse, GetDomainResponse, GetEventsResponse, GetFilesResponse,
-        GetInfoResponse, GetLinkResponse, GetPagesResponse, Link, Page, PostApplyMigrationResponse,
-        PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
-        PutAliasRequest, PutLinkResponse, PutTokenRequest,
+        GetInfoResponse, GetLinkResponse, GetPagesResponse, GetScheduleResponse, Link, Page,
+        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostRestoreBackupKind,
+        PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse, PutScheduleRequest,
+        PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
-    env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName},
+    env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName, SyncCode},
     error::Error,
     http::http_headers_from_object,
     kv, neon,
@@ -106,6 +107,8 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/subscription", post(post_subscription))
         .route("/apps/{env_id}/subscription", delete(delete_subscription))
+        .route("/apps/{env_id}/schedule/{sync_code}", put(put_schedule))
+        .route("/apps/{env_id}/schedule/{sync_code}", get(get_schedule))
         .route(
             "/apps/{env_id}/hooks/announcement-created",
             post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
@@ -806,6 +809,7 @@ async fn get_config(
         feedback_url: config.feedback_url,
         use_schedule_sharing: config.use_schedule_sharing,
         use_calendar_export: config.use_calendar_export,
+        use_schedule_sync: config.use_schedule_sync,
         use_custom_icon: config.use_custom_icon,
         favicon_name: config.favicon_name,
         opengraph_icon_name: config.opengraph_icon_name,
@@ -863,6 +867,59 @@ async fn delete_subscription(
         .map_err(Error::Internal)?;
 
     Ok(NoContent)
+}
+
+// Generous bounds that any real schedule stays well under, but that stop an anonymous caller from
+// stuffing arbitrarily large blobs into KV.
+const MAX_SCHEDULE_LEN: usize = 2000;
+const MAX_EVENT_ID_LEN: usize = 8;
+
+fn validate_schedule(schedule: &[String]) -> Result<(), Error> {
+    if schedule.len() > MAX_SCHEDULE_LEN || schedule.iter().any(|id| id.len() > MAX_EVENT_ID_LEN) {
+        return Err(Error::InvalidSchedule);
+    }
+
+    Ok(())
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn put_schedule(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, sync_code)): Path<(EnvId, SyncCode)>,
+    Json(body): Json<PutScheduleRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    validate_schedule(&body.schedule)?;
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    kv::put_schedule(&state.kv, &env_name, &sync_code, &body.schedule)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_schedule(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, sync_code)): Path<(EnvId, SyncCode)>,
+) -> Result<Json<GetScheduleResponse>, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let schedule = kv::get_schedule(&state.kv, &env_name, &sync_code)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::ScheduleNotFound)?;
+
+    Ok(Json(GetScheduleResponse { schedule }))
 }
 
 #[derive(Debug, Deserialize)]

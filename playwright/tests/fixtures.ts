@@ -397,11 +397,13 @@ export class MyScheduleBanner {
   // Share/calendar buttons live inside the popover, which renders its content
   // lazily — they only exist in the DOM once the popover is open.
   readonly shareButton: Locator;
+  readonly syncButton: Locator;
   readonly calendarButton: Locator;
 
   constructor(page: Page) {
     this.optionsButton = page.getByTestId("schedule-share-options-button");
     this.shareButton = page.getByTestId("schedule-share-button");
+    this.syncButton = page.getByTestId("schedule-sync-button");
     this.calendarButton = page.getByTestId("calendar-download-button");
   }
 
@@ -414,9 +416,51 @@ export class MyScheduleBanner {
     await this.shareButton.click();
   }
 
+  async sync() {
+    await this.openOptions();
+    await this.syncButton.click();
+  }
+
   async downloadCalendar() {
     await this.openOptions();
     await this.calendarButton.click();
+  }
+}
+
+export class ScheduleSyncDialog {
+  private readonly page: Page;
+  readonly url: Locator;
+  readonly copyButton: Locator;
+  readonly stopButton: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.url = page.getByTestId("schedule-sync-dialog-url");
+    this.copyButton = page.getByTestId("schedule-sync-dialog-copy-button");
+    this.stopButton = page.getByTestId("schedule-stop-sync-button");
+  }
+
+  async stopSyncing() {
+    await this.stopButton.click();
+  }
+
+  async close() {
+    await this.page.keyboard.press("Escape");
+  }
+}
+
+// Reads/writes the `sync:${envId}` localStorage key, which holds the active sync code.
+export class SyncedSchedule {
+  private readonly page: Page;
+  private readonly envId: string;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.envId = envId;
+  }
+
+  async get(): Promise<string | null> {
+    return this.page.evaluate((envId) => localStorage.getItem(`sync:${envId}`), this.envId);
   }
 }
 

@@ -22,6 +22,7 @@ import api, {
 } from "@/utils/api";
 import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
+import useScheduleSync from "./useScheduleSync";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -531,6 +532,7 @@ interface StoredConfig {
   feedback_url?: string;
   use_schedule_sharing?: boolean;
   use_calendar_export?: boolean;
+  use_schedule_sync?: boolean;
   use_push_notifications?: boolean;
 }
 
@@ -556,6 +558,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       feedback_url: data.feedbackUrl,
       use_schedule_sharing: data.useScheduleSharing,
       use_calendar_export: data.useCalendarExport,
+      use_schedule_sync: data.useScheduleSync,
       use_push_notifications: data.usePushNotifications,
     }),
     fromCache: (data) => ({
@@ -568,6 +571,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       feedbackUrl: data.feedback_url,
       useScheduleSharing: data.use_schedule_sharing,
       useCalendarExport: data.use_calendar_export,
+      useScheduleSync: data.use_schedule_sync,
       usePushNotifications: data.use_push_notifications,
     }),
   });
@@ -634,11 +638,14 @@ const useRemoteData: CombinedDataSource = () => {
     ]),
   );
 
+  const scheduleSync = useScheduleSync();
+
   // Refresh only from the API endpoints the current route uses. This is used
-  // by the manual refresh button.
+  // by the manual refresh button. When syncing is enabled, we also pull the
+  // latest schedule from the server alongside the rest of the data.
   const reloadAll = async () => {
-    await Promise.all(
-      Object.entries(dataSourceResponses)
+    await Promise.all([
+      ...Object.entries(dataSourceResponses)
         .filter(([key]) =>
           matchesRoute(
             FETCH_POLICIES[key as keyof typeof dataSources],
@@ -646,7 +653,8 @@ const useRemoteData: CombinedDataSource = () => {
           ),
         )
         .map(([, ds]) => ds.reload()),
-    );
+      scheduleSync.pullSchedule(),
+    ]);
   };
 
   const clear = () => {
@@ -675,6 +683,10 @@ const remoteDataKey = Symbol("data");
 export const provideRemoteData = () => {
   const remoteData = useRemoteData();
   provide(remoteDataKey, remoteData);
+
+  // Pull the synced schedule once on app load (if syncing is enabled), mirroring how the rest of
+  // the data is fetched eagerly on mount.
+  void useScheduleSync().pullSchedule();
 
   // When the service worker receives a push for a new announcement, it
   // messages us to refetch the announcements list.

@@ -161,7 +161,7 @@ test.describe("schedule share modal (schedule sharing disabled)", () => {
         { id: "2", name: "Test Event 2", start_time: hoursFromNow(2).toISOString() },
         { id: "3", name: "Test Event 3", start_time: hoursFromNow(3).toISOString() },
       ],
-      config: { use_schedule_sharing: false },
+      config: { use_schedule_sharing: false, use_calendar_export: false, use_schedule_sync: false },
     });
   });
 

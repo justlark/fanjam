@@ -3,7 +3,7 @@ use worker::kv::{KvError, KvStore};
 
 use crate::{
     api::Alias,
-    env::{Config, EnvDomain, EnvId, EnvName},
+    env::{Config, EnvDomain, EnvId, EnvName, SyncCode},
     noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, TableInfo},
     push,
 };
@@ -81,6 +81,16 @@ fn subscription_key_prefix(env_name: &EnvName) -> String {
 fn subscription_key(env_name: &EnvName, subscription_id: &str) -> String {
     format!("{}{}", subscription_key_prefix(env_name), subscription_id)
 }
+
+// A user's synced schedule, keyed by their client-generated sync code. These entries are set with
+// a TTL (refreshed on every write) so abandoned schedules self-clean after a con ends.
+fn schedule_key(env_name: &EnvName, sync_code: &SyncCode) -> String {
+    format!("env:{env_name}:schedule:{sync_code}")
+}
+
+// How long a synced schedule survives without being written to. 90 days comfortably outlasts any
+// con while bounding KV growth (entries scale with users * cons).
+const SCHEDULE_TTL_SECS: u64 = 90 * 24 * 60 * 60;
 
 fn cache_key_prefix(env_name: &EnvName) -> String {
     format!("env:{env_name}:cache:")
@@ -463,6 +473,35 @@ pub async fn get_env_config(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<
         .await
         .map_err(wrap_kv_err)?
         .unwrap_or_default())
+}
+
+#[worker::send]
+pub async fn put_schedule(
+    kv: &KvStore,
+    env_name: &EnvName,
+    sync_code: &SyncCode,
+    schedule: &[String],
+) -> anyhow::Result<()> {
+    kv.put(&schedule_key(env_name, sync_code), schedule)
+        .map_err(wrap_kv_err)?
+        .expiration_ttl(SCHEDULE_TTL_SECS)
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
+pub async fn get_schedule(
+    kv: &KvStore,
+    env_name: &EnvName,
+    sync_code: &SyncCode,
+) -> anyhow::Result<Option<Vec<String>>> {
+    kv.get(&schedule_key(env_name, sync_code))
+        .json::<Vec<String>>()
+        .await
+        .map_err(wrap_kv_err)
 }
 
 #[worker::send]

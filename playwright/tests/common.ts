@@ -194,6 +194,54 @@ export const mockWrappedApiResponseSequence = async (
   });
 };
 
+// A stateful in-memory mock of the schedule sync endpoints. PUT stores the schedule under the sync
+// code; GET returns it (200) or 404 if the code is unknown. The returned handle exposes the stored
+// state plus how many PUTs have landed, so tests can assert push behaviour.
+export const mockScheduleSync = async (
+  page: Page,
+  initial: Record<string, Array<string>> = {},
+) => {
+  const store = new Map<string, Array<string>>(Object.entries(initial));
+  const handle = {
+    store,
+    putCount: 0,
+    lastPut: undefined as Array<string> | undefined,
+    get(code: string): Array<string> | undefined {
+      return store.get(code);
+    },
+  };
+
+  await page.route("https://api-test.fanjam.live/apps/*/schedule/*", async (route) => {
+    const request = route.request();
+    const code = decodeURIComponent(new URL(request.url()).pathname.split("/").pop() ?? "");
+
+    if (request.method() === "PUT") {
+      const body = request.postDataJSON() as { schedule: Array<string> };
+      store.set(code, body.schedule);
+      handle.putCount++;
+      handle.lastPut = body.schedule;
+      await route.fulfill({ status: 204 });
+      return;
+    }
+
+    if (store.has(code)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ schedule: store.get(code) }),
+      });
+    } else {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Not found" }),
+      });
+    }
+  });
+
+  return handle;
+};
+
 export const countRequestsTo = (page: Page, endpoint: string): { count: number } => {
   const counter = { count: 0 };
   const pattern = new RegExp(endpoint.replace(/^\//, ""));

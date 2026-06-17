@@ -64,6 +64,7 @@ interface RawConfig {
   feedback_url: string | null;
   use_schedule_sharing: boolean | null;
   use_calendar_export: boolean | null;
+  use_schedule_sync: boolean | null;
   use_push_notifications: boolean | null;
 }
 
@@ -136,6 +137,7 @@ export interface Config {
   feedbackUrl?: string;
   useScheduleSharing?: boolean;
   useCalendarExport?: boolean;
+  useScheduleSync?: boolean;
   usePushNotifications?: boolean;
 }
 
@@ -351,6 +353,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     feedbackUrl: rawConfig.feedback_url ?? undefined,
     useScheduleSharing: rawConfig.use_schedule_sharing ?? undefined,
     useCalendarExport: rawConfig.use_calendar_export ?? undefined,
+    useScheduleSync: rawConfig.use_schedule_sync ?? undefined,
     usePushNotifications: rawConfig.use_push_notifications ?? undefined,
   };
 
@@ -408,6 +411,41 @@ const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiR
   return { ok: true, value: undefined };
 };
 
+const putSchedule = async (
+  envId: string,
+  syncCode: string,
+  schedule: Array<string>,
+): Promise<ApiResult<void>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ schedule }),
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  return { ok: true, value: undefined };
+};
+
+const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<Array<string>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const body: { schedule: Array<string> } = await response.json();
+
+  return { ok: true, value: body.schedule };
+};
+
 export default {
   getEvents,
   getInfo,
@@ -417,4 +455,6 @@ export default {
   getAlias,
   postSubscription,
   deleteSubscription,
+  putSchedule,
+  getSchedule,
 };

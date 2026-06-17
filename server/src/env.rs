@@ -35,6 +35,47 @@ impl fmt::Display for EnvName {
     }
 }
 
+// A random, client-generated code that identifies a synced schedule. The schedule is stored in KV
+// under this code, and anyone who knows it can read and overwrite the schedule, so it doubles as a
+// bearer secret. We generate it on the client, but validate its shape here because it arrives as
+// untrusted path input.
+pub const SYNC_CODE_LEN: usize = 12;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SyncCode(String);
+
+impl TryFrom<String> for SyncCode {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value.len() == SYNC_CODE_LEN
+            && value
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        {
+            Ok(Self(value))
+        } else {
+            anyhow::bail!("A sync code must be exactly {SYNC_CODE_LEN} characters of [a-z0-9].");
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SyncCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        SyncCode::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+
+impl fmt::Display for SyncCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 // A custom hostname ("vanity domain") that an instance of the client can be served from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct EnvDomain(String);
@@ -103,6 +144,7 @@ pub struct Config {
     pub feedback_url: Option<String>,
     pub use_schedule_sharing: Option<bool>,
     pub use_calendar_export: Option<bool>,
+    pub use_schedule_sync: Option<bool>,
     pub config_db_host: Option<String>,
     pub config_db_port: Option<u16>,
     pub config_db_name: Option<String>,

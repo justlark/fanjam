@@ -109,7 +109,7 @@ test.describe("calendar export button (feature flag disabled)", () => {
           end_time: hoursFromNow(2).toISOString(),
         },
       ],
-      config: { use_calendar_export: false },
+      config: { use_calendar_export: false, use_schedule_sharing: false, use_schedule_sync: false },
     });
   });
 

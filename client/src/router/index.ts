@@ -58,6 +58,19 @@ const defaultRoutes: Array<RouteRecordRaw> = [
     }),
   },
   {
+    path: "/app/:envId/sync",
+    name: "sync",
+    redirect: (to) => {
+      // Adopt the sync code synchronously so it's present before the schedule view mounts and runs
+      // its initial pull. Drop `?s` so it isn't carried forward by the share-preservation guard.
+      if (typeof to.query.s === "string") {
+        localStorage.setItem(`sync:${to.params.envId as string}`, to.query.s);
+      }
+
+      return { name: "schedule", params: { envId: to.params.envId, dayIndex: "all" }, query: {} };
+    },
+  },
+  {
     path: "/app/:envId/:catchAll(.*)",
     redirect: { name: "app" },
   },
@@ -113,6 +126,18 @@ const customRoutes: Array<RouteRecordRaw> = [
       params: { dayIndex: "all" },
       query: { star: "true", share: to.query.s },
     }),
+  },
+  {
+    path: "/sync",
+    name: "sync",
+    redirect: (to) => {
+      // On a custom domain the env ID isn't in the path; it comes from `envContext`.
+      if (envContext.mode === "custom" && typeof to.query.s === "string") {
+        localStorage.setItem(`sync:${envContext.envId}`, to.query.s);
+      }
+
+      return { name: "schedule", params: { dayIndex: "all" }, query: {} };
+    },
   },
   {
     path: "/:catchAll(.*)",

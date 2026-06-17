@@ -3,23 +3,27 @@ import { ref, computed } from "vue";
 import { encodeBase64url } from "@/utils/encoding";
 import { downloadStarredEventsIcs } from "@/utils/calendar";
 import useStarredEvents from "@/composables/useStarredEvents";
+import useScheduleSync from "@/composables/useScheduleSync";
 import useRemoteData from "@/composables/useRemoteData";
 import useEnvId from "@/composables/useEnvId";
 import { useAppUrl } from "@/composables/useAppUrl";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import LinkShareDialog from "./LinkShareDialog.vue";
+import ScheduleSyncDialog from "./ScheduleSyncDialog.vue";
 import Popover from "primevue/popover";
 
 const starredEvents = useStarredEvents();
 const envId = useEnvId();
 const appUrl = useAppUrl();
+const { syncLink, enableSync, stopSync } = useScheduleSync();
 const {
   data: { config, events },
 } = useRemoteData();
 
 const calendarExportEnabled = computed(() => config.value?.useCalendarExport ?? true);
 const scheduleSharingEnabled = computed(() => config.value?.useScheduleSharing ?? true);
+const scheduleSyncEnabled = computed(() => config.value?.useScheduleSync ?? true);
 const hasStarredEvents = computed(() => starredEvents.value.size > 0);
 const scheduleShareUrl = computed(() => {
   const starredEventIds = [...starredEvents.value];
@@ -29,6 +33,7 @@ const scheduleShareUrl = computed(() => {
 
 const shareOptionsPopover = ref();
 const shareDialogVisible = ref(false);
+const syncDialogVisible = ref(false);
 
 const shareOptions = [
   {
@@ -37,6 +42,13 @@ const shareOptions = [
     icon: "send-fill",
     testid: "schedule-share-button",
     visible: () => scheduleSharingEnabled.value,
+  },
+  {
+    key: "sync",
+    label: "Sync Schedule",
+    icon: "arrow-repeat",
+    testid: "schedule-sync-button",
+    visible: () => scheduleSyncEnabled.value,
   },
   {
     key: "calendar",
@@ -49,9 +61,14 @@ const shareOptions = [
 
 const visibleShareOptions = computed(() => shareOptions.filter((option) => option.visible()));
 
-const selectShareOption = (key: string) => {
+const selectShareOption = async (key: string) => {
   if (key === "share") {
     shareDialogVisible.value = true;
+  } else if (key === "sync") {
+    // No-op if already syncing; this just reopens the dialog so the link stays reachable for
+    // enrolling another device.
+    await enableSync();
+    syncDialogVisible.value = true;
   } else if (key === "calendar") {
     downloadCalendar();
   }
@@ -73,7 +90,10 @@ const downloadCalendar = () => {
     <div class="pl-5 pr-3 lg:pr-5 h-16 flex gap-2 items-center justify-between lg:justify-start">
       <span class="text-xl lg:text-2xl">My Schedule</span>
       <IconButton
-        v-if="hasStarredEvents && (calendarExportEnabled || scheduleSharingEnabled)"
+        v-if="
+          hasStarredEvents &&
+          (calendarExportEnabled || scheduleSharingEnabled || scheduleSyncEnabled)
+        "
         icon="share-fill"
         size="sm"
         label="Share"
@@ -101,8 +121,9 @@ const downloadCalendar = () => {
       v-model:visible="shareDialogVisible"
       title="Share Your Schedule"
       :link="scheduleShareUrl"
-      message="Use this link to share your schedule with a friend or move it to another device."
+      message="Use this link to share your schedule with a friend."
       toast-message="Share this URL to share your schedule."
     />
+    <ScheduleSyncDialog v-model:visible="syncDialogVisible" :link="syncLink" @stop="stopSync" />
   </div>
 </template>

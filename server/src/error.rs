@@ -42,6 +42,12 @@ pub enum Error {
     #[error("No custom domain is configured for this environment.")]
     NoEnvDomain,
 
+    #[error("The submitted schedule is invalid.")]
+    InvalidSchedule,
+
+    #[error("No synced schedule exists for that sync code.")]
+    ScheduleNotFound,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -61,6 +67,8 @@ impl Error {
             Error::InvalidDomain(_) => StatusCode::BAD_REQUEST,
             Error::DomainInUse => StatusCode::CONFLICT,
             Error::NoEnvDomain => StatusCode::NOT_FOUND,
+            Error::InvalidSchedule => StatusCode::BAD_REQUEST,
+            Error::ScheduleNotFound => StatusCode::NOT_FOUND,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

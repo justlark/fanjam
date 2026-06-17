@@ -196,6 +196,7 @@ pub struct GetConfigResponse {
     pub feedback_url: Option<String>,
     pub use_schedule_sharing: Option<bool>,
     pub use_calendar_export: Option<bool>,
+    pub use_schedule_sync: Option<bool>,
     pub use_custom_icon: Option<bool>,
     pub favicon_name: Option<String>,
     pub opengraph_icon_name: Option<String>,
@@ -216,4 +217,14 @@ pub struct GetConfigResponse {
 #[derive(Debug, Deserialize)]
 pub struct DeleteSubscriptionRequest {
     pub endpoint: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PutScheduleRequest {
+    pub schedule: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetScheduleResponse {
+    pub schedule: Vec<String>,
 }

@@ -36,3 +36,27 @@ export const decodeBase64url = (encoded: string): string => {
   });
   return new TextDecoder().decode(bytes);
 };
+
+const SYNC_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const SYNC_CODE_LENGTH = 12;
+
+// Generate a random schedule sync code: 12 characters of [a-z0-9]. The server validates this same
+// shape. We use reject sampling over `crypto.getRandomValues` so each character is drawn uniformly
+// from the 36-char alphabet (256 % 36 != 0, so plain modulo would bias the low characters).
+export const generateSyncCode = (): string => {
+  const maxUnbiased = 256 - (256 % SYNC_CODE_ALPHABET.length);
+  let code = "";
+
+  while (code.length < SYNC_CODE_LENGTH) {
+    const bytes = new Uint8Array(SYNC_CODE_LENGTH);
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte < maxUnbiased) {
+        code += SYNC_CODE_ALPHABET[byte % SYNC_CODE_ALPHABET.length];
+        if (code.length === SYNC_CODE_LENGTH) break;
+      }
+    }
+  }
+
+  return code;
+};
