@@ -176,6 +176,7 @@ test.describe("joining a sync link", () => {
 
     await page.goto("sync/?s=abcdef123456");
 
+    await expect(page.getByText("Syncing your schedule")).toBeVisible();
     await expect(page).toHaveURL(/\/schedule\/all$/);
     expect(await syncedSchedule.get()).toBe("abcdef123456");
 

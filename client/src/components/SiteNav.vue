@@ -3,7 +3,7 @@ import { ref, computed, watch, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import Divider from "primevue/divider";
-import { RouterLink, useRoute } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
 import Drawer from "primevue/drawer";
 import MainMenu from "./MainMenu.vue";
@@ -17,7 +17,7 @@ import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
-import { TOAST_TTL_SHORT } from "@/utils/toast";
+import { TOAST_TTL_SHORT, TOAST_TTL_LONG } from "@/utils/toast";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
@@ -25,6 +25,7 @@ const scheduleShareOptionsDialogVisible = ref(false);
 
 const toast = useToast();
 const route = useRoute();
+const router = useRouter();
 const unreadAnnouncements = useUnreadAnnouncements();
 const isSharedSchedule = useIsSharedSchedule();
 
@@ -45,6 +46,28 @@ const toggleMenuDrawer = () => {
 watch(route, () => {
   menuVisible.value = false;
 });
+
+// When the user follows a schedule sync link, the router will append a query
+// param specifically to tell this component to show a toast. Once we show the
+// toast, we strip the query param.
+watch(
+  () => route.query.synced,
+  async (synced) => {
+    if (synced !== "true") return;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { synced: _, ...query } = route.query;
+    await router.replace({ query });
+
+    toast.add({
+      severity: "info",
+      summary: "Syncing your schedule",
+      detail: "Your schedule will now stay in sync on this device.",
+      life: TOAST_TTL_LONG,
+    });
+  },
+  { immediate: true },
+);
 
 const {
   data: { info },
