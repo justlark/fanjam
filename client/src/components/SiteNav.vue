@@ -60,7 +60,7 @@ watch(
     await router.replace({ query });
 
     toast.add({
-      severity: "info",
+      severity: "success",
       summary: "Syncing your schedule",
       detail: "Your schedule will now stay in sync on this device.",
       life: TOAST_TTL_LONG,
