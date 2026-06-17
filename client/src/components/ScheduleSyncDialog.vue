@@ -36,7 +36,15 @@ const copySyncUrl = async () => {
 
 const stopSyncing = () => {
   emit("stop");
+
   visible.value = false;
+
+  toast.add({
+    severity: "info",
+    summary: "Stopped syncing",
+    detail: "This device is no longer syncing your schedule.",
+    life: TOAST_TTL_MEDIUM,
+  });
 };
 </script>
 
@@ -66,8 +74,7 @@ const stopSyncing = () => {
       <div class="flex flex-col justify-end">
         <p data-testid="schedule-sync-dialog-description">
           Open this link on your other devices to keep your schedule in sync between them
-          automatically. Want to share you schedule with a friend? Go back and click "Share
-          Schedule" instead.
+          automatically.
         </p>
       </div>
       <InputGroup class="mt-3">
@@ -84,11 +91,12 @@ const stopSyncing = () => {
     </div>
     <template #footer>
       <Button
+        fluid
         data-testid="schedule-stop-sync-button"
         @click="stopSyncing"
         label="Stop Syncing"
         icon="bi bi-x-lg"
-        severity="secondary"
+        severity="danger"
       />
     </template>
   </Dialog>
