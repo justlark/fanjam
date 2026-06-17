@@ -38,7 +38,7 @@ const syncDialogVisible = ref(false);
 const shareOptions = [
   {
     key: "share",
-    label: "Share Schedule",
+    label: "Send Schedule",
     icon: "send-fill",
     testid: "schedule-share-button",
     visible: () => scheduleSharingEnabled.value,
@@ -119,9 +119,9 @@ const downloadCalendar = () => {
     <Divider class="!my-0" />
     <LinkShareDialog
       v-model:visible="shareDialogVisible"
-      title="Share Your Schedule"
+      title="Send Your Schedule"
       :link="scheduleShareUrl"
-      message="Use this link to share your schedule with a friend."
+      message="Use this link to send your schedule to a friend."
       toast-message="Share this URL to share your schedule."
     />
     <ScheduleSyncDialog v-model:visible="syncDialogVisible" :link="syncLink" @stop="stopSync" />
