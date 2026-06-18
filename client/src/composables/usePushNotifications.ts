@@ -49,11 +49,12 @@ const usePushNotifications = (): {
       subscribed.value = existing !== null;
 
       if (existing && envId.value) {
-        const key = `subscription:${envId.value}:${endpointId(existing.endpoint)}`;
-        if (localStorage.getItem(key) === null) {
+        const key = `subscription:${envId.value}`;
+        const id = endpointId(existing.endpoint);
+        if (localStorage.getItem(key) !== id) {
           const result = await api.postSubscription(envId.value, existing.toJSON());
           if (result.ok) {
-            localStorage.setItem(key, "true");
+            localStorage.setItem(key, id);
           }
         }
       }
@@ -92,8 +93,8 @@ const usePushNotifications = (): {
       });
       const result = await api.postSubscription(envId.value, subscription.toJSON());
       if (result.ok) {
-        const key = `subscription:${envId.value}:${endpointId(subscription.endpoint)}`;
-        localStorage.setItem(key, "true");
+        const key = `subscription:${envId.value}`;
+        localStorage.setItem(key, endpointId(subscription.endpoint));
         subscribed.value = true;
       } else {
         subscribed.value = false;
