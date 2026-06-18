@@ -30,7 +30,7 @@ const buildEventAttributes = (
     location: event.location,
     description,
     url: link,
-    uid: `${event.id}@fanjam.live:${envId}`,
+    uid: `${event.id}:${envId}@fanjam.live`,
     productId: "fanjam/ics",
   };
 };
