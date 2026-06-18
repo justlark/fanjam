@@ -15,6 +15,7 @@ const visible = defineModel<boolean>("visible", {
 
 const props = defineProps<{
   link: string;
+  syncEmojis: string;
 }>();
 
 const emit = defineEmits<{
@@ -71,10 +72,15 @@ const stopSyncing = () => {
           />
         </div>
       </div>
-      <div class="flex flex-col justify-end">
+      <div class="flex flex-col gap-2 justify-end">
         <p data-testid="schedule-sync-dialog-description">
           Open this link on your other devices to keep your schedule in sync between them
           automatically.
+        </p>
+        <p>
+          Your sync code is
+          <span data-testid="schedule-sync-dialog-emojis">{{ props.syncEmojis }}</span
+          >. Compare this with your other devices to check if they're in sync.
         </p>
       </div>
       <InputGroup class="mt-3">
@@ -97,6 +103,7 @@ const stopSyncing = () => {
         label="Stop Syncing"
         icon="bi bi-x-lg"
         severity="danger"
+        outlined
       />
     </template>
   </Dialog>

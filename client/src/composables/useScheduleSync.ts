@@ -5,6 +5,7 @@ import { useAppUrl } from "./useAppUrl";
 import useEnvId from "./useEnvId";
 import useIsSharedSchedule from "./useIsSharedSchedule";
 import useStarredEvents from "./useStarredEvents";
+import emojiHasher, { type EmojiHasher } from "emoji-hash-gen";
 
 // How long after a starring change we wait before pushing to the server, so a flurry of toggles
 // collapses into a single PUT.
@@ -61,6 +62,19 @@ const useScheduleSync = () => {
   const isSyncing = computed(() => syncCode.value !== undefined);
 
   const syncLink = computed(() => (syncCode.value ? appUrl(`sync/?s=${syncCode.value}`) : ""));
+
+  const syncEmojis = computed(() => {
+    if (syncCode.value === undefined) return "";
+
+    return (emojiHasher as EmojiHasher).getHash(`${envId.value}:${syncCode.value}`, {
+      length: 3,
+      // Needing to specify the `base` here seems to be a bug. This is the
+      // default value from the source code.
+      //
+      // https://github.com/opa-oz/emoji-hash/issues/32
+      base: Object.keys((emojiHasher as EmojiHasher).table).length,
+    });
+  });
 
   const doPush = async () => {
     const code = syncCode.value;
@@ -172,7 +186,7 @@ const useScheduleSync = () => {
     ready = true;
   };
 
-  return { isSyncing, syncLink, enableSync, stopSync, pullSchedule };
+  return { isSyncing, syncLink, syncEmojis, enableSync, stopSync, pullSchedule };
 };
 
 export default useScheduleSync;

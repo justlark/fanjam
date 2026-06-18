@@ -16,7 +16,7 @@ import Popover from "primevue/popover";
 const starredEvents = useStarredEvents();
 const envId = useEnvId();
 const appUrl = useAppUrl();
-const { syncLink, enableSync, stopSync } = useScheduleSync();
+const { syncLink, syncEmojis, enableSync, stopSync } = useScheduleSync();
 const {
   data: { config, events },
 } = useRemoteData();
@@ -124,6 +124,11 @@ const downloadCalendar = () => {
       message="Use this link to send your schedule to a friend."
       toast-message="Share this URL to share your schedule."
     />
-    <ScheduleSyncDialog v-model:visible="syncDialogVisible" :link="syncLink" @stop="stopSync" />
+    <ScheduleSyncDialog
+      v-model:visible="syncDialogVisible"
+      :link="syncLink"
+      :syncEmojis="syncEmojis"
+      @stop="stopSync"
+    />
   </div>
 </template>
