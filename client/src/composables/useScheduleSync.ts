@@ -78,7 +78,9 @@ const EMOJI_LIST = [
   "🐝",
 ];
 
-emojiHasher.useTable(EMOJI_LIST.reduce((obj, emoji, index) => ({ [index]: emoji, ...obj }), {}));
+(emojiHasher as EmojiHasher).useTable(
+  EMOJI_LIST.reduce((obj, emoji, index) => ({ [index]: emoji, ...obj }), {}),
+);
 
 // Module-singleton sync state, shared across every component that uses this composable. Keyed to
 // the current environment via `currentEnvId`; switching environments resets everything.
@@ -135,10 +137,13 @@ const useScheduleSync = () => {
   const syncEmojis = computed(() => {
     if (syncCode.value === undefined) return "";
 
-    return (emojiHasher as EmojiHasher).getHash(`${envId.value}:${syncCode.value}`, {
-      length: 3,
-      base: EMOJI_LIST.length,
-    });
+    const hasher = emojiHasher as EmojiHasher;
+
+    // Force the hash to be non-negative.
+    const hash = hasher.getBitwise(`${envId.value}:${syncCode.value}`) >>> 0;
+
+    // This misbehaves when the given has is negative.
+    return hasher.transformBinary(hash, { length: 3, base: EMOJI_LIST.length });
   });
 
   const doPush = async () => {
