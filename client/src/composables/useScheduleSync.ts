@@ -11,6 +11,75 @@ import emojiHasher, { type EmojiHasher } from "emoji-hash-gen";
 // collapses into a single PUT.
 const PUSH_DEBOUNCE_MS = 1000;
 
+const EMOJI_LIST = [
+  "🐱",
+  "🐶",
+  "🦊",
+  "🐻",
+  "🐮",
+  "🐷",
+  "🦁",
+  "🌳",
+  "✈️",
+  "🥕",
+  "🔥",
+  "❤️",
+  "⭐",
+  "🎉",
+  "🪲",
+  "⚡",
+  "🪐",
+  "🍎",
+  "🧭",
+  "⚓",
+  "🚗",
+  "🚀",
+  "🪩",
+  "🏆",
+  "⚽",
+  "🎲",
+  "🕹️",
+  "🎺",
+  "🎸",
+  "💎",
+  "💡",
+  "👑",
+  "☂️",
+  "🔨",
+  "✏️",
+  "📫",
+  "⏰",
+  "🔑",
+  "🍄",
+  "🥪",
+  "🚩",
+  "🎂",
+  "🏈",
+  "🎱",
+  "♟️",
+  "☎️",
+  "🧳",
+  "💊",
+  "📢",
+  "🌈",
+  "☀️",
+  "🍒",
+  "☕",
+  "🚢",
+  "🎈",
+  "👍️",
+  "📷",
+  "🧵",
+  "🥁",
+  "🎤",
+  "💰",
+  "🔦",
+  "🧼",
+  "🐝",
+];
+
+emojiHasher.useTable(EMOJI_LIST.reduce((obj, emoji, index) => ({ [index]: emoji, ...obj }), {}));
+
 // Module-singleton sync state, shared across every component that uses this composable. Keyed to
 // the current environment via `currentEnvId`; switching environments resets everything.
 const syncCode = ref<string | undefined>();
@@ -68,11 +137,7 @@ const useScheduleSync = () => {
 
     return (emojiHasher as EmojiHasher).getHash(`${envId.value}:${syncCode.value}`, {
       length: 3,
-      // Needing to specify the `base` here seems to be a bug. This is the
-      // default value from the source code.
-      //
-      // https://github.com/opa-oz/emoji-hash/issues/32
-      base: Object.keys((emojiHasher as EmojiHasher).table).length,
+      base: EMOJI_LIST.length,
     });
   });
 
