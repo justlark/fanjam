@@ -105,6 +105,8 @@ struct PeopleResponse {
     pub id: u32,
     #[serde(rename = "Name")]
     pub name: String,
+    #[serde(rename = "Bio")]
+    pub bio: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -337,11 +339,8 @@ pub async fn get_people(client: &Client, table_ids: &TableIds) -> anyhow::Result
         .into_iter()
         .map(|r| Person {
             id: r.id.to_string(),
-            bio: Some(format!(
-                "This is a placeholder bio for **{}**. Their real bio will appear here once it's been filled in.",
-                r.name,
-            )),
             name: r.name,
+            bio: r.bio,
         })
         .collect())
 }
