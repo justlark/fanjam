@@ -6,7 +6,10 @@ interface RawEvent {
   start_time: string;
   end_time: string | null;
   location: string | null;
-  people: Array<string>;
+  people: Array<{
+    id: string;
+    name: string;
+  }>;
   category: string | null;
   tags: Array<string>;
 }
@@ -73,6 +76,11 @@ interface Envelope<T> {
   value: T;
 }
 
+export interface Person {
+  id: string;
+  name: string;
+}
+
 export interface Event {
   id: string;
   name: string;
@@ -81,7 +89,7 @@ export interface Event {
   startTime: Date;
   endTime?: Date;
   location?: string;
-  people: Array<string>;
+  people: Array<Person>;
   category?: string;
   tags: Array<string>;
 }

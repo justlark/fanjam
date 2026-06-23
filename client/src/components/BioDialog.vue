@@ -13,10 +13,10 @@ defineEmits(["find"]);
 
 const props = defineProps<{
   name: string;
-  bio: string;
+  bio?: string;
 }>();
 
-const bioHtml = computed(() => renderMarkdown(props.bio));
+const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefined));
 </script>
 
 <template>

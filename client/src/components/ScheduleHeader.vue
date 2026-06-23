@@ -99,7 +99,7 @@ watchEffect(() => {
       name: event.name,
       description: event.description ?? "",
       location: event.location ?? "",
-      people: event.people.join(", "),
+      people: event.people.map((person) => person.name).join(", "),
       category: event.category ?? "",
       tags: event.tags.join(", "),
     });

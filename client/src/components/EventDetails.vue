@@ -144,16 +144,16 @@ onMounted(() => {
             data-testid="event-details-hosts"
           >
             <span>Hosted by </span>
-            <span v-for="(person, index) in event.people" :key="index">
+            <span v-for="(person, index) in event.people" :key="person.id">
               <button
                 class="text-link-sm"
                 data-testid="event-details-person-link"
                 @click="
                   bioDialogVisible = true;
-                  currentPersonName = person;
+                  currentPersonName = person.name;
                 "
               >
-                {{ person }}
+                {{ person.name }}
               </button>
               <span v-if="index < event.people.length - 1">, </span>
             </span>

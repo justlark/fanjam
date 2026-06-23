@@ -15,13 +15,13 @@ use serde::Deserialize;
 
 use crate::{
     api::{
-        Announcement, DeleteSubscriptionRequest, Event, File, GetAliasResponse, GetAliasesResponse,
-        GetAnnouncementsResponse, GetConfigResponse, GetCurrentMigrationResponse,
-        GetDomainEnvResponse, GetDomainResponse, GetEventsResponse, GetFilesResponse,
-        GetInfoResponse, GetLinkResponse, GetPagesResponse, GetScheduleResponse, Link, Page,
-        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostRestoreBackupKind,
-        PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse, PutScheduleRequest,
-        PutTokenRequest,
+        Announcement, DeleteSubscriptionRequest, Event, EventPerson, File, GetAliasResponse,
+        GetAliasesResponse, GetAnnouncementsResponse, GetConfigResponse,
+        GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse, GetEventsResponse,
+        GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetScheduleResponse,
+        Link, Page, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
+        PutScheduleRequest, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -606,7 +606,14 @@ async fn get_events(
                     start_time: event.start_time,
                     end_time: event.end_time,
                     location: event.location,
-                    people: event.people,
+                    people: event
+                        .people
+                        .into_iter()
+                        .map(|person| EventPerson {
+                            id: person.id,
+                            name: person.name,
+                        })
+                        .collect::<Vec<_>>(),
                     category: event.category,
                     tags: event.tags,
                 })

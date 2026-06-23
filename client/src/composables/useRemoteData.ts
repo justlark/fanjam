@@ -290,7 +290,10 @@ interface StoredEvent {
   start_time: string;
   end_time?: string;
   location?: string;
-  people: Array<string>;
+  people: Array<{
+    id: string;
+    name: string;
+  }>;
   category?: string;
   tags: Array<string>;
 }

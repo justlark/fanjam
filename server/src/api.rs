@@ -109,6 +109,12 @@ pub struct DataResponseEnvelope<T> {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct EventPerson {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -117,7 +123,7 @@ pub struct Event {
     pub start_time: String,
     pub end_time: Option<String>,
     pub location: Option<String>,
-    pub people: Vec<String>,
+    pub people: Vec<EventPerson>,
     pub category: Option<String>,
     pub tags: Vec<String>,
 }

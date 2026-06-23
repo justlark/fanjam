@@ -176,6 +176,12 @@ struct AnnouncementResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Person {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -185,7 +191,7 @@ pub struct Event {
     pub end_time: Option<String>,
     pub location: Option<String>,
     pub category: Option<String>,
-    pub people: Vec<String>,
+    pub people: Vec<Person>,
     pub tags: Vec<String>,
 }
 
@@ -294,7 +300,12 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
             people: r
                 .people_m2m
                 .into_iter()
-                .filter_map(|p| people_id_to_name.get(&p.id).cloned())
+                .filter_map(|p| {
+                    people_id_to_name.get(&p.id).map(|name| Person {
+                        id: p.id.to_string(),
+                        name: name.clone(),
+                    })
+                })
                 .collect(),
             tags: r
                 .tags_m2m
