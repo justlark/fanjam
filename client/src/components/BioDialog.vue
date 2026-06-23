@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { renderMarkdown } from "@/utils/markdown";
 import IconButton from "./IconButton.vue";
+import SimpleIcon from "./SimpleIcon.vue";
 import Dialog from "primevue/dialog";
 
 const visible = defineModel<boolean>("visible", {
@@ -27,8 +28,13 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
     dismissable-mask
     block-scroll
     :draggable="false"
-    :header="props.name"
   >
+    <template #header>
+      <div class="flex gap-3 items-center">
+        <SimpleIcon class="text-xl" icon="person-circle" />
+        <span class="text-xl font-bold">{{ props.name }}</span>
+      </div>
+    </template>
     <article v-if="props.bio" data-testid="person-bio-body">
       <div v-if="bioHtml" v-html="bioHtml" />
     </article>
