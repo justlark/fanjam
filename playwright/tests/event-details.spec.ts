@@ -58,7 +58,7 @@ test.describe("event details page", () => {
     await expect(eventPage.time).toBeVisible();
   });
 
-  test("displays location with search link", async ({ page, eventPage, schedulePage, filterMenu }) => {
+  test("displays location", async ({ page, eventPage }) => {
     await mockApi(page, {
       events: [
         {
@@ -73,13 +73,7 @@ test.describe("event details page", () => {
     await eventPage.goto("1");
 
     await expect(eventPage.location).toBeVisible();
-    await expect(eventPage.locationLinks).toHaveText("Main Hall A");
-
-    // Click the location link and verify it filters by location
-    await eventPage.locationLinks.click();
-
-    await filterMenu.toggleOpen();
-    await expect(filterMenu.searchInput).toHaveValue("Main Hall A");
+    await expect(eventPage.location).toContainText("Main Hall A");
   });
 
   test("displays people with search links", async ({ page, eventPage, filterMenu }) => {

@@ -167,7 +167,6 @@ export class EventDetailsPage {
   readonly personLinks: Locator;
   readonly personBio: Locator;
   readonly bioFindButton: Locator;
-  readonly locationLinks: Locator;
   readonly starButton: Locator;
   readonly shareButton: Locator;
   readonly summary: Locator;
@@ -187,7 +186,6 @@ export class EventDetailsPage {
     this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
     this.personBio = page.getByTestId("person-bio-body");
     this.bioFindButton = page.getByTestId("person-find-button").filter({ visible: true });
-    this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
     this.shareButton = page.getByTestId("event-share-link").filter({ visible: true });
     this.summary = page.getByTestId("event-details-summary");

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId, type DeepReadonly, onMounted } from "vue";
-import { useRoute, useRouter, RouterLink } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
@@ -174,17 +174,7 @@ onMounted(() => {
             icon-label="Location"
             data-testid="event-details-location"
           >
-            <RouterLink
-              class="text-link-sm"
-              data-testid="event-details-location-link"
-              :to="{
-                name: 'schedule',
-                params: { dayIndex: props.day + 1 },
-                query: toFilterQueryParams({ search: event.location }),
-              }"
-            >
-              {{ event.location }}
-            </RouterLink>
+            {{ event.location }}
           </EventDetail>
         </dl>
         <div class="lg:hidden flex flex-col gap-1">

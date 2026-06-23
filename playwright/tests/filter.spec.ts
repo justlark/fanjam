@@ -239,15 +239,6 @@ test.describe("filtering events", () => {
     await expect(filterMenu.description).not.toBeVisible();
   });
 
-  test("follow link to search by location", async ({ filterMenu, schedulePage, eventPage }) => {
-    await schedulePage.openEventDetailsPage("Test Event 2");
-
-    await eventPage.locationLinks.filter({ hasText: "Orange Room" }).click();
-
-    await filterMenu.toggleOpen();
-    await expect(filterMenu.searchInput).toHaveValue("Orange Room");
-  });
-
   test("follow link to search by person", async ({ filterMenu, schedulePage, eventPage }) => {
     await schedulePage.openEventDetailsPage("Test Event 2");
 
