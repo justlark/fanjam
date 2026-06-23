@@ -61,6 +61,21 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
   return data;
 };
 
+const mockApiPeople = async (page: Page, people: Array<Record<string, unknown>>) => {
+  const data = people.map((person) => ({
+    id: newRandomId(),
+    name: "Test Person",
+    bio: null,
+    ...person,
+  }));
+
+  await mockWrappedApiResponse(page, "/people", {
+    people: data,
+  });
+
+  return data;
+};
+
 const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) => {
   const data = pages.map((page) => ({
     id: newRandomId(),
@@ -108,6 +123,7 @@ export const mockApi = async (
   data: {
     info?: Record<string, unknown>;
     events?: Array<Record<string, unknown>>;
+    people?: Array<Record<string, unknown>>;
     pages?: Array<Record<string, unknown>>;
     announcements?: Array<Record<string, unknown>>;
     config?: Record<string, unknown>;
@@ -115,6 +131,7 @@ export const mockApi = async (
 ) => ({
   info: await mockApiInfo(page, data.info ?? {}),
   events: await mockApiEvents(page, data.events ?? []),
+  people: await mockApiPeople(page, data.people ?? []),
   pages: await mockApiPages(page, data.pages ?? []),
   announcements: await mockApiAnnouncements(page, data.announcements ?? []),
   config: await mockApiConfig(page, data.config ?? {}),

@@ -134,6 +134,18 @@ pub struct GetEventsResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct Person {
+    pub id: String,
+    pub name: String,
+    pub bio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetPeopleResponse {
+    pub people: Vec<Person>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Link {
     pub name: String,
     pub url: String,

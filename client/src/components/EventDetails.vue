@@ -8,6 +8,7 @@ import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
 import { useToast } from "primevue/usetoast";
+import useRemoteData from "@/composables/useRemoteData";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
 import BioDialog from "./BioDialog.vue";
@@ -32,6 +33,10 @@ const event = computed(() => props.event);
 const isStarred = useIsEventStarred(computed(() => event.value.id));
 const isSharedSchedule = useIsSharedSchedule();
 
+const {
+  data: { people },
+} = useRemoteData();
+
 const descriptionHtml = computed(() => {
   if (!event.value.description) return undefined;
   return renderMarkdown(event.value.description);
@@ -43,8 +48,12 @@ const fromViewType = ref<"daily" | "all">();
 const shareDialogVisible = ref(false);
 
 const bioDialogVisible = ref(false);
+const currentPersonId = ref<string>();
 const currentPersonName = ref<string>();
-const currentPersonBio = ref<string>();
+
+const currentPersonBio = computed(
+  () => people.value.find((person) => person.id === currentPersonId.value)?.bio,
+);
 
 // Do not include the query params or fragment; users likely aren't intending
 // to share their current search/filter params.
@@ -150,6 +159,7 @@ onMounted(() => {
                 data-testid="event-details-person-link"
                 @click="
                   bioDialogVisible = true;
+                  currentPersonId = person.id;
                   currentPersonName = person.name;
                 "
               >

@@ -41,7 +41,10 @@ test.describe("filtering events", () => {
           category: "Category 1",
           tags: ["Tag 1", "Tag 2"],
           location: "Apple Room",
-          people: ["Alex", "Rajat"],
+          people: [
+            { id: "10", name: "Alex" },
+            { id: "20", name: "Rajat" },
+          ],
           start_time: hoursFromNow(-2).toISOString(),
           end_time: hoursFromNow(-1).toISOString(),
         },
@@ -51,7 +54,10 @@ test.describe("filtering events", () => {
           category: "Category 2",
           tags: ["Tag 2", "Tag 3"],
           location: "Orange Room",
-          people: ["Shilpa", "Ash"],
+          people: [
+            { id: "30", name: "Shilpa" },
+            { id: "40", name: "Ash" },
+          ],
           start_time: hoursFromNow(1).toISOString(),
           end_time: hoursFromNow(2).toISOString(),
         },
@@ -246,6 +252,7 @@ test.describe("filtering events", () => {
     await schedulePage.openEventDetailsPage("Test Event 2");
 
     await eventPage.personLinks.filter({ hasText: "Ash" }).click();
+    await eventPage.bioFindButton.click();
 
     await filterMenu.toggleOpen();
     await expect(filterMenu.searchInput).toHaveValue("Ash");

@@ -165,6 +165,8 @@ export class EventDetailsPage {
   readonly hosts: Locator;
   readonly location: Locator;
   readonly personLinks: Locator;
+  readonly personBio: Locator;
+  readonly bioFindButton: Locator;
   readonly locationLinks: Locator;
   readonly starButton: Locator;
   readonly shareButton: Locator;
@@ -183,6 +185,8 @@ export class EventDetailsPage {
     this.hosts = page.getByTestId("event-details-hosts");
     this.location = page.getByTestId("event-details-location");
     this.personLinks = page.getByTestId("event-details-person-link").filter({ visible: true });
+    this.personBio = page.getByTestId("person-bio-body");
+    this.bioFindButton = page.getByTestId("person-find-button").filter({ visible: true });
     this.locationLinks = page.getByTestId("event-details-location-link").filter({ visible: true });
     this.starButton = page.getByTestId("event-details-star-button").filter({ visible: true });
     this.shareButton = page.getByTestId("event-share-link").filter({ visible: true });
@@ -512,7 +516,9 @@ export class ScheduleShareFooter {
   constructor(page: Page) {
     this.footer = page.getByTestId("share-view-footer").filter({ visible: true });
     this.dialog = page.getByTestId("schedule-share-options-dialog");
-    this.optionsButton = page.getByTestId("share-view-footer-options-button").filter({ visible: true });
+    this.optionsButton = page
+      .getByTestId("share-view-footer-options-button")
+      .filter({ visible: true });
     this.returnButton = page.getByTestId("schedule-share-options-return-button");
     this.addButton = page.getByTestId("schedule-share-options-add-button");
   }

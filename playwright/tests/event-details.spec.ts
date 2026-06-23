@@ -89,7 +89,11 @@ test.describe("event details page", () => {
           id: "1",
           name: "Panel Event",
           start_time: hoursFromNow(1).toISOString(),
-          people: ["Alice Smith", "Bob Jones", "Carol White"],
+          people: [
+            { id: "10", name: "Alice Smith" },
+            { id: "20", name: "Bob Jones" },
+            { id: "30", name: "Carol White" },
+          ],
         },
       ],
     });
@@ -102,11 +106,38 @@ test.describe("event details page", () => {
     await expect(eventPage.personLinks.nth(1)).toHaveText("Bob Jones");
     await expect(eventPage.personLinks.nth(2)).toHaveText("Carol White");
 
-    // Click a person link and verify it filters by person
+    // Click a person link to open their bio, then "Find in Schedule" to filter by them.
     await eventPage.personLinks.nth(0).click();
+    await eventPage.bioFindButton.click();
 
     await filterMenu.toggleOpen();
     await expect(filterMenu.searchInput).toHaveValue("Alice Smith");
+  });
+
+  test("shows a person's bio in a dialog", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Panel Event",
+          start_time: hoursFromNow(1).toISOString(),
+          people: [
+            { id: "10", name: "Alice Smith" },
+            { id: "20", name: "Bob Jones" },
+          ],
+        },
+      ],
+      people: [
+        { id: "10", name: "Alice Smith", bio: "Alice is a longtime panelist." },
+        { id: "20", name: "Bob Jones", bio: null },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    // Opens the bio for the clicked person, cross-referenced by ID.
+    await eventPage.personLinks.filter({ hasText: "Alice Smith" }).click();
+    await expect(eventPage.personBio).toHaveText("Alice is a longtime panelist.");
   });
 
   test("displays event summary when present", async ({ page, eventPage }) => {

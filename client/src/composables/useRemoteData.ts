@@ -19,6 +19,7 @@ import api, {
   type Event,
   type Info,
   type Page,
+  type Person,
 } from "@/utils/api";
 import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
@@ -346,6 +347,46 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   };
 };
 
+interface StoredPerson {
+  id: string;
+  name: string;
+  bio?: string;
+}
+
+const peopleRef = ref<FetchResult<Array<Person>>>({ status: "pending" });
+
+const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { reload, clear } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
+    key: "people",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: peopleRef,
+    fetcher: () => api.getPeople(toValue(envId), getItem<Array<StoredPerson>>("people")?.etag),
+    toCache: (data) =>
+      data.map((person) => ({
+        id: person.id,
+        name: person.name,
+        bio: person.bio,
+      })),
+    fromCache: (data) =>
+      data.map((person) => ({
+        id: person.id,
+        name: person.name,
+        bio: person.bio,
+      })),
+  });
+
+  return {
+    reload,
+    clear,
+    status: unwrapFetchStatus(peopleRef),
+    data: unwrapFetchArray(peopleRef),
+  };
+};
+
 interface StoredInfo {
   name?: string;
   description?: string;
@@ -589,6 +630,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
 
 const dataSources = {
   events: useRemoteEvents,
+  people: useRemotePeople,
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
@@ -607,6 +649,7 @@ const dataSources = {
 // - `config` is necessary for gating certain features.
 const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   events: ["schedule", "event"],
+  people: ["event"],
   info: "global",
   pages: ["info", "page"],
   announcements: "global",

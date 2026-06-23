@@ -374,6 +374,15 @@ impl Store {
     }
 
     get_data! {
+        fn_name: get_people,
+        type_name: Vec<noco::Person>,
+        get_api_fn: noco::get_people,
+        get_cached_fn: kv::get_cached_people,
+        put_cached_fn: kv::put_cached_people,
+        cache_key: "people",
+    }
+
+    get_data! {
         fn_name: get_info,
         type_name: noco::Info,
         get_api_fn: noco::get_info,

@@ -176,9 +176,16 @@ struct AnnouncementResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventPerson {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Person {
     pub id: String,
     pub name: String,
+    pub bio: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,7 +198,7 @@ pub struct Event {
     pub end_time: Option<String>,
     pub location: Option<String>,
     pub category: Option<String>,
-    pub people: Vec<Person>,
+    pub people: Vec<EventPerson>,
     pub tags: Vec<String>,
 }
 
@@ -301,7 +308,7 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
                 .people_m2m
                 .into_iter()
                 .filter_map(|p| {
-                    people_id_to_name.get(&p.id).map(|name| Person {
+                    people_id_to_name.get(&p.id).map(|name| EventPerson {
                         id: p.id.to_string(),
                         name: name.clone(),
                     })
@@ -320,6 +327,23 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
     events.sort_by(|a, b| a.start_time.cmp(&b.start_time));
 
     Ok(events)
+}
+
+#[worker::send]
+pub async fn get_people(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Person>> {
+    let people_records = list_records::<PeopleResponse>(client, &table_ids.people).await?;
+
+    Ok(people_records
+        .into_iter()
+        .map(|r| Person {
+            id: r.id.to_string(),
+            bio: Some(format!(
+                "This is a placeholder bio for **{}**. Their real bio will appear here once it's been filled in.",
+                r.name,
+            )),
+            name: r.name,
+        })
+        .collect())
 }
 
 pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<About> {

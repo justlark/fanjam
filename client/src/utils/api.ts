@@ -14,6 +14,12 @@ interface RawEvent {
   tags: Array<string>;
 }
 
+interface RawPerson {
+  id: string;
+  name: string;
+  bio: string | null;
+}
+
 interface RawInfo {
   name: string | null;
   description: string | null;
@@ -76,9 +82,15 @@ interface Envelope<T> {
   value: T;
 }
 
+export interface EventPerson {
+  id: string;
+  name: string;
+}
+
 export interface Person {
   id: string;
   name: string;
+  bio?: string;
 }
 
 export interface Event {
@@ -89,7 +101,7 @@ export interface Event {
   startTime: Date;
   endTime?: Date;
   location?: string;
-  people: Array<Person>;
+  people: Array<EventPerson>;
   category?: string;
   tags: Array<string>;
 }
@@ -208,6 +220,40 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
     value: events,
     etag: response.headers.get("ETag") ?? undefined,
     stale: rawEvents.stale,
+  };
+};
+
+const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<Person>>> => {
+  const response = await fetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/people`,
+    {
+      headers: {
+        ...(etag !== undefined
+          ? {
+              "If-None-Match": etag,
+            }
+          : {}),
+      },
+    },
+  );
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawPeople: Envelope<{ people: Array<RawPerson> }> = await response.json();
+
+  const people: Array<Person> = rawPeople.value.people.map((person) => ({
+    id: person.id,
+    name: person.name,
+    bio: person.bio ?? undefined,
+  }));
+
+  return {
+    ok: true,
+    value: people,
+    etag: response.headers.get("ETag") ?? undefined,
+    stale: rawPeople.stale,
   };
 };
 
@@ -456,6 +502,7 @@ const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<A
 
 export default {
   getEvents,
+  getPeople,
   getInfo,
   getPages,
   getAnnouncements,

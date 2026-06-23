@@ -39,6 +39,7 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
         label="Find in Schedule"
         size="sm"
         :show-label="true"
+        :button-props="{ 'data-testid': 'person-find-button' }"
         @click="(event) => $emit('find', event)"
       />
     </template>
