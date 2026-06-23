@@ -32,6 +32,13 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
     <article v-if="props.bio" data-testid="person-bio-body">
       <div v-if="bioHtml" v-html="bioHtml" />
     </article>
+    <div
+      v-else
+      data-testid="person-bio-missing"
+      class="text-center text-lg italic text-surface-500 dark:text-surface-400"
+    >
+      No information available
+    </div>
     <template #footer>
       <IconButton
         class="mx-auto"

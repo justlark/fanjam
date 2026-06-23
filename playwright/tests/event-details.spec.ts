@@ -134,6 +134,32 @@ test.describe("event details page", () => {
     await expect(eventPage.personBio).toHaveText("Alice is a longtime panelist.");
   });
 
+  test("shows a message when a person has no bio", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Panel Event",
+          start_time: hoursFromNow(1).toISOString(),
+          people: [
+            { id: "10", name: "Alice Smith" },
+            { id: "20", name: "Bob Jones" },
+          ],
+        },
+      ],
+      people: [
+        { id: "10", name: "Alice Smith", bio: "Alice is a longtime panelist." },
+        { id: "20", name: "Bob Jones", bio: null },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.personLinks.filter({ hasText: "Bob Jones" }).click();
+    await expect(eventPage.personBio).not.toBeVisible();
+    await expect(eventPage.persionBioMissingMessage).toHaveText("No information available");
+  });
+
   test("displays event summary when present", async ({ page, eventPage }) => {
     await mockApi(page, {
       events: [
