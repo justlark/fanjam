@@ -3,7 +3,7 @@ use serde_json::json;
 use crate::noco::{
     BaseId, Client, TableIds, Version, list_tables,
     migrations::{
-        common::{self, CreateColumnRequest, ViewIds, create_columns, list_views, set_nop},
+        common::{self, CreateColumnRequest, create_columns, set_nop},
         n5,
     },
 };
