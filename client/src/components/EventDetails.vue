@@ -10,6 +10,7 @@ import { renderMarkdown } from "@/utils/markdown";
 import { useToast } from "primevue/usetoast";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
+import BioDialog from "./BioDialog.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
@@ -40,6 +41,10 @@ const sectionHeadingId = useId();
 
 const fromViewType = ref<"daily" | "all">();
 const shareDialogVisible = ref(false);
+
+const bioDialogVisible = ref(false);
+const currentPersonName = ref<string>();
+const currentPersonBio = ref<string>();
 
 // Do not include the query params or fragment; users likely aren't intending
 // to share their current search/filter params.
@@ -140,17 +145,16 @@ onMounted(() => {
           >
             <span>Hosted by </span>
             <span v-for="(person, index) in event.people" :key="index">
-              <RouterLink
+              <button
                 class="text-link-sm"
                 data-testid="event-details-person-link"
-                :to="{
-                  name: 'schedule',
-                  params: { dayIndex: props.day + 1 },
-                  query: toFilterQueryParams({ search: person }),
-                }"
+                @click="
+                  bioDialogVisible = true;
+                  currentPersonName = person;
+                "
               >
                 {{ person }}
-              </RouterLink>
+              </button>
               <span v-if="index < event.people.length - 1">, </span>
             </span>
           </EventDetail>
@@ -226,6 +230,19 @@ onMounted(() => {
         <span>No description</span>
       </div>
     </div>
+    <BioDialog
+      v-if="currentPersonName"
+      v-model:visible="bioDialogVisible"
+      :name="currentPersonName"
+      :bio="currentPersonBio"
+      @find="
+        router.push({
+          name: 'schedule',
+          params: { dayIndex: props.day + 1 },
+          query: toFilterQueryParams({ search: currentPersonName }),
+        })
+      "
+    />
     <LinkShareDialog
       v-model:visible="shareDialogVisible"
       title="Share Event"
