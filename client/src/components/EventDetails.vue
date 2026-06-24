@@ -155,7 +155,7 @@ onMounted(() => {
             <span>Hosted by </span>
             <span v-for="(person, index) in event.people" :key="person.id">
               <button
-                class="text-link-sm"
+                class="text-link-sm cursor-pointer"
                 data-testid="event-details-person-link"
                 @click="
                   bioDialogVisible = true;
