@@ -200,7 +200,7 @@ impl Client {
     ) -> anyhow::Result<()> {
         self.build_request(
             Method::Delete,
-            &format!("/projects/{}/snapshots/{}", &project_id.0, &snapshot_id.0),
+            &format!("/projects/{}/snapshots/{}", project_id.0, snapshot_id.0),
         )?
         .allow_status(StatusCode::BAD_REQUEST)
         .exec()
@@ -216,7 +216,7 @@ impl Client {
     ) -> anyhow::Result<()> {
         self.build_request(
             Method::Delete,
-            &format!("/projects/{}/branches/{}", &project_id.0, &branch_id.0),
+            &format!("/projects/{}/branches/{}", project_id.0, branch_id.0),
         )?
         .exec()
         .await?;
@@ -238,10 +238,7 @@ impl Client {
         }
 
         let branch_ids = self
-            .build_request(
-                Method::Get,
-                &format!("/projects/{}/branches", &project_id.0),
-            )?
+            .build_request(Method::Get, &format!("/projects/{}/branches", project_id.0))?
             .fetch::<GetBranchListResponse>()
             .await?
             .branches
@@ -273,10 +270,7 @@ impl Client {
         }
 
         let branch_id = self
-            .build_request(
-                Method::Get,
-                &format!("/projects/{}/branches", &project_id.0),
-            )?
+            .build_request(Method::Get, &format!("/projects/{}/branches", project_id.0))?
             .with_param("search", &branch_name.0)
             .fetch::<GetBranchListResponse>()
             .await?
@@ -307,7 +301,7 @@ impl Client {
         let snapshot_id = self
             .build_request(
                 Method::Get,
-                &format!("/projects/{}/snapshots", &project_id.0),
+                &format!("/projects/{}/snapshots", project_id.0),
             )?
             .fetch::<GetSnapshotListResponse>()
             .await?
@@ -337,7 +331,7 @@ impl Client {
         let snapshot_ids = self
             .build_request(
                 Method::Get,
-                &format!("/projects/{}/snapshots", &project_id.0),
+                &format!("/projects/{}/snapshots", project_id.0),
             )?
             .fetch::<GetSnapshotListResponse>()
             .await?
@@ -405,7 +399,7 @@ impl Client {
 
         self.build_request(
             Method::Patch,
-            &format!("/projects/{}/snapshots/{}", &project_id.0, &snapshot_id.0),
+            &format!("/projects/{}/snapshots/{}", project_id.0, snapshot_id.0),
         )?
         .with_json(&PatchSnapshotRequest {
             snapshot: SnapshotRequestObj {
@@ -434,7 +428,7 @@ impl Client {
 
         self.build_request(
             Method::Post,
-            &format!("/projects/{}/snapshots/{}/restore", &project_id.0, &to.0,),
+            &format!("/projects/{}/snapshots/{}/restore", project_id.0, to.0,),
         )?
         .with_json(&PostRestoreSnapshotRequest {
             target_branch_id: branch.clone(),
@@ -484,10 +478,7 @@ impl Client {
         let snapshot_id = self
             .build_request(
                 Method::Post,
-                &format!(
-                    "/projects/{}/branches/{}/snapshot",
-                    &project_id.0, &branch.0
-                ),
+                &format!("/projects/{}/branches/{}/snapshot", project_id.0, branch.0),
             )?
             .with_param("name", &name.to_string())
             .fetch::<PostSnapshotResponse>()
