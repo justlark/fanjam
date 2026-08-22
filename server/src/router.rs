@@ -1,3 +1,6 @@
+// Axum trips this lint, which we don't have much control over.
+#![allow(clippy::result_large_err)]
+
 use std::{fmt, sync::Arc};
 
 use axum::{
