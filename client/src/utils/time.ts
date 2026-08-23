@@ -75,11 +75,23 @@ const getTimePartsInTimezone = (
   return { hour, minute, second };
 };
 
-// Returns midnight (00:00:00) of the same calendar day as `date` in the given
-// time zone.
-const midnightInTimeZone = (date: Date, timezone: string): Date => {
-  const parts = getDatePartsInTimezone(date, timezone);
-  const utcGuess = new Date(Date.UTC(parts.year, parts.month, parts.day, 0, 0, 0));
+interface DateParts {
+  year: number;
+  month: number;
+  day: number;
+}
+
+// Returns the instant at which `minutesAfterMidnight` falls on the given
+// calendar day in the given time zone.
+const zonedTimeToInstant = (
+  parts: DateParts,
+  minutesAfterMidnight: number,
+  timezone: string,
+): Date => {
+  const hour = Math.floor(minutesAfterMidnight / 60);
+  const minute = minutesAfterMidnight % 60;
+
+  const utcGuess = new Date(Date.UTC(parts.year, parts.month, parts.day, hour, minute, 0));
 
   const dateParts = getDatePartsInTimezone(utcGuess, timezone);
   const timeParts = getTimePartsInTimezone(utcGuess, timezone);
@@ -96,59 +108,119 @@ const midnightInTimeZone = (date: Date, timezone: string): Date => {
   return new Date(utcGuess.getTime() - (zonedMillis - utcGuess.getTime()));
 };
 
-const startAndEndOfDay = (date: Date, timezone: string): { start: Date; end: Date } => {
-  const start = midnightInTimeZone(date, timezone);
+// Shifts a set of calendar date parts by whole days, normalizing the result
+// (e.g. Sep 0 becomes Aug 31). This is calendar arithmetic, independent of any
+// time zone.
+const addCalendarDays = (parts: DateParts, days: number): DateParts => {
+  const shifted = new Date(Date.UTC(parts.year, parts.month, parts.day + days));
 
-  const nextDay = new Date(date);
-  nextDay.setDate(nextDay.getDate() + 1);
-  const nextMidnight = midnightInTimeZone(nextDay, timezone);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth(),
+    day: shifted.getUTCDate(),
+  };
+};
 
-  const end = new Date(nextMidnight.getTime() - 1000);
+// Returns the calendar day that `date` belongs to, accounting for the fact that
+// the schedule day rolls over `cutoffMinutes` after midnight rather than at
+// midnight itself.
+const scheduleDayParts = (date: Date, timezone: string, cutoffMinutes: number): DateParts => {
+  const dateParts = getDatePartsInTimezone(date, timezone);
+  const timeParts = getTimePartsInTimezone(date, timezone);
 
-  return { start, end };
+  const minutesAfterMidnight = timeParts.hour * 60 + timeParts.minute;
+
+  return minutesAfterMidnight < cutoffMinutes ? addCalendarDays(dateParts, -1) : dateParts;
+};
+
+// Returns the instant at which the schedule day containing `date` begins. Days
+// roll over `cutoffMinutes` after midnight rather than at midnight, so with a
+// 02:00 cutoff, a 01:00 Wednesday event belongs to Tuesday.
+export const startOfScheduleDay = (date: Date, timezone: string, cutoffMinutes: number): Date => {
+  return zonedTimeToInstant(
+    scheduleDayParts(date, timezone, cutoffMinutes),
+    cutoffMinutes,
+    timezone,
+  );
+};
+
+// Returns the half-open interval `[start, end)` of the schedule day containing
+// `date`. The end is exclusive because a schedule day ends exactly where the
+// next one begins, and because a day is not always 24 hours long across a DST
+// transition.
+const startAndEndOfDay = (
+  date: Date,
+  timezone: string,
+  cutoffMinutes: number,
+): { start: Date; end: Date } => {
+  const parts = scheduleDayParts(date, timezone, cutoffMinutes);
+
+  return {
+    start: zonedTimeToInstant(parts, cutoffMinutes, timezone),
+    end: zonedTimeToInstant(addCalendarDays(parts, 1), cutoffMinutes, timezone),
+  };
+};
+
+// Parses an `HH:MM` 24-hour wall-clock time into minutes after midnight.
+// Returns 0 (midnight) for a missing or malformed value.
+export const parseDayCutoff = (value: string | undefined): number => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value?.trim() ?? "");
+
+  if (!match) {
+    return 0;
+  }
+
+  const hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+
+  if (hour > 23 || minute > 59) {
+    return 0;
+  }
+
+  return hour * 60 + minute;
 };
 
 export interface NamedDay {
   dayName: string;
   dateName: string;
   dayStart: Date;
+  // Exclusive: the instant at which the next schedule day begins.
   dayEnd: Date;
 }
 
-export const datesToDayNames = (formats: DatetimeFormats, dates: Set<Date>): Array<NamedDay> => {
-  if (dates.size === 0) {
-    return [];
-  }
+// Groups a collection of event times into the schedule days they fall on,
+// ordered chronologically. Day and date labels are derived from the start of
+// the day rather than from any one event, so that an event in the small hours
+// is labeled with the day it belongs to rather than the day it literally
+// occurs on.
+export const datesToDayNames = (
+  formats: DatetimeFormats,
+  dates: Iterable<Date>,
+): Array<NamedDay> => {
+  const namedDays: Map<number, NamedDay> = new Map();
 
-  const sortedDates = [...dates];
-  sortedDates.sort((a, b) => a.valueOf() - b.valueOf());
+  for (const date of dates) {
+    const { start, end } = startAndEndOfDay(date, formats.timezone, formats.dayCutoffMinutes);
+    const key = start.valueOf();
 
-  const namedDays: Array<NamedDay> = [];
-
-  for (let i = 0; i < sortedDates.length; i++) {
-    const start = sortedDates[i];
-
-    const { start: startOfThisDay, end: endOfThisDay } = startAndEndOfDay(start, formats.timezone);
-
-    for (let j = i + 1; j < sortedDates.length; j++) {
-      const end = sortedDates[j];
-
-      if (!dateIsBetween(end, start, endOfThisDay)) {
-        break;
-      }
-
-      i++;
+    if (namedDays.has(key)) {
+      continue;
     }
 
-    namedDays.push({
+    namedDays.set(key, {
       dayName: formats.longWeekday.format(start),
       dateName: formats.mediumDate.format(start),
-      dayStart: startOfThisDay,
-      dayEnd: endOfThisDay,
+      dayStart: start,
+      dayEnd: end,
     });
   }
 
-  return namedDays;
+  return [...namedDays.entries()].sort(([a], [b]) => a - b).map(([, namedDay]) => namedDay);
+};
+
+// Whether `date` falls within the half-open interval `[start, end)`.
+export const dateIsInRange = (date: Date, start: Date, end: Date): boolean => {
+  return date >= start && date < end;
 };
 
 export const groupByTime = <T, V>(
@@ -179,13 +251,6 @@ export const groupByTime = <T, V>(
   }
 
   return [...grouped.values()];
-};
-
-export const isSameDay = (a: Date, b: Date, timezone: string): boolean => {
-  const partsA = getDatePartsInTimezone(a, timezone);
-  const partsB = getDatePartsInTimezone(b, timezone);
-
-  return partsA.year === partsB.year && partsA.month === partsB.month && partsA.day === partsB.day;
 };
 
 export const earliest = (...dates: (Date | undefined)[]): Date | undefined => {

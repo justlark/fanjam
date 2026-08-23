@@ -1,9 +1,13 @@
 import { ref, watchEffect, type Ref } from "vue";
 
 import useRemoteData from "@/composables/useRemoteData";
+import { parseDayCutoff } from "@/utils/time";
 
 export interface DatetimeFormats {
   timezone: string;
+  // How long after midnight the schedule rolls over to the next day, in
+  // minutes. Zero means days roll over at midnight.
+  dayCutoffMinutes: number;
   shortTime: Intl.DateTimeFormat;
   shortDate: Intl.DateTimeFormat;
   mediumDate: Intl.DateTimeFormat;
@@ -24,6 +28,7 @@ const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
 
     datetimeFormats.value = {
       timezone,
+      dayCutoffMinutes: parseDayCutoff(config.value?.dayCutoffTime),
       shortTime: new Intl.DateTimeFormat(undefined, {
         timeStyle: "short",
         timeZone: timezone,

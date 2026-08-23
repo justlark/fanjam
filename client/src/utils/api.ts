@@ -65,6 +65,7 @@ interface RawAlias {
 
 interface RawConfig {
   timezone: string | null;
+  day_cutoff_time: string | null;
   hide_announcements: boolean | null;
   use_feedback: boolean | null;
   feedback_icon: string | null;
@@ -149,6 +150,7 @@ export interface Info {
 
 export interface Config {
   timezone?: string;
+  dayCutoffTime?: string;
   hideAnnouncements?: boolean;
   useFeedback?: boolean;
   feedbackIcon?: string;
@@ -399,6 +401,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
 
   const config: Config = {
     timezone: rawConfig.timezone ?? undefined,
+    dayCutoffTime: rawConfig.day_cutoff_time ?? undefined,
     hideAnnouncements: rawConfig.hide_announcements ?? undefined,
     useFeedback: rawConfig.use_feedback ?? undefined,
     feedbackIcon: rawConfig.feedback_icon ?? undefined,

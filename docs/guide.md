@@ -30,6 +30,16 @@ If you want to customize FanJam to use your con's logo as the app icon when
 it's installed on a phone, let us know; that's something we have to set up on
 our end.
 
+## Deciding when days roll over
+
+Out of the box, each day in the schedule ends at midnight. However, if your con
+has events that stretch into the early hours of the morning, you may prefer
+that the day ends at 2:00am or 3:00am instead. If you decide days should end at
+2:00am, an event that starts at 1:00am on Wednesday would appear in the app on
+Tuesday.
+
+This is something we configure on our end, so let us know your preference.
+
 ## Using the dashboard
 
 ![Screenshot](https://static.fanjam.live/guide-nocodb-linked-records-screenshot.png)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, type DeepReadonly, onMounted, toRef, computed, watch, watchEffect } from "vue";
-import { datesToDayNames, dateIsBetween, isSameDay, earliest } from "@/utils/time";
+import { datesToDayNames, dateIsInRange, startOfScheduleDay, earliest } from "@/utils/time";
 import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery from "@/composables/useFilterQuery";
@@ -79,12 +79,7 @@ const currentDayEvents = computed(() => {
 
 const allCategories = computed(() => getSortedCategories(events.value));
 
-const allDates = computed(() =>
-  events.value.reduce((set, event) => {
-    set.add(event.startTime);
-    return set;
-  }, new Set<Date>()),
-);
+const allDates = computed(() => events.value.map((event) => event.startTime));
 
 const namedDays = computed(() =>
   datetimeFormats.value === undefined
@@ -93,11 +88,15 @@ const namedDays = computed(() =>
 );
 
 const todayIndex = computed(() => {
-  const timezone = datetimeFormats.value?.timezone;
-  if (namedDays.value === undefined || timezone === undefined) return undefined;
+  const formats = datetimeFormats.value;
+  if (namedDays.value === undefined || formats === undefined) return undefined;
 
-  const today = new Date();
-  const index = namedDays.value.findIndex(({ dayStart }) => isSameDay(dayStart, today, timezone));
+  // Which day is "today" depends on the rollover time, so in the small hours
+  // this is still the previous calendar day.
+  const todayStart = startOfScheduleDay(new Date(), formats.timezone, formats.dayCutoffMinutes);
+  const index = namedDays.value.findIndex(
+    ({ dayStart }) => dayStart.valueOf() === todayStart.valueOf(),
+  );
 
   if (index === -1) {
     // There are no events today.
@@ -120,7 +119,7 @@ watchEffect(() => {
   days.value = [...namedDays.value.entries()].map(
     ([dayIndex, { dayName, dateName, dayStart, dayEnd }]) => {
       const eventsThisDay = events.value.filter((event) =>
-        dateIsBetween(event.startTime, dayStart, dayEnd),
+        dateIsInRange(event.startTime, dayStart, dayEnd),
       );
 
       for (const event of eventsThisDay) {

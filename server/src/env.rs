@@ -135,6 +135,7 @@ impl fmt::Display for EnvDomain {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub timezone: Option<String>,
+    pub day_cutoff_time: Option<String>,
     pub cache_ttl: Option<u64>,
     pub hide_announcements: Option<bool>,
     pub use_feedback: Option<bool>,

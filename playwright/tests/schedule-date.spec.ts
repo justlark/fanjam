@@ -308,3 +308,162 @@ test.describe("the schedule view's date display", () => {
     await expect(schedulePage.timeSlots.nth(1)).toContainText("Lunchtime Event B");
   });
 });
+
+// Conventions often run programming into the small hours, which attendees
+// think of as belonging to the previous day. The `day_cutoff_time` config
+// option moves the point at which the schedule rolls over to the next day.
+const CUTOFF_CONFIG = { config: { timezone: "UTC", day_cutoff_time: "02:00" } };
+
+// A Tuesday-night event and the event that follows it after midnight. With a
+// 02:00 cutoff these belong to the same schedule day; without one they do not.
+const LATE_NIGHT_EVENTS = [
+  {
+    name: "Late Night Panel",
+    start_time: "2025-09-02T23:00:00Z",
+    end_time: "2025-09-03T00:00:00Z",
+  },
+  {
+    name: "Midnight Movie",
+    start_time: "2025-09-03T01:00:00Z",
+    end_time: "2025-09-03T03:00:00Z",
+  },
+];
+
+test.describe("the schedule view's day cutoff time", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+  });
+
+  test("groups an after-midnight event with the previous day", async ({ page, schedulePage }) => {
+    await mockApi(page, { ...CUTOFF_CONFIG, events: LATE_NIGHT_EVENTS });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 2, 2025");
+
+    await expect(schedulePage.events).toHaveCount(2);
+    await expect(schedulePage.events.nth(0)).toHaveText("Late Night Panel");
+    await expect(schedulePage.events.nth(1)).toHaveText("Midnight Movie");
+
+    // Both events are on the one day, so there is nowhere further to page to.
+    await expect(schedulePage.nextDayButton).toBeDisabled();
+  });
+
+  test("shows the after-midnight event's real start time", async ({ page, schedulePage }) => {
+    // Only the day the event is grouped under shifts. The time of day it is
+    // labeled with is still the actual wall-clock start time.
+    await mockApi(page, { ...CUTOFF_CONFIG, events: LATE_NIGHT_EVENTS });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.timeSlots).toHaveCount(2);
+    await expect(schedulePage.timeSlots.nth(0).getByRole("heading")).toHaveText("11:00 PM");
+    await expect(schedulePage.timeSlots.nth(1).getByRole("heading")).toHaveText("1:00 AM");
+  });
+
+  test("labels the after-midnight event with the previous day in all events view", async ({
+    page,
+    schedulePage,
+  }) => {
+    await mockApi(page, { ...CUTOFF_CONFIG, events: LATE_NIGHT_EVENTS });
+
+    await schedulePage.goto();
+    await schedulePage.toAllEventsView();
+
+    await expect(schedulePage.timeSlots).toHaveCount(2);
+
+    const lateNightHeading = schedulePage.timeSlots.nth(0).getByRole("heading");
+    await expect(lateNightHeading).toContainText("Tuesday");
+    await expect(lateNightHeading).toContainText("Sep 2, 2025");
+    await expect(lateNightHeading).toContainText("11:00 PM");
+
+    // The heading matches the By Day view rather than the literal calendar
+    // date, but the time of day is unchanged.
+    const midnightHeading = schedulePage.timeSlots.nth(1).getByRole("heading");
+    await expect(midnightHeading).toContainText("Tuesday");
+    await expect(midnightHeading).toContainText("Sep 2, 2025");
+    await expect(midnightHeading).toContainText("1:00 AM");
+  });
+
+  test("treats the small hours as still being the previous day", async ({ page, schedulePage }) => {
+    // It is 01:00 on Wednesday, which is before the 02:00 cutoff, so the app
+    // should open on Tuesday rather than skipping ahead to Wednesday.
+    await page.clock.setFixedTime(new Date("2025-09-03T01:00:00Z"));
+
+    await mockApi(page, {
+      ...CUTOFF_CONFIG,
+      events: [
+        ...LATE_NIGHT_EVENTS,
+        {
+          name: "Wednesday Event",
+          start_time: "2025-09-03T10:00:00Z",
+          end_time: "2025-09-03T11:00:00Z",
+        },
+      ],
+    });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 2, 2025");
+
+    // We are already on today, so the Today button has nowhere to go.
+    await expect(schedulePage.todayButton).toBeDisabled();
+
+    await schedulePage.toNextDay();
+
+    await expect(schedulePage.dayName).toHaveText("Wednesday");
+    await expect(schedulePage.todayButton).toBeEnabled();
+  });
+
+  test("rolls over at midnight when no cutoff is configured", async ({ page, schedulePage }) => {
+    await mockApi(page, { ...TZ_CONFIG, events: LATE_NIGHT_EVENTS });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 2, 2025");
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events.nth(0)).toHaveText("Late Night Panel");
+
+    await schedulePage.toNextDay();
+
+    await expect(schedulePage.dayName).toHaveText("Wednesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 3, 2025");
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events.nth(0)).toHaveText("Midnight Movie");
+  });
+
+  test("applies the cutoff in the configured timezone, not UTC", async ({ page, schedulePage }) => {
+    // 2025-09-03T05:00Z is 01:00 on Wednesday in New York, which falls before
+    // the 02:00 cutoff and so belongs to Tuesday. Getting this wrong by
+    // applying the cutoff in UTC would place it on Wednesday.
+    await mockApi(page, {
+      config: { timezone: "America/New_York", day_cutoff_time: "02:00" },
+      events: [
+        {
+          name: "Evening Event",
+          start_time: "2025-09-03T02:00:00Z",
+          end_time: "2025-09-03T03:00:00Z",
+        },
+        {
+          name: "After Midnight Event",
+          start_time: "2025-09-03T05:00:00Z",
+          end_time: "2025-09-03T06:00:00Z",
+        },
+      ],
+    });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 2, 2025");
+
+    await expect(schedulePage.events).toHaveCount(2);
+    await expect(schedulePage.nextDayButton).toBeDisabled();
+
+    await expect(schedulePage.timeSlots.nth(0).getByRole("heading")).toHaveText("10:00 PM");
+    await expect(schedulePage.timeSlots.nth(1).getByRole("heading")).toHaveText("1:00 AM");
+  });
+});

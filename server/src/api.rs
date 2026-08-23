@@ -206,6 +206,7 @@ pub struct GetPagesResponse {
 pub struct GetConfigResponse {
     pub app_domain: Option<String>,
     pub timezone: Option<String>,
+    pub day_cutoff_time: Option<String>,
     pub hide_announcements: Option<bool>,
     pub use_feedback: Option<bool>,
     pub feedback_icon: Option<String>,

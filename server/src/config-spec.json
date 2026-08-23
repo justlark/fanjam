@@ -10,6 +10,11 @@
     "sensitive": false
   },
   {
+    "key": "day_cutoff_time",
+    "help": "The wall-clock time of day, in the configured timezone, at which the schedule rolls over to the next day, as HH:MM in 24-hour format (e.g. 02:00). Events before this time are grouped with the previous day. If null, days roll over at midnight.",
+    "sensitive": false
+  },
+  {
     "key": "cache_ttl",
     "help": "The time-to-live (TTL) for data cached at the edge, in milliseconds.",
     "sensitive": false

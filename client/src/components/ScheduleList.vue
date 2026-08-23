@@ -2,7 +2,7 @@
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useInterval from "@/composables/useInterval";
 import type { Event } from "@/utils/api";
-import { dateIsBetween, earliest, groupByTime, latest } from "@/utils/time";
+import { dateIsBetween, earliest, groupByTime, latest, startOfScheduleDay } from "@/utils/time";
 import { computed, ref, type DeepReadonly } from "vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import useIncremental from "@/composables/useIncremental";
@@ -21,14 +21,22 @@ const timeSlots = computed(() => {
   if (datetimeFormats.value === undefined) return [];
   const formats = datetimeFormats.value;
 
+  // The weekday and date come from the schedule day the event belongs to, so
+  // that late-night events are labeled consistently with the By Day view. The
+  // time is always the event's actual wall-clock start time.
+  const scheduleDay = (time: Date) =>
+    startOfScheduleDay(time, formats.timezone, formats.dayCutoffMinutes);
+
   const groupedEvents = groupByTime(
     props.events,
     (event) => event.startTime,
-    (time) => `${formats.mediumDate.format(time)} ${formats.shortTime.format(time)}`,
+    (time) => `${scheduleDay(time).toISOString()} ${formats.shortTime.format(time)}`,
     (time) => {
+      const dayStart = scheduleDay(time);
+
       return {
-        weekday: formats.longWeekday.format(time),
-        date: formats.mediumDate.format(time),
+        weekday: formats.longWeekday.format(dayStart),
+        date: formats.mediumDate.format(dayStart),
         time: formats.shortTime.format(time),
       };
     },

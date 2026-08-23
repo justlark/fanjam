@@ -843,6 +843,7 @@ async fn get_config(
     Ok(Json(GetConfigResponse {
         app_domain,
         timezone: config.timezone,
+        day_cutoff_time: config.day_cutoff_time,
         hide_announcements: config.hide_announcements,
         use_feedback: config.use_feedback,
         feedback_icon: config.feedback_icon,
