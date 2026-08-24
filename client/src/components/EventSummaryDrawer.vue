@@ -18,7 +18,6 @@ const isVisible = defineModel<boolean>("visible", {
 
 const props = defineProps<{
   event?: DeepReadonly<Event>;
-  day: number;
   allCategories: Array<string>;
   viewType: "daily" | "all";
 }>();

@@ -306,10 +306,9 @@ watchEffect(() => {
       </div>
       <EventSummaryDrawer
         class="lg:!hidden"
-        v-if="currentDayIndex !== undefined && viewType !== undefined"
+        v-if="viewType !== undefined"
         v-model:visible="eventSummaryIsVisible"
         :event="focusedEvent"
-        :day="currentDayIndex"
         :all-categories="allCategories"
         :view-type="viewType"
       />
