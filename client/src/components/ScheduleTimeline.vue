@@ -64,18 +64,8 @@ type Day = {
 
 const currentDayIndex = defineModel<number>("day");
 
-const days = ref<Array<Day>>([]);
-const dayIndexByEventId = ref<Record<string, number>>({});
 const searchResultEventIds = ref<Array<string>>();
 const viewType = ref<"daily" | "all">();
-
-const currentDayEvents = computed(() => {
-  if (currentDayIndex.value === undefined) {
-    return [];
-  }
-
-  return days.value[currentDayIndex.value]?.events ?? [];
-});
 
 const allCategories = computed(() => getSortedCategories(events.value));
 
@@ -117,33 +107,40 @@ const todayIndex = computed(() => {
   return index;
 });
 
-watchEffect(() => {
-  dayIndexByEventId.value = {};
+// Derived rather than assigned from a watcher, so that `days` is never out of
+// step with `scheduleIsLoaded`. When the two could disagree, an effect reading
+// the flag could see an empty `days` and conclude the selected day had no
+// events.
+const days = computed<Array<Day>>(() => {
+  if (!scheduleIsLoaded.value || namedDays.value === undefined) {
+    return [];
+  }
 
-  if (namedDays.value === undefined) return;
+  return namedDays.value.map(({ dayName, dateName, dayStart, dayEnd }) => ({
+    dayName,
+    dateName,
+    events: events.value.filter((event) => dateIsInRange(event.startTime, dayStart, dayEnd)),
+  }));
+});
 
-  // Until all events have loaded, continue using the previous `days`.
-  // Otherwise, calculations for things like whether we should enable the Next
-  // Day button would have to wait until all the days have loaded.
-  if (eventsStatus.value !== "success") return;
+const dayIndexByEventId = computed(() => {
+  const dayIndexes: Record<string, number> = {};
 
-  days.value = [...namedDays.value.entries()].map(
-    ([dayIndex, { dayName, dateName, dayStart, dayEnd }]) => {
-      const eventsThisDay = events.value.filter((event) =>
-        dateIsInRange(event.startTime, dayStart, dayEnd),
-      );
+  for (const [dayIndex, day] of days.value.entries()) {
+    for (const event of day.events) {
+      dayIndexes[event.id] = dayIndex;
+    }
+  }
 
-      for (const event of eventsThisDay) {
-        dayIndexByEventId.value[event.id] = dayIndex;
-      }
+  return dayIndexes;
+});
 
-      return {
-        dayName,
-        dateName,
-        events: eventsThisDay,
-      };
-    },
-  );
+const currentDayEvents = computed(() => {
+  if (currentDayIndex.value === undefined) {
+    return [];
+  }
+
+  return days.value[currentDayIndex.value]?.events ?? [];
 });
 
 const filteredEventIdsSet = computed(() =>
@@ -212,19 +209,27 @@ watch(
 
       viewType.value = "daily";
 
-      if (route.params.dayIndex) {
-        if (!scheduleIsLoaded.value) {
-          // We cannot validate the page number until we know the number of
-          // days in the schedule.
-          return;
-        }
+      if (!scheduleIsLoaded.value) {
+        // We do not know how many days the schedule has yet, so we can neither
+        // validate a day from the path nor work out which day is today.
+        return;
+      }
 
-        // Handle the page number in the path being out of range or not a number.
-        const parsed = parseInt(route.params.dayIndex as string, 10);
+      if (route.params.dayIndex) {
+        // The day number in the path is 1-based, and may be out of range or
+        // not a number at all. Fall back to the first day rather than leaving
+        // no day selected.
+        const requestedDayIndex = parseInt(route.params.dayIndex as string, 10) - 1;
         currentDayIndex.value =
-          isNaN(parsed) || parsed < 0 || parsed >= days.value.length + 1 ? undefined : parsed - 1;
-      } else if (currentDayIndex.value === undefined && todayIndex.value !== undefined) {
-        currentDayIndex.value = todayIndex.value;
+          isNaN(requestedDayIndex) ||
+          requestedDayIndex < 0 ||
+          requestedDayIndex >= days.value.length
+            ? 0
+            : requestedDayIndex;
+      } else if (currentDayIndex.value === undefined) {
+        // Open on today when the schedule is running, and on the first day
+        // otherwise.
+        currentDayIndex.value = todayIndex.value ?? 0;
       }
     } else if (route.name === "event") {
       const currentFromViewType = history.state.fromViewType as "daily" | "all" | undefined;
@@ -256,8 +261,15 @@ watchEffect(async () => {
 });
 
 watchEffect(() => {
-  // This day does not exist.
-  if (route.name === "schedule" && scheduleIsLoaded.value && currentDayEvents.value.length === 0) {
+  // The selected day has gone away — the schedule can shrink under us when
+  // events are refetched. An unselected day is not the same thing, and is the
+  // route watcher's job to fill in.
+  if (
+    route.name === "schedule" &&
+    scheduleIsLoaded.value &&
+    currentDayIndex.value !== undefined &&
+    currentDayEvents.value.length === 0
+  ) {
     currentDayIndex.value = 0;
   }
 });

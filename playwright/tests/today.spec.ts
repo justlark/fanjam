@@ -1,4 +1,4 @@
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import { EventDetailsPage, EventSummaryDrawer, MainMenu, SchedulePage } from "./fixtures";
 import { envId, hoursFromNow, isMobile, mockApi, mockTime } from "./common";
 
@@ -415,5 +415,70 @@ test.describe("a multi-day schedule", () => {
 
     await expect(schedulePage.timeSlots).toHaveCount(3);
     await expect(page).toHaveURL(new RegExp(`/schedule/all?`));
+  });
+});
+
+// The events and config endpoints are fetched independently, and the schedule
+// cannot be divided into days until both have arrived — the configured
+// timezone and day cutoff decide where the day boundaries fall. Whichever
+// order they land in, the app must still open on today rather than settling on
+// a day of its own choosing and writing that into the URL.
+test.describe("a schedule whose endpoints resolve out of order", () => {
+  const EVENTS = [
+    {
+      id: "1",
+      name: "Yesterday Event",
+      start_time: hoursFromNow(-25).toISOString(),
+      end_time: hoursFromNow(-24).toISOString(),
+    },
+    {
+      id: "2",
+      name: "Today Event",
+      start_time: hoursFromNow(0).toISOString(),
+      end_time: hoursFromNow(1).toISOString(),
+    },
+    {
+      id: "3",
+      name: "Tomorrow Event",
+      start_time: hoursFromNow(24).toISOString(),
+      end_time: hoursFromNow(25).toISOString(),
+    },
+  ];
+
+  const SLOW_MILLIS = 800;
+
+  // Re-registering a route takes precedence over the one `mockApi` installed,
+  // so this delays the endpoint and then falls through to the mock response.
+  const delayEndpoint = async (page: Page, endpoint: string) => {
+    await page.route(`https://api-test.fanjam.live/apps/*/${endpoint}`, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, SLOW_MILLIS));
+      await route.fallback();
+    });
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+    await mockApi(page, { events: EVENTS, config: { timezone: "UTC" } });
+  });
+
+  test("opens on today when the config arrives after the events", async ({
+    page,
+    schedulePage,
+  }) => {
+    await delayEndpoint(page, "config");
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.events).toHaveText("Today Event");
+    await expect(page).toHaveURL(new RegExp("/schedule/2$"));
+  });
+
+  test("opens on today when the events arrive after the config", async ({ page, schedulePage }) => {
+    await delayEndpoint(page, "events");
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.events).toHaveText("Today Event");
+    await expect(page).toHaveURL(new RegExp("/schedule/2$"));
   });
 });
