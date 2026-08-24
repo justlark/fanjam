@@ -25,7 +25,7 @@ const toast = useToast();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
-  day: number;
+  day?: number;
   allCategories: Array<string>;
 }>();
 
@@ -59,18 +59,23 @@ const currentPersonBio = computed(
 // to share their current search/filter params.
 const eventUrl = computed(() => window.location.origin + window.location.pathname);
 
-const back = async () => {
-  if (!fromViewType.value) {
-    return;
-  }
+// The day number in the path is 1-based. It is undefined until the event's day
+// is known, which on a direct link takes until the schedule has loaded; leaving
+// it out lets the schedule pick its own landing day in the meantime.
+const dayIndexParam = computed(() => (props.day === undefined ? undefined : props.day + 1));
 
-  await router.push({
-    name: "schedule",
-    params: {
-      dayIndex: fromViewType.value === "daily" ? props.day + 1 : "all",
-    },
-    query: route.query,
-  });
+// Where the back button goes. There is no view type when the event was opened
+// from outside the app — a shared link in a fresh tab — so fall back to the day
+// the event is on.
+const scheduleRoute = computed(() => ({
+  name: "schedule",
+  params: {
+    dayIndex: fromViewType.value === "all" ? "all" : dayIndexParam.value,
+  },
+}));
+
+const back = async () => {
+  await router.push({ ...scheduleRoute.value, query: route.query });
 };
 
 const toggleStar = () => {
@@ -201,12 +206,7 @@ onMounted(() => {
         :category="event.category"
         :tags="event.tags"
         :all-categories="props.allCategories"
-        :to="{
-          name: 'schedule',
-          params: {
-            dayIndex: fromViewType === 'all' ? 'all' : props.day + 1,
-          },
-        }"
+        :to="scheduleRoute"
       />
       <Divider />
       <article
@@ -238,7 +238,7 @@ onMounted(() => {
       @find="
         router.push({
           name: 'schedule',
-          params: { dayIndex: props.day + 1 },
+          params: { dayIndex: dayIndexParam },
           query: toFilterQueryParams({ search: currentPersonName }),
         })
       "

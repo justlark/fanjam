@@ -51,7 +51,7 @@ const thisEvent = computed(() => events.value.find((event) => event.id === event
         <EventDetails
           class="grow lg:contain-strict lg:overflow-y-auto"
           :event="thisEvent"
-          :day="currentDayIndex ?? 0"
+          :day="currentDayIndex"
           :all-categories="allCategories"
         />
       </div>

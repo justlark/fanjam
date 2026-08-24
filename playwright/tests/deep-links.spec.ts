@@ -273,6 +273,79 @@ test.describe("deep linking", () => {
     await expect(page.getByTestId("page-viewer-title")).toHaveText("Convention Rules");
   });
 
+  // A link opened in a fresh tab has no in-app history behind it, and so no
+  // record of which schedule view the reader came from. Going back has to work
+  // anyway.
+  test("direct link to event goes back to that event's day", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Yesterday Event",
+          start_time: hoursFromNow(-25).toISOString(),
+          end_time: hoursFromNow(-24).toISOString(),
+        },
+        {
+          id: "2",
+          name: "Today Event",
+          start_time: hoursFromNow(0).toISOString(),
+          end_time: hoursFromNow(1).toISOString(),
+        },
+        {
+          // Deliberately not on the first day, so landing on day 1 by default
+          // would not look like success.
+          id: "3",
+          name: "Tomorrow Event",
+          start_time: hoursFromNow(24).toISOString(),
+          end_time: hoursFromNow(25).toISOString(),
+        },
+      ],
+    });
+
+    await page.goto("events/3");
+    await expect(eventPage.name).toHaveText("Tomorrow Event");
+
+    await eventPage.navigateBack();
+
+    await expect(page).toHaveURL(/\/schedule\/3$/);
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.events).toHaveText("Tomorrow Event");
+  });
+
+  test("direct link to event preserves filters when going back", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Workshop Event",
+          start_time: hoursFromNow(1).toISOString(),
+          category: "Workshop",
+        },
+        {
+          id: "2",
+          name: "Panel Event",
+          start_time: hoursFromNow(2).toISOString(),
+          category: "Panel",
+        },
+      ],
+    });
+
+    await page.goto("events/1?c=Workshop");
+
+    await eventPage.navigateBack();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Workshop Event");
+  });
+
   test("direct link preserves filters when navigating back from event", async ({
     page,
     schedulePage,
