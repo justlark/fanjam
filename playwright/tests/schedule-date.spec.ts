@@ -506,3 +506,54 @@ test.describe("the day cutoff time when the config is slow to arrive", () => {
     await expect(schedulePage.todayButton).toBeDisabled();
   });
 });
+
+// Which day is "today" changes as the clock passes the cutoff, even though
+// nothing about the schedule itself has changed.
+test.describe("the day cutoff time as the clock passes it", () => {
+  // How often the app re-reads the current time. Matches `useNow`.
+  const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
+
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+    // A minute before the 02:00 cutoff, so the schedule day is still Tuesday.
+    await page.clock.setFixedTime(new Date("2025-09-03T01:59:00Z"));
+
+    await mockApi(page, {
+      ...CUTOFF_CONFIG,
+      events: [
+        ...LATE_NIGHT_EVENTS,
+        {
+          name: "Wednesday Event",
+          start_time: "2025-09-03T10:00:00Z",
+          end_time: "2025-09-03T11:00:00Z",
+        },
+      ],
+    });
+  });
+
+  test("moves the Today button to the next day without a reload", async ({
+    page,
+    schedulePage,
+  }) => {
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.todayButton).toBeDisabled();
+
+    // Roll past the cutoff. The fixed time is what the app reads, and fast
+    // forwarding is what fires the timer that makes it re-read it. Today is
+    // now Wednesday, so the button has somewhere to go, even though we are
+    // still looking at Tuesday.
+    await page.clock.setFixedTime(new Date("2025-09-03T02:01:00Z"));
+    await page.clock.fastForward(REFRESH_NOW_TIME_INTERVAL_MILLIS);
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.todayButton).toBeEnabled();
+
+    await schedulePage.toToday();
+
+    await expect(schedulePage.dayName).toHaveText("Wednesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 3, 2025");
+    await expect(schedulePage.todayButton).toBeDisabled();
+  });
+});

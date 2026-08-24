@@ -5,6 +5,7 @@ import useRemoteData from "@/composables/useRemoteData";
 import { useRoute, useRouter } from "vue-router";
 import useFilterQuery from "@/composables/useFilterQuery";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
+import useNow from "@/composables/useNow";
 import { type Event } from "@/utils/api";
 import { getSortedCategories } from "@/utils/tags";
 import DayPicker from "./DayPicker.vue";
@@ -25,6 +26,7 @@ const {
 } = useRemoteData();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
+const now = useNow();
 
 const focusedEventId = defineModel<string | undefined>("focused");
 const focusedEvent = computed(() =>
@@ -93,8 +95,9 @@ const todayIndex = computed(() => {
   if (namedDays.value === undefined || formats === undefined) return undefined;
 
   // Which day is "today" depends on the rollover time, so in the small hours
-  // this is still the previous calendar day.
-  const todayStart = startOfScheduleDay(new Date(), formats.timezone, formats.dayCutoffMinutes);
+  // this is still the previous calendar day — and it changes as the clock
+  // passes the cutoff, without the schedule itself changing.
+  const todayStart = startOfScheduleDay(now.value, formats.timezone, formats.dayCutoffMinutes);
   const index = namedDays.value.findIndex(
     ({ dayStart }) => dayStart.valueOf() === todayStart.valueOf(),
   );

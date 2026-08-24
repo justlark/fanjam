@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
-import useInterval from "@/composables/useInterval";
+import useNow from "@/composables/useNow";
 import type { Event } from "@/utils/api";
 import { dateIsBetween, earliest, groupByTime, latest, startOfScheduleDay } from "@/utils/time";
-import { computed, ref, type DeepReadonly } from "vue";
+import { computed, type DeepReadonly } from "vue";
 import ScheduleTimeSlot from "./ScheduleTimeSlot.vue";
 import useIncremental from "@/composables/useIncremental";
 
@@ -49,7 +49,7 @@ const timeSlots = computed(() => {
   }));
 });
 
-const now = ref(new Date());
+const now = useNow();
 
 const currentTimeSlotIndex = computed(() => {
   return timeSlots.value.reduce<number | undefined>((prev, thisSlot, index) => {
@@ -65,9 +65,6 @@ const currentTimeSlotIndex = computed(() => {
     return dateIsBetween(now.value, startTime, endTime) ? index : prev;
   }, undefined);
 });
-
-const REFRESH_NOW_TIME_INTERVAL_MILLIS = 1000 * 60 * 1;
-useInterval(() => (now.value = new Date()), REFRESH_NOW_TIME_INTERVAL_MILLIS);
 
 const incrementalTimeSlots = useIncremental(timeSlots);
 </script>
