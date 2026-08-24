@@ -467,3 +467,42 @@ test.describe("the schedule view's day cutoff time", () => {
     await expect(schedulePage.timeSlots.nth(1).getByRole("heading")).toHaveText("1:00 AM");
   });
 });
+
+// The cutoff decides which day is "today", so the schedule cannot pick an
+// opening day until the config has arrived. When the config is slower than the
+// events, the day the app opens on must still agree with the Today button.
+test.describe("the day cutoff time when the config is slow to arrive", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+    // 01:00 on Wednesday, before the 02:00 cutoff, so the schedule day is
+    // still Tuesday.
+    await page.clock.setFixedTime(new Date("2025-09-03T01:00:00Z"));
+  });
+
+  test("opens on the previous day rather than the calendar day", async ({ page, schedulePage }) => {
+    await mockApi(page, {
+      ...CUTOFF_CONFIG,
+      events: [
+        ...LATE_NIGHT_EVENTS,
+        {
+          name: "Wednesday Event",
+          start_time: "2025-09-03T10:00:00Z",
+          end_time: "2025-09-03T11:00:00Z",
+        },
+      ],
+    });
+
+    await page.route("https://api-test.fanjam.live/apps/*/config", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.fallback();
+    });
+
+    await schedulePage.goto();
+
+    await expect(schedulePage.dayName).toHaveText("Tuesday");
+    await expect(schedulePage.dateName).toHaveText("Sep 2, 2025");
+
+    // The opening day and the Today button must not disagree.
+    await expect(schedulePage.todayButton).toBeDisabled();
+  });
+});

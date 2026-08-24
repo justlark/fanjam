@@ -1,4 +1,4 @@
-import { ref, watchEffect, type Ref } from "vue";
+import { computed, type Ref } from "vue";
 
 import useRemoteData from "@/composables/useRemoteData";
 import { parseDayCutoff } from "@/utils/time";
@@ -16,17 +16,19 @@ export interface DatetimeFormats {
   longWeekday: Intl.DateTimeFormat;
 }
 
-const datetimeFormats = ref<DatetimeFormats>();
-
+// Derived rather than assigned from a watcher, so that the formats can never
+// lag the config they come from. A watcher updates them a tick late, and
+// anything reading them in that window formats against the previous timezone
+// and day cutoff — which is enough to land the schedule on the wrong day.
 const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
   const {
     data: { config },
   } = useRemoteData();
 
-  watchEffect(() => {
+  return computed(() => {
     const timezone = config.value?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    datetimeFormats.value = {
+    return {
       timezone,
       dayCutoffMinutes: parseDayCutoff(config.value?.dayCutoffTime),
       shortTime: new Intl.DateTimeFormat(undefined, {
@@ -56,8 +58,6 @@ const useDatetimeFormats = (): Readonly<Ref<DatetimeFormats | undefined>> => {
       }),
     };
   });
-
-  return datetimeFormats;
 };
 
 export default useDatetimeFormats;
