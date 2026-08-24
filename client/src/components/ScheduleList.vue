@@ -72,7 +72,7 @@ const incrementalTimeSlots = useIncremental(timeSlots);
 <template>
   <div v-if="incrementalTimeSlots.length > 0" :class="['flex flex-col gap-6']">
     <ScheduleTimeSlot
-      v-for="(timeSlot, index) in timeSlots"
+      v-for="(timeSlot, index) in incrementalTimeSlots"
       v-model:focused="focusedEventId"
       :key="index"
       :day-name="timeSlot"
