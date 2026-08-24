@@ -21,7 +21,7 @@ const route = useRoute();
 const router = useRouter();
 const {
   data: { events },
-  status: { events: eventsStatus },
+  status: { events: eventsStatus, config: configStatus },
 } = useRemoteData();
 const datetimeFormats = useDatetimeFormats();
 const filterCriteria = useFilterQuery();
@@ -81,10 +81,21 @@ const allCategories = computed(() => getSortedCategories(events.value));
 
 const allDates = computed(() => events.value.map((event) => event.startTime));
 
+// Which days the schedule has depends on the configured timezone and day
+// cutoff, so until the config has loaded we do not know how to divide the
+// events up. Grouping them provisionally would be worse than waiting: the day
+// we settle on gets written into the URL, and correcting it once the config
+// arrives would leave the user on a day they never picked.
 const namedDays = computed(() =>
-  datetimeFormats.value === undefined
+  datetimeFormats.value === undefined || configStatus.value === "pending"
     ? undefined
     : datesToDayNames(datetimeFormats.value, allDates.value),
+);
+
+// The schedule cannot be paginated until we know both which events there are
+// and how they divide into days.
+const scheduleIsLoaded = computed(
+  () => eventsStatus.value === "success" && namedDays.value !== undefined,
 );
 
 const todayIndex = computed(() => {
@@ -190,7 +201,7 @@ const isDayFilteringPastEvents = computed(() => {
 // an event, the schedule view will reset to that event's day each time they
 // change the filters, which is disruptive.
 watch(
-  [toRef(route, "path"), dayIndexByEventId, eventsStatus, todayIndex],
+  [toRef(route, "path"), dayIndexByEventId, scheduleIsLoaded, todayIndex],
   () => {
     if (route.name === "schedule") {
       if (route.params.dayIndex === "all") {
@@ -202,7 +213,7 @@ watch(
       viewType.value = "daily";
 
       if (route.params.dayIndex) {
-        if (eventsStatus.value !== "success") {
+        if (!scheduleIsLoaded.value) {
           // We cannot validate the page number until we know the number of
           // days in the schedule.
           return;
@@ -246,11 +257,7 @@ watchEffect(async () => {
 
 watchEffect(() => {
   // This day does not exist.
-  if (
-    route.name === "schedule" &&
-    eventsStatus.value === "success" &&
-    currentDayEvents.value.length === 0
-  ) {
+  if (route.name === "schedule" && scheduleIsLoaded.value && currentDayEvents.value.length === 0) {
     currentDayIndex.value = 0;
   }
 });
