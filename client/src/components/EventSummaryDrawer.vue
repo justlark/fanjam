@@ -114,9 +114,9 @@ const toggleStar = () => {
             }"
             data-testid="event-summary-show-more-button"
           >
-            <div class="mb-2 flex gap-1">
-              <SimpleIcon class="text-lg" icon="caret-down-fill" />
-              <span>Show more</span>
+            <div class="mb-2 flex gap-2">
+              <SimpleIcon class="text-xl" icon="caret-down-fill" />
+              <span class="text-lg">Show more</span>
             </div>
           </RouterLink>
         </div>
