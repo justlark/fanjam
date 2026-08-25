@@ -10,7 +10,7 @@ mod encrypt;
 mod notification;
 mod vapid;
 
-pub use announce::push_notifications;
-pub use client::{Client, Subscription, endpoint_id};
+pub use announce::{PushJob, chunk_jobs, enqueue_jobs, run_job};
+pub use client::{Client, Subscription, SubscriptionId};
 pub use notification::{Payload, markdown_to_plain_text};
 pub use vapid::VapidKey;

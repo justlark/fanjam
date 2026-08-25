@@ -17,7 +17,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "0.8.0", features = ['http', 'axum', 'tokio-postgres'] }
+worker = { version = "0.8.0", features = ['http', 'axum', 'tokio-postgres', 'queue'] }
 worker-macros = { version = "0.8.0", features = ['http'] }
 axum = { version = "0.8", default-features = false, features = [
   "json",

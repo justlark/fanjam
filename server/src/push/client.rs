@@ -3,6 +3,8 @@
 //! intended usage — it holds the long-lived VAPID identity so we don't
 //! re-parse the private key on every notification.
 
+use std::fmt;
+
 use axum::http::StatusCode;
 use base64::prelude::*;
 use serde::Deserialize;
@@ -31,9 +33,9 @@ pub struct Subscription {
 
 impl Subscription {
     /// Stable identifier for this subscription. Equivalent to
-    /// [`endpoint_id`] applied to `self.endpoint`.
-    pub fn id(&self) -> String {
-        endpoint_id(&self.endpoint)
+    /// [`SubscriptionId::from_endpoint`] applied to `self.endpoint`.
+    pub fn id(&self) -> SubscriptionId {
+        SubscriptionId::from_endpoint(&self.endpoint)
     }
 }
 
@@ -44,11 +46,30 @@ impl Subscription {
 /// and so the DELETE handler can locate a subscription from just the
 /// endpoint without having to round-trip the full `keys` object.
 ///
-/// 16 bytes of blake3 in hex is collision-resistant well beyond any
-/// plausible per-environment subscription count.
-pub fn endpoint_id(endpoint: &str) -> String {
-    let hash = blake3::hash(endpoint.as_bytes());
-    hash.to_hex()[..32].to_string()
+/// It also travels in queue messages during an announcement fan-out, which
+/// is why it round-trips through serde.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, serde::Serialize)]
+pub struct SubscriptionId(String);
+
+impl SubscriptionId {
+    /// 16 bytes of blake3 in hex is collision-resistant well beyond any
+    /// plausible per-environment subscription count.
+    pub fn from_endpoint(endpoint: &str) -> Self {
+        let hash = blake3::hash(endpoint.as_bytes());
+        Self(hash.to_hex()[..32].to_string())
+    }
+}
+
+impl From<String> for SubscriptionId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl fmt::Display for SubscriptionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]

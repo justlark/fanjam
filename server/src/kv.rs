@@ -5,7 +5,7 @@ use crate::{
     api::Alias,
     env::{Config, EnvDomain, EnvId, EnvName, SyncCode},
     noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, Person, TableInfo},
-    push,
+    push::{self, SubscriptionId},
 };
 
 fn wrap_kv_err(err: KvError) -> anyhow::Error {
@@ -78,7 +78,7 @@ fn subscription_key_prefix(env_name: &EnvName) -> String {
     format!("env:{env_name}:subscription:")
 }
 
-fn subscription_key(env_name: &EnvName, subscription_id: &str) -> String {
+fn subscription_key(env_name: &EnvName, subscription_id: &SubscriptionId) -> String {
     format!("{}{}", subscription_key_prefix(env_name), subscription_id)
 }
 
@@ -528,7 +528,7 @@ pub async fn put_subscription(
 pub async fn delete_subscription(
     kv: &KvStore,
     env_name: &EnvName,
-    subscription_id: &str,
+    subscription_id: &SubscriptionId,
 ) -> anyhow::Result<()> {
     kv.delete(&subscription_key(env_name, subscription_id))
         .await
@@ -537,17 +537,18 @@ pub async fn delete_subscription(
     Ok(())
 }
 
-/// List every subscription stored under this environment, paginating through
-/// KV's 1000-keys-per-page limit. The webhook fan-out path (slice 3) iterates
-/// this list and sends a push to each subscription; a popular convention
-/// could plausibly cross 1000, so we handle the cursor properly even though
-/// every other `kv::list` caller in this codebase stops at one page.
+/// List the ids of every subscription stored under this environment, paginating through KV's
+/// 1000-keys-per-page limit.
+///
+/// Deliberately returns ids rather than subscriptions. Resolving each one costs a KV read, and a
+/// popular convention has more subscribers than a single Worker invocation has subrequests — so the
+/// announcement webhook lists ids cheaply and hands chunks of them to queue consumers, each of
+/// which gets its own budget to resolve and deliver with. See `push::chunk_jobs`.
 #[worker::send]
-#[allow(dead_code)] // consumed by the webhook fan-out in slice 3
-pub async fn list_subscriptions(
+pub async fn list_subscription_ids(
     kv: &KvStore,
     env_name: &EnvName,
-) -> anyhow::Result<Vec<push::Subscription>> {
+) -> anyhow::Result<Vec<SubscriptionId>> {
     let prefix = subscription_key_prefix(env_name);
     let mut cursor: Option<String> = None;
     let mut out = Vec::new();
@@ -559,18 +560,12 @@ pub async fn list_subscriptions(
         }
         let page = list.execute().await.map_err(wrap_kv_err)?;
 
-        for key in &page.keys {
-            if let Some(subscription) = kv
-                .get(&key.name)
-                .json::<push::Subscription>()
-                .await
-                .map_err(wrap_kv_err)?
-            {
-                out.push(subscription);
-            }
-            // If the key vanished between `list` and `get`, just skip it —
-            // a concurrent DELETE on the same subscription is benign.
-        }
+        out.extend(
+            page.keys
+                .iter()
+                .filter_map(|key| key.name.strip_prefix(&prefix))
+                .map(|id| SubscriptionId::from(id.to_string())),
+        );
 
         match page.cursor {
             Some(c) if !page.list_complete => cursor = Some(c),
@@ -579,4 +574,18 @@ pub async fn list_subscriptions(
     }
 
     Ok(out)
+}
+
+/// Resolve a single subscription by id. `None` if the key vanished between being listed and being
+/// read, which is benign — it just means that subscriber unsubscribed in the meantime.
+#[worker::send]
+pub async fn get_subscription(
+    kv: &KvStore,
+    env_name: &EnvName,
+    subscription_id: &SubscriptionId,
+) -> anyhow::Result<Option<push::Subscription>> {
+    kv.get(&subscription_key(env_name, subscription_id))
+        .json::<push::Subscription>()
+        .await
+        .map_err(wrap_kv_err)
 }

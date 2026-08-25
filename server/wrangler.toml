@@ -33,6 +33,17 @@ preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
 binding = "ASSETS_BUCKET"
 bucket_name = "sparklefish-assets-test"
 
+[[env.test.queues.producers]]
+binding = "PUSH_QUEUE"
+queue = "sparklefish-push-test"
+
+[[env.test.queues.consumers]]
+queue = "sparklefish-push-test"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "sparklefish-push-dlq-test"
+
 [env.prod]
 
 [env.prod.vars]
@@ -61,3 +72,19 @@ preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
 [[env.prod.r2_buckets]]
 binding = "ASSETS_BUCKET"
 bucket_name = "sparklefish-assets-prod"
+
+# This queue is used for sending push notifications. When we're dealing with
+# thousands of concurrent users, this approach is necessary to avoid exceeding
+# the worker subrequest limit.
+[[env.prod.queues.producers]]
+binding = "PUSH_QUEUE"
+queue = "sparklefish-push-prod"
+
+# The `max_batch_size` is deliberately 1 because each message already contains
+# a batch of notifications.
+[[env.prod.queues.consumers]]
+queue = "sparklefish-push-prod"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "sparklefish-push-dlq-prod"

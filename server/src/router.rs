@@ -12,7 +12,9 @@ use axum::{
     response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Bucket, Cache, Context, console_log, console_warn, kv::KvStore, send::SendWrapper};
+use worker::{
+    Bucket, Cache, Context, Queue, console_log, console_warn, kv::KvStore, send::SendWrapper,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +59,7 @@ use crate::{
 pub struct AppState {
     pub kv: KvStore,
     pub bucket: SendWrapper<Bucket>,
+    pub queue: Queue,
     pub ctx: Arc<Context>,
 }
 
@@ -1018,9 +1021,13 @@ async fn delete_subscription(
     // Idempotent: deleting a subscription that isn't present is still a
     // success — the desired state ("this subscription isn't stored") holds
     // either way, and the SW reliably retries on transient failures.
-    kv::delete_subscription(&state.kv, &env_name, &push::endpoint_id(&body.endpoint))
-        .await
-        .map_err(Error::Internal)?;
+    kv::delete_subscription(
+        &state.kv,
+        &env_name,
+        &push::SubscriptionId::from_endpoint(&body.endpoint),
+    )
+    .await
+    .map_err(Error::Internal)?;
 
     Ok(NoContent)
 }
@@ -1104,9 +1111,11 @@ async fn post_announcement_created(
     Path(env_id): Path<EnvId>,
     Json(webhook): Json<NocoAnnouncementWebhook>,
 ) -> Result<NoContent, ErrorResponse> {
-    let Some(vapid) = config::vapid_key() else {
+    // The consumer needs this to sign, but there's no point queueing work we know can't be
+    // delivered, so fail loudly here instead.
+    if config::vapid_key().is_none() {
         return Err(StatusCode::SERVICE_UNAVAILABLE.into());
-    };
+    }
 
     let env_name = kv::get_id_env(&state.kv, &env_id)
         .await
@@ -1142,7 +1151,7 @@ async fn post_announcement_created(
         .refresh_announcements_cache()
         .await?;
 
-    let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(webhook.data.rows.len());
+    let mut payloads: Vec<String> = Vec::with_capacity(webhook.data.rows.len());
     for row in &webhook.data.rows {
         let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
         let payload = push::Payload {
@@ -1155,20 +1164,25 @@ async fn post_announcement_created(
             body,
             icon: icon.clone(),
         };
-        payloads.push(serde_json::to_vec(&payload).map_err(|e| Error::Internal(e.into()))?);
+        payloads.push(serde_json::to_string(&payload).map_err(|e| Error::Internal(e.into()))?);
     }
 
-    let kv = state.kv.clone();
-    let env_name_owned = env_name.clone();
-    let client = push::Client::new(vapid);
-    state.ctx.wait_until(async move {
-        for payload in payloads {
-            if let Err(e) = push::push_notifications(&kv, &env_name_owned, &client, &payload).await
-            {
-                worker::console_warn!("Announcement push fan-out failed: {e}");
-            }
-        }
-    });
+    // Listing ids is bounded — one KV `list` per 1,000 subscribers, no per-subscriber read — so
+    // this stays cheap however large the convention is. The actual sending happens in the queue
+    // consumers, which each get their own subrequest budget.
+    let subscription_ids = kv::list_subscription_ids(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    for payload in &payloads {
+        let jobs = push::chunk_jobs(&env_name, payload, subscription_ids.clone());
+
+        // Deliberately not in `wait_until`: enqueueing is fast and bounded, and a fan-out that
+        // silently fails to start is the exact failure this endpoint used to have.
+        push::enqueue_jobs(&state.queue, jobs)
+            .await
+            .map_err(Error::Internal)?;
+    }
 
     Ok(NoContent)
 }
