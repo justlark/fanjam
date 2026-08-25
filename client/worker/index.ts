@@ -193,8 +193,12 @@ const webManifestResponse = async (
     return undefined;
   }
 
-  const appInfo = await getAppInfo(env.API_DOMAIN, envId);
-  const appConfig = await getAppConfig(env.API_DOMAIN, envId);
+  // These two don't depend on each other, so fetch them concurrently rather
+  // than paying two serial round trips on the way to rendering the page.
+  const [appInfo, appConfig] = await Promise.all([
+    getAppInfo(env.API_DOMAIN, envId),
+    getAppConfig(env.API_DOMAIN, envId),
+  ]);
 
   const mountUrl = `${requestUrl.origin}${publicPrefix}`;
 
@@ -284,8 +288,12 @@ const injectAppMetadata = async (
   envId: string,
   response: Response,
 ): Promise<Response> => {
-  const appInfo = await getAppInfo(env.API_DOMAIN, envId);
-  const appConfig = await getAppConfig(env.API_DOMAIN, envId);
+  // These two don't depend on each other, so fetch them concurrently rather
+  // than paying two serial round trips on the way to rendering the page.
+  const [appInfo, appConfig] = await Promise.all([
+    getAppInfo(env.API_DOMAIN, envId),
+    getAppConfig(env.API_DOMAIN, envId),
+  ]);
 
   return (
     new HTMLRewriter()
