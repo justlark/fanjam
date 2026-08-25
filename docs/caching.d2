@@ -7,27 +7,33 @@ title: FanJam Caching Flow Diagram {
 }
 
 browser: Browser {shape: person}
-sw: Service\nWorker {shape: queue}
+local: Local Storage {shape: cylinder}
 edge: Edge Cache {shape: cloud}
 kv: Persistent Cache {shape: cloud}
 noco: NocoDB {shape: cylinder}
+error: Error {shape: hexagon}
 
-question-offline: Browser\nonline? {shape: diamond}
 question-fresh: Edge cache\nfresh? {shape: diamond}
-question-healthy: NocoDB\nhealthy? {shape: diamond}
+question-healthy-populated: NocoDB\nhealthy? {shape: diamond}
+question-healthy-empty: NocoDB\nhealthy? {shape: diamond}
+question-populated: Persistent cache\npopulated? {shape: diamond}
 
-question-offline <- browser
-sw <- question-offline: No
-question-fresh <- question-offline: Yes
+local <- browser: Fetch
+question-fresh <- browser: Fetch
 
-kv <- question-fresh: No
+question-populated <- question-fresh: No
+kv <- question-populated: Yes
+question-healthy-populated <- question-populated: Yes
+question-healthy-empty <- question-populated: No
+question-healthy-populated <- question-healthy-populated: No
+error <- question-healthy-empty: No
 edge <- question-fresh: Yes
-question-healthy <- question-fresh: No
-
-noco <- question-healthy: Yes
-kv <- question-healthy: No
+noco <- question-healthy-populated: Yes
+noco <- question-healthy-empty: Yes
 
 kv <- noco: Refresh
 edge <- noco: Refresh
-sw <- edge: Refresh
+local <- edge: Refresh
+local <- kv: Refresh
+question-fresh <- kv: Fetch
 edge <- edge: Expire
