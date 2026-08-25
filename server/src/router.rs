@@ -1144,6 +1144,11 @@ async fn post_announcement_created(
             )
         });
 
+    let has_custom_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .is_some();
+
     // Re-seed the persistent cache from NocoDB and purge the edge cache for this environment so the
     // new announcement is available immediately.
     Store::from_env_id(&state, &env_id)
@@ -1160,7 +1165,11 @@ async fn post_announcement_created(
             // announcement because the new announcement won't be in their local cache by the time
             // they get there. However, refreshing the cache ensures the new announcement should
             // appear quickly.
-            url: "/announcements".into(),
+            url: if has_custom_domain {
+                "/announcements".into()
+            } else {
+                format!("/app/{}/announcements", env_id)
+            },
             body,
             icon: icon.clone(),
         };
