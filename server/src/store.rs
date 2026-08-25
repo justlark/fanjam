@@ -83,11 +83,15 @@ const MAX_BACKOFF: Duration = Duration::from_secs(60);
 // hung fetch from holding the in-flight guard indefinitely.
 const REFRESH_TIMEOUT: Duration = Duration::from_secs(15);
 
-// What to do about refreshing a given cache key. Because the answer depends entirely on the health
-// of the upstream, it's also how we classify the freshness of the response we're about to serve
-// out of the persistent cache.
+// What to do about refreshing a given cache key *right now*.
+//
+// Note that this is a separate question from how to classify the freshness of the response we're
+// about to serve, and the two must not be conflated. Whether to spawn a refresh depends on what
+// happens to be happening this instant; whether the client should check back depends on whether
+// upstream is healthy at all. When NocoDB is down, a refresh is often in flight — but it's a
+// doomed probe, not an imminent update, and there is nothing for the client to come back for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RefreshDecision {
+enum RefreshAction {
     // Nothing is running and we're not in cooldown: spawn a refresh.
     Spawn,
 
@@ -96,18 +100,6 @@ enum RefreshDecision {
 
     // Upstream is in cooldown after repeated failures; don't attempt one.
     InBackoff { remaining_ms: i64 },
-}
-
-impl RefreshDecision {
-    fn freshness(self) -> Freshness {
-        match self {
-            // Either way, fresher data is on its way, so it's worth the client checking back.
-            Self::Spawn | Self::AlreadyInFlight => Freshness::Stale,
-
-            // Nothing is coming until the cooldown expires. Tell the client not to bother.
-            Self::InBackoff { .. } => Freshness::Backoff,
-        }
-    }
 }
 
 // Wall-clock milliseconds. Not monotonic, but Workers freezes the clock within a request and only
@@ -130,26 +122,36 @@ fn backoff_delay(consecutive_failures: u32) -> Duration {
     half + half.mul_f64(rand::thread_rng().gen_range(0.0..1.0))
 }
 
-// Decide whether to spawn a background refresh for `key`, marking it in flight if so. The caller
-// must call `finish_refresh` when the refresh completes, but only if this returned
-// `RefreshDecision::Spawn`.
-fn try_begin_refresh(key: &str) -> RefreshDecision {
+// Decide whether to spawn a background refresh for `key`, marking it in flight if so, and classify
+// how current the data we're about to serve from the persistent cache is. The caller must call
+// `finish_refresh` when the refresh completes, but only if this returned `RefreshAction::Spawn`.
+fn try_begin_refresh(key: &str) -> (RefreshAction, Freshness) {
     let mut state = refresh_state().lock().unwrap();
     let entry = state.entry(key.to_string()).or_default();
 
+    // Freshness comes off the failure count, *not* off the action below. Any recorded failure
+    // means upstream is unhealthy, and telling the client to check back would only add to the load
+    // keeping it down — regardless of whether we happen to have a probe in flight at this instant.
+    // Before the first failure we have no evidence of trouble, so `Stale` is the honest answer.
+    let freshness = if entry.consecutive_failures > 0 {
+        Freshness::Backoff
+    } else {
+        Freshness::Stale
+    };
+
     if entry.in_flight {
-        return RefreshDecision::AlreadyInFlight;
+        return (RefreshAction::AlreadyInFlight, freshness);
     }
 
     let remaining_ms = entry.next_attempt_at_ms - now_ms();
 
     if remaining_ms > 0 {
-        return RefreshDecision::InBackoff { remaining_ms };
+        return (RefreshAction::InBackoff { remaining_ms }, freshness);
     }
 
     entry.in_flight = true;
 
-    RefreshDecision::Spawn
+    (RefreshAction::Spawn, freshness)
 }
 
 // How much of the cooldown for `key` is left, if it's currently in one. Used on the blocking path,
@@ -268,11 +270,15 @@ pub struct MigrationChange {
 // otherwise we would have the same cache stampede problem. See `REFRESH_STATE`.
 //
 // Every response carries a `Freshness` telling the client how current the data is. When we serve
-// out of the persistent cache while a refresh is under way, we mark it `Stale`, and the client
-// checks back on its own schedule to pick up the fresher data. When NocoDB has been failing and
-// refreshes are in cooldown, we mark it `Backoff` instead, and the client does not retry at all —
-// there's no fresher data coming until the cooldown expires, and retrying would only add to the
-// load that's keeping NocoDB down.
+// out of the persistent cache and NocoDB is healthy, we mark it `Stale`, and the client checks
+// back on its own schedule to pick up the fresher data. Once a refresh has failed, we mark it
+// `Backoff` instead and the client does not retry at all — retrying would only add to the load
+// that's keeping NocoDB down.
+//
+// Note that `Backoff` is keyed off whether upstream has been failing, *not* off whether we happen
+// to have a refresh in flight at this instant. During an outage a doomed probe is in flight much
+// of the time, and treating that as "fresher data is on its way" would tell the client to come
+// back for something that isn't coming.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -374,10 +380,10 @@ macro_rules! get_data {
                     let body = to_body(cached_value);
 
                     let refresh_key = format!("{}:{}", self.env_name, $cache_key);
-                    let decision = try_begin_refresh(&refresh_key);
+                    let (action, freshness) = try_begin_refresh(&refresh_key);
 
-                    match decision {
-                        RefreshDecision::Spawn => {
+                    match action {
+                        RefreshAction::Spawn => {
                             self.ctx.wait_until(async move {
                                 let latest = with_refresh_timeout(
                                     &refresh_key,
@@ -394,13 +400,13 @@ macro_rules! get_data {
                                 finish_refresh(&refresh_key, succeeded);
                             });
                         }
-                        RefreshDecision::AlreadyInFlight => {
+                        RefreshAction::AlreadyInFlight => {
                             console_log!(
                                 "Skipping background refresh for {} (already in flight).",
                                 $cache_key,
                             );
                         }
-                        RefreshDecision::InBackoff { remaining_ms } => {
+                        RefreshAction::InBackoff { remaining_ms } => {
                             console_log!(
                                 "Skipping background refresh for {} ({}ms of backoff remaining).",
                                 $cache_key,
@@ -410,7 +416,7 @@ macro_rules! get_data {
                     }
 
                     Ok(EtagJson(DataResponseEnvelope {
-                        freshness: decision.freshness(),
+                        freshness,
                         value: body,
                     })
                     .into_response())
