@@ -112,7 +112,12 @@ const useRemoteDataInner = <T, S>({
   const shouldFetch = (): boolean => matchesRoute(fetchPolicy, route.name as string | undefined);
 
   const BASE_RETRY_DELAY_MS = 1500;
-  const MAX_RETRIES = 5;
+
+  // A backstop, not the primary limit. The server tells us outright when it has
+  // stopped refreshing (see `"backoff"` below), so this ladder now only runs
+  // during a genuinely transient window — the sub-second gap while the edge
+  // cache is repopulated — where the first retry almost always succeeds.
+  const MAX_RETRIES = 3;
 
   let retryCount = 0;
   let retryTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -124,14 +129,19 @@ const useRemoteDataInner = <T, S>({
     }
   };
 
+  // Retry with exponential backoff, jittered across half the delay. The jitter
+  // matters: clients go stale together, because they go stale when the shared
+  // edge cache entry expires. Without jitter they'd all come back in lockstep,
+  // and that synchronized burst is what turns a slow upstream into a dead one.
   const scheduleRetry = () => {
     if (retryCount >= MAX_RETRIES) return;
     const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount);
+    const jittered = delay * (0.5 + Math.random() * 0.5);
     retryCount++;
     retryTimeout = setTimeout(() => {
       retryTimeout = undefined;
       void reload();
-    }, delay);
+    }, jittered);
   };
 
   // Fetch the most recent data from the server and update the ref.
@@ -205,7 +215,12 @@ const useRemoteDataInner = <T, S>({
 
       setItem(key, storedValue);
 
-      if (fetchApiResult.ok && fetchApiResult.stale) {
+      // The server classifies how current the data is; we decide our own retry
+      // schedule from that. Only `"stale"` means fresher data is on its way.
+      // `"backoff"` means upstream has been failing and refreshes are in
+      // cooldown, so there is nothing to come back for, and retrying would only
+      // add to the load that's keeping it down.
+      if (fetchApiResult.ok && fetchApiResult.freshness === "stale") {
         scheduleRetry();
       } else {
         retryCount = 0;

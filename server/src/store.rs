@@ -1,5 +1,7 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fmt;
+use std::future::Future;
+use std::pin::pin;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -8,11 +10,13 @@ use axum::{
     http::{self, Uri},
     response::IntoResponse,
 };
+use futures::future::{Either, select};
+use rand::Rng;
 use serde::Serialize;
 use worker::kv::KvStore;
-use worker::{Cache, Context, console_error, console_log, console_warn};
+use worker::{Cache, Context, Delay, console_error, console_log, console_warn};
 
-use crate::api::{DataResponseEnvelope, PostBackupKind};
+use crate::api::{DataResponseEnvelope, Freshness, PostBackupKind};
 use crate::cache::{EtagJson, put_cdn_cache};
 use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
@@ -26,26 +30,199 @@ use crate::{
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
 
-/// Tracks which cache keys currently have a background refresh in flight within this isolate. This
-/// is used to prevent cache stampedes; if a key is in this set, we do not spawn another background
-/// task to refresh the cache from the upstream NocoDB instance. The background task removes the
-/// key when it completes.
+/// Per-`(environment, cache key)` bookkeeping for background refreshes of the persistent cache,
+/// scoped to this isolate. It does two jobs:
 ///
-/// This locking mechanism only works **within this isolate**. Under heavy load, Cloudflare may
-/// spin up multiple isolates to handle requests. That may result in multiple concurrent background
-/// refreshes for the same key, but for our use-case it would likely be on the order of "a few" and
-/// not "a few hundred", which is acceptable.
+/// 1. **Stampede protection.** If a refresh is already in flight for a key, we do not spawn
+///    another. Otherwise every request arriving in the window after the edge cache expires would
+///    hammer the upstream NocoDB instance.
 ///
-/// We actually *do not* want a global lock across all isolates across all datacenters, because the
-/// CDN cache (what we call the "edge cache" below) is scoped per-datacenter, so we would need each
-/// datacenter to have an independent lock anyways.
+/// 2. **Backoff.** When a refresh fails, we record a cooldown before another may be attempted,
+///    growing exponentially with consecutive failures. Without this, a fast-failing NocoDB (say,
+///    500s returned in 50ms) gets re-attempted at request arrival rate, and that load is precisely
+///    what stops it from recovering.
+///
+/// This only works **within this isolate**. Under heavy load, Cloudflare may spin up multiple
+/// isolates to handle requests. That may mean a few concurrent refreshes for the same key, or a
+/// freshly-spawned isolate spending one attempt before it learns that upstream is unhealthy, but
+/// for our use-case that's on the order of "a few" and not "a few hundred", which is acceptable.
+///
+/// We actually *do not* want global state across all isolates across all datacenters, because the
+/// CDN cache (what we call the "edge cache" below) is scoped per-datacenter, so each datacenter
+/// needs to refresh independently anyways.
 ///
 /// Workers isolates are inherently single-threaded, so the Mutex never actually contends; it's
 /// only needed to satisfy Send/Sync bounds.
-static INFLIGHT_REFRESHES: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+static REFRESH_STATE: OnceLock<Mutex<HashMap<String, RefreshState>>> = OnceLock::new();
 
-fn inflight_refreshes() -> &'static Mutex<HashSet<String>> {
-    INFLIGHT_REFRESHES.get_or_init(|| Mutex::new(HashSet::new()))
+fn refresh_state() -> &'static Mutex<HashMap<String, RefreshState>> {
+    REFRESH_STATE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[derive(Debug, Default)]
+struct RefreshState {
+    // Whether a background refresh for this key is currently running.
+    in_flight: bool,
+
+    // How many times in a row the refresh has failed. Reset on success.
+    consecutive_failures: u32,
+
+    // Wall-clock milliseconds before which no new refresh may be attempted.
+    next_attempt_at_ms: i64,
+}
+
+// The cooldown imposed after a single failed refresh. Each consecutive failure doubles it.
+const BASE_BACKOFF: Duration = Duration::from_secs(1);
+
+// The ceiling on the cooldown, so that even a long outage still gets probed periodically and the
+// system recovers on its own once NocoDB comes back.
+const MAX_BACKOFF: Duration = Duration::from_secs(60);
+
+// How long a background refresh may run before we abandon it and count it as a failure. Generous,
+// because a NocoDB instance waking from suspend is legitimately slow; the point is only to stop a
+// hung fetch from holding the in-flight guard indefinitely.
+const REFRESH_TIMEOUT: Duration = Duration::from_secs(15);
+
+// What to do about refreshing a given cache key. Because the answer depends entirely on the health
+// of the upstream, it's also how we classify the freshness of the response we're about to serve
+// out of the persistent cache.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RefreshDecision {
+    // Nothing is running and we're not in cooldown: spawn a refresh.
+    Spawn,
+
+    // A refresh is already running; don't spawn a second one.
+    AlreadyInFlight,
+
+    // Upstream is in cooldown after repeated failures; don't attempt one.
+    InBackoff { remaining_ms: i64 },
+}
+
+impl RefreshDecision {
+    fn freshness(self) -> Freshness {
+        match self {
+            // Either way, fresher data is on its way, so it's worth the client checking back.
+            Self::Spawn | Self::AlreadyInFlight => Freshness::Stale,
+
+            // Nothing is coming until the cooldown expires. Tell the client not to bother.
+            Self::InBackoff { .. } => Freshness::Backoff,
+        }
+    }
+}
+
+// Wall-clock milliseconds. Not monotonic, but Workers freezes the clock within a request and only
+// advances it after I/O, and every decision point here follows a network await, so it advances
+// when we need it to.
+fn now_ms() -> i64 {
+    chrono::Utc::now().timestamp_millis()
+}
+
+// How long to wait before attempting another refresh, after `consecutive_failures` failures in a
+// row. Doubles per failure up to `MAX_BACKOFF`, with equal jitter (half the delay fixed, half
+// random) so isolates that failed at the same moment don't all retry in lockstep.
+fn backoff_delay(consecutive_failures: u32) -> Duration {
+    // Capping the exponent keeps the multiplication well clear of overflow; anything past a few
+    // failures is clamped to `MAX_BACKOFF` regardless.
+    let exponent = consecutive_failures.saturating_sub(1).min(16);
+    let scaled = (BASE_BACKOFF * 2u32.saturating_pow(exponent)).min(MAX_BACKOFF);
+    let half = scaled / 2;
+
+    half + half.mul_f64(rand::thread_rng().gen_range(0.0..1.0))
+}
+
+// Decide whether to spawn a background refresh for `key`, marking it in flight if so. The caller
+// must call `finish_refresh` when the refresh completes, but only if this returned
+// `RefreshDecision::Spawn`.
+fn try_begin_refresh(key: &str) -> RefreshDecision {
+    let mut state = refresh_state().lock().unwrap();
+    let entry = state.entry(key.to_string()).or_default();
+
+    if entry.in_flight {
+        return RefreshDecision::AlreadyInFlight;
+    }
+
+    let remaining_ms = entry.next_attempt_at_ms - now_ms();
+
+    if remaining_ms > 0 {
+        return RefreshDecision::InBackoff { remaining_ms };
+    }
+
+    entry.in_flight = true;
+
+    RefreshDecision::Spawn
+}
+
+// How much of the cooldown for `key` is left, if it's currently in one. Used on the blocking path,
+// where there's no cached value to fall back on: if upstream is in cooldown, there's no point
+// making the caller wait on a request we expect to fail.
+fn backoff_remaining_ms(key: &str) -> Option<i64> {
+    let state = refresh_state().lock().unwrap();
+    let entry = state.get(key)?;
+    let remaining_ms = entry.next_attempt_at_ms - now_ms();
+
+    (remaining_ms > 0).then_some(remaining_ms)
+}
+
+// Record the outcome of an upstream fetch, clearing the in-flight flag and either resetting or
+// extending the cooldown. Used by both the background refresh and the blocking cold-cache path;
+// the latter never sets the in-flight flag, but clearing it again is harmless.
+fn finish_refresh(key: &str, succeeded: bool) {
+    let mut state = refresh_state().lock().unwrap();
+    let entry = state.entry(key.to_string()).or_default();
+
+    entry.in_flight = false;
+
+    if succeeded {
+        let recovered_from = entry.consecutive_failures;
+
+        // A healthy key needs no state, and dropping it bounds the size of the map.
+        state.remove(key);
+
+        if recovered_from > 0 {
+            console_log!(
+                "Refresh for {} recovered after {} consecutive failures.",
+                key,
+                recovered_from,
+            );
+        }
+
+        return;
+    }
+
+    entry.consecutive_failures += 1;
+
+    let delay = backoff_delay(entry.consecutive_failures);
+    entry.next_attempt_at_ms = now_ms() + delay.as_millis() as i64;
+
+    console_warn!(
+        "Refresh for {} failed ({} consecutive). Backing off for {}ms.",
+        key,
+        entry.consecutive_failures,
+        delay.as_millis(),
+    );
+}
+
+// Run an upstream request, giving up after `REFRESH_TIMEOUT`. Dropping the losing future cancels
+// the in-flight `fetch`, and `Delay` cancels its timer when dropped, so neither leaks.
+async fn with_refresh_timeout<F, T>(key: &str, request: F) -> Option<T>
+where
+    F: Future<Output = Option<T>>,
+{
+    let request = pin!(request);
+    let timeout = pin!(Delay::from(REFRESH_TIMEOUT));
+
+    match select(request, timeout).await {
+        Either::Left((value, _)) => value,
+        Either::Right(((), _)) => {
+            console_warn!(
+                "Refresh for {} timed out after {}s.",
+                key,
+                REFRESH_TIMEOUT.as_secs(),
+            );
+
+            None
+        }
+    }
 }
 
 pub struct Store {
@@ -88,11 +265,14 @@ pub struct MigrationChange {
 // instead, which will then kick off a background task (that does not block the request from
 // returning) to update both caches with fresh data from NocoDB. We also implement a locking
 // mechanism to ensure that only one request at a time can trigger this background refresh,
-// otherwise we would have the same cache stampede problem.
+// otherwise we would have the same cache stampede problem. See `REFRESH_STATE`.
 //
-// Whenever the worker responds to a request with expired data from the persistent cache, it
-// includes a directive for the client to retry the request after a short delay, by which point the
-// persistent cache in KV should have been updated with fresh data from NocoDB.
+// Every response carries a `Freshness` telling the client how current the data is. When we serve
+// out of the persistent cache while a refresh is under way, we mark it `Stale`, and the client
+// checks back on its own schedule to pick up the fresher data. When NocoDB has been failing and
+// refreshes are in cooldown, we mark it `Backoff` instead, and the client does not retry at all —
+// there's no fresher data coming until the cooldown expires, and retrying would only add to the
+// load that's keeping NocoDB down.
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
@@ -163,11 +343,12 @@ macro_rules! get_data {
                     console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
                 }
 
-                // We consider responses that hit the edge cache to be fresh, so we set `stale` to
-                // false. Otherwise the client would get caught in an infinite retry loop.
+                // Responses that hit the edge cache are by definition fresh; this entry is only
+                // written after a successful refresh. Marking it otherwise would catch the client
+                // in an infinite retry loop.
                 let response_for_edge_cache_result = worker::Response::try_from(
                     EtagJson(DataResponseEnvelope {
-                        stale: false,
+                        freshness: Freshness::Fresh,
                         value: body,
                     })
                     .into_response()
@@ -193,28 +374,43 @@ macro_rules! get_data {
                     let body = to_body(cached_value);
 
                     let refresh_key = format!("{}:{}", self.env_name, $cache_key);
-                    let already_refreshing = {
-                        let mut set = inflight_refreshes().lock().unwrap();
-                        !set.insert(refresh_key.clone())
-                    };
+                    let decision = try_begin_refresh(&refresh_key);
 
-                    if !already_refreshing {
-                        self.ctx.wait_until(async move {
-                            if let Some(latest_value) = upstream_request.await {
-                                let latest_body = to_body_for_cache(latest_value.clone());
-                                put_cache(latest_value, latest_body).await;
-                            }
-                            inflight_refreshes().lock().unwrap().remove(&refresh_key);
-                        });
-                    } else {
-                        console_log!(
-                            "Skipping background refresh for {} (already in flight).",
-                            $cache_key,
-                        );
+                    match decision {
+                        RefreshDecision::Spawn => {
+                            self.ctx.wait_until(async move {
+                                let latest = with_refresh_timeout(
+                                    &refresh_key,
+                                    upstream_request,
+                                ).await;
+
+                                let succeeded = latest.is_some();
+
+                                if let Some(latest_value) = latest {
+                                    let latest_body = to_body_for_cache(latest_value.clone());
+                                    put_cache(latest_value, latest_body).await;
+                                }
+
+                                finish_refresh(&refresh_key, succeeded);
+                            });
+                        }
+                        RefreshDecision::AlreadyInFlight => {
+                            console_log!(
+                                "Skipping background refresh for {} (already in flight).",
+                                $cache_key,
+                            );
+                        }
+                        RefreshDecision::InBackoff { remaining_ms } => {
+                            console_log!(
+                                "Skipping background refresh for {} ({}ms of backoff remaining).",
+                                $cache_key,
+                                remaining_ms,
+                            );
+                        }
                     }
 
                     Ok(EtagJson(DataResponseEnvelope {
-                        stale: true,
+                        freshness: decision.freshness(),
                         value: body,
                     })
                     .into_response())
@@ -222,8 +418,31 @@ macro_rules! get_data {
                 None => {
                     // The persistent cache is empty, which should only be the case for new
                     // environments or after the cache is manually cleared. We need to block and
-                    // wait for the upstream request.
-                    if let Some(latest_value) = upstream_request.await {
+                    // wait for the upstream request, because we have nothing else to serve.
+                    let refresh_key = format!("{}:{}", self.env_name, $cache_key);
+
+                    // If upstream is in cooldown, we would only be making the caller wait on a
+                    // request we expect to fail. Fail fast instead of piling onto the load that's
+                    // keeping NocoDB down; the response is a 503 either way.
+                    if let Some(remaining_ms) = backoff_remaining_ms(&refresh_key) {
+                        console_warn!(
+                            "Not fetching {} from NocoDB: the persistent cache is empty and \
+                             upstream is in backoff for another {}ms.",
+                            $cache_key,
+                            remaining_ms,
+                        );
+
+                        return Err(Error::NocoUnavailable);
+                    }
+
+                    // Deliberately no in-flight guard and no timeout on this path. A legitimate
+                    // cold start — a new environment, or one whose cache was just cleared — has to
+                    // be allowed to block and fetch, however slow NocoDB is to wake up.
+                    let latest = upstream_request.await;
+
+                    finish_refresh(&refresh_key, latest.is_some());
+
+                    if let Some(latest_value) = latest {
                         let body = to_body(latest_value.clone());
                         let body_for_cache = body.clone();
 
@@ -231,8 +450,11 @@ macro_rules! get_data {
                             put_cache(latest_value, body_for_cache).await;
                         });
 
+                        // This data came straight from NocoDB, so it's as current as it gets. The
+                        // edge cache is populated in the background above, so there's nothing for
+                        // the client to check back for.
                         Ok(EtagJson(DataResponseEnvelope {
-                            stale: true,
+                            freshness: Freshness::Fresh,
                             value: body,
                         })
                         .into_response())

@@ -102,9 +102,31 @@ pub struct PostRestoreBackupRequest {
     pub kind: PostRestoreBackupKind,
 }
 
+// How current the data in a `DataResponseEnvelope` is, and what the client should do about it.
+//
+// This is the server's classification of the *upstream* condition; the client owns its own retry
+// schedule. We can tell the client whether retrying is worth doing at all, but we can't know how
+// long our own refresh will take, so we don't dictate timing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Freshness {
+    // Up to date. Either served from the edge cache, or fetched directly from NocoDB while
+    // handling this request. No retry needed.
+    Fresh,
+
+    // Served from the persistent cache while a refresh runs against NocoDB. The client should
+    // retry on its own schedule to pick up the fresher data.
+    Stale,
+
+    // Served from the persistent cache, and refreshes are in cooldown after repeated upstream
+    // failures. The client must *not* retry automatically; recovery doesn't depend on it. Once the
+    // cooldown expires, the next organic request repopulates the caches for everyone.
+    Backoff,
+}
+
 #[derive(Debug, Serialize)]
 pub struct DataResponseEnvelope<T> {
-    pub stale: bool,
+    pub freshness: Freshness,
     pub value: T,
 }
 

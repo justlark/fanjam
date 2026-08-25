@@ -10,7 +10,11 @@ use axum::{
 use serde::Serialize;
 use worker::{Cache, console_error};
 
-use crate::{api::DataResponseEnvelope, env::EnvName, error::Error};
+use crate::{
+    api::{DataResponseEnvelope, Freshness},
+    env::EnvName,
+    error::Error,
+};
 
 // Convert a URL to a cache key. We drop query params; our API endpoints don't use them.
 pub fn cache_key_uri(uri: &Uri) -> anyhow::Result<Uri> {
@@ -32,17 +36,17 @@ where
 {
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
-        let stale = self.0.stale;
+        let is_fresh = self.0.freshness == Freshness::Fresh;
 
         // We canonicalize the data value before computing an etag so that semantically equivalent
         // JSON produces the same etag, preventing cache misses due to differences in key ordering.
         //
         // We use a weak etag because we're only hashing the data value, not the full response
-        // envelope. We do not want changes in the envelope (e.g. whether the data is marked stale)
-        // to change the etag.
+        // envelope. We do not want changes in the envelope (e.g. how the data's freshness is
+        // classified) to change the etag.
         //
-        // We omit the ETag entirely for stale responses.
-        let etag = if stale {
+        // We omit the ETag entirely for responses that aren't fresh.
+        let etag = if !is_fresh {
             None
         } else {
             let mut hash_buf = Vec::new();

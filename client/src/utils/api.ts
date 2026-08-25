@@ -78,8 +78,19 @@ interface RawConfig {
   use_push_notifications: boolean | null;
 }
 
+// How current the data the server sent us is, and what we should do about it.
+//
+// The server classifies the upstream condition; we decide our own retry
+// schedule from it. `"backoff"` means NocoDB has been failing and refreshes are
+// in cooldown, so retrying would only add to the load keeping it down — there
+// is no fresher data coming until that cooldown expires.
+//
+// Absent on responses from a server older than this client, in which case we
+// treat the data as fresh and simply don't auto-refresh.
+export type Freshness = "fresh" | "stale" | "backoff";
+
 interface Envelope<T> {
-  stale?: boolean;
+  freshness?: Freshness;
   value: T;
 }
 
@@ -170,7 +181,7 @@ export type ApiResult<T> =
       ok: true;
       value: T;
       etag?: string;
-      stale?: boolean;
+      freshness?: Freshness;
     }
   | {
       ok: false;
@@ -221,7 +232,7 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
     ok: true,
     value: events,
     etag: response.headers.get("ETag") ?? undefined,
-    stale: rawEvents.stale,
+    freshness: rawEvents.freshness,
   };
 };
 
@@ -255,7 +266,7 @@ const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<
     ok: true,
     value: people,
     etag: response.headers.get("ETag") ?? undefined,
-    stale: rawPeople.stale,
+    freshness: rawPeople.freshness,
   };
 };
 
@@ -298,7 +309,7 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
     ok: true,
     value: info,
     etag: response.headers.get("ETag") ?? undefined,
-    stale: rawInfo.stale,
+    freshness: rawInfo.freshness,
   };
 };
 
@@ -337,7 +348,7 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
     ok: true,
     value: pages,
     etag: response.headers.get("ETag") ?? undefined,
-    stale: rawPages.stale,
+    freshness: rawPages.freshness,
   };
 };
 
@@ -384,7 +395,7 @@ const getAnnouncements = async (
     ok: true,
     value: announcements,
     etag: response.headers.get("ETag") ?? undefined,
-    stale: rawAnnouncements.stale,
+    freshness: rawAnnouncements.freshness,
   };
 };
 
