@@ -1,0 +1,33 @@
+title: FanJam Caching Flow Diagram {
+  shape: text
+  near: top-center
+  style: {
+    font-size: 40
+  }
+}
+
+browser: Browser {shape: person}
+sw: Service\nWorker {shape: queue}
+edge: Edge Cache {shape: cloud}
+kv: Persistent Cache {shape: cloud}
+noco: NocoDB {shape: cylinder}
+
+question-offline: Browser\nonline? {shape: diamond}
+question-fresh: Edge cache\nfresh? {shape: diamond}
+question-healthy: NocoDB\nhealthy? {shape: diamond}
+
+question-offline <- browser
+sw <- question-offline: No
+question-fresh <- question-offline: Yes
+
+kv <- question-fresh: No
+edge <- question-fresh: Yes
+question-healthy <- question-fresh: No
+
+noco <- question-healthy: Yes
+kv <- question-healthy: No
+
+kv <- noco: Refresh
+edge <- noco: Refresh
+sw <- edge: Refresh
+edge <- edge: Expire

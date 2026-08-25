@@ -40,10 +40,10 @@ We have a single deployment of the frontend and a single deployment of the
 backend which are shared across tenant environments. We have separate `prod`
 and `test` deployments of each.
 
-See the following architecture diagram, laid out using
-[D2](https://d2lang.com/):
+See the following diagrams, laid out using [D2](https://d2lang.com/):
 
-[System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
+- [System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
+- [Caching Flow](./docs/caching.svg) ([source](./docs/caching.d2))
 
 ## Development
 
@@ -338,15 +338,15 @@ load_test_secret` and you can pass it to JMeter via the `loadTestSecret` param.
 
 Here are the results of a load test using 10 servers:
 
-| Metric | Value |
-| --- | --- |
-| Test Time | 10min 30s |
-| Total Threads | 5,000 |
-| Requests (All) | 2,039,177 |
-| Requests (Failed) | 0 |
-| Requests / Second | 3,236 |
-| Total Data Sent | 1.75 GB |
-| Total Data Recieved | 26.85 GB |
+| Metric              | Value     |
+| ------------------- | --------- |
+| Test Time           | 10min 30s |
+| Total Threads       | 5,000     |
+| Requests (All)      | 2,039,177 |
+| Requests (Failed)   | 0         |
+| Requests / Second   | 3,236     |
+| Total Data Sent     | 1.75 GB   |
+| Total Data Recieved | 26.85 GB  |
 
 ## Copyright
 
