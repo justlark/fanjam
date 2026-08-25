@@ -12,6 +12,10 @@ export const test = base.extend<Fixtures>({
   },
 });
 
+// The retry delays below are upper bounds, not exact values: the client jitters
+// each delay across the lower half of its interval (retry 1 fires somewhere in
+// 750-1500ms, retry 2 in 1500-3000ms, and so on). Fast-forwarding by the full
+// undithered delay therefore always fires the pending timer.
 test.describe("stale data retry behavior", () => {
   test("updates the page when fresh data arrives after a stale response", async ({
     infoPage,
@@ -30,7 +34,7 @@ test.describe("stale data retry behavior", () => {
     // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
-        stale: true,
+        freshness: "stale",
         body: {
           name: "Old Convention Name",
           description: null,
@@ -40,7 +44,7 @@ test.describe("stale data retry behavior", () => {
         },
       },
       {
-        stale: false,
+        freshness: "fresh",
         body: {
           name: "New Convention Name",
           description: null,
@@ -56,8 +60,8 @@ test.describe("stale data retry behavior", () => {
     // Assert stale data is displayed immediately
     await expect(infoPage.name).toHaveText("Old Convention Name");
 
-    // Fast-forward through the first retry delay (1500ms), waiting for the
-    // response to ensure the DOM update completes before asserting.
+    // Fast-forward through the first retry delay (at most 1500ms), waiting for
+    // the response to ensure the DOM update completes before asserting.
     const nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
     await nextResponse;
@@ -71,7 +75,7 @@ test.describe("stale data retry behavior", () => {
 
     const requestCounter = countRequestsTo(page, "/info");
 
-    // Mock all endpoints with fresh data (stale: false)
+    // Mock all endpoints with fresh data
     await mockApi(page, {
       info: { name: "Test Convention" },
     });
@@ -87,6 +91,49 @@ test.describe("stale data retry behavior", () => {
     // The initial load triggers reload() twice (once from cache check, once as background refresh)
     // With fresh data, there should be no additional retries
     expect(requestCounter.count).toBeLessThanOrEqual(2);
+  });
+
+  test("does not retry when the server is in backoff", async ({ page, infoPage }) => {
+    await mockTime(page);
+
+    const requestCounter = countRequestsTo(page, "/info");
+
+    // Mock other endpoints first
+    await mockApi(page, {
+      events: [],
+      pages: [],
+      announcements: [],
+    });
+
+    // The server is serving out of its persistent cache and has stopped
+    // refreshing upstream, so there is nothing fresher to come back for.
+    // This must come AFTER mockApi so it doesn't get overwritten
+    await mockWrappedApiResponseSequence(page, "/info", [
+      {
+        freshness: "backoff",
+        body: {
+          name: "Cached While Upstream Is Down",
+          description: null,
+          website_url: null,
+          links: [],
+          files: [],
+        },
+      },
+    ]);
+
+    await infoPage.goto();
+
+    // The cached data still renders — degraded, not broken.
+    await expect(infoPage.name).toHaveText("Cached While Upstream Is Down");
+
+    const countAfterLoad = requestCounter.count;
+
+    // Fast-forward past every rung of the retry ladder.
+    await page.clock.fastForward(60000);
+
+    // Assert the client never came back. This is the whole point: during an
+    // upstream outage the server sees only organic traffic.
+    expect(requestCounter.count).toBe(countAfterLoad);
   });
 
   test("stops retrying after receiving fresh data", async ({ page, infoPage }) => {
@@ -105,7 +152,7 @@ test.describe("stale data retry behavior", () => {
     // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
-        stale: true,
+        freshness: "stale",
         body: {
           name: "Stale Data 1",
           description: null,
@@ -115,7 +162,7 @@ test.describe("stale data retry behavior", () => {
         },
       },
       {
-        stale: true,
+        freshness: "stale",
         body: {
           name: "Stale Data 2",
           description: null,
@@ -125,7 +172,7 @@ test.describe("stale data retry behavior", () => {
         },
       },
       {
-        stale: false,
+        freshness: "fresh",
         body: {
           name: "Fresh Data",
           description: null,
@@ -138,13 +185,13 @@ test.describe("stale data retry behavior", () => {
 
     await infoPage.goto();
 
-    // Fast-forward through first retry (1500ms), waiting for the response to
-    // ensure scheduleRetry() has created the next timer before we advance again.
+    // Fast-forward through first retry (at most 1500ms), waiting for the response
+    // to ensure scheduleRetry() has created the next timer before we advance again.
     let nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
     await nextResponse;
 
-    // Fast-forward through second retry (3000ms)
+    // Fast-forward through second retry (at most 3000ms)
     nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(3000);
     await nextResponse;
@@ -177,7 +224,7 @@ test.describe("stale data retry behavior", () => {
     // This must come AFTER mockApi so it doesn't get overwritten
     await mockWrappedApiResponseSequence(page, "/info", [
       {
-        stale: true,
+        freshness: "stale",
         body: {
           name: "Forever Stale",
           description: null,
@@ -190,44 +237,34 @@ test.describe("stale data retry behavior", () => {
 
     await infoPage.goto();
 
-    // Fast-forward through all 5 retry delays, waiting for each response
+    // Fast-forward through all 3 retry delays, waiting for each response
     // to ensure scheduleRetry() has created the next timer before advancing.
     let nextResponse: Promise<unknown>;
 
-    // Retry 1: 1500ms
+    // Retry 1: at most 1500ms
     nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(1500);
     await nextResponse;
 
-    // Retry 2: 3000ms
+    // Retry 2: at most 3000ms
     nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(3000);
     await nextResponse;
 
-    // Retry 3: 6000ms
+    // Retry 3: at most 6000ms
     nextResponse = page.waitForResponse(/info/);
     await page.clock.fastForward(6000);
-    await nextResponse;
-
-    // Retry 4: 12000ms
-    nextResponse = page.waitForResponse(/info/);
-    await page.clock.fastForward(12000);
-    await nextResponse;
-
-    // Retry 5: 24000ms
-    nextResponse = page.waitForResponse(/info/);
-    await page.clock.fastForward(24000);
     await nextResponse;
 
     // Fast-forward well past another retry delay
     await page.clock.fastForward(60000);
 
-    // Should have made: initial load (varies based on mount behavior) + 5
-    // retries We can't assert exact count without knowing mount behavior, but
+    // Should have made: initial load (varies based on mount behavior) + 3
+    // retries. We can't assert exact count without knowing mount behavior, but
     // we can verify it stopped.
-    expect(requestCounter.count).toBeGreaterThanOrEqual(5);
+    expect(requestCounter.count).toBeGreaterThanOrEqual(3);
 
     // Reasonable upper bound.
-    expect(requestCounter.count).toBeLessThanOrEqual(8);
+    expect(requestCounter.count).toBeLessThanOrEqual(6);
   });
 });

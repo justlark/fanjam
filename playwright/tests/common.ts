@@ -17,9 +17,13 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   });
 };
 
+// How current the server says the data is. See `Freshness` in the client's
+// `api.ts`: "stale" asks the client to check back, "backoff" tells it not to.
+export type Freshness = "fresh" | "stale" | "backoff";
+
 const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   await mockApiResponse(page, endpoint, {
-    stale: false,
+    freshness: "fresh",
     value: body,
   });
 };
@@ -192,7 +196,7 @@ export const mockInfoError = async (page: Page, statusCode: number = 500) => {
 export const mockWrappedApiResponseSequence = async (
   page: Page,
   endpoint: string,
-  responses: Array<{ stale: boolean; body: unknown }>,
+  responses: Array<{ freshness: Freshness; body: unknown }>,
 ) => {
   let callCount = 0;
   const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
@@ -204,7 +208,7 @@ export const mockWrappedApiResponseSequence = async (
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        stale: responses[index].stale,
+        freshness: responses[index].freshness,
         value: responses[index].body,
       }),
     });
