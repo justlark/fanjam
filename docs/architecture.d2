@@ -1,4 +1,4 @@
-title: FanJam Architecture Diagram {
+title: FanJam System Architecture Diagram {
   shape: text
   near: top-center
   style: {
@@ -11,9 +11,9 @@ organizer: Organizer {shape: person}
 admin: Admin {shape: person}
 
 cf: Cloudflare {
-  client: Client Worker {shape: queue}
-  server: Server Worker {shape: queue}
-  noco: NocoDB Worker {shape: queue}
+  client: Client\nWorker {shape: queue}
+  server: Server\nWorker {shape: queue}
+  noco: NocoDB\nWorker {shape: queue}
   client-cdn: Client CDN {shape: cloud}
   noco-cdn: NocoDB CDN {shape: cloud}
   kv: Clouflare KV {shape: cylinder}

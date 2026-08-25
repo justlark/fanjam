@@ -1,0 +1,25 @@
+title: FanJam Push Notifications Flow Diagram {
+  shape: text
+  near: top-center
+  style: {
+    font-size: 40
+  }
+}
+
+user: User {shape: person}
+browser: Browser {shape: person}
+server: Server\nWorker {shape: queue}
+kv: Clouflare KV {shape: cylinder}
+queue: Message\nQueue {shape: queue}
+noco: NocoDB {shape: queue}
+vendor: Browser\nPush Service {shape: cloud}
+
+browser -> user: 1. Prompt
+browser <- user: 2. Accept prompt
+server <- browser: 3. Send subscription
+kv <- server: 4. Store subscription
+server <- noco: 5. New announcement
+queue <- server: 6. Queue notifications
+server <- queue: 7. Receive notifications
+vendor <- server: 8. Send push
+browser <- vendor: 9. Receive push

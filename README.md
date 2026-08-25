@@ -44,6 +44,7 @@ See the following diagrams, laid out using [D2](https://d2lang.com/):
 
 - [System Architecture](./docs/architecture.svg) ([source](./docs/architecture.d2))
 - [Caching Flow](./docs/caching.svg) ([source](./docs/caching.d2))
+- [Push Notifications Flow](./docs/notifications.svg) ([source](./docs/notifications.d2))
 
 ## Development
 
