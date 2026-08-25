@@ -12,9 +12,22 @@ use worker::{Cache, console_error};
 
 use crate::{
     api::{DataResponseEnvelope, Freshness},
-    env::EnvName,
+    config,
+    env::{Config, EnvName},
     error::Error,
 };
+
+// How long responses for an environment stay in the edge cache. Configurable per-environment,
+// falling back to a global default.
+//
+// Note that `s-maxage` has second granularity, so a sub-second value here rounds down to zero and
+// disables edge caching entirely for the environment.
+pub fn cache_ttl(env_config: &Config) -> Duration {
+    env_config
+        .cache_ttl
+        .map(Duration::from_millis)
+        .unwrap_or_else(config::noco_default_cdn_cache_ttl)
+}
 
 // Convert a URL to a cache key. We drop query params; our API endpoints don't use them.
 pub fn cache_key_uri(uri: &Uri) -> anyhow::Result<Uri> {

@@ -1,20 +1,20 @@
 // Axum trips this lint, which we don't have much control over.
 #![allow(clippy::result_large_err)]
 
-use std::{fmt, sync::Arc};
+use std::{fmt, sync::Arc, time::Duration};
 
 use axum::{
     Json, Router,
     body::Body,
     extract::{Path, State},
-    http::{self, StatusCode, Uri},
+    http::{self, HeaderValue, StatusCode, Uri, header},
     middleware,
-    response::{ErrorResponse, NoContent},
+    response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{Bucket, Cache, Context, console_log, kv::KvStore, send::SendWrapper};
+use worker::{Bucket, Cache, Context, console_log, console_warn, kv::KvStore, send::SendWrapper};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     api::{
@@ -27,7 +27,7 @@ use crate::{
         PutLinkResponse, PutScheduleRequest, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
-    cache::{cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
+    cache::{self, cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
     cf, config,
     cors::cors_layer,
     env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName, SyncCode},
@@ -125,7 +125,28 @@ pub fn new(state: AppState) -> Router {
         .with_state(Arc::new(state))
 }
 
+// Best-effort purge of an environment's edge-cached responses, for use after a write that changes
+// what those responses would contain.
+//
+// Deliberately non-fatal. The write itself has already succeeded, and every cached entry carries a
+// short TTL, so a failed purge costs a few seconds of staleness rather than correctness — whereas
+// failing the request would make config edits look broken. Compare `delete_cache`, where purging
+// *is* the operation and a failure is worth surfacing to the caller.
+async fn purge_env_cache(env_name: &EnvName) {
+    let result = cf::Client::new()
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(env_name),
+        )
+        .await;
+
+    if let Err(err) = result {
+        console_warn!("Failed to purge the edge cache for {}: {}", env_name, err);
+    }
+}
+
 #[axum::debug_handler]
+#[worker::send]
 async fn put_link(
     State(state): State<Arc<AppState>>,
     Path((env_name, new_env_id)): Path<(EnvName, EnvId)>,
@@ -146,6 +167,10 @@ async fn put_link(
         kv::put_env_id(&state.kv, &env_name, &new_env_id)
             .await
             .map_err(Error::Internal)?;
+
+        // The old ID stops resolving, but its cached `/apps/{env_id}/config` entry would keep
+        // answering for the rest of the TTL. Drop it so the switchover is clean.
+        purge_env_cache(&env_name).await;
     }
 
     let custom_domain = kv::get_env_domain(&state.kv, &env_name)
@@ -225,6 +250,7 @@ async fn get_link(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn put_env_domain(
     State(state): State<Arc<AppState>>,
     Path((env_name, domain)): Path<(EnvName, String)>,
@@ -259,6 +285,10 @@ async fn put_env_domain(
         .await
         .map_err(Error::Internal)?;
 
+    // Both `/apps/{env_id}/config` (which carries `app_domain`, and so drives the redirect to the
+    // custom domain) and `/domains/{domain}` are edge-cached against this environment's tag.
+    purge_env_cache(&env_name).await;
+
     Ok(NoContent)
 }
 
@@ -278,6 +308,7 @@ async fn get_env_domain(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn delete_env_domain(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
@@ -295,14 +326,28 @@ async fn delete_env_domain(
         .await
         .map_err(Error::Internal)?;
 
+    purge_env_cache(&env_name).await;
+
     Ok(NoContent)
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_domain_env(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(domain): Path<String>,
-) -> Result<Json<GetDomainEnvResponse>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    // The client worker resolves the hostname on *every* request it serves under a custom domain —
+    // each JS chunk, stylesheet, font and icon included — so on a cold PWA load this is a dozen
+    // round trips. Caching it at the edge collapses them into one.
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
     let domain = EnvDomain::try_from(domain).map_err(Error::InvalidDomain)?;
 
     let env_name = kv::get_domain_env(&state.kv, &domain)
@@ -315,9 +360,19 @@ async fn get_domain_env(
         .map_err(Error::Internal)?
         .ok_or(Error::NoEnvId)?;
 
-    Ok(Json(GetDomainEnvResponse {
+    // One extra KV read, but only on a miss, and it buys the whole TTL's worth of hits. Tagging
+    // the entry with this environment is what lets a domain change purge it.
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let ttl = cache::cache_ttl(&env_config);
+
+    let body = Json(GetDomainEnvResponse {
         env_id: env_id.to_string(),
-    }))
+    });
+
+    cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await
 }
 
 #[axum::debug_handler]
@@ -562,6 +617,7 @@ async fn get_admin_config(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn put_admin_config(
     State(state): State<Arc<AppState>>,
     Path(env_name): Path<EnvName>,
@@ -570,6 +626,10 @@ async fn put_admin_config(
     kv::put_env_config(&state.kv, &env_name, &config)
         .await
         .map_err(Error::Internal)?;
+
+    // `/apps/{env_id}/config` is edge-cached, so without this the new values wouldn't be visible
+    // until the TTL lapsed.
+    purge_env_cache(&env_name).await;
 
     Ok(NoContent)
 }
@@ -822,10 +882,23 @@ async fn get_files(
 }
 
 #[axum::debug_handler]
+#[worker::send]
 async fn get_config(
     State(state): State<Arc<AppState>>,
+    uri: Uri,
     Path(env_id): Path<EnvId>,
-) -> Result<Json<GetConfigResponse>, ErrorResponse> {
+) -> Result<http::Response<Body>, ErrorResponse> {
+    // This is the hottest endpoint in the API: the client app fetches it on every load, and the
+    // client worker needs it to decide custom-domain redirects and to render page metadata. Left
+    // uncached it costs four KV reads per call, which under a con-opening thundering herd is the
+    // largest avoidable load in the system.
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
     let env_name = kv::get_id_env(&state.kv, &env_id)
         .await
         .map_err(Error::Internal)?
@@ -840,7 +913,9 @@ async fn get_config(
         .map_err(Error::Internal)?
         .map(|domain| domain.to_string());
 
-    Ok(Json(GetConfigResponse {
+    let ttl = cache::cache_ttl(&config);
+
+    let body = Json(GetConfigResponse {
         app_domain,
         timezone: config.timezone,
         day_cutoff_time: config.day_cutoff_time,
@@ -868,7 +943,45 @@ async fn get_config(
         pwa_icon_maskable_sizes: config.pwa_icon_maskable_sizes,
         use_push_notifications: config.use_push_notifications,
         notifications_icon_name: config.notifications_icon_name,
-    }))
+    });
+
+    cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await
+}
+
+// Serve a JSON response and seed the edge cache with it, so subsequent requests within the TTL are
+// answered without re-reading KV. The response handed back to the caller is marked `no-cache` so
+// browsers always revalidate; the copy we store carries the `s-maxage` that actually governs the
+// edge, along with the environment's cache tag so it can be purged on write.
+async fn cached_json_response<T>(
+    state: &Arc<AppState>,
+    cache: Cache,
+    env_name: EnvName,
+    ttl: Duration,
+    cache_uri: Uri,
+    body: Json<T>,
+) -> Result<http::Response<Body>, ErrorResponse>
+where
+    T: Serialize,
+{
+    let mut response = body.into_response();
+
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, no-cache"),
+    );
+
+    let mut worker_response = worker::Response::try_from(response)
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    let response_to_cache = worker_response
+        .cloned()
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    state.ctx.wait_until(async move {
+        put_cdn_cache(&cache, env_name, ttl, cache_uri, response_to_cache).await;
+    });
+
+    Ok(http::Response::from(worker_response))
 }
 
 #[axum::debug_handler]
