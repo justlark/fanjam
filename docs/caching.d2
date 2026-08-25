@@ -12,6 +12,7 @@ edge: Edge Cache {shape: cloud}
 kv: Persistent Cache {shape: cloud}
 noco: NocoDB {shape: cylinder}
 error: Error {shape: hexagon}
+backoff: Back Off {shape: hexagon}
 
 question-fresh: Edge cache\nfresh? {shape: diamond}
 question-healthy-populated: NocoDB\nhealthy? {shape: diamond}
@@ -25,7 +26,7 @@ question-populated <- question-fresh: No
 kv <- question-populated: Yes
 question-healthy-populated <- question-populated: Yes
 question-healthy-empty <- question-populated: No
-question-healthy-populated <- question-healthy-populated: No
+backoff <- question-healthy-populated: No
 error <- question-healthy-empty: No
 edge <- question-fresh: Yes
 noco <- question-healthy-populated: Yes
@@ -35,5 +36,6 @@ kv <- noco: Refresh
 edge <- noco: Refresh
 local <- edge: Refresh
 local <- kv: Refresh
-question-fresh <- kv: Fetch
+local <- noco: Refresh
+browser <- kv: Trigger refetch
 edge <- edge: Expire
