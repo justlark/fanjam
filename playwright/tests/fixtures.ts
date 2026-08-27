@@ -38,6 +38,7 @@ export class FilterMenu {
 
   async search(text: string) {
     await this.searchInput.fill(text);
+    await this.searchInput.blur();
   }
 
   async clearCategoryOrTag(name: string) {
