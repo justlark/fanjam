@@ -27,13 +27,6 @@ const filterCriteria = useFilterQuery();
 const starredEvents = useStarredEvents();
 const searchText = toRef(filterCriteria, "search");
 
-const showFilterBadge = computed(
-  () =>
-    filterCriteria.hidePastEvents ||
-    filterCriteria.categories.length > 0 ||
-    filterCriteria.tags.length > 0,
-);
-
 const showFilterDescription = computed(
   () =>
     filterCriteria.categories.length > 0 ||
@@ -160,7 +153,7 @@ const filterButtonProps = computed(() => ({
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex gap-4 items-center">
+    <div class="flex gap-4 min-h-15 items-center">
       <div class="grow">
         <InputGroup>
           <IconField>
@@ -185,30 +178,22 @@ const filterButtonProps = computed(() => ({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      <!--
-      Wide enough for the label to sit next to the search box permanently.
-      -->
       <IconButton
-        class="max-md:hidden"
+        class="max-sm:hidden"
         icon="filter"
         label="Filter"
         :show-label="true"
         :active="showFilterMenu"
-        :badge="showFilterBadge"
         @click="showFilterMenu = !showFilterMenu"
         :button-props="filterButtonProps"
       />
-      <!--
-      Too narrow for both, so the label gives its space back to the search box
-      while the user is searching.
-      -->
       <IconButton
-        class="md:hidden"
+        v-if="!searchFocused"
+        class="sm:hidden"
         icon="filter"
         label="Filter"
-        :show-label="!searchFocused"
+        :show-label="true"
         :active="showFilterMenu"
-        :badge="showFilterBadge"
         @click="showFilterMenu = !showFilterMenu"
         :button-props="filterButtonProps"
       />
