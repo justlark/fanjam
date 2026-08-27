@@ -10,7 +10,9 @@ export class FilterMenu {
   readonly description: Locator;
 
   constructor(page: Page) {
-    this.filterMenuButton = page.getByTestId("filter-menu-button");
+    // There's one filter button per breakpoint, only one of which is ever
+    // rendered at a time.
+    this.filterMenuButton = page.getByTestId("filter-menu-button").filter({ visible: true });
     this.hidePastEventsButton = page.getByTestId("hide-past-events-button");
     this.categoryFilterList = page.getByTestId("category-filter-list");
     this.tagFilterList = page.getByTestId("tag-filter-list");

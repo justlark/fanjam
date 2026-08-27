@@ -82,6 +82,7 @@ const searchIndex = new flexsearch.Document({
 });
 
 const showFilterMenu = ref(false);
+const searchFocused = ref(false);
 
 watchEffect(() => {
   // Wait until all events have loaded before building the search index,
@@ -148,11 +149,18 @@ watchEffect(() => {
 });
 
 const filterMenuId = useId();
+
+// Shared by both breakpoint variants of the filter button below.
+const filterButtonProps = computed(() => ({
+  "aria-controls": filterMenuId,
+  "aria-expanded": showFilterMenu.value,
+  "data-testid": "filter-menu-button",
+}));
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex gap-4">
+    <div class="flex gap-4 items-center">
       <div class="grow">
         <InputGroup>
           <IconField>
@@ -163,6 +171,8 @@ const filterMenuId = useId();
               placeholder="Search…"
               aria-label="Search"
               pt:root:data-testid="filter-search-input"
+              @focus="searchFocused = true"
+              @blur="searchFocused = false"
             />
           </IconField>
           <InputGroupAddon>
@@ -175,17 +185,32 @@ const filterMenuId = useId();
           </InputGroupAddon>
         </InputGroup>
       </div>
+      <!--
+      Wide enough for the label to sit next to the search box permanently.
+      -->
       <IconButton
+        class="max-md:hidden"
         icon="filter"
         label="Filter"
+        :show-label="true"
         :active="showFilterMenu"
         :badge="showFilterBadge"
         @click="showFilterMenu = !showFilterMenu"
-        :button-props="{
-          'aria-controls': filterMenuId,
-          'aria-expanded': showFilterMenu,
-          'data-testid': 'filter-menu-button',
-        }"
+        :button-props="filterButtonProps"
+      />
+      <!--
+      Too narrow for both, so the label gives its space back to the search box
+      while the user is searching.
+      -->
+      <IconButton
+        class="md:hidden"
+        icon="filter"
+        label="Filter"
+        :show-label="!searchFocused"
+        :active="showFilterMenu"
+        :badge="showFilterBadge"
+        @click="showFilterMenu = !showFilterMenu"
+        :button-props="filterButtonProps"
       />
     </div>
     <FilterMenu
