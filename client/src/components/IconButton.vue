@@ -10,6 +10,7 @@ const props = defineProps<{
   badge?: boolean;
   inactiveVariant?: "outlined" | "empty" | "filled";
   size?: "xs" | "sm" | "md" | "lg";
+  iconSizeOverride?: "xs" | "sm" | "md" | "lg";
   showLabel?: boolean;
   buttonProps?: Record<string, unknown>;
 }>();
@@ -17,7 +18,7 @@ const props = defineProps<{
 defineEmits(["click"]);
 
 const iconSizeClass = computed(() => {
-  switch (props.size) {
+  switch (props.iconSizeOverride ?? props.size) {
     case "xs":
       return "text-lg";
     case "sm":

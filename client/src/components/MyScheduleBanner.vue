@@ -87,7 +87,7 @@ const downloadCalendar = () => {
     <div class="lg:hidden">
       <Divider class="!my-0" />
     </div>
-    <div class="pl-5 pr-3 lg:pr-5 h-16 flex gap-2 items-center justify-between lg:justify-start">
+    <div class="px-5 h-16 flex gap-2 items-center justify-between lg:justify-start">
       <span class="text-xl lg:text-2xl">My Schedule</span>
       <IconButton
         v-if="
@@ -95,7 +95,8 @@ const downloadCalendar = () => {
           (calendarExportEnabled || scheduleSharingEnabled || scheduleSyncEnabled)
         "
         icon="share-fill"
-        size="sm"
+        size="md"
+        icon-size-override="sm"
         label="Share"
         :show-label="true"
         @click="(event) => shareOptionsPopover.toggle(event)"
