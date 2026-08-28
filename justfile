@@ -111,6 +111,21 @@ deploy-env env: (_confirm-env env)
   ./nocodb/build.nu {{ env }}
   ./tools/deploy-noco-cdn.nu {{ env }}
 
+# redeploy all existing NocoDB instances in a stage
+[group("manage environments")]
+deploy-env-all stage: (_confirm-stage stage)
+  #!/usr/bin/env nu
+
+  let environments = ls ./infra/environments/ | get "name" | each {|path| $path | path basename}
+  let stage_environments = $environments | where {|environment| (open $"./infra/environments/($environment)/env.yaml" | get "stage") == {{ stage }}}
+
+  for environment in $stage_environments {
+    ./tools/create-deploy-backup.nu $environment
+    fly -c $"./infra/environments/($environment)/fly.yaml" deploy
+    ./nocodb/build.nu $environment
+    ./tools/deploy-noco-cdn.nu $environment
+  }
+
 # configure an environment with a NocoDB API token
 [group("manage environments")]
 set-noco-token env: (_confirm-env env)
