@@ -201,7 +201,7 @@ test.describe("syncing changes while offline", () => {
     await mockApi(page, { events: EVENTS, config: { use_schedule_sync: true } });
   });
 
-  test("a star made offline survives and is pushed on reconnect", async ({
+  test("a star made offline survives a reload and is pushed on reconnect", async ({
     page,
     schedulePage,
     eventPage,
@@ -231,7 +231,9 @@ test.describe("syncing changes while offline", () => {
       /^Starred:/,
     );
 
-    // The network returns and the user navigates, which is what triggers the next pull.
+    // The user closes the app and comes back later with signal. This is a full reload, so
+    // nothing in memory survives — the record that we owe the server a push has to have been
+    // persisted, or the pull below hands back the older schedule and eats the star.
     sync.offline = false;
     await schedulePage.goto();
 

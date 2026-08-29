@@ -99,9 +99,10 @@ let ready = false;
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
 let pushInFlight = false;
 
-// A push we attempted and couldn't deliver — almost always because the device had no network.
-// The local schedule is still the newer truth, so this outlives the failed attempt and keeps the
-// device dirty until the push actually lands.
+// A local change the server hasn't acknowledged yet. This has to outlive the tab, not just the
+// failed request: someone who stars an event with no signal and then closes the app would
+// otherwise come back to a pull that overwrites the change with the server's older schedule.
+// Set the moment a push is queued, cleared only once one actually lands.
 let pendingPush = false;
 
 // Set by `useScheduleSync()` so the `online` listener below can flush a failed push the moment
@@ -126,6 +127,21 @@ const serialize = (events: Set<string>): string => [...events].sort().join(",");
 
 const storageKey = (envId: string): string => `sync:${envId}`;
 
+const pendingPushKey = (envId: string): string => `sync-pending:${envId}`;
+
+const setPendingPush = (value: boolean) => {
+  pendingPush = value;
+
+  const envId = currentEnvId.value;
+  if (envId === undefined) return;
+
+  if (value) {
+    localStorage.setItem(pendingPushKey(envId), "1");
+  } else {
+    localStorage.removeItem(pendingPushKey(envId));
+  }
+};
+
 const resetState = () => {
   if (pushTimer !== undefined) {
     clearTimeout(pushTimer);
@@ -147,6 +163,7 @@ const useScheduleSync = () => {
     resetState();
     syncCode.value = localStorage.getItem(storageKey(envId.value)) ?? undefined;
     currentEnvId.value = envId.value;
+    pendingPush = localStorage.getItem(pendingPushKey(envId.value)) !== null;
   }
 
   const isSyncing = computed(() => syncCode.value !== undefined);
@@ -178,16 +195,21 @@ const useScheduleSync = () => {
 
     if (result.ok) {
       lastServerSchedule = serialized;
-      pendingPush = false;
+      setPendingPush(false);
     } else {
       // We never replaced the server's copy, so `lastServerSchedule` must not move. Staying
       // dirty is what stops the next pull from overwriting this device's stars with the older
       // schedule we just failed to replace.
-      pendingPush = true;
+      setPendingPush(true);
     }
   };
 
   const schedulePush = () => {
+    // Record the divergence now rather than when the push fires. The debounce window is small,
+    // but it's long enough to close the app in, and a change we never attempted is just as lost
+    // as one we attempted and couldn't deliver.
+    setPendingPush(true);
+
     if (pushTimer !== undefined) clearTimeout(pushTimer);
     pushTimer = setTimeout(() => {
       pushTimer = undefined;
@@ -240,7 +262,7 @@ const useScheduleSync = () => {
     syncCode.value = undefined;
     localStorage.removeItem(storageKey(envId.value));
     lastServerSchedule = undefined;
-    pendingPush = false;
+    setPendingPush(false);
     ready = false;
   };
 
