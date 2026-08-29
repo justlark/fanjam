@@ -10,6 +10,7 @@ import {
   ref,
   computed,
   watch,
+  nextTick,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api, {
@@ -24,6 +25,7 @@ import api, {
 import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
 import useScheduleSync from "./useScheduleSync";
+import { onIdle } from "@/utils/idle";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -45,6 +47,8 @@ const matchesRoute = (policy: FetchPolicy, routeName: string | undefined): boole
 interface StoredValue<T> {
   instance: string;
   etag?: string;
+  // When the server last refetched this entry, as epoch milliseconds.
+  fetched_at?: number;
   value: T;
 }
 
@@ -91,6 +95,12 @@ const getItem = <T>(key: string): StoredValue<T> | undefined => {
 
 const removeItem = (key: string): void => {
   localStorage.removeItem(storageKey(key));
+};
+
+const touchStoredValue = (key: string): void => {
+  const stored = getItem<unknown>(key);
+  if (stored === undefined) return;
+  setItem(key, { ...stored, fetched_at: Date.now() });
 };
 
 const useRemoteDataInner = <T, S>({
@@ -156,6 +166,7 @@ const useRemoteDataInner = <T, S>({
     if (!fetchApiResult.ok && fetchApiResult.code === 304) {
       // Server returned 304 Not Modified; the cached data is still current.
       retryCount = 0;
+      touchStoredValue(key);
       return;
     }
 
@@ -231,6 +242,7 @@ const useRemoteDataInner = <T, S>({
       const storedValue: StoredValue<S> = {
         instance: instance.value,
         etag: fetchResult.etag,
+        fetched_at: Date.now(),
         value: toCache(fetchResult.value),
       };
 
@@ -698,6 +710,10 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   config: "global",
 };
 
+// A default for how stale a cached endpoint may get before we refetch it, when
+// the environment hasn't set `local_cache_max_age` itself.
+const DEFAULT_LOCAL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+
 type CombinedDataSource = () => {
   data: {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["data"];
@@ -719,6 +735,8 @@ const useRemoteData: CombinedDataSource = () => {
   const route = useRoute();
   const envId = useEnvId();
 
+  const routeName = () => route.name as string | undefined;
+
   const dataSourceResponses = Object.fromEntries(
     Object.entries(dataSources).map(([key, ds]) => [
       key,
@@ -735,10 +753,7 @@ const useRemoteData: CombinedDataSource = () => {
     await Promise.all([
       ...Object.entries(dataSourceResponses)
         .filter(([key]) =>
-          matchesRoute(
-            FETCH_POLICIES[key as keyof typeof dataSources],
-            route.name as string | undefined,
-          ),
+          matchesRoute(FETCH_POLICIES[key as keyof typeof dataSources], routeName()),
         )
         .map(([, ds]) => ds.reload()),
       scheduleSync.pullSchedule(),
@@ -750,6 +765,44 @@ const useRemoteData: CombinedDataSource = () => {
       ds.clear();
     }
   };
+
+  // Typically, the client only fetches data relevant to the current page. For
+  // the purpose of making sure the app has fresh data available offline, we
+  // should periodically fetch all the data, regardless of the current route.
+  const refetchForLocalCache = () => {
+    if (!navigator.onLine) return;
+
+    const maxAge =
+      (configRef.value.status === "success" ? configRef.value.value.localCacheMaxAge : undefined) ??
+      DEFAULT_LOCAL_CACHE_MAX_AGE_MS;
+
+    const now = Date.now();
+
+    for (const [key, ds] of Object.entries(dataSourceResponses)) {
+      // Skip fetching data relevant to the current route, to avoid hitting the
+      // endpoint twice.
+      if (matchesRoute(FETCH_POLICIES[key as keyof typeof dataSources], routeName())) continue;
+
+      const stored = getItem<unknown>(key);
+
+      const isFresh =
+        stored !== undefined &&
+        stored.instance === envId.value &&
+        now - (stored.fetched_at ?? 0) < maxAge;
+
+      if (!isFresh) {
+        void ds.reload();
+      }
+    }
+  };
+
+  onMounted(() => {
+    // Refetching data for the purpose of updating the local cache is lower
+    // priority than fetching data for the current route.
+    void nextTick(() => {
+      onIdle(refetchForLocalCache);
+    });
+  });
 
   return {
     reloadAll: reloadAll,
