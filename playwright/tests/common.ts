@@ -193,6 +193,18 @@ export const mockInfoError = async (page: Page, statusCode: number = 500) => {
   }
 };
 
+// Simulate an unreachable network for the API by failing the requests at the transport layer,
+// the way a browser does with no connectivity. This is deliberately not a 5xx: `fetch` *rejects*
+// here rather than resolving, which is the case the client has to survive.
+export const mockApiOffline = async (page: Page, endpoint?: string) => {
+  const path = endpoint === undefined ? "**" : endpoint.replace(/^\//, "");
+  const url = `https://api-test.fanjam.live/apps/*/${path}`;
+
+  await page.route(url, async (route) => {
+    await route.abort("internetdisconnected");
+  });
+};
+
 export const mockWrappedApiResponseSequence = async (
   page: Page,
   endpoint: string,

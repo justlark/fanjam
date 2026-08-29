@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { mockInfoError } from "./common";
+import { mockApiOffline, mockInfoError } from "./common";
 import { SiteNav } from "./fixtures";
 
 type Fixtures = {
@@ -57,5 +57,14 @@ test.describe("error states", () => {
     await expect(siteNav.refreshButton).not.toBeVisible();
   });
 
-});
+  test("does not show the not-found state when the network is unreachable", async ({
+    page,
+    siteNav,
+  }) => {
+    await mockApiOffline(page);
 
+    await page.goto("schedule");
+
+    await expect(siteNav.errorState).not.toBeVisible();
+  });
+});

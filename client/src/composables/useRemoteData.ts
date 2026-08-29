@@ -28,9 +28,12 @@ import useScheduleSync from "./useScheduleSync";
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
   | { status: "pending" }
-  | { status: "error"; code: number };
+  | { status: "error"; code: number | "offline" };
 
-type FetchStatus = FetchResult<unknown>["status"];
+// The status views switch on. `"offline"` is derived from the error code rather
+// than being its own `FetchResult` variant, so the code stays the single source
+// of truth for why a fetch failed.
+type FetchStatus = FetchResult<unknown>["status"] | "offline";
 
 // An API endpoint is either refetched on every reload (`"global"`), or only on
 // specific routes.
@@ -55,7 +58,12 @@ const unwrapFetchArray = <T>(
 
 const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
-): Readonly<Ref<FetchStatus>> => computed(() => result.value.status);
+): Readonly<Ref<FetchStatus>> =>
+  computed(() =>
+    result.value.status === "error" && result.value.code === "offline"
+      ? "offline"
+      : result.value.status,
+  );
 
 const setResultIfModified = <T>(
   result: Ref<FetchResult<T>>,
@@ -113,10 +121,6 @@ const useRemoteDataInner = <T, S>({
 
   const BASE_RETRY_DELAY_MS = 1500;
 
-  // A backstop, not the primary limit. The server tells us outright when it has
-  // stopped refreshing (see `"backoff"` below), so this ladder now only runs
-  // during a genuinely transient window — the sub-second gap while the edge
-  // cache is repopulated — where the first retry almost always succeeds.
   const MAX_RETRIES = 3;
 
   let retryCount = 0;
@@ -150,8 +154,25 @@ const useRemoteDataInner = <T, S>({
     const fetchApiResult = await fetcher();
 
     if (!fetchApiResult.ok && fetchApiResult.code === 304) {
-      // Server returned Not Modified — the cached data is still current.
+      // Server returned 304 Not Modified; the cached data is still current.
       retryCount = 0;
+      return;
+    }
+
+    if (!fetchApiResult.ok && fetchApiResult.code === "offline") {
+      // We never reached the server. Don't mistake this for a 404 that means
+      // we've switched environments.
+      //
+      // We don't schedule a retry; retrying is only for waiting for the edge
+      // cache to repopulate. Reset the retry count.
+      retryCount = 0;
+
+      if (result.value.status === "pending") {
+        // Nothing was cached, so there is nothing to show. Say so, rather than
+        // leaving the view to spin on `"pending"` forever.
+        result.value = { status: "error", code: "offline" };
+      }
+
       return;
     }
 

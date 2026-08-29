@@ -176,17 +176,28 @@ export interface Config {
 
 const isOk = (response: Response): boolean => response.ok;
 
+// `fetch` rejects rather than resolving with `ok: false` when the network is
+// unreachable, which is the normal offline case. Swallow the rejection here so
+// callers can distinguish the offline case from the error case.
+const safeFetch = async (input: string, init?: RequestInit): Promise<Response | undefined> => {
+  try {
+    return await fetch(input, init);
+  } catch {
+    return undefined;
+  }
+};
+
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-      etag?: string;
-      freshness?: Freshness;
-    }
+    ok: true;
+    value: T;
+    etag?: string;
+    freshness?: Freshness;
+  }
   | {
-      ok: false;
-      code: number;
-    };
+    ok: false;
+    code: number | "offline";
+  };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -196,18 +207,22 @@ export type ApiResult<T> =
 // paginating as the user tabs through the schedule. This is necessary so the
 // app works offline.
 const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<Event>>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
     {
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -237,18 +252,22 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
 };
 
 const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<Person>>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/people`,
     {
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -271,18 +290,22 @@ const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<
 };
 
 const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
     {
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -314,18 +337,22 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
 };
 
 const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<Page>>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/pages`,
     {
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -356,18 +383,22 @@ const getAnnouncements = async (
   envId: string,
   etag?: string,
 ): Promise<ApiResult<Array<Announcement>>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements`,
     {
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -400,9 +431,13 @@ const getAnnouncements = async (
 };
 
 const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -429,9 +464,13 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
 };
 
 const getAlias = async (aliasId: string): Promise<ApiResult<string>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/aliases/${aliasId}`,
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -446,7 +485,7 @@ const postSubscription = async (
   envId: string,
   subscription: PushSubscriptionJSON,
 ): Promise<ApiResult<void>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
     {
       method: "POST",
@@ -454,6 +493,10 @@ const postSubscription = async (
       body: JSON.stringify(subscription),
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -463,7 +506,7 @@ const postSubscription = async (
 };
 
 const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiResult<void>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
     {
       method: "DELETE",
@@ -471,6 +514,10 @@ const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiR
       body: JSON.stringify({ endpoint }),
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -484,7 +531,7 @@ const putSchedule = async (
   syncCode: string,
   schedule: Array<string>,
 ): Promise<ApiResult<void>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
     {
       method: "PUT",
@@ -492,6 +539,10 @@ const putSchedule = async (
       body: JSON.stringify({ schedule }),
     },
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };
@@ -501,9 +552,13 @@ const putSchedule = async (
 };
 
 const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<Array<string>>> => {
-  const response = await fetch(
+  const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
   );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
 
   if (!isOk(response)) {
     return { ok: false, code: response.status };

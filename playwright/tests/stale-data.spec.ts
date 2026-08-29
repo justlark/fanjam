@@ -1,5 +1,11 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, mockWrappedApiResponseSequence, countRequestsTo, mockTime } from "./common";
+import {
+  mockApi,
+  mockApiOffline,
+  mockWrappedApiResponseSequence,
+  countRequestsTo,
+  mockTime,
+} from "./common";
 import { InfoPage } from "./fixtures";
 
 type Fixtures = {
@@ -266,5 +272,61 @@ test.describe("stale data retry behavior", () => {
 
     // Reasonable upper bound.
     expect(requestCounter.count).toBeLessThanOrEqual(6);
+  });
+});
+
+test.describe("unreachable network", () => {
+  test("keeps showing cached data when the network goes away", async ({ page, infoPage }) => {
+    await mockTime(page);
+    await mockApi(page, { info: { name: "Cached Convention" } });
+
+    // Populate the cache while we still have a network.
+    await infoPage.goto();
+    await expect(infoPage.name).toHaveText("Cached Convention");
+
+    // Now take the network away and come back to the app.
+    await mockApiOffline(page);
+    await infoPage.goto();
+
+    await expect(infoPage.name).toHaveText("Cached Convention");
+  });
+
+  test("does not clear cached data when the network goes away", async ({ page, infoPage }) => {
+    await mockTime(page);
+    await mockApi(page, { info: { name: "Cached Convention" } });
+
+    await infoPage.goto();
+    await expect(infoPage.name).toHaveText("Cached Convention");
+
+    await mockApiOffline(page);
+    await infoPage.goto();
+    await expect(infoPage.name).toHaveText("Cached Convention");
+
+    // The cache entry itself must survive, so the next cold start still has something to show.
+    const stored = await page.evaluate(() => localStorage.getItem("store:info"));
+    expect(stored).not.toBeNull();
+    expect(stored).toContain("Cached Convention");
+  });
+
+  test("does not retry when the network is unreachable", async ({ page, infoPage }) => {
+    await mockTime(page);
+    await mockApi(page, { info: { name: "Cached Convention" } });
+
+    await infoPage.goto();
+    await expect(infoPage.name).toHaveText("Cached Convention");
+
+    await mockApiOffline(page);
+    await infoPage.goto();
+    await expect(infoPage.name).toHaveText("Cached Convention");
+
+    // Start counting only once we're offline and settled.
+    const requestCounter = countRequestsTo(page, "/info");
+    const countAfterLoad = requestCounter.count;
+
+    // Fast-forward past every rung of the retry ladder. The ladder exists for the sub-second
+    // window while the edge cache repopulates, not for a radio that's out of range.
+    await page.clock.fastForward(60000);
+
+    expect(requestCounter.count).toBe(countAfterLoad);
   });
 });
