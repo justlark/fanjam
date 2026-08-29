@@ -97,10 +97,11 @@ const removeItem = (key: string): void => {
   localStorage.removeItem(storageKey(key));
 };
 
-const touchStoredValue = (key: string): void => {
+// Rewrite when the data was last refetched, leaving the value itself alone.
+const setStoredFetchedAt = (key: string, fetchedAt: number): void => {
   const stored = getItem<unknown>(key);
   if (stored === undefined) return;
-  setItem(key, { ...stored, fetched_at: Date.now() });
+  setItem(key, { ...stored, fetched_at: fetchedAt });
 };
 
 const useRemoteDataInner = <T, S>({
@@ -122,7 +123,7 @@ const useRemoteDataInner = <T, S>({
   fetchPolicy: FetchPolicy;
 }): {
   reload: () => Promise<void>;
-  clear: () => void;
+  invalidate: () => void;
 } => {
   const route = useRoute();
   const router = useRouter();
@@ -166,7 +167,7 @@ const useRemoteDataInner = <T, S>({
     if (!fetchApiResult.ok && fetchApiResult.code === 304) {
       // Server returned 304 Not Modified; the cached data is still current.
       retryCount = 0;
-      touchStoredValue(key);
+      setStoredFetchedAt(key, Date.now());
       return;
     }
 
@@ -268,8 +269,8 @@ const useRemoteDataInner = <T, S>({
     }
   };
 
-  const clear = () => {
-    removeItem(key);
+  const invalidate = () => {
+    setStoredFetchedAt(key, 0);
   };
 
   onMounted(() => {
@@ -318,7 +319,7 @@ const useRemoteDataInner = <T, S>({
     );
   });
 
-  return { reload, clear };
+  return { reload, invalidate };
 };
 
 type DataSource<T> = (
@@ -328,7 +329,7 @@ type DataSource<T> = (
   data: T;
   status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
-  clear: () => void;
+  invalidate: () => void;
 };
 
 interface StoredEvent {
@@ -353,7 +354,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
+  const { reload, invalidate } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: toRef(envId),
     fetchPolicy,
@@ -389,7 +390,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
 
   return {
     reload,
-    clear,
+    invalidate,
     status: unwrapFetchStatus(eventsRef),
     data: unwrapFetchArray(eventsRef),
   };
@@ -407,7 +408,7 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
+  const { reload, invalidate } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
     key: "people",
     instance: toRef(envId),
     fetchPolicy,
@@ -429,7 +430,7 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
 
   return {
     reload,
-    clear,
+    invalidate,
     status: unwrapFetchStatus(peopleRef),
     data: unwrapFetchArray(peopleRef),
   };
@@ -456,7 +457,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Info, StoredInfo>({
+  const { reload, invalidate } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: toRef(envId),
     fetchPolicy,
@@ -488,7 +489,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
 
   return {
     reload,
-    clear,
+    invalidate,
     status: unwrapFetchStatus(infoRef),
     data: unwrapFetchValue(infoRef),
   };
@@ -511,7 +512,7 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
+  const { reload, invalidate } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
     key: "pages",
     instance: toRef(envId),
     fetchPolicy,
@@ -543,7 +544,7 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
 
   return {
     reload,
-    clear,
+    invalidate,
     status: unwrapFetchStatus(pagesRef),
     data: unwrapFetchArray(pagesRef),
   };
@@ -568,47 +569,49 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>({
-    key: "announcements",
-    instance: toRef(envId),
-    fetchPolicy,
-    result: announcementsRef,
-    fetcher: () =>
-      api.getAnnouncements(
-        toValue(envId),
-        getItem<Array<StoredAnnouncement>>("announcements")?.etag,
-      ),
-    toCache: (data) =>
-      data.map((announcement) => ({
-        id: announcement.id,
-        title: announcement.title,
-        body: announcement.body,
-        attachments: announcement.attachments.map((attachment) => ({
-          id: attachment.id,
-          name: attachment.name,
-          media_type: attachment.mediaType,
+  const { reload, invalidate } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>(
+    {
+      key: "announcements",
+      instance: toRef(envId),
+      fetchPolicy,
+      result: announcementsRef,
+      fetcher: () =>
+        api.getAnnouncements(
+          toValue(envId),
+          getItem<Array<StoredAnnouncement>>("announcements")?.etag,
+        ),
+      toCache: (data) =>
+        data.map((announcement) => ({
+          id: announcement.id,
+          title: announcement.title,
+          body: announcement.body,
+          attachments: announcement.attachments.map((attachment) => ({
+            id: attachment.id,
+            name: attachment.name,
+            media_type: attachment.mediaType,
+          })),
+          created_at: announcement.createdAt.toISOString(),
+          updated_at: announcement.updatedAt?.toISOString() ?? null,
         })),
-        created_at: announcement.createdAt.toISOString(),
-        updated_at: announcement.updatedAt?.toISOString() ?? null,
-      })),
-    fromCache: (data) =>
-      data.map((announcement) => ({
-        id: announcement.id,
-        title: announcement.title,
-        body: announcement.body,
-        attachments: announcement.attachments.map((attachment) => ({
-          id: attachment.id,
-          name: attachment.name,
-          mediaType: attachment.media_type,
+      fromCache: (data) =>
+        data.map((announcement) => ({
+          id: announcement.id,
+          title: announcement.title,
+          body: announcement.body,
+          attachments: announcement.attachments.map((attachment) => ({
+            id: attachment.id,
+            name: attachment.name,
+            mediaType: attachment.media_type,
+          })),
+          createdAt: new Date(announcement.created_at),
+          updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
         })),
-        createdAt: new Date(announcement.created_at),
-        updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
-      })),
-  });
+    },
+  );
 
   return {
     reload,
-    clear,
+    invalidate,
     status: unwrapFetchStatus(announcementsRef),
     data: unwrapFetchArray(announcementsRef),
   };
@@ -636,7 +639,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, clear } = useRemoteDataInner<Config, StoredConfig>({
+  const { reload, invalidate } = useRemoteDataInner<Config, StoredConfig>({
     key: "config",
     instance: toRef(envId),
     fetchPolicy,
@@ -676,7 +679,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
 
   return {
     reload,
-    clear,
+    invalidate,
     data: unwrapFetchValue(configRef),
     status: unwrapFetchStatus(configRef),
   };
@@ -725,7 +728,7 @@ type CombinedDataSource = () => {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["reload"];
   };
   reloadAll: () => Promise<void>;
-  clear: () => void;
+  invalidate: () => void;
 };
 
 // We fetch all the data for the current route from the server eagerly on
@@ -760,9 +763,10 @@ const useRemoteData: CombinedDataSource = () => {
     ]);
   };
 
-  const clear = () => {
+  // Mark all cached data stale, without discarding any of it.
+  const invalidate = () => {
     for (const ds of Object.values(dataSourceResponses)) {
-      ds.clear();
+      ds.invalidate();
     }
   };
 
@@ -806,7 +810,7 @@ const useRemoteData: CombinedDataSource = () => {
 
   return {
     reloadAll: reloadAll,
-    clear,
+    invalidate,
     reload: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.reload]),
     ) as ReturnType<CombinedDataSource>["reload"],

@@ -129,4 +129,37 @@ test.describe("priming the offline cache", () => {
 
     expect(requests.count).toBe(0);
   });
+  // What an app update does: `invalidate()` marks every entry stale in place. The old behaviour
+  // deleted them outright, which left the device with a near-empty offline cache right after an
+  // update — the reload only refetches what the current route needs.
+  test("data marked stale by an app update is refreshed, not discarded", async ({
+    page,
+    schedulePage,
+  }) => {
+    await mockTime(page);
+    await mockApi(page, { events: EVENTS, people: PEOPLE, pages: PAGES });
+
+    await schedulePage.goto();
+    await expect
+      .poll(() => stored(page, "pages"), { timeout: POLL_TIMEOUT_MS })
+      .toContain("Test Page");
+
+    await page.evaluate(() => {
+      for (const key of Object.keys(localStorage).filter((k) => k.startsWith("store:"))) {
+        const entry = JSON.parse(localStorage.getItem(key) as string) as { fetched_at: number };
+        entry.fetched_at = 0;
+        localStorage.setItem(key, JSON.stringify(entry));
+      }
+    });
+
+    const requests = countRequestsTo(page, "/pages");
+
+    await schedulePage.goto();
+
+    // Still readable the whole way through: there is never a window where a user who goes
+    // offline right after updating has nothing to show.
+    expect(await stored(page, "pages")).toContain("Test Page");
+
+    await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
+  });
 });

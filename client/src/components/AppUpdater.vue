@@ -8,7 +8,7 @@ import { useToast } from "primevue/usetoast";
 
 const toast = useToast();
 const { needRefresh, updateServiceWorker } = useRegisterSW();
-const { clear } = useRemoteData();
+const { invalidate } = useRemoteData();
 
 watchEffect(() => {
   if (needRefresh.value) {
@@ -21,8 +21,11 @@ watchEffect(() => {
 });
 
 const update = async () => {
-  // Clear the local storage storage when the app updates.
-  clear();
+  // Mark the local cache as stale. Wiping the local cache would be bad,
+  // because when the page refreshes, it will only refetch the data relevant to
+  // the current page. If the user then goes offline, they will be missing data
+  // from their offline cache.
+  invalidate();
 
   // Update the service worker, otherwise the user would need to close all open
   // FanJam tabs to get the new version.
