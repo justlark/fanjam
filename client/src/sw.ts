@@ -31,7 +31,7 @@ registerRoute(
   new StaleWhileRevalidate({
     cacheName: "files-cache",
     plugins: [
-      new ExpirationPlugin({ maxEntries: 10, maxAgeSeconds: 30 * 24 * 60 * 60 }),
+      new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 30 * 24 * 60 * 60 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
     ],
   }),

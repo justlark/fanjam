@@ -26,6 +26,8 @@ import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
 import useScheduleSync from "./useScheduleSync";
 import { onIdle } from "@/utils/idle";
+import { prefetchFiles } from "@/utils/prefetch";
+import { useAppPath } from "./useAppUrl";
 
 export type FetchResult<T> =
   | { status: "success"; value: T; etag?: string }
@@ -717,6 +719,34 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
 // the environment hasn't set `local_cache_max_age` itself.
 const DEFAULT_LOCAL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
+// How many attachments to cache, matching the number the service worker will
+// store.
+const MAX_PREFETCHED_FILES = 20;
+
+// Prioritize top-level files, then page attachments, then announcement
+// attachments until we hit the cap.
+const cachedFileIds = (): Array<string> => {
+  const ids: Array<string> = [];
+
+  if (infoRef.value.status === "success") {
+    ids.push(...infoRef.value.value.files.map((file) => file.id));
+  }
+
+  if (pagesRef.value.status === "success") {
+    ids.push(...pagesRef.value.value.flatMap((page) => page.files.map((file) => file.id)));
+  }
+
+  if (announcementsRef.value.status === "success") {
+    ids.push(
+      ...announcementsRef.value.value.flatMap((announcement) =>
+        announcement.attachments.map((file) => file.id),
+      ),
+    );
+  }
+
+  return [...new Set(ids)].slice(0, MAX_PREFETCHED_FILES);
+};
+
 type CombinedDataSource = () => {
   data: {
     [K in keyof typeof dataSources]: ReturnType<(typeof dataSources)[K]>["data"];
@@ -739,6 +769,7 @@ const useRemoteData: CombinedDataSource = () => {
   const envId = useEnvId();
 
   const routeName = () => route.name as string | undefined;
+  const appPath = useAppPath();
 
   const dataSourceResponses = Object.fromEntries(
     Object.entries(dataSources).map(([key, ds]) => [
@@ -773,7 +804,7 @@ const useRemoteData: CombinedDataSource = () => {
   // Typically, the client only fetches data relevant to the current page. For
   // the purpose of making sure the app has fresh data available offline, we
   // should periodically fetch all the data, regardless of the current route.
-  const refetchForLocalCache = () => {
+  const refetchForLocalCache = async () => {
     if (!navigator.onLine) return;
 
     const maxAge =
@@ -781,6 +812,7 @@ const useRemoteData: CombinedDataSource = () => {
       DEFAULT_LOCAL_CACHE_MAX_AGE_MS;
 
     const now = Date.now();
+    const reloads: Array<Promise<void>> = [];
 
     for (const [key, ds] of Object.entries(dataSourceResponses)) {
       // Skip fetching data relevant to the current route, to avoid hitting the
@@ -795,16 +827,20 @@ const useRemoteData: CombinedDataSource = () => {
         now - (stored.fetched_at ?? 0) < maxAge;
 
       if (!isFresh) {
-        void ds.reload();
+        reloads.push(ds.reload());
       }
     }
+
+    await Promise.all(reloads);
+
+    await prefetchFiles(cachedFileIds().map((id) => appPath(`files/${id}`)));
   };
 
   onMounted(() => {
     // Refetching data for the purpose of updating the local cache is lower
     // priority than fetching data for the current route.
     void nextTick(() => {
-      onIdle(refetchForLocalCache);
+      onIdle(() => void refetchForLocalCache());
     });
   });
 

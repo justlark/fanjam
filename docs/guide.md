@@ -62,10 +62,7 @@ main tools that will help you here:
   making them available offline.
 - **Files**: In the **About** section of the dashboard, you can upload images
   or other files that attendees can view in the app. Use this to share a map of
-  the venue, for example. Attendees can view these files offline too, but unlike
-  everything else in the app, the user needs to open a file while they're online
-  before it's available offline. This is a known limitation that may get fixed in
-  the future.
+  the venue, for example. Attendees can view these files offline.
 
 Make sure you fill out the **About** section in the dashboard. At a minimum,
 make sure your con has a name and description to show in the app. This section
