@@ -1,4 +1,4 @@
-import { type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { envId, isMobile } from "./common";
 
 export class FilterMenu {
@@ -244,10 +244,38 @@ export class StarredEvents {
   }
 
   async set(eventIds: Array<string>) {
-    await this.page.evaluate(
-      ([envId, eventIds]) => localStorage.setItem(`starred:${envId}`, JSON.stringify(eventIds)),
-      [this.envId, eventIds],
-    );
+    const desired = JSON.stringify(eventIds);
+
+    const write = () =>
+      this.page.evaluate(
+        ([envId, value]) => localStorage.setItem(`starred:${envId}`, value),
+        [this.envId, desired],
+      );
+
+    const read = () =>
+      this.page.evaluate((envId) => localStorage.getItem(`starred:${envId}`), this.envId);
+
+    await write();
+
+    // We're writing to storage behind the back of a running app that persists its own copy of
+    // this key. Every component calling `useStarredEvents` registers its own effect that writes
+    // the in-memory set on a 100ms debounce, and those components mount progressively as the
+    // lazy route chunks land — so one of them can persist its (still empty) set over our value
+    // a moment after we set it. Note the debounce runs on real time: `mockTime` fixes `Date`
+    // but leaves timers alone, so no amount of `clock.fastForward` flushes it.
+    //
+    // Re-assert the value until a read comes back clean, which means the app has finished
+    // mounting and stopped overwriting us.
+    await expect
+      .poll(
+        async () => {
+          const current = await read();
+          if (current !== desired) await write();
+          return current;
+        },
+        { intervals: [120, 120, 120, 120, 120, 120] },
+      )
+      .toBe(desired);
   }
 }
 

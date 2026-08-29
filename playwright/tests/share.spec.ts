@@ -437,9 +437,8 @@ test.describe("localStorage not clobbered", () => {
     schedulePage,
   }) => {
     await schedulePage.goto();
-    await starredEvents.set(["1"]);
-
     await page.clock.fastForward(200);
+    await starredEvents.set(["1"]);
 
     await page.goto("schedule?share=Miwz");
     await scheduleShareFooter.openOptions();
