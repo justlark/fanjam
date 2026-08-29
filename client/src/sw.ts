@@ -31,24 +31,40 @@ registerRoute(
   new StaleWhileRevalidate({
     cacheName: "files-cache",
     plugins: [
-      new ExpirationPlugin({ maxEntries: 10 }),
+      new ExpirationPlugin({ maxEntries: 10, maxAgeSeconds: 30 * 24 * 60 * 60 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
     ],
   }),
 );
 
-// Because this is a SPA, we cache the `index.html` by origin rather than by
-// full URL.
-//
-// Because the `index.html` is generated dynamically by and edge function, we
-// use `NetworkFirst`.
+// The web manifest is generated per-request by the edge worker rather than
+// being a build asset, so we need to cache it explicitly.
+registerRoute(
+  ({ url }) =>
+    url.origin === self.location.origin &&
+    /^\/(?:app\/[^/]+\/)?app\.webmanifest\/?$/.test(url.pathname),
+  new StaleWhileRevalidate({
+    cacheName: "manifest-cache",
+    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })],
+  }),
+);
+
+const documentCacheKey = (rawUrl: string): string => {
+  const url = new URL(rawUrl);
+  const mount = /^\/app\/[^/]+/.exec(url.pathname);
+  return `${url.origin}${mount ? mount[0] : ""}/`;
+};
+
+// The HTML document is generated dynamically by an edge function, so prefer
+// the network.
 registerRoute(
   ({ request, url }) => request.destination === "document" && url.origin === self.location.origin,
   new NetworkFirst({
     cacheName: "origin-cache",
+    networkTimeoutSeconds: 3,
     plugins: [
       {
-        cacheKeyWillBeUsed: ({ request }) => Promise.resolve(new URL(request.url).origin),
+        cacheKeyWillBeUsed: ({ request }) => Promise.resolve(documentCacheKey(request.url)),
         cacheWillUpdate: ({ response }) =>
           Promise.resolve(response.status === 200 ? response : null),
       },
@@ -65,7 +81,7 @@ registerRoute(
   new StaleWhileRevalidate({
     cacheName: "jsdelivr-cache",
     plugins: [
-      new ExpirationPlugin({ maxEntries: 10 }),
+      new ExpirationPlugin({ maxEntries: 30 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
     ],
   }),

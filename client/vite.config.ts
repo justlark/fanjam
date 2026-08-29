@@ -45,7 +45,10 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["icons/*"],
       injectManifest: {
         // Exclude `**/*.html`, which is an implicit default.
-        globPatterns: ["**/*.{js,css}"],
+        //
+        // Fonts have to be listed explicitly. Otherwise the service worker
+        // will not cache icons.
+        globPatterns: ["**/*.{js,css,woff,woff2,ttf,svg}"],
       },
     }),
   ],

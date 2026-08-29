@@ -825,13 +825,24 @@ const useRemoteData: CombinedDataSource = () => {
 
 const remoteDataKey = Symbol("data");
 
+let appSetupDone = false;
+
 export const provideRemoteData = () => {
   const remoteData = useRemoteData();
   provide(remoteDataKey, remoteData);
 
-  // Pull the synced schedule once on app load (if syncing is enabled), mirroring how the rest of
-  // the data is fetched eagerly on mount.
+  // Pull the synced schedule once on app load (if syncing is enabled),
+  // mirroring how the rest of the data is fetched eagerly on mount.
   void useScheduleSync().pullSchedule();
+
+  if (appSetupDone) return;
+  appSetupDone = true;
+
+  // Request persistent storage so the browser doesn't evict our local storage
+  // and service worker caches.
+  if (window.isSecureContext) {
+    void navigator.storage.persist();
+  }
 
   // When the service worker receives a push for a new announcement, it
   // messages us to refetch the announcements list.
