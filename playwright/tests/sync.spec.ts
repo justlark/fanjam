@@ -192,6 +192,85 @@ test.describe("joining a sync link", () => {
   });
 });
 
+// Starring while offline used to be lost twice over: the push watcher never armed, so the change
+// was never even queued, and the next successful pull then overwrote the local stars with the
+// server's older copy. The local change has to survive the outage and win the reconciliation.
+test.describe("syncing changes while offline", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTime(page);
+    await mockApi(page, { events: EVENTS, config: { use_schedule_sync: true } });
+  });
+
+  test("a star made offline survives and is pushed on reconnect", async ({
+    page,
+    schedulePage,
+    eventPage,
+  }) => {
+    const sync = await mockScheduleSync(page, { abcdef123456: ["2"] });
+
+    // Join an existing sync code. This writes the code synchronously in the router redirect, so
+    // syncing is live before the schedule view mounts.
+    await page.goto("sync/?s=abcdef123456");
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+
+    // The device loses signal, and the user stars another event.
+    sync.offline = true;
+
+    await schedulePage.openEventDetailsPage("Test Event 1");
+    await eventPage.starButton.click();
+    await eventPage.navigateBack();
+
+    // Flush the debounced push, which fails against the dead network.
+    await page.clock.fastForward(1000);
+    expect(sync.get("abcdef123456")).toEqual(["2"]);
+
+    // The star is still on screen — the failed push must not roll the UI back.
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+
+    // The network returns and the user navigates, which is what triggers the next pull.
+    sync.offline = false;
+    await schedulePage.goto();
+
+    // The pull must not hand back the server's older ["2"]; the undelivered push wins and lands.
+    await expect.poll(() => sync.get("abcdef123456")).toEqual(["1", "2"]);
+    await expect(schedulePage.events.filter({ hasText: "Test Event 1" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+  });
+
+  test("an unreachable server does not clear the local schedule", async ({
+    page,
+    schedulePage,
+  }) => {
+    const sync = await mockScheduleSync(page, { abcdef123456: ["2", "3"] });
+
+    await page.goto("sync/?s=abcdef123456");
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+
+    // A pull that can't reach the server tells us nothing about the schedule, so it must leave
+    // the device's stars alone rather than treating "no answer" as "empty".
+    sync.offline = true;
+    await schedulePage.goto();
+    await page.clock.fastForward(1000);
+
+    await expect(schedulePage.events.filter({ hasText: "Test Event 2" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+    await expect(schedulePage.events.filter({ hasText: "Test Event 3" })).toHaveAccessibleName(
+      /^Starred:/,
+    );
+  });
+});
+
 test.describe("syncing changes", () => {
   test.beforeEach(async ({ page }) => {
     await mockTime(page);

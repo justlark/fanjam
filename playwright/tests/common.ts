@@ -239,12 +239,20 @@ export const mockScheduleSync = async (
     store,
     putCount: 0,
     lastPut: undefined as Array<string> | undefined,
+    // Flip to fail the sync endpoints at the transport layer, the way a device with no signal
+    // does. Toggle it back to simulate the network returning.
+    offline: false,
     get(code: string): Array<string> | undefined {
       return store.get(code);
     },
   };
 
   await page.route("https://api-test.fanjam.live/apps/*/schedule/*", async (route) => {
+    if (handle.offline) {
+      await route.abort("internetdisconnected");
+      return;
+    }
+
     const request = route.request();
     const code = decodeURIComponent(new URL(request.url()).pathname.split("/").pop() ?? "");
 

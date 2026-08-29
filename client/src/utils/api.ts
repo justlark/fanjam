@@ -189,15 +189,15 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
 
 export type ApiResult<T> =
   | {
-    ok: true;
-    value: T;
-    etag?: string;
-    freshness?: Freshness;
-  }
+      ok: true;
+      value: T;
+      etag?: string;
+      freshness?: Freshness;
+    }
   | {
-    ok: false;
-    code: number | "offline";
-  };
+      ok: false;
+      code: number | "offline";
+    };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -213,8 +213,8 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -258,8 +258,8 @@ const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -296,8 +296,8 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -343,8 +343,8 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },
@@ -389,8 +389,8 @@ const getAnnouncements = async (
       headers: {
         ...(etag !== undefined
           ? {
-            "If-None-Match": etag,
-          }
+              "If-None-Match": etag,
+            }
           : {}),
       },
     },

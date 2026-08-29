@@ -99,10 +99,28 @@ let ready = false;
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
 let pushInFlight = false;
 
-// True while a local change is queued or being pushed. Pulls skip applying the server's schedule
-// while this holds, so a "star then immediately refresh" can't clobber the just-starred event with
-// stale server data.
-const isDirty = (): boolean => pushTimer !== undefined || pushInFlight;
+// A push we attempted and couldn't deliver — almost always because the device had no network.
+// The local schedule is still the newer truth, so this outlives the failed attempt and keeps the
+// device dirty until the push actually lands.
+let pendingPush = false;
+
+// Set by `useScheduleSync()` so the `online` listener below can flush a failed push the moment
+// the network comes back. Every instance closes over the same module-level state, and over refs
+// (the route, the starred events) that are themselves app-global, so whichever instance we're
+// holding stays correct.
+let flushPendingPush: (() => void) | undefined;
+
+// True while a local change is queued, being pushed, or waiting to be retried after a push we
+// couldn't deliver. Pulls skip applying the server's schedule while this holds, so neither a
+// "star then immediately refresh" nor a reconnect after starring offline can clobber the local
+// change with the server's older copy.
+const isDirty = (): boolean => pushTimer !== undefined || pushInFlight || pendingPush;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    if (pendingPush) flushPendingPush?.();
+  });
+}
 
 const serialize = (events: Set<string>): string => [...events].sort().join(",");
 
@@ -116,6 +134,7 @@ const resetState = () => {
   lastServerSchedule = undefined;
   ready = false;
   pushInFlight = false;
+  pendingPush = false;
 };
 
 const useScheduleSync = () => {
@@ -159,6 +178,12 @@ const useScheduleSync = () => {
 
     if (result.ok) {
       lastServerSchedule = serialized;
+      pendingPush = false;
+    } else {
+      // We never replaced the server's copy, so `lastServerSchedule` must not move. Staying
+      // dirty is what stops the next pull from overwriting this device's stars with the older
+      // schedule we just failed to replace.
+      pendingPush = true;
     }
   };
 
@@ -169,6 +194,8 @@ const useScheduleSync = () => {
       void doPush();
     }, PUSH_DEBOUNCE_MS);
   };
+
+  flushPendingPush = schedulePush;
 
   // Push on change. Registered without `immediate`, so it never fires for the initial load of
   // local stars — only for genuine changes once syncing is enabled and ready.
@@ -213,47 +240,58 @@ const useScheduleSync = () => {
     syncCode.value = undefined;
     localStorage.removeItem(storageKey(envId.value));
     lastServerSchedule = undefined;
+    pendingPush = false;
     ready = false;
   };
 
   // Pull the latest schedule from the server and adopt it (last-write-wins). Called on app load and
   // whenever the rest of the app data is refreshed.
   const pullSchedule = async () => {
-    const code = syncCode.value;
-    if (!code || isSharedSchedule.value) {
-      ready = true;
-      return;
-    }
+    // However this turns out, the push watcher has to come out of the hold it starts in.
+    // Leaving `ready` false silently drops every star the user makes for the rest of the
+    // session — which is exactly what used to happen when this threw on an offline device.
+    try {
+      const code = syncCode.value;
+      if (!code || isSharedSchedule.value) return;
 
-    // A local change is pending; our queued push is the newer truth, so don't pull over it.
-    if (isDirty()) return;
-
-    const result = await api.getSchedule(envId.value, code);
-
-    if (!result.ok) {
-      if (result.code === 404) {
-        // The sync code is dead (unknown or expired). Clear it so we stop trying to sync.
-        stopSync();
+      // A push we couldn't deliver is still the newer truth. Retry it rather than pulling:
+      // pulling here would hand us back the older schedule we failed to replace. Navigating is
+      // the most common way a user comes back from a dead spot, and this runs on every
+      // navigation, so it doubles as the retry the `online` event might never fire.
+      if (pendingPush) {
+        await doPush();
+        return;
       }
+
+      // A local change is queued; our push is the newer truth, so don't pull over it.
+      if (isDirty()) return;
+
+      const result = await api.getSchedule(envId.value, code);
+
+      if (!result.ok) {
+        if (result.code === 404) {
+          // The sync code is dead (unknown or expired). Clear it so we stop trying to sync.
+          stopSync();
+        }
+
+        // Anything else — an unreachable network included — tells us nothing about the
+        // server's schedule, so we leave this device's stars exactly as they are.
+        return;
+      }
+
+      // A local change landed while we were fetching — don't clobber it with the (now stale)
+      // server schedule. The pending push will reconcile the server.
+      if (isDirty()) return;
+
+      const serverSorted = [...result.value].sort();
+      lastServerSchedule = serverSorted.join(",");
+
+      if (lastServerSchedule !== serialize(starredEvents.value)) {
+        starredEvents.value = new Set(result.value);
+      }
+    } finally {
       ready = true;
-      return;
     }
-
-    // A local change landed while we were fetching — don't clobber it with the (now stale) server
-    // schedule. The pending push will reconcile the server.
-    if (isDirty()) {
-      ready = true;
-      return;
-    }
-
-    const serverSorted = [...result.value].sort();
-    lastServerSchedule = serverSorted.join(",");
-
-    if (lastServerSchedule !== serialize(starredEvents.value)) {
-      starredEvents.value = new Set(result.value);
-    }
-
-    ready = true;
   };
 
   return { isSyncing, syncLink, syncEmojis, enableSync, stopSync, pullSchedule };
