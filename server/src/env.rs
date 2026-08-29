@@ -137,6 +137,7 @@ pub struct Config {
     pub timezone: Option<String>,
     pub day_cutoff_time: Option<String>,
     pub cache_ttl: Option<u64>,
+    pub local_cache_max_age: Option<u64>,
     pub hide_announcements: Option<bool>,
     pub use_feedback: Option<bool>,
     pub feedback_icon: Option<String>,

@@ -66,6 +66,7 @@ interface RawAlias {
 interface RawConfig {
   timezone: string | null;
   day_cutoff_time: string | null;
+  local_cache_max_age: number | null;
   hide_announcements: boolean | null;
   use_feedback: boolean | null;
   feedback_icon: string | null;
@@ -162,6 +163,7 @@ export interface Info {
 export interface Config {
   timezone?: string;
   dayCutoffTime?: string;
+  localCacheMaxAge?: number;
   hideAnnouncements?: boolean;
   useFeedback?: boolean;
   feedbackIcon?: string;
@@ -189,15 +191,15 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
 
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-      etag?: string;
-      freshness?: Freshness;
-    }
+    ok: true;
+    value: T;
+    etag?: string;
+    freshness?: Freshness;
+  }
   | {
-      ok: false;
-      code: number | "offline";
-    };
+    ok: false;
+    code: number | "offline";
+  };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -213,8 +215,8 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -258,8 +260,8 @@ const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -296,8 +298,8 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -343,8 +345,8 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -389,8 +391,8 @@ const getAnnouncements = async (
       headers: {
         ...(etag !== undefined
           ? {
-              "If-None-Match": etag,
-            }
+            "If-None-Match": etag,
+          }
           : {}),
       },
     },
@@ -448,6 +450,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   const config: Config = {
     timezone: rawConfig.timezone ?? undefined,
     dayCutoffTime: rawConfig.day_cutoff_time ?? undefined,
+    localCacheMaxAge: rawConfig.local_cache_max_age ?? undefined,
     hideAnnouncements: rawConfig.hide_announcements ?? undefined,
     useFeedback: rawConfig.use_feedback ?? undefined,
     feedbackIcon: rawConfig.feedback_icon ?? undefined,

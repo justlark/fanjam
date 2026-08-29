@@ -20,6 +20,11 @@
     "sensitive": false
   },
   {
+    "key": "local_cache_max_age",
+    "help": "How stale locally cached data may get, in milliseconds, before the app refetches it in the background so it stays available offline. The app only refetches the endpoints the current page needs; this governs how often it also refetches the rest.",
+    "sensitive": false
+  },
+  {
     "key": "hide_announcements",
     "help": "Whether to hide the announcements link in the main menu when there are no announcements.",
     "sensitive": false

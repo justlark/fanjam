@@ -605,6 +605,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
 interface StoredConfig {
   timezone?: string;
   day_cutoff_time?: string;
+  local_cache_max_age?: number;
   hide_announcements?: boolean;
   use_feedback?: boolean;
   feedback_icon?: string;
@@ -632,6 +633,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
     toCache: (data) => ({
       timezone: data.timezone,
       day_cutoff_time: data.dayCutoffTime,
+      local_cache_max_age: data.localCacheMaxAge,
       hide_announcements: data.hideAnnouncements,
       use_feedback: data.useFeedback,
       feedback_icon: data.feedbackIcon,
@@ -646,6 +648,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
     fromCache: (data) => ({
       timezone: data.timezone,
       dayCutoffTime: data.day_cutoff_time,
+      localCacheMaxAge: data.local_cache_max_age,
       hideAnnouncements: data.hide_announcements,
       useFeedback: data.use_feedback,
       feedbackIcon: data.feedback_icon,
