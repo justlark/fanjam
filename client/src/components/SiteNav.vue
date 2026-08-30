@@ -2,6 +2,7 @@
 import { ref, computed, watch, useId } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
+import useOnline from "@/composables/useOnline";
 import Divider from "primevue/divider";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import SimpleIcon from "./SimpleIcon.vue";
@@ -75,6 +76,8 @@ const {
   reloadAll,
 } = useRemoteData();
 
+const isOnline = useOnline();
+
 const conName = computed(() => info.value?.name ?? "FanJam");
 
 const refresh = async () => {
@@ -126,12 +129,21 @@ const headerHeadingId = useId();
               </h1>
             </RouterLink>
           </div>
-          <IconButton
-            icon="arrow-clockwise"
-            label="Refresh"
-            @click="refresh"
-            :button-props="{ 'data-testid': 'site-nav-refresh' }"
-          />
+          <div class="flex items-center gap-3">
+            <SimpleIcon
+              v-if="!isOnline"
+              icon="cloud-slash"
+              label="Offline"
+              class="text-3xl text-muted-color"
+              data-testid="site-nav-offline"
+            />
+            <IconButton
+              icon="arrow-clockwise"
+              label="Refresh"
+              @click="refresh"
+              :button-props="{ 'data-testid': 'site-nav-refresh' }"
+            />
+          </div>
         </div>
         <Drawer
           v-model:visible="menuVisible"
