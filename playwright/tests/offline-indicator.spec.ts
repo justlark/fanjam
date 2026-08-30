@@ -33,6 +33,7 @@ test.describe("offline indicator", () => {
     siteNav,
   }) => {
     await schedulePage.goto();
+    await expect(siteNav.heading).toHaveText("Test Convention");
     await expect(siteNav.offlineIndicator).not.toBeVisible();
 
     await page.context().setOffline(true);
@@ -46,19 +47,39 @@ test.describe("offline indicator", () => {
     await expect(siteNav.offlineIndicator).not.toBeVisible();
   });
 
-  test("shows on a page that was loaded while already offline", async ({
+  test("shows on a page that loads while already offline", async ({
+    page,
+    schedulePage,
+    siteNav,
+  }) => {
+    // Report offline from the moment the page boots, rather than genuinely cutting the
+    // connection: a real offline load only paints at all once the service worker is serving the
+    // shell, and that needs a secure context, which the plain-HTTP dev server isn't. What this
+    // needs to pin down is narrower anyway — that the indicator comes from the initial state and
+    // not only from a later `offline` event.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "onLine", { get: () => false, configurable: true });
+    });
+
+    await schedulePage.goto();
+
+    await expect(siteNav.offlineIndicator).toBeVisible();
+    await expect(siteNav.heading).toHaveText("Test Convention");
+  });
+
+  test("refresh says so instead of pretending to fetch while offline", async ({
     page,
     schedulePage,
     siteNav,
   }) => {
     await schedulePage.goto();
+    await expect(siteNav.heading).toHaveText("Test Convention");
+
     await page.context().setOffline(true);
 
-    // A reload with no connection still paints from the cache, so the indicator has to come from
-    // the initial state and not only from the `offline` event.
-    await page.reload();
+    await siteNav.refresh();
 
-    await expect(siteNav.offlineIndicator).toBeVisible();
-    await expect(siteNav.heading).toHaveText("Test Convention");
+    await expect(page.getByText("You're offline")).toBeVisible();
+    await expect(page.getByText("Grabbing the latest schedule.")).not.toBeVisible();
   });
 });

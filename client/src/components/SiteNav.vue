@@ -18,7 +18,7 @@ import Toast from "primevue/toast";
 import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
-import { TOAST_TTL_SHORT, TOAST_TTL_LONG } from "@/utils/toast";
+import { TOAST_TTL_SHORT, TOAST_TTL_MEDIUM, TOAST_TTL_LONG } from "@/utils/toast";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
@@ -81,6 +81,17 @@ const isOnline = useOnline();
 const conName = computed(() => info.value?.name ?? "FanJam");
 
 const refresh = async () => {
+  if (!isOnline.value) {
+    toast.add({
+      severity: "warn",
+      summary: "You're offline",
+      detail: "You can keep using the app.",
+      life: TOAST_TTL_MEDIUM,
+    });
+
+    return;
+  }
+
   toast.add({
     severity: "info",
     summary: "Refreshing",
@@ -88,7 +99,16 @@ const refresh = async () => {
     life: TOAST_TTL_SHORT,
   });
 
-  await reloadAll();
+  try {
+    await reloadAll();
+  } catch {
+    toast.add({
+      severity: "error",
+      summary: "Couldn't refresh",
+      detail: "Something went wrong. You can keep using the app.",
+      life: TOAST_TTL_MEDIUM,
+    });
+  }
 };
 
 const headerHeadingId = useId();
