@@ -1,14 +1,25 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, mockTime, shiftTimeByHours, countRequestsTo, hoursFromNow } from "./common";
-import { SchedulePage } from "./fixtures";
+import {
+  mockApi,
+  mockTime,
+  mockTimers,
+  shiftTimeByHours,
+  countRequestsTo,
+  hoursFromNow,
+} from "./common";
+import { SchedulePage, SiteNav } from "./fixtures";
 
 type Fixtures = {
   schedulePage: SchedulePage;
+  siteNav: SiteNav;
 };
 
 const test = base.extend<Fixtures>({
   schedulePage: async ({ page }, use) => {
     await use(new SchedulePage(page));
+  },
+  siteNav: async ({ page }, use) => {
+    await use(new SiteNav(page));
   },
 });
 
@@ -160,6 +171,88 @@ test.describe("priming the offline cache", () => {
     // Still readable the whole way through: there is never a window where a user who goes
     // offline right after updating has nothing to show.
     expect(await stored(page, "pages")).toContain("Test Page");
+
+    await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
+  });
+
+  test("the refresh button also refreshes data this page does not use", async ({
+    page,
+    siteNav,
+  }) => {
+    await mockTime(page);
+    await mockApi(page, { events: EVENTS, people: PEOPLE, pages: PAGES });
+
+    await page.goto("info");
+    await expect
+      .poll(() => stored(page, "events"), { timeout: POLL_TIMEOUT_MS })
+      .toContain("Test Event 1");
+
+    // Age the schedule out by hand rather than by moving the clock, so the periodic check can't
+    // fire and this measures the button alone.
+    await page.evaluate(() => {
+      const entry = JSON.parse(localStorage.getItem("store:events") as string) as {
+        fetched_at: number;
+      };
+      entry.fetched_at = 0;
+      localStorage.setItem("store:events", JSON.stringify(entry));
+    });
+
+    const requests = countRequestsTo(page, "/events");
+
+    await siteNav.refresh();
+
+    // Refresh used to fetch only what the current page renders, which meant someone sitting on
+    // the info page could press it all day while their schedule went stale in the offline cache.
+    await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
+  });
+
+  test("keeps refreshing while the app sits open on one screen", async ({ page, schedulePage }) => {
+    // Fake timers, not just a pinned clock: this is about an interval actually firing.
+    await mockTimers(page);
+    await mockApi(page, { events: EVENTS, people: PEOPLE, pages: PAGES });
+
+    await schedulePage.goto();
+    await expect
+      .poll(() => stored(page, "people"), { timeout: POLL_TIMEOUT_MS })
+      .toContain("Test Person");
+
+    const people = countRequestsTo(page, "/people");
+    const events = countRequestsTo(page, "/events");
+
+    // Ten minutes, comfortably past the five minute default. No navigation and no refresh — just
+    // a phone left in someone's pocket, which is how most of a con is actually spent.
+    await page.clock.fastForward("10:00");
+
+    await expect.poll(() => people.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
+
+    // Including the screen they are looking at. Nothing else refetches the current route's data
+    // after mount, so without this the visible schedule ages as badly as the cache does.
+    await expect.poll(() => events.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
+  });
+
+  test("a short max age drives the background check, not just the staleness test", async ({
+    page,
+    schedulePage,
+  }) => {
+    await mockTimers(page);
+    await mockApi(page, {
+      events: EVENTS,
+      people: PEOPLE,
+      pages: PAGES,
+      config: { local_cache_max_age: 20 * 1000 },
+    });
+
+    await schedulePage.goto();
+    await expect
+      .poll(() => stored(page, "people"), { timeout: POLL_TIMEOUT_MS })
+      .toContain("Test Person");
+
+    const requests = countRequestsTo(page, "/people");
+
+    // Forty seconds is far inside the five minute default, so nothing fires here unless the
+    // environment's own twenty seconds is what actually paces the check. Configuring a max age
+    // shorter than the check interval would otherwise be silently ignored.
+    await page.clock.fastForward("00:40");
 
     await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
   });

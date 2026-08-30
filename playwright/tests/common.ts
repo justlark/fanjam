@@ -144,7 +144,7 @@ export const mockApi = async (
 export const isDesktop = () => test.info().project.name === "desktop";
 export const isMobile = () => test.info().project.name === "mobile";
 
-const NOW = new Date("2025-09-01T09:00:00Z");
+export const NOW = new Date("2025-09-01T09:00:00Z");
 
 export const hoursFromNow = (hours: number): Date => {
   const newDate = new Date(NOW);
@@ -154,6 +154,13 @@ export const hoursFromNow = (hours: number): Date => {
 
 export const mockTime = async (page: Page) => {
   await page.clock.setFixedTime(NOW);
+};
+
+// `mockTime` pins the clock but leaves timers running on real time, which is right for almost
+// everything — but useless for testing anything on a minutes-long interval. This installs fake
+// timers instead, so `page.clock.fastForward` actually fires them.
+export const mockTimers = async (page: Page) => {
+  await page.clock.install({ time: NOW });
 };
 
 export const shiftTimeByHours = async (page: Page, hours: number) => {
