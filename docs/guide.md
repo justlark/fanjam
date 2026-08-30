@@ -62,7 +62,7 @@ main tools that will help you here:
   making them available offline.
 - **Files**: In the **About** section of the dashboard, you can upload images
   or other files that attendees can view in the app. Use this to share a map of
-  the venue, for example. Attendees can view these files offline.
+  the venue, for example. Attendees can view these files offline too.
 
 Make sure you fill out the **About** section in the dashboard. At a minimum,
 make sure your con has a name and description to show in the app. This section
@@ -80,14 +80,12 @@ the FanJam app to avoid any confusion.
 
 ## Importing events from another system
 
-![Screenshot](https://static.fanjam.live/guide-nocodb-csv-import-screenshot.png)
-
 You can import events into FanJam from another system by uploading a CSV file.
 This might be useful if you have a separate app for accepting panel
 applications, for example.
 
-In the dashboard, navigate to `Events > ⋮ > Upload > CSV`. The CSV file should
-have the following format:
+In the dashboard, navigate to "Events" and click the "Upload" button in the top
+bar. The CSV file should have the following format:
 
 ```csv
 Event Name,Summary,Description,Start Time,End Time,Locations,People,Categories,Tags

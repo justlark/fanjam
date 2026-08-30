@@ -6,6 +6,8 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { googleFontsCache } from "workbox-recipes";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
+import { clientsClaim } from "workbox-core";
+import { APP_SHELL_CACHE_NAME, appShellCacheKey } from "./utils/appShell";
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
@@ -13,6 +15,14 @@ declare const self: ServiceWorkerGlobalScope & {
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+
+// Take over the page that installed us, rather than waiting for the next
+// navigation. On a first-ever visit the page starts out uncontrolled, so
+// without this every runtime fetch it makes--attachments, CDN fonts,
+// etc.--bypasses the worker and lands in no cache at all. That first visit is
+// the one the offline guarantee rests on, so it is the one that has to fill
+// the caches.
+clientsClaim();
 
 // When the user accepts the page refresh prompt in the app, allow the new
 // service worker to take over immediately.
@@ -49,22 +59,16 @@ registerRoute(
   }),
 );
 
-const documentCacheKey = (rawUrl: string): string => {
-  const url = new URL(rawUrl);
-  const mount = /^\/app\/[^/]+/.exec(url.pathname);
-  return `${url.origin}${mount ? mount[0] : ""}/`;
-};
-
 // The HTML document is generated dynamically by an edge function, so prefer
 // the network.
 registerRoute(
   ({ request, url }) => request.destination === "document" && url.origin === self.location.origin,
   new NetworkFirst({
-    cacheName: "origin-cache",
+    cacheName: APP_SHELL_CACHE_NAME,
     networkTimeoutSeconds: 3,
     plugins: [
       {
-        cacheKeyWillBeUsed: ({ request }) => Promise.resolve(documentCacheKey(request.url)),
+        cacheKeyWillBeUsed: ({ request }) => Promise.resolve(appShellCacheKey(request.url)),
         cacheWillUpdate: ({ response }) =>
           Promise.resolve(response.status === 200 ? response : null),
       },

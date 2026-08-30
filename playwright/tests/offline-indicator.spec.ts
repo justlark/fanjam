@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { mockApi, mockTime } from "./common";
+import { mockApi, mockApiOffline, mockTime } from "./common";
 import { SchedulePage, SiteNav } from "./fixtures";
 
 type Fixtures = {
@@ -65,6 +65,41 @@ test.describe("offline indicator", () => {
 
     await expect(siteNav.offlineIndicator).toBeVisible();
     await expect(siteNav.heading).toHaveText("Test Convention");
+  });
+
+  test("explains itself when there is nothing cached to fall back on", async ({
+    page,
+    schedulePage,
+    siteNav,
+  }) => {
+    // A first-ever visit with no connection. There is no cached copy of anything, so the app has
+    // nothing to render — and a blank page reads as broken. Say which of the two it is.
+    await mockApiOffline(page);
+
+    await schedulePage.goto();
+
+    await expect(siteNav.offlineState).toBeVisible();
+    await expect(siteNav.offlineState).toContainText("You're offline");
+
+    // Specifically not the "is this the right URL?" state: nothing here says the con is missing.
+    await expect(siteNav.errorState).not.toBeVisible();
+  });
+
+  test("stays out of the way when there is cached data to show", async ({
+    page,
+    schedulePage,
+    siteNav,
+  }) => {
+    // The whole point of the cache. Someone who loaded the con once gets the con, not an
+    // apology, however long they have been offline since.
+    await schedulePage.goto();
+    await expect(siteNav.heading).toHaveText("Test Convention");
+
+    await mockApiOffline(page);
+    await schedulePage.goto();
+
+    await expect(siteNav.heading).toHaveText("Test Convention");
+    await expect(siteNav.offlineState).not.toBeVisible();
   });
 
   test("refresh says so instead of pretending to fetch while offline", async ({

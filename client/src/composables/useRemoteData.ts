@@ -26,7 +26,7 @@ import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
 import useScheduleSync from "./useScheduleSync";
 import { onIdle } from "@/utils/idle";
-import { prefetchFiles } from "@/utils/prefetch";
+import { cacheAppShell, prefetchFiles } from "@/utils/prefetch";
 import { useAppPath } from "./useAppUrl";
 
 export type FetchResult<T> =
@@ -879,6 +879,10 @@ export const provideRemoteData = () => {
   if (window.isSecureContext) {
     void navigator.storage.persist();
   }
+
+  // Make sure the app shell is cached during the user's first visit, before
+  // the service worker has a chance to intercept the request and cache it.
+  onIdle(() => void cacheAppShell());
 
   // When the service worker receives a push for a new announcement, it
   // messages us to refetch the announcements list.

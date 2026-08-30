@@ -1,5 +1,60 @@
+import { APP_SHELL_CACHE_NAME, appShellCacheKey } from "./appShell";
+
 // Must match the cache name used in the service worker.
 const FILES_CACHE_NAME = "files-cache";
+
+// A `fetch()` made before the service worker controls this page bypasses it
+// entirely, so nothing it returns reaches the worker's caches. On a first-ever
+// visit the page starts out uncontrolled and only becomes controlled once the
+// worker activates and claims it, which can easily land after this code runs.
+const serviceWorkerControlling = async (timeoutMs = 5000): Promise<boolean> => {
+  if (!("serviceWorker" in navigator)) return false;
+  if (navigator.serviceWorker.controller !== null) return true;
+
+  return await new Promise<boolean>((resolve) => {
+    const finish = (controlling: boolean) => {
+      clearTimeout(timer);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      resolve(controlling);
+    };
+
+    const onControllerChange = () => {
+      finish(true);
+    };
+
+    const timer = setTimeout(() => {
+      finish(false);
+    }, timeoutMs);
+
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+  });
+};
+
+// Cache the app shell for this mount point. The service worker's can't cache
+// it on first visit; the navigation that installed the worker happened before
+// the worker existed, and nothing fetches a document again until the user
+// comes back, by which time they may already be offline, with no shell to boot
+// from.
+export const cacheAppShell = async (): Promise<void> => {
+  // The Cache API needs a secure context, so it is absent on the plain-HTTP
+  // dev server.
+  if (!("caches" in window)) return;
+
+  const key = appShellCacheKey(window.location.href);
+
+  try {
+    const cache = await caches.open(APP_SHELL_CACHE_NAME);
+
+    // Every subsequent visit goes through the service worker, which keeps this
+    // entry current on its own.
+    if ((await cache.match(key)) !== undefined) return;
+
+    const response = await fetch(key);
+    if (response.ok) await cache.put(key, response);
+  } catch {
+    // Worst case, the shell isn't there yet and the next visit tries again.
+  }
+};
 
 // We fetch and allow the service worker to cache the file rather than caching
 // it here ourselves. This ensures that we're respecting the service worker's
@@ -7,6 +62,9 @@ const FILES_CACHE_NAME = "files-cache";
 export const prefetchFiles = async (urls: ReadonlyArray<string>): Promise<void> => {
   // The Cache API needs a secure context, so it is absent on the plain-HTTP dev server.
   if (!("caches" in window)) return;
+
+  // Without the service worker in the loop these fetches would cache nothing.
+  if (!(await serviceWorkerControlling())) return;
 
   for (const url of urls) {
     // This could take a while, so it makes sense to check periodically.

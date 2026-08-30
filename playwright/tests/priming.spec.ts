@@ -96,7 +96,7 @@ test.describe("priming the offline cache", () => {
 
     const requests = countRequestsTo(page, "/people");
 
-    // Past the 30 minute default, so the copy cached on the schedule is no longer trusted.
+    // Past the five minute default, so the copy cached on the schedule is no longer trusted.
     await shiftTimeByHours(page, 1);
     await page.goto("announcements");
 
@@ -129,6 +129,7 @@ test.describe("priming the offline cache", () => {
 
     expect(requests.count).toBe(0);
   });
+
   // What an app update does: `invalidate()` marks every entry stale in place. The old behaviour
   // deleted them outright, which left the device with a near-empty offline cache right after an
   // update — the reload only refetches what the current route needs.

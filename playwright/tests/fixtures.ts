@@ -414,12 +414,14 @@ export class SiteNav {
   readonly refreshButton: Locator;
   readonly errorState: Locator;
   readonly offlineIndicator: Locator;
+  readonly offlineState: Locator;
 
   constructor(page: Page) {
     this.heading = page.getByTestId("site-nav-heading");
     this.refreshButton = page.getByTestId("site-nav-refresh");
     this.errorState = page.getByTestId("site-nav-error-state");
     this.offlineIndicator = page.getByTestId("site-nav-offline");
+    this.offlineState = page.getByTestId("site-nav-offline-state");
   }
 
   async refresh() {

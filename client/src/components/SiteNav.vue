@@ -128,6 +128,20 @@ const headerHeadingId = useId();
       <span class="mb-1 text-2xl text-muted-color">Not found</span>
       <span class="text-lg text-muted-color">There is nothing here. Is this the right URL?</span>
     </div>
+    <div
+      v-else-if="infoStatus === 'offline'"
+      class="flex flex-col justify-center items-center grow text-center px-6"
+      data-testid="site-nav-offline-state"
+    >
+      <SimpleIcon
+        icon="cloud-slash"
+        class="mb-4 text-8xl text-muted-color flex justify-center items-center"
+      />
+      <span class="mb-1 text-2xl text-muted-color">You're offline</span>
+      <span class="text-lg text-muted-color">
+        Connect to the internet once to load this con. After that it works offline.
+      </span>
+    </div>
     <div v-else class="flex flex-col grow">
       <header :aria-labelledby="headerHeadingId" class="sticky top-0 z-2 bg-color flex flex-col">
         <div class="h-16 flex items-center justify-between px-2 lg:px-4 gap-2">
