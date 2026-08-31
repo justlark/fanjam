@@ -15,9 +15,27 @@ on:
 
 jobs:
   test:
-    name: "Test"
+    name: "Test (${{ matrix.label }})"
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    strategy:
+      # A failure on one engine says nothing about the others, and knowing
+      # whether a break is browser-specific is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        include:
+          - project: desktop-chromium
+            browser: chromium
+            label: "Desktop Chrome"
+          - project: desktop-firefox
+            browser: firefox
+            label: "Desktop Firefox"
+          - project: mobile-chrome
+            browser: chromium
+            label: "Mobile Chrome"
+          - project: mobile-safari
+            browser: webkit
+            label: "Mobile Safari"
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -37,17 +55,17 @@ jobs:
 
       - name: "Install Playwright Browsers"
         working-directory: ./playwright/
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: "Run Playwright Tests"
         working-directory: ./playwright/
-        run: npx playwright test
+        run: npx playwright test --project ${{ matrix.project }}
 
         # Upload the report even if the job times out.
       - name: "Upload Artifacts"
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: ./playwright/playwright-report/
           retention-days: 30

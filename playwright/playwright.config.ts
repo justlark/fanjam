@@ -11,12 +11,20 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   projects: [
     {
-      name: "desktop",
-      use: { ...devices["Desktop Safari"] },
+      name: "desktop-chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
     {
-      name: "mobile",
-      use: { ...devices["iPhone 12"] },
+      name: "desktop-firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "mobile-safari",
+      use: { ...devices["iPhone 15 Pro"] },
+    },
+    {
+      name: "mobile-chrome",
+      use: { ...devices["Pixel 7"] },
     },
   ],
   use: {

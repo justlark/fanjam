@@ -141,8 +141,12 @@ export const mockApi = async (
   config: await mockApiConfig(page, data.config ?? {}),
 });
 
-export const isDesktop = () => test.info().project.name === "desktop";
-export const isMobile = () => test.info().project.name === "mobile";
+// Which layout the app renders is a function of the viewport, not of the
+// browser, so these key off the `isMobile` flag the device descriptor in
+// `playwright.config.ts` sets rather than off the project name. Adding a
+// browser is then just adding a project; nothing here needs to learn its name.
+export const isMobile = () => test.info().project.use.isMobile;
+export const isDesktop = () => !isMobile();
 
 const NOW = new Date("2025-09-01T09:00:00Z");
 
