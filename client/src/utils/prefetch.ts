@@ -11,6 +11,13 @@ const serviceWorkerControlling = async (timeoutMs = 5000): Promise<boolean> => {
   if (!("serviceWorker" in navigator)) return false;
   if (navigator.serviceWorker.controller !== null) return true;
 
+  // If nothing is registered, nothing is ever going to claim this page, and
+  // waiting for `controllerchange` would just burn the whole timeout. The Vite
+  // dev server never registers a worker, so on `localhost`--a secure context,
+  // where `navigator.serviceWorker` exists--this is the *only* outcome, and
+  // every call would otherwise stall for `timeoutMs`.
+  if ((await navigator.serviceWorker.getRegistration()) === undefined) return false;
+
   return await new Promise<boolean>((resolve) => {
     const finish = (controlling: boolean) => {
       clearTimeout(timer);

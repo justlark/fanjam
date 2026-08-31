@@ -874,8 +874,10 @@ export const provideRemoteData = () => {
 
   // Request persistent storage so the browser doesn't evict our local storage
   // and service worker caches.
-  if (window.isSecureContext) {
-    void navigator.storage.persist();
+  const storage = navigator.storage as StorageManager | undefined;
+  if (window.isSecureContext && typeof storage?.persist === "function") {
+    // A rejection here just means we didn't get the grant, which is survivable.
+    void storage.persist().catch(() => undefined);
   }
 
   // Make sure the app shell is cached during the user's first visit, before

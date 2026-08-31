@@ -3,7 +3,7 @@ import test, { Page } from "@playwright/test";
 const newRandomId = () => Math.random().toString(10).substring(2, 6);
 
 export const stub = {};
-export const envId = "000000";
+export const envId = "playwright";
 
 const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
@@ -230,10 +230,7 @@ export const mockWrappedApiResponseSequence = async (
 // A stateful in-memory mock of the schedule sync endpoints. PUT stores the schedule under the sync
 // code; GET returns it (200) or 404 if the code is unknown. The returned handle exposes the stored
 // state plus how many PUTs have landed, so tests can assert push behaviour.
-export const mockScheduleSync = async (
-  page: Page,
-  initial: Record<string, Array<string>> = {},
-) => {
+export const mockScheduleSync = async (page: Page, initial: Record<string, Array<string>> = {}) => {
   const store = new Map<string, Array<string>>(Object.entries(initial));
   const handle = {
     store,
@@ -305,10 +302,7 @@ export const customDomainMode = async (page: Page, env: string = envId) => {
 
     const response = await route.fetch();
     const body = await response.text();
-    const injected = body.replace(
-      "</head>",
-      `<meta name="fanjam-env" content="${env}" /></head>`,
-    );
+    const injected = body.replace("</head>", `<meta name="fanjam-env" content="${env}" /></head>`);
 
     await route.fulfill({
       response,

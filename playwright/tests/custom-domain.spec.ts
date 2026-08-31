@@ -28,7 +28,7 @@ const test = base.extend<Fixtures>({
 // in any URL). All test navigation here is relative to the dev server's root so route
 // resolution exercises the same code paths an attendee would hit on `app.example.org`.
 test.use({
-  baseURL: `http://${process.env.CI ? "localhost" : "hostmachine"}:5173/`,
+  baseURL: `http://localhost:5173/`,
 });
 
 test.describe("custom domain mode", () => {

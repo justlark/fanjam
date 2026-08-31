@@ -441,9 +441,7 @@ export default {
     }
 
     const onDefaultHostname =
-      requestUrl.hostname === env.CLIENT_DOMAIN ||
-      requestUrl.hostname === "localhost" ||
-      requestUrl.hostname === "hostmachine";
+      requestUrl.hostname === env.CLIENT_DOMAIN || requestUrl.hostname === "localhost";
 
     // Resolve the env ID and the path prefix the app is mounted at from the
     // request hostname and path.

@@ -64,6 +64,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     // Necessary for Playwright testing.
     host: "0.0.0.0",
-    allowedHosts: ["localhost", "hostmachine"],
+    allowedHosts: ["localhost"],
   },
 }));

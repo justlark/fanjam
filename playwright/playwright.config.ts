@@ -6,26 +6,21 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [["html", { open: "never" }]],
+  // If there is a major, systemic breakage, we don't need to run every test.
+  maxFailures: process.env.CI ? 20 : 0,
+  reporter: [["list"], ["html", { open: "never" }]],
   projects: [
     {
       name: "desktop",
-      use: {
-        ...devices["Desktop Chrome"],
-        ...devices["Desktop Firefox"],
-        ...devices["Desktop Safari"],
-      },
+      use: { ...devices["Desktop Safari"] },
     },
     {
       name: "mobile",
-      use: {
-        ...devices["Pixel 5"],
-        ...devices["iPhone 12"],
-      },
+      use: { ...devices["iPhone 12"] },
     },
   ],
   use: {
-    baseURL: `http://${process.env.CI ? "localhost" : "hostmachine"}:5173/app/000000/`,
+    baseURL: "http://localhost:5173/app/playwright/",
     trace: "on-first-retry",
   },
   webServer: {
