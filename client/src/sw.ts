@@ -6,7 +6,7 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
-import { APP_SHELL_CACHE_NAME, appShellCacheKey } from "./utils/appShell";
+import { APP_SHELL_CACHE_NAME, appShellCacheKey, legacyAppShellCacheKey } from "./utils/appShell";
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
@@ -92,6 +92,19 @@ registerRoute(
         cacheKeyWillBeUsed: ({ request }) => Promise.resolve(appShellCacheKey(request.url)),
         cacheWillUpdate: ({ response }) =>
           Promise.resolve(response.status === 200 ? response : null),
+
+        // This is necessary because we changed the format of the cache key at
+        // one point, and we need to migrate existing clients to use the new
+        // key.
+        handlerDidError: async ({ request }) => {
+          const cache = await caches.open(APP_SHELL_CACHE_NAME);
+          const shell = await cache.match(legacyAppShellCacheKey(request.url));
+          if (shell === undefined) return undefined;
+
+          await cache.put(appShellCacheKey(request.url), shell.clone());
+
+          return shell;
+        },
       },
     ],
   }),

@@ -10,3 +10,7 @@ export const appShellCacheKey = (rawUrl: string): string => {
   const mount = /^\/app\/[^/]+/.exec(url.pathname);
   return `${url.origin}${mount ? mount[0] : ""}/`;
 };
+
+// Previously, we were caching under the bare origin. We have some logic in the
+// service worker to migrate clients still using this cache key.
+export const legacyAppShellCacheKey = (rawUrl: string): string => new URL(rawUrl).origin;
