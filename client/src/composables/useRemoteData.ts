@@ -6,7 +6,6 @@ import {
   toRef,
   provide,
   onMounted,
-  onUnmounted,
   inject,
   ref,
   computed,
@@ -720,11 +719,6 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
 // the environment hasn't set `local_cache_max_age` itself.
 const DEFAULT_LOCAL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
-// A floor on how often we reconsider the local cache while the app sits open,
-// so that an environment configured with a very short `local_cache_max_age`
-// can't turn into a busy loop.
-const MIN_LOCAL_CACHE_CHECK_INTERVAL_MS = 15 * 1000;
-
 // How many attachments to cache, matching the number the service worker will
 // store.
 const MAX_PREFETCHED_FILES = 20;
@@ -795,7 +789,7 @@ const useRemoteData: CombinedDataSource = () => {
     // on a cooldown, to make sure we can balance the local cache always being
     // reasonably up to date with the client not making unnecessary API
     // requests.
-    void refetchForLocalCache({ skipCurrentRoute: true });
+    void refetchForLocalCache();
 
     await Promise.all([
       ...Object.entries(dataSourceResponses)
@@ -820,14 +814,10 @@ const useRemoteData: CombinedDataSource = () => {
       DEFAULT_LOCAL_CACHE_MAX_AGE_MS,
   );
 
-  // Typically, the client only fetches data relevant to the current page. For
-  // the purpose of making sure the app has fresh data available offline, we
-  // should periodically fetch all the data, regardless of the current route.
-  //
-  // `skipCurrentRoute` is for the cases where the current route's own data is
-  // already being fetched by something else (on mount or manual refresh) and
-  // would otherwise be requested twice.
-  const refetchForLocalCache = async ({ skipCurrentRoute } = { skipCurrentRoute: false }) => {
+  // The client only fetches the data the current page needs, leaving the rest
+  // of the offline cache to go stale. This function refreshes any data that
+  // has aged past `local_cache_max_age`.
+  const refetchForLocalCache = async () => {
     if (!navigator.onLine) return;
 
     const maxAge = localCacheMaxAge.value;
@@ -835,12 +825,9 @@ const useRemoteData: CombinedDataSource = () => {
     const reloads: Array<Promise<void>> = [];
 
     for (const [key, ds] of Object.entries(dataSourceResponses)) {
-      if (
-        skipCurrentRoute &&
-        matchesRoute(FETCH_POLICIES[key as keyof typeof dataSources], routeName())
-      ) {
-        continue;
-      }
+      // The current page's own endpoints are already being fetched by whatever
+      // brought us here, and would otherwise be requested twice.
+      if (matchesRoute(FETCH_POLICIES[key as keyof typeof dataSources], routeName())) continue;
 
       const stored = getItem<unknown>(key);
 
@@ -864,29 +851,8 @@ const useRemoteData: CombinedDataSource = () => {
     // priority than fetching data for the current route, which the per-source
     // mount watchers are already fetching by this point.
     void nextTick(() => {
-      onIdle(() => void refetchForLocalCache({ skipCurrentRoute: true }));
+      onIdle(() => void refetchForLocalCache());
     });
-  });
-
-  // Ensure the local cache updates itself in the background, even if the user
-  // has not navigated recently.
-  const checkInterval = computed(() =>
-    Math.max(localCacheMaxAge.value / 2, MIN_LOCAL_CACHE_CHECK_INTERVAL_MS),
-  );
-
-  let checkTimer: ReturnType<typeof setInterval> | undefined;
-
-  const restartCheckTimer = () => {
-    if (checkTimer !== undefined) clearInterval(checkTimer);
-    checkTimer = setInterval(() => void refetchForLocalCache(), checkInterval.value);
-  };
-
-  onMounted(restartCheckTimer);
-
-  watch(checkInterval, restartCheckTimer);
-
-  onUnmounted(() => {
-    if (checkTimer !== undefined) clearInterval(checkTimer);
   });
 
   return {

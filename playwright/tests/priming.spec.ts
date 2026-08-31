@@ -1,12 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import {
-  mockApi,
-  mockTime,
-  mockTimers,
-  shiftTimeByHours,
-  countRequestsTo,
-  hoursFromNow,
-} from "./common";
+import { mockApi, mockTime, shiftTimeByHours, countRequestsTo, hoursFromNow } from "./common";
 import { SchedulePage, SiteNav } from "./fixtures";
 
 type Fixtures = {
@@ -29,6 +22,10 @@ const test = base.extend<Fixtures>({
 // in the background, and wait out the same window before concluding it didn't.
 const POLL_TIMEOUT_MS = 15000;
 const SETTLE_MS = 4000;
+
+// Long enough to outlast any plausible polling interval, which is the whole point of the test
+// that uses it.
+const IDLE_WATCH_MS = 20000;
 
 const EVENTS = [{ id: "1", name: "Test Event 1", start_time: hoursFromNow(1).toISOString() }];
 const PEOPLE = [{ id: "p1", name: "Test Person", bio: "A bio" }];
@@ -175,6 +172,31 @@ test.describe("priming the offline cache", () => {
     await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
   });
 
+  // The backfill has to stay strictly opportunistic. An earlier version put it on a wall-clock
+  // timer, which meant an app left open on one screen kept hitting every endpoint forever — and
+  // every one of those requests can come back marked stale, which schedules retries on top.
+  test("makes no requests at all while the app sits idle", async ({ page, schedulePage }) => {
+    // Deliberately no `mockTime`: this is about wall-clock behaviour. A one second max age means
+    // any age-based polling would have fired several times over by the end of the wait.
+    await mockApi(page, {
+      events: EVENTS,
+      people: PEOPLE,
+      pages: PAGES,
+      config: { local_cache_max_age: 1000 },
+    });
+
+    await schedulePage.goto();
+    await expect
+      .poll(() => stored(page, "people"), { timeout: POLL_TIMEOUT_MS })
+      .toContain("Test Person");
+
+    const requests = countRequestsTo(page, "apps/");
+
+    await page.waitForTimeout(IDLE_WATCH_MS);
+
+    expect(requests.count).toBe(0);
+  });
+
   test("the refresh button also refreshes data this page does not use", async ({
     page,
     siteNav,
@@ -203,57 +225,6 @@ test.describe("priming the offline cache", () => {
 
     // Refresh used to fetch only what the current page renders, which meant someone sitting on
     // the info page could press it all day while their schedule went stale in the offline cache.
-    await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
-  });
-
-  test("keeps refreshing while the app sits open on one screen", async ({ page, schedulePage }) => {
-    // Fake timers, not just a pinned clock: this is about an interval actually firing.
-    await mockTimers(page);
-    await mockApi(page, { events: EVENTS, people: PEOPLE, pages: PAGES });
-
-    await schedulePage.goto();
-    await expect
-      .poll(() => stored(page, "people"), { timeout: POLL_TIMEOUT_MS })
-      .toContain("Test Person");
-
-    const people = countRequestsTo(page, "/people");
-    const events = countRequestsTo(page, "/events");
-
-    // Ten minutes, comfortably past the five minute default. No navigation and no refresh — just
-    // a phone left in someone's pocket, which is how most of a con is actually spent.
-    await page.clock.fastForward("10:00");
-
-    await expect.poll(() => people.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
-
-    // Including the screen they are looking at. Nothing else refetches the current route's data
-    // after mount, so without this the visible schedule ages as badly as the cache does.
-    await expect.poll(() => events.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
-  });
-
-  test("a short max age drives the background check, not just the staleness test", async ({
-    page,
-    schedulePage,
-  }) => {
-    await mockTimers(page);
-    await mockApi(page, {
-      events: EVENTS,
-      people: PEOPLE,
-      pages: PAGES,
-      config: { local_cache_max_age: 20 * 1000 },
-    });
-
-    await schedulePage.goto();
-    await expect
-      .poll(() => stored(page, "people"), { timeout: POLL_TIMEOUT_MS })
-      .toContain("Test Person");
-
-    const requests = countRequestsTo(page, "/people");
-
-    // Forty seconds is far inside the five minute default, so nothing fires here unless the
-    // environment's own twenty seconds is what actually paces the check. Configuring a max age
-    // shorter than the check interval would otherwise be silently ignored.
-    await page.clock.fastForward("00:40");
-
     await expect.poll(() => requests.count, { timeout: POLL_TIMEOUT_MS }).toBeGreaterThan(0);
   });
 });
