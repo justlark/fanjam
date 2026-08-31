@@ -200,14 +200,14 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
 
 export type ApiResult<T> =
   | {
-    ok: true;
-    value: T;
-    freshness?: Freshness;
-  }
+      ok: true;
+      value: T;
+      freshness?: Freshness;
+    }
   | {
-    ok: false;
-    code: number | "offline";
-  };
+      ok: false;
+      code: number | "offline";
+    };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
