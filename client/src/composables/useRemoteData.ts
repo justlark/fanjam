@@ -94,10 +94,6 @@ const getItem = <T>(key: string): StoredValue<T> | undefined => {
   return serialized ? (JSON.parse(serialized) as StoredValue<T>) : undefined;
 };
 
-const removeItem = (key: string): void => {
-  localStorage.removeItem(storageKey(key));
-};
-
 // Rewrite when the data was last refetched, leaving the value itself alone.
 const setStoredFetchedAt = (key: string, fetchedAt: number): void => {
   const stored = getItem<unknown>(key);
@@ -195,7 +191,14 @@ const useRemoteDataInner = <T, S>({
       if (aliasResult.ok) {
         const currentStoredValue = getItem<S>(key);
 
-        if (currentStoredValue !== undefined && currentStoredValue.instance !== aliasResult.value) {
+        if (
+          currentStoredValue !== undefined &&
+          // Only relabel cache items that belong to the requested environment.
+          // Anything else is another con's offline cache, which we hold onto
+          // until something replaces it.
+          currentStoredValue.instance === instance.value &&
+          currentStoredValue.instance !== aliasResult.value
+        ) {
           // Update the stored instance ID to the new environment ID.
           currentStoredValue.instance = aliasResult.value;
           setItem(key, currentStoredValue);
@@ -226,13 +229,9 @@ const useRemoteDataInner = <T, S>({
       // We use the browser local storage to cut down on the initial page load
       // time and to allow the app to function offline.
       //
-      // Because the browser will only give us so much storage space per
-      // origin, and because users are unlikely to be attending multiple cons
-      // simultaneously, we only cache the data for the current environment.
-      //
-      // However, we need to keep track of *which* environment we're caching
-      // data for, so we know to invalidate the cache if the user switches to a
-      // different environment.
+      // Because the browser gives us limited storage space per origin, and
+      // because users are unlikely to be attending multiple cons
+      // simultaneously, we only cache the data for one environment at a time.
 
       const storedValue: StoredValue<S> = {
         instance: instance.value,
@@ -276,7 +275,6 @@ const useRemoteDataInner = <T, S>({
         const storedValue = getItem<S>(key);
 
         if (!storedValue || storedValue.instance !== instance.value) {
-          removeItem(key);
           if (shouldFetch()) {
             void reload();
           } else {

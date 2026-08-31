@@ -197,6 +197,19 @@ export const mockInfoError = async (page: Page, statusCode: number = 500) => {
   }
 };
 
+// Point the alias endpoint at an environment ID, the way the server does when a con has been
+// renamed and the old ID is still in someone's bookmark. A 404 from `/info` is what sends the
+// client here; see `getAlias` in the client's `api.ts`.
+export const mockAlias = async (page: Page, targetEnvId: string) => {
+  await page.route("https://api-test.fanjam.live/aliases/*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ env_id: targetEnvId }),
+    });
+  });
+};
+
 // Simulate an unreachable network for the API by failing the requests at the transport layer,
 // the way a browser does with no connectivity. This is deliberately not a 5xx: `fetch` *rejects*
 // here rather than resolving, which is the case the client has to survive.
