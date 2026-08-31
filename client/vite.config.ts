@@ -46,9 +46,13 @@ export default defineConfig(({ mode }) => ({
       injectManifest: {
         // Exclude `**/*.html`, which is an implicit default.
         //
-        // Fonts have to be listed explicitly. Otherwise the service worker
-        // will not cache icons.
-        globPatterns: ["**/*.{js,css,woff,woff2,ttf,svg}"],
+        // Fonts have to be listed explicitly. Otherwise the service worker will
+        // not cache icons. Only `woff2`: the font packages ship `woff`
+        // fallbacks alongside it, and Vite emits those because the stylesheets
+        // reference them, but no browser new enough to run a service worker
+        // will ever ask for one. Precaching them would just double the install
+        // payload.
+        globPatterns: ["**/*.{js,css,woff2}"],
       },
     }),
   ],

@@ -12,10 +12,8 @@ interface Env {
 const rootHeaders = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
-  // We need to include all of these origins in the `connect-src` so the
-  // service worker can cache them and the app can work offline.
   "Content-Security-Policy":
-    "default-src 'self'; img-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://static.fanjam.live https://static-test.fanjam.live; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://umami.fanjam.live https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-ancestors 'none';",
+    "default-src 'self'; img-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://static.fanjam.live https://static-test.fanjam.live; connect-src 'self' https://api.fanjam.live https://api-test.fanjam.live https://umami.fanjam.live; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';",
   "Referrer-Policy": "strict-origin",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
 };

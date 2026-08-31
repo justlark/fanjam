@@ -3,7 +3,6 @@
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { googleFontsCache } from "workbox-recipes";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
@@ -13,16 +12,38 @@ declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
-precacheAndRoute(self.__WB_MANIFEST);
+// Bootstrap Icons' stylesheet appends a cache-busting query param to its
+// `@font-face` source, and Vite carries that query through into the built CSS.
+// Workbox matches precache entries on the full URL including the search
+// string, so without this the request for
+// `bootstrap-icons-<hash>.woff2?<param>` would miss the entry for
+// `bootstrap-icons-<hash>.woff2` and every icon would be tofu when running
+// offline. Everything we precache is either fingerprinted or an app icon, so
+// no precached response depends on a query parameter.
+precacheAndRoute(self.__WB_MANIFEST, { ignoreURLParametersMatching: [/.*/] });
 cleanupOutdatedCaches();
 
 // Take over the page that installed us, rather than waiting for the next
 // navigation. On a first-ever visit the page starts out uncontrolled, so
-// without this every runtime fetch it makes--attachments, CDN fonts,
-// etc.--bypasses the worker and lands in no cache at all. That first visit is
+// without this every runtime fetch it makes--attachments and the like--
+// bypasses the worker and lands in no cache at all. That first visit is
 // the one the offline guarantee rests on, so it is the one that has to fill
 // the caches.
 clientsClaim();
+
+// Fira Sans and the Bootstrap icons used to be fetched from Google and
+// jsDelivr at runtime and cached here. They are build assets now, so nothing
+// will ever read these again. Because the app asks the browser for persistent
+// storage, leaving them behind spends storage quota the offline cache needs.
+// `cleanupOutdatedCaches()` doesn't cover them; it only knows about outdated
+// precaches.
+const ORPHANED_CACHES = ["google-fonts-stylesheets", "google-fonts-webfonts", "jsdelivr-cache"];
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    Promise.all(ORPHANED_CACHES.map((name) => caches.delete(name))).then(() => undefined),
+  );
+});
 
 // When the user accepts the page refresh prompt in the app, allow the new
 // service worker to take over immediately.
@@ -72,21 +93,6 @@ registerRoute(
         cacheWillUpdate: ({ response }) =>
           Promise.resolve(response.status === 200 ? response : null),
       },
-    ],
-  }),
-);
-
-// This is a workbox-provided recipe for caching Google fonts.
-googleFontsCache();
-
-// We need to cache assets from CDNs for offline use.
-registerRoute(
-  ({ url }) => url.origin === "https://cdn.jsdelivr.net",
-  new StaleWhileRevalidate({
-    cacheName: "jsdelivr-cache",
-    plugins: [
-      new ExpirationPlugin({ maxEntries: 30 }),
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
     ],
   }),
 );

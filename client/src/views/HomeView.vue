@@ -64,7 +64,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
               <Button
                 as="a"
                 label="Open Demo"
-                icon="pi pi-external-link"
+                icon="bi bi-box-arrow-up-right"
                 icon-pos="right"
                 raised
                 target="_blank"
@@ -113,7 +113,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
               <Button
                 as="a"
                 label="Open Demo"
-                icon="pi pi-external-link"
+                icon="bi bi-box-arrow-up-right"
                 icon-pos="right"
                 raised
                 target="_blank"

@@ -74,7 +74,7 @@ const filteredAnnouncements = computed(() => {
         v-if="canEnablePush"
         size="small"
         severity="secondary"
-        icon="pi pi-bell"
+        icon="bi bi-bell"
         label="Enable push notifications"
         @click="enablePush()"
       />
