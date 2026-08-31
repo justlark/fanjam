@@ -11,7 +11,7 @@ use serde::Serialize;
 use worker::{Cache, console_error};
 
 use crate::{
-    api::{DataResponseEnvelope, Freshness},
+    api::DataResponseEnvelope,
     config,
     env::{Config, EnvName},
     error::Error,
@@ -49,26 +49,15 @@ where
 {
     fn into_response(self) -> Response {
         let mut buf = Vec::new();
-        let is_fresh = self.0.freshness == Freshness::Fresh;
 
-        // We canonicalize the data value before computing an etag so that semantically equivalent
-        // JSON produces the same etag, preventing cache misses due to differences in key ordering.
-        //
-        // We use a weak etag because we're only hashing the data value, not the full response
-        // envelope. We do not want changes in the envelope (e.g. how the data's freshness is
-        // classified) to change the etag.
-        //
-        // We omit the ETag entirely for responses that aren't fresh.
-        let etag = if !is_fresh {
-            None
-        } else {
+        // We canonicalize before computing an etag so that semantically equivalent JSON produces
+        // the same etag, preventing cache misses due to differences in key ordering.
+        let etag = {
             let mut hash_buf = Vec::new();
-            serde_json_canonicalizer::to_writer(&self.0.value, &mut hash_buf).ok();
+            serde_json_canonicalizer::to_writer(&self.0, &mut hash_buf).ok();
             let hash = blake3::hash(&hash_buf);
-            Some(
-                HeaderValue::from_str(&format!("W/\"{}\"", hash.to_hex()))
-                    .expect("Invalid ETag header value"),
-            )
+            HeaderValue::from_str(&format!("W/\"{}\"", hash.to_hex()))
+                .expect("Invalid ETag header value")
         };
 
         let serialize_result = serde_json::to_writer(&mut buf, &self.0);
@@ -90,9 +79,7 @@ where
                 )
                     .into_response();
 
-                if let Some(etag) = etag {
-                    response.headers_mut().insert(header::ETAG, etag);
-                }
+                response.headers_mut().insert(header::ETAG, etag);
 
                 response
             }
