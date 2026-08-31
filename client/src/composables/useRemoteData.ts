@@ -30,7 +30,7 @@ import { cacheAppShell, prefetchFiles } from "@/utils/prefetch";
 import { useAppPath } from "./useAppUrl";
 
 export type FetchResult<T> =
-  | { status: "success"; value: T; etag?: string }
+  | { status: "success"; value: T }
   | { status: "pending" }
   | { status: "error"; code: number | "offline" };
 
@@ -48,7 +48,6 @@ const matchesRoute = (policy: FetchPolicy, routeName: string | undefined): boole
 
 interface StoredValue<T> {
   instance: string;
-  etag?: string;
   // When the server last refetched this entry, as epoch milliseconds.
   fetched_at?: number;
   value: T;
@@ -166,13 +165,6 @@ const useRemoteDataInner = <T, S>({
     cancelRetry();
     const fetchApiResult = await fetcher();
 
-    if (!fetchApiResult.ok && fetchApiResult.code === 304) {
-      // Server returned 304 Not Modified; the cached data is still current.
-      retryCount = 0;
-      setStoredFetchedAt(key, Date.now());
-      return;
-    }
-
     if (!fetchApiResult.ok && fetchApiResult.code === "offline") {
       // We never reached the server. Don't mistake this for a 404 that means
       // we've switched environments.
@@ -191,7 +183,7 @@ const useRemoteDataInner = <T, S>({
     }
 
     const fetchResult: FetchResult<T> = fetchApiResult.ok
-      ? { status: "success", value: fetchApiResult.value, etag: fetchApiResult.etag }
+      ? { status: "success", value: fetchApiResult.value }
       : { status: "error", code: fetchApiResult.code };
 
     if (fetchResult.status === "error" && fetchResult.code === 404) {
@@ -244,7 +236,6 @@ const useRemoteDataInner = <T, S>({
 
       const storedValue: StoredValue<S> = {
         instance: instance.value,
-        etag: fetchResult.etag,
         fetched_at: Date.now(),
         value: toCache(fetchResult.value),
       };
@@ -361,7 +352,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
     instance: toRef(envId),
     fetchPolicy,
     result: eventsRef,
-    fetcher: () => api.getEvents(toValue(envId), getItem<Array<StoredEvent>>("events")?.etag),
+    fetcher: () => api.getEvents(toValue(envId)),
     toCache: (data) =>
       data.map((event) => ({
         id: event.id,
@@ -415,7 +406,7 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
     instance: toRef(envId),
     fetchPolicy,
     result: peopleRef,
-    fetcher: () => api.getPeople(toValue(envId), getItem<Array<StoredPerson>>("people")?.etag),
+    fetcher: () => api.getPeople(toValue(envId)),
     toCache: (data) =>
       data.map((person) => ({
         id: person.id,
@@ -464,7 +455,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
     instance: toRef(envId),
     fetchPolicy,
     result: infoRef,
-    fetcher: () => api.getInfo(toValue(envId), getItem<StoredInfo>("info")?.etag),
+    fetcher: () => api.getInfo(toValue(envId)),
     toCache: (data) => ({
       name: data.name,
       description: data.description,
@@ -519,7 +510,7 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
     instance: toRef(envId),
     fetchPolicy,
     result: pagesRef,
-    fetcher: () => api.getPages(toValue(envId), getItem<Array<StoredPage>>("pages")?.etag),
+    fetcher: () => api.getPages(toValue(envId)),
     toCache: (data) =>
       data.map((page) => ({
         id: page.id,
@@ -577,11 +568,7 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
       instance: toRef(envId),
       fetchPolicy,
       result: announcementsRef,
-      fetcher: () =>
-        api.getAnnouncements(
-          toValue(envId),
-          getItem<Array<StoredAnnouncement>>("announcements")?.etag,
-        ),
+      fetcher: () => api.getAnnouncements(toValue(envId)),
       toCache: (data) =>
         data.map((announcement) => ({
           id: announcement.id,

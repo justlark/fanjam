@@ -189,17 +189,25 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
   }
 };
 
+// The server answers conditional requests with a 304 Not Modified, but we
+// deliberately don't pass `If-None-Match` ourselves. Because the server sends
+// `Cache-Control: no-cache`, the browser will reply with `If-None-Match`
+// implicitly on its own. This is important, because sending `If-None-Match`
+// ourselves would force every one of those GET requests to be preflighted,
+// ignoring the CORS cache and the `Access-Control-Max-Age` the server sends.
+// This is not a problem when we rely on the browser to do the conditional
+// request for us.
+
 export type ApiResult<T> =
   | {
-      ok: true;
-      value: T;
-      etag?: string;
-      freshness?: Freshness;
-    }
+    ok: true;
+    value: T;
+    freshness?: Freshness;
+  }
   | {
-      ok: false;
-      code: number | "offline";
-    };
+    ok: false;
+    code: number | "offline";
+  };
 
 // TODO: Implement pagination instead of fetching all events at once. This
 // should be fairly effective, since the user will only see the first day of
@@ -208,18 +216,9 @@ export type ApiResult<T> =
 // It's important that we still fetch all events eagerly, rather than lazily
 // paginating as the user tabs through the schedule. This is necessary so the
 // app works offline.
-const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<Event>>> => {
+const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
   );
 
   if (response === undefined) {
@@ -248,23 +247,13 @@ const getEvents = async (envId: string, etag?: string): Promise<ApiResult<Array<
   return {
     ok: true,
     value: events,
-    etag: response.headers.get("ETag") ?? undefined,
     freshness: rawEvents.freshness,
   };
 };
 
-const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<Person>>> => {
+const getPeople = async (envId: string): Promise<ApiResult<Array<Person>>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/people`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
   );
 
   if (response === undefined) {
@@ -286,23 +275,13 @@ const getPeople = async (envId: string, etag?: string): Promise<ApiResult<Array<
   return {
     ok: true,
     value: people,
-    etag: response.headers.get("ETag") ?? undefined,
     freshness: rawPeople.freshness,
   };
 };
 
-const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> => {
+const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
   );
 
   if (response === undefined) {
@@ -333,23 +312,13 @@ const getInfo = async (envId: string, etag?: string): Promise<ApiResult<Info>> =
   return {
     ok: true,
     value: info,
-    etag: response.headers.get("ETag") ?? undefined,
     freshness: rawInfo.freshness,
   };
 };
 
-const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<Page>>> => {
+const getPages = async (envId: string): Promise<ApiResult<Array<Page>>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/pages`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
   );
 
   if (response === undefined) {
@@ -376,26 +345,13 @@ const getPages = async (envId: string, etag?: string): Promise<ApiResult<Array<P
   return {
     ok: true,
     value: pages,
-    etag: response.headers.get("ETag") ?? undefined,
     freshness: rawPages.freshness,
   };
 };
 
-const getAnnouncements = async (
-  envId: string,
-  etag?: string,
-): Promise<ApiResult<Array<Announcement>>> => {
+const getAnnouncements = async (envId: string): Promise<ApiResult<Array<Announcement>>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements`,
-    {
-      headers: {
-        ...(etag !== undefined
-          ? {
-              "If-None-Match": etag,
-            }
-          : {}),
-      },
-    },
   );
 
   if (response === undefined) {
@@ -427,7 +383,6 @@ const getAnnouncements = async (
   return {
     ok: true,
     value: announcements,
-    etag: response.headers.get("ETag") ?? undefined,
     freshness: rawAnnouncements.freshness,
   };
 };
