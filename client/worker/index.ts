@@ -440,6 +440,14 @@ export default {
       return await fetch("https://umami.fanjam.live/script.js");
     }
 
+    // We can short-circuit if the client is requesting the `/version.json`.
+    if (requestUrl.pathname === "/version.json") {
+      return cloneResponseWithHeaders(await env.ASSETS.fetch(request), {
+        ...rootHeaders,
+        "Cache-Control": "no-cache",
+      });
+    }
+
     const onDefaultHostname =
       requestUrl.hostname === env.CLIENT_DOMAIN || requestUrl.hostname === "localhost";
 

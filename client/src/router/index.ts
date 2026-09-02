@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import { envContext } from "@/context";
+import { maybeCheckForAppUpdate } from "@/utils/appUpdate";
+import { onIdle } from "@/utils/idle";
 
 // All view routes use stable names so in-app navigation (`router.push({ name: "schedule" })`)
 // works identically on both the default hostname and on custom domains. Only the paths differ:
@@ -171,6 +173,14 @@ router.beforeEach((to, from) => {
   if (from.query.share && !to.query.share) {
     return { ...to, query: { ...to.query, share: from.query.share } };
   }
+});
+
+// Poll for a newer client bundle as the user navigates around, rather than
+// using a timer.
+router.afterEach((_to, _from, failure) => {
+  if (failure) return;
+
+  onIdle(() => void maybeCheckForAppUpdate());
 });
 
 export default router;

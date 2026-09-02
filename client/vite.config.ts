@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import { execSync } from "node:child_process";
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -8,8 +9,47 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
+const git = (command: string): string =>
+  execSync(command, { stdio: ["ignore", "pipe", "ignore"] })
+    .toString()
+    .trim();
+
+// We use this so a running client can tell whether there's a newer version of
+// the bundle to fetch.
+const buildVersion = ((): string | undefined => {
+  try {
+    const rev = git("git rev-parse HEAD");
+
+    // If the working tree is dirty, append a timestamp so the client treats it
+    // as a different build.
+    return git("git status --porcelain").length > 0 ? `${rev}.${Date.now().toString(36)}` : rev;
+  } catch {
+    // If we're not in a git repo, we simply don't emit a build version and the
+    // client doesn't attempt to update itself until the user reloads the page.
+    // This should never happen.
+    return undefined;
+  }
+})();
+
 export default defineConfig(({ mode }) => ({
+  define: {
+    __BUILD_VERSION: JSON.stringify(buildVersion),
+  },
   plugins: [
+    {
+      name: "fanjam:emit-version",
+      apply: "build",
+      applyToEnvironment: (environment) => environment.name === "client",
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          // Use `fileName` rather than `name` so it doesn't get a
+          // cache-busting filename.
+          fileName: "version.json",
+          source: JSON.stringify({ version: buildVersion }),
+        });
+      },
+    },
     vue(),
     // The Vue dev tools can interfere with Playwright tests by intercepting
     // clicks that happen near it.
@@ -52,6 +92,8 @@ export default defineConfig(({ mode }) => ({
         // reference them, but no browser new enough to run a service worker
         // will ever ask for one. Precaching them would just double the install
         // payload.
+        //
+        // Do not add `**/*.json` here; it breaks `/version.json`.
         globPatterns: ["**/*.{js,css,woff2}"],
       },
     }),

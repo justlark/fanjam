@@ -19,7 +19,7 @@ import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { TOAST_TTL_SHORT, TOAST_TTL_MEDIUM, TOAST_TTL_LONG } from "@/utils/toast";
-import { checkForAppUpdate } from "@/utils/appUpdate";
+import { maybeCheckForAppUpdate } from "@/utils/appUpdate";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
@@ -102,7 +102,9 @@ const refresh = async () => {
 
   // We do not await this alongside `reloadAll()` below, because we do not
   // necessarily want to show a toast if this fails.
-  void checkForAppUpdate();
+  //
+  // Use `force` because the user explicitly asked to refresh the app.
+  void maybeCheckForAppUpdate({ force: true });
 
   try {
     await reloadAll();
