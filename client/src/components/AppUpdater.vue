@@ -2,8 +2,11 @@
 import { watch, watchEffect } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Toast from "primevue/toast";
+import { useToast } from "primevue/usetoast";
 import Button from "primevue/button";
 import { useRegisterSW } from "virtual:pwa-register/vue";
+
+const toast = useToast();
 
 let registration: ServiceWorkerRegistration | undefined;
 
@@ -31,6 +34,12 @@ watchEffect(() => {
     void update();
     return;
   }
+
+  toast.add({
+    severity: "secondary",
+    summary: "A new version of the app is available",
+    group: "app-update",
+  });
 });
 
 const update = async () => {
