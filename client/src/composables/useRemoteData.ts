@@ -48,6 +48,10 @@ const matchesRoute = (policy: FetchPolicy, routeName: string | undefined): boole
 
 interface StoredValue<T> {
   instance: string;
+  // An opaque ID representing the app deployment which wrote this cache entry.
+  // We use this so that app updates can invalidate old caches, since the shape
+  // of the data may have changed.
+  version?: string;
   // When the server last refetched this entry, as epoch milliseconds.
   fetched_at?: number;
   value: T;
@@ -235,6 +239,7 @@ const useRemoteDataInner = <T, S>({
 
       const storedValue: StoredValue<S> = {
         instance: instance.value,
+        version: __BUILD_ID,
         fetched_at: Date.now(),
         value: toCache(fetchResult.value),
       };
@@ -274,7 +279,11 @@ const useRemoteDataInner = <T, S>({
 
         const storedValue = getItem<S>(key);
 
-        if (!storedValue || storedValue.instance !== instance.value) {
+        if (
+          !storedValue ||
+          storedValue.instance !== instance.value ||
+          storedValue.version !== __BUILD_ID
+        ) {
           if (shouldFetch()) {
             void reload();
           } else {
@@ -288,8 +297,8 @@ const useRemoteDataInner = <T, S>({
         try {
           value = fromCache(storedValue.value);
         } catch {
-          // This can happen if the shape of the cached data has changed and we
-          // need to clear it and re-fetch from the server.
+          // The `version` check above *should* catch when the shape of the
+          // data changed. We catch this error just in case.
           if (shouldFetch()) {
             void reload();
           } else {
@@ -348,22 +357,6 @@ interface StoredEvent {
   }>;
 }
 
-// Locations, categories and tags used to be cached as bare names, before the
-// API started returning them as objects with an ID alongside the name. Entries
-// written by an older version of the app are unusable, so reject them and let
-// the caller refetch.
-const assertStoredEventShape = (event: StoredEvent): StoredEvent => {
-  const isStale = [event.location, event.category, ...event.tags].some(
-    (value) => typeof value === "string",
-  );
-
-  if (isStale) {
-    throw new Error("cached events predate the current event shape");
-  }
-
-  return event;
-};
-
 const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
 const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
@@ -390,7 +383,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
         tags: event.tags,
       })),
     fromCache: (data) =>
-      data.map(assertStoredEventShape).map((event) => ({
+      data.map((event) => ({
         id: event.id,
         name: event.name,
         summary: event.summary,
@@ -844,6 +837,7 @@ const useRemoteData: CombinedDataSource = () => {
       const isFresh =
         stored !== undefined &&
         stored.instance === envId.value &&
+        stored.version === __BUILD_ID &&
         now - (stored.fetched_at ?? 0) < maxAge;
 
       if (!isFresh) {
