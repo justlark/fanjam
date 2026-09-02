@@ -89,7 +89,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
             :title="event.name"
             :icon="isStarred(event.id) ? 'star-fill' : undefined"
             display="active"
-            :category="event.category"
+            :category="event.category?.name"
             :all-categories="props.allCategories"
           />
         </RouterLink>
@@ -103,7 +103,7 @@ const isStarred = (eventId: string) => starredEvents.value.has(eventId);
             :title="event.name"
             :icon="isStarred(event.id) ? 'star-fill' : undefined"
             display="active"
-            :category="event.category"
+            :category="event.category?.name"
             :all-categories="props.allCategories"
           />
         </button>

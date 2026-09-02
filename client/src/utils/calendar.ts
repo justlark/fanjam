@@ -27,7 +27,7 @@ const buildEventAttributes = (
     startInputType: "utc",
     end: toUtcDateArray(event.endTime),
     endInputType: "utc",
-    location: event.location,
+    location: event.location?.name,
     description,
     url: link,
     uid: `${event.id}:${envId}@fanjam.live`,

@@ -89,8 +89,8 @@ const toggleStar = () => {
             class="mb-2"
             v-if="props.event"
             size="sm"
-            :category="props.event.category"
-            :tags="props.event.tags"
+            :category="props.event.category?.name"
+            :tags="props.event.tags.map((tag) => tag.name)"
             :all-categories="props.allCategories"
           />
           <div class="mb-12">

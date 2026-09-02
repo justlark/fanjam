@@ -46,8 +46,8 @@ const allCategories = computed(() => getSortedCategories(events.value));
 const allTags = computed(() =>
   events.value.reduce<Array<string>>((set, event) => {
     for (const tag of event.tags) {
-      if (!set.includes(tag)) {
-        set.push(tag);
+      if (!set.includes(tag.name)) {
+        set.push(tag.name);
       }
     }
     return set;
@@ -92,10 +92,10 @@ watchEffect(() => {
       id: event.id,
       name: event.name,
       description: event.description ?? "",
-      location: event.location ?? "",
+      location: event.location?.name ?? "",
       people: event.people.map((person) => person.name).join(", "),
-      category: event.category ?? "",
-      tags: event.tags.join(", "),
+      category: event.category?.name ?? "",
+      tags: event.tags.map((tag) => tag.name).join(", "),
     });
   }
 });
@@ -117,13 +117,13 @@ watchEffect(() => {
 
   if (filterCriteria.categories.length > 0) {
     filteredEvents = filteredEvents.filter(
-      (event) => event.category && filterCategories.value.has(event.category),
+      (event) => event.category && filterCategories.value.has(event.category.name),
     );
   }
 
   if (filterCriteria.tags.length > 0) {
     filteredEvents = filteredEvents.filter((event) =>
-      event.tags.some((tag) => filterTags.value.has(tag)),
+      event.tags.some((tag) => filterTags.value.has(tag.name)),
     );
   }
 

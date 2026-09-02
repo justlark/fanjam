@@ -6,8 +6,8 @@ export const getSortedCategories = (events: ReadonlyArray<DeepReadonly<Event>>):
   sortedEvents.sort((a, b) => a.startTime.valueOf() - b.startTime.valueOf());
 
   return sortedEvents.reduce<Array<string>>((set, event) => {
-    if (event.category && !set.includes(event.category)) {
-      set.push(event.category);
+    if (event.category && !set.includes(event.category.name)) {
+      set.push(event.category.name);
     }
     return set;
   }, []);

@@ -330,14 +330,39 @@ interface StoredEvent {
   description?: string;
   start_time: string;
   end_time?: string;
-  location?: string;
+  location?: {
+    id: string;
+    name: string;
+  };
   people: Array<{
     id: string;
     name: string;
   }>;
-  category?: string;
-  tags: Array<string>;
+  category?: {
+    id: string;
+    name: string;
+  };
+  tags: Array<{
+    id: string;
+    name: string;
+  }>;
 }
+
+// Locations, categories and tags used to be cached as bare names, before the
+// API started returning them as objects with an ID alongside the name. Entries
+// written by an older version of the app are unusable, so reject them and let
+// the caller refetch.
+const assertStoredEventShape = (event: StoredEvent): StoredEvent => {
+  const isStale = [event.location, event.category, ...event.tags].some(
+    (value) => typeof value === "string",
+  );
+
+  if (isStale) {
+    throw new Error("cached events predate the current event shape");
+  }
+
+  return event;
+};
 
 const eventsRef = ref<FetchResult<Array<Event>>>({ status: "pending" });
 
@@ -365,7 +390,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
         tags: event.tags,
       })),
     fromCache: (data) =>
-      data.map((event) => ({
+      data.map(assertStoredEventShape).map((event) => ({
         id: event.id,
         name: event.name,
         summary: event.summary,

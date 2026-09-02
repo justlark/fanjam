@@ -179,7 +179,7 @@ onMounted(() => {
             icon-label="Location"
             data-testid="event-details-location"
           >
-            {{ event.location }}
+            {{ event.location.name }}
           </EventDetail>
         </dl>
         <div class="lg:hidden flex flex-col gap-1">
@@ -203,8 +203,8 @@ onMounted(() => {
       </div>
       <TagBar
         class="mt-4"
-        :category="event.category"
-        :tags="event.tags"
+        :category="event.category?.name"
+        :tags="event.tags.map((tag) => tag.name)"
         :all-categories="props.allCategories"
         :to="scheduleRoute"
       />

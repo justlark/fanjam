@@ -137,6 +137,24 @@ pub struct EventPerson {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct EventLocation {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventCategory {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventTag {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -144,10 +162,10 @@ pub struct Event {
     pub description: Option<String>,
     pub start_time: String,
     pub end_time: Option<String>,
-    pub location: Option<String>,
+    pub location: Option<EventLocation>,
     pub people: Vec<EventPerson>,
-    pub category: Option<String>,
-    pub tags: Vec<String>,
+    pub category: Option<EventCategory>,
+    pub tags: Vec<EventTag>,
 }
 
 #[derive(Debug, Clone, Serialize)]

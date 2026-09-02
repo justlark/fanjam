@@ -20,13 +20,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     api::{
-        Announcement, DeleteSubscriptionRequest, Event, EventPerson, File, GetAliasResponse,
-        GetAliasesResponse, GetAnnouncementsResponse, GetConfigResponse,
-        GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse, GetEventsResponse,
-        GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse, GetPeopleResponse,
-        GetScheduleResponse, Link, Page, Person, PostApplyMigrationResponse, PostBackupRequest,
-        PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest,
-        PutLinkResponse, PutScheduleRequest, PutTokenRequest,
+        Announcement, DeleteSubscriptionRequest, Event, EventCategory, EventLocation, EventPerson,
+        EventTag, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
+        GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
+        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse,
+        GetPeopleResponse, GetScheduleResponse, Link, Page, Person, PostApplyMigrationResponse,
+        PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
+        PutAliasRequest, PutLinkResponse, PutScheduleRequest, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{self, cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -672,7 +672,10 @@ async fn get_events(
                     description: event.description,
                     start_time: event.start_time,
                     end_time: event.end_time,
-                    location: event.location,
+                    location: event.location.map(|location| EventLocation {
+                        id: location.id,
+                        name: location.name,
+                    }),
                     people: event
                         .people
                         .into_iter()
@@ -681,8 +684,18 @@ async fn get_events(
                             name: person.name,
                         })
                         .collect::<Vec<_>>(),
-                    category: event.category,
-                    tags: event.tags,
+                    category: event.category.map(|category| EventCategory {
+                        id: category.id,
+                        name: category.name,
+                    }),
+                    tags: event
+                        .tags
+                        .into_iter()
+                        .map(|tag| EventTag {
+                            id: tag.id,
+                            name: tag.name,
+                        })
+                        .collect::<Vec<_>>(),
                 })
                 .collect::<Vec<_>>(),
         })

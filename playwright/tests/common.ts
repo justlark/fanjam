@@ -43,7 +43,31 @@ const mockApiInfo = async (page: Page, info: Record<string, unknown>) => {
   return data;
 };
 
+// The API returns an event's location, category and tags as `{ id, name }`
+// objects. Tests name them as plain strings, so mint an ID per distinct name
+// here: the same name always gets the same ID within a response, the way it
+// does upstream, where these are rows in their own tables.
+const newIdMinter = () => {
+  const ids = new Map<string, string>();
+
+  return (name: string): string => {
+    const existing = ids.get(name);
+    if (existing !== undefined) return existing;
+
+    const id = (ids.size + 1).toString();
+    ids.set(name, id);
+    return id;
+  };
+};
+
 const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>) => {
+  const locationId = newIdMinter();
+  const categoryId = newIdMinter();
+  const tagId = newIdMinter();
+
+  const named = (mintId: (name: string) => string, name: unknown) =>
+    typeof name === "string" ? { id: mintId(name), name } : null;
+
   const data = events.map((event) => ({
     id: newRandomId(),
     name: "Test Event",
@@ -51,11 +75,13 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
     summary: null,
     description: null,
     end_time: null,
-    location: null,
     people: [],
-    category: null,
-    tags: [],
     ...event,
+    location: named(locationId, event.location),
+    category: named(categoryId, event.category),
+    tags: Array.isArray(event.tags)
+      ? (event.tags as Array<string>).map((tag) => named(tagId, tag))
+      : [],
   }));
 
   await mockWrappedApiResponse(page, "/events", {

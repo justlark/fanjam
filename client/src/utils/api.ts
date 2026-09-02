@@ -5,13 +5,22 @@ interface RawEvent {
   description: string | null;
   start_time: string;
   end_time: string | null;
-  location: string | null;
+  location: {
+    id: string;
+    name: string;
+  } | null;
   people: Array<{
     id: string;
     name: string;
   }>;
-  category: string | null;
-  tags: Array<string>;
+  category: {
+    id: string;
+    name: string;
+  } | null;
+  tags: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 interface RawPerson {
@@ -100,6 +109,21 @@ export interface EventPerson {
   name: string;
 }
 
+export interface EventLocation {
+  id: string;
+  name: string;
+}
+
+export interface EventCategory {
+  id: string;
+  name: string;
+}
+
+export interface EventTag {
+  id: string;
+  name: string;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -113,10 +137,10 @@ export interface Event {
   description?: string;
   startTime: Date;
   endTime?: Date;
-  location?: string;
+  location?: EventLocation;
   people: Array<EventPerson>;
-  category?: string;
-  tags: Array<string>;
+  category?: EventCategory;
+  tags: Array<EventTag>;
 }
 
 export interface Link {

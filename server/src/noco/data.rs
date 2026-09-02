@@ -51,12 +51,16 @@ async fn list_records<T: DeserializeOwned>(
 
 #[derive(Debug, Deserialize)]
 struct LocationResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
     #[serde(rename = "Location")]
     pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct CategoryResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
     #[serde(rename = "Category")]
     pub name: String,
 }
@@ -184,6 +188,24 @@ pub struct EventPerson {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventLocation {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventCategory {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventTag {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Person {
     pub id: String,
     pub name: String,
@@ -198,10 +220,10 @@ pub struct Event {
     pub description: Option<String>,
     pub start_time: String,
     pub end_time: Option<String>,
-    pub location: Option<String>,
-    pub category: Option<String>,
+    pub location: Option<EventLocation>,
+    pub category: Option<EventCategory>,
     pub people: Vec<EventPerson>,
-    pub tags: Vec<String>,
+    pub tags: Vec<EventTag>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -304,8 +326,14 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
             description: r.description,
             start_time: r.start_time.unwrap(),
             end_time: r.end_time,
-            location: r.location.map(|l| l.name),
-            category: r.category.map(|c| c.name),
+            location: r.location.map(|l| EventLocation {
+                id: l.id.to_string(),
+                name: l.name,
+            }),
+            category: r.category.map(|c| EventCategory {
+                id: c.id.to_string(),
+                name: c.name,
+            }),
             people: r
                 .people_m2m
                 .into_iter()
@@ -319,7 +347,12 @@ pub async fn get_events(client: &Client, table_ids: &TableIds) -> anyhow::Result
             tags: r
                 .tags_m2m
                 .into_iter()
-                .filter_map(|p| tags_id_to_name.get(&p.id).cloned())
+                .filter_map(|t| {
+                    tags_id_to_name.get(&t.id).map(|name| EventTag {
+                        id: t.id.to_string(),
+                        name: name.clone(),
+                    })
+                })
                 .collect(),
         })
         .collect::<Vec<_>>();
