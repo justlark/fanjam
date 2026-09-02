@@ -19,6 +19,7 @@ import ScrollTop from "primevue/scrolltop";
 import ScheduleShareOptionsDialog from "./ScheduleShareOptionsDialog.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import { TOAST_TTL_SHORT, TOAST_TTL_MEDIUM, TOAST_TTL_LONG } from "@/utils/toast";
+import { checkForAppUpdate } from "@/utils/appUpdate";
 import { useToast } from "primevue/usetoast";
 
 const menuVisible = ref(false);
@@ -98,6 +99,10 @@ const refresh = async () => {
     detail: "Grabbing the latest schedule.",
     life: TOAST_TTL_SHORT,
   });
+
+  // We do not await this alongside `reloadAll()` below, because we do not
+  // necessarily want to show a toast if this fails.
+  void checkForAppUpdate();
 
   try {
     await reloadAll();
