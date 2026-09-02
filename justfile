@@ -62,8 +62,18 @@ deploy-client stage: (_confirm-stage stage) _install-client
 [working-directory: "./server/"]
 [group("deploy changes")]
 [confirm("Deploy the server now?")]
-deploy-server stage: (_confirm-stage stage)
+deploy-server stage: (_confirm-stage stage) && (_clear-cache-all stage)
   npx wrangler@latest deploy --env {{ stage }}
+
+_clear-cache-all stage:
+  #!/usr/bin/env nu
+
+  let environments = ls ./infra/environments/ | get "name" | each {|path| $path | path basename}
+  let stage_environments = $environments | where {|environment| (open $"./infra/environments/($environment)/env.yaml" | get "stage") == {{ stage }}}
+
+  for environment in $stage_environments {
+    ./tools/clear-cache.nu $environment
+  }
 
 # tail the server logs
 [working-directory: "./server/"]

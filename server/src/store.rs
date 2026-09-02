@@ -353,10 +353,7 @@ macro_rules! get_data {
                 // written after a successful refresh. Marking it otherwise would catch the client
                 // in an infinite retry loop.
                 let response_for_edge_cache_result = worker::Response::try_from(
-                    EtagJson(DataResponseEnvelope {
-                        freshness: Freshness::Fresh,
-                        value: body,
-                    })
+                    EtagJson(DataResponseEnvelope::new(Freshness::Fresh, body))
                     .into_response()
                 );
 
@@ -415,11 +412,7 @@ macro_rules! get_data {
                         }
                     }
 
-                    Ok(EtagJson(DataResponseEnvelope {
-                        freshness,
-                        value: body,
-                    })
-                    .into_response())
+                    Ok(EtagJson(DataResponseEnvelope::new(freshness, body)).into_response())
                 },
                 None => {
                     // The persistent cache is empty, which should only be the case for new
@@ -459,11 +452,8 @@ macro_rules! get_data {
                         // This data came straight from NocoDB, so it's as current as it gets. The
                         // edge cache is populated in the background above, so there's nothing for
                         // the client to check back for.
-                        Ok(EtagJson(DataResponseEnvelope {
-                            freshness: Freshness::Fresh,
-                            value: body,
-                        })
-                        .into_response())
+                        Ok(EtagJson(DataResponseEnvelope::new(Freshness::Fresh, body))
+                            .into_response())
                     } else {
                         Err(Error::NocoUnavailable)
                     }

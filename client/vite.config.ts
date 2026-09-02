@@ -9,11 +9,6 @@ import { VitePWA } from "vite-plugin-pwa";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig(({ mode }) => ({
-  // Baked into the client bundle so the app knows when to invalidate caches
-  // due to a new update, which may have changed the shape of the data.
-  define: {
-    __BUILD_ID: JSON.stringify(Date.now().toString(36)),
-  },
   plugins: [
     vue(),
     // The Vue dev tools can interfere with Playwright tests by intercepting

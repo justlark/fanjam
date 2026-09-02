@@ -21,8 +21,15 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
 // `api.ts`: "stale" asks the client to check back, "backoff" tells it not to.
 export type Freshness = "fresh" | "stale" | "backoff";
 
+// The payload shape these mocks speak. The client refuses to read an envelope
+// stamped with anything else, so this has to track `SCHEMA_VERSION` in the
+// client's `api.ts` — a mismatch here makes every endpoint look outdated rather
+// than failing in any one obvious place.
+const SCHEMA_VERSION = 2;
+
 const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   await mockApiResponse(page, endpoint, {
+    schema_version: SCHEMA_VERSION,
     freshness: "fresh",
     value: body,
   });
@@ -263,6 +270,7 @@ export const mockWrappedApiResponseSequence = async (
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
+        schema_version: SCHEMA_VERSION,
         freshness: responses[index].freshness,
         value: responses[index].body,
       }),

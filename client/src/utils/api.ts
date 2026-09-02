@@ -99,10 +99,24 @@ interface RawConfig {
 // treat the data as fresh and simply don't auto-refresh.
 export type Freshness = "fresh" | "stale" | "backoff";
 
+// The API schema version this build of the client understands. The server
+// sends this schema version with every API response.
+//
+// Because new builds of the server affect everyone immediately, but new builds
+// of the client only affect clients when they refresh the page and register
+// the new service worker, we need some way of tracking the discrepancy.
+const SCHEMA_VERSION = 2;
+
 interface Envelope<T> {
+  // Absent on responses from a server predating this field, which are
+  // implicitly version 1.
+  schema_version?: number;
   freshness?: Freshness;
   value: T;
 }
+
+const isReadable = (envelope: Envelope<unknown>): boolean =>
+  (envelope.schema_version ?? 1) === SCHEMA_VERSION;
 
 export interface EventPerson {
   id: string;
@@ -230,7 +244,9 @@ export type ApiResult<T> =
     }
   | {
       ok: false;
-      code: number | "offline";
+      // `outdated` means the API schema version sent by the server and the API
+      // schema version understood by this build of the client disagree.
+      code: number | "offline" | "outdated";
     };
 
 // TODO: Implement pagination instead of fetching all events at once. This
@@ -254,6 +270,10 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
   }
 
   const rawEvents: Envelope<{ events: Array<RawEvent> }> = await response.json();
+
+  if (!isReadable(rawEvents)) {
+    return { ok: false, code: "outdated" };
+  }
 
   const events: Array<Event> = rawEvents.value.events.map((event) => ({
     id: event.id,
@@ -290,6 +310,10 @@ const getPeople = async (envId: string): Promise<ApiResult<Array<Person>>> => {
 
   const rawPeople: Envelope<{ people: Array<RawPerson> }> = await response.json();
 
+  if (!isReadable(rawPeople)) {
+    return { ok: false, code: "outdated" };
+  }
+
   const people: Array<Person> = rawPeople.value.people.map((person) => ({
     id: person.id,
     name: person.name,
@@ -317,6 +341,10 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
   }
 
   const rawInfo: Envelope<RawInfo> = await response.json();
+
+  if (!isReadable(rawInfo)) {
+    return { ok: false, code: "outdated" };
+  }
 
   const info: Info = {
     name: rawInfo.value.name ?? undefined,
@@ -355,6 +383,10 @@ const getPages = async (envId: string): Promise<ApiResult<Array<Page>>> => {
 
   const rawPages: Envelope<{ pages: Array<RawPage> }> = await response.json();
 
+  if (!isReadable(rawPages)) {
+    return { ok: false, code: "outdated" };
+  }
+
   const pages: Array<Page> = rawPages.value.pages.map((page) => ({
     id: page.id,
     title: page.title,
@@ -388,6 +420,10 @@ const getAnnouncements = async (envId: string): Promise<ApiResult<Array<Announce
 
   const rawAnnouncements: Envelope<{ announcements: Array<RawAnnouncement> }> =
     await response.json();
+
+  if (!isReadable(rawAnnouncements)) {
+    return { ok: false, code: "outdated" };
+  }
 
   const announcements: Array<Announcement> = rawAnnouncements.value.announcements.map(
     (announcement) => ({

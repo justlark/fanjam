@@ -1,22 +1,35 @@
 <script setup lang="ts">
-import { watchEffect } from "vue";
+import { watch, watchEffect } from "vue";
 import useRemoteData from "@/composables/useRemoteData";
 import Toast from "primevue/toast";
 import Button from "primevue/button";
 import { useRegisterSW } from "virtual:pwa-register/vue";
-import { useToast } from "primevue/usetoast";
 
-const toast = useToast();
-const { needRefresh, updateServiceWorker } = useRegisterSW();
-const { invalidate } = useRemoteData();
+let registration: ServiceWorkerRegistration | undefined;
+
+const { needRefresh, updateServiceWorker } = useRegisterSW({
+  onRegisteredSW: (_url, r) => {
+    registration = r;
+  },
+});
+
+const { invalidate, updateRequired } = useRemoteData();
+
+// The API schema version changed, so we need to update the client bundle
+// immediately to match the server version.
+watch(updateRequired, (required) => {
+  if (required) void registration?.update();
+});
 
 watchEffect(() => {
-  if (needRefresh.value) {
-    toast.add({
-      severity: "secondary",
-      summary: "A new version of the app is available",
-      group: "app-update",
-    });
+  if (!needRefresh.value) return;
+
+  if (updateRequired.value) {
+    // We've bumped the API schema version, so we need to update the client
+    // bundle immediately. Interrupting the user is preferable to leaving them
+    // with a broken app.
+    void update();
+    return;
   }
 });
 

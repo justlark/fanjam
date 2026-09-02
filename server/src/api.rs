@@ -124,10 +124,30 @@ pub enum Freshness {
     Backoff,
 }
 
+// The API schema version.
+//
+// Bump this at the same time as any breaking change in the shape of any (client-facing) API
+// response. Clients compare it against the version they were build against and handle the
+// discrepancy.
+//
+// Every response predating this field is implicitly version 1.
+pub const SCHEMA_VERSION: u32 = 2;
+
 #[derive(Debug, Serialize)]
 pub struct DataResponseEnvelope<T> {
     pub freshness: Freshness,
+    pub schema_version: u32,
     pub value: T,
+}
+
+impl<T> DataResponseEnvelope<T> {
+    pub fn new(freshness: Freshness, value: T) -> Self {
+        Self {
+            schema_version: SCHEMA_VERSION,
+            freshness,
+            value,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

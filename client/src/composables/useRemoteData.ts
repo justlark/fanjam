@@ -32,7 +32,7 @@ import { useAppPath } from "./useAppUrl";
 export type FetchResult<T> =
   | { status: "success"; value: T }
   | { status: "pending" }
-  | { status: "error"; code: number | "offline" };
+  | { status: "error"; code: number | "offline" | "outdated" };
 
 // The status views switch on. `"offline"` is derived from the error code rather
 // than being its own `FetchResult` variant, so the code stays the single source
@@ -46,12 +46,12 @@ type FetchPolicy = "global" | ReadonlyArray<string>;
 const matchesRoute = (policy: FetchPolicy, routeName: string | undefined): boolean =>
   policy === "global" || (routeName !== undefined && policy.includes(routeName));
 
+// Set when the API schema version changes, meaning the server reports a
+// version this build of the client cannot read.
+export const updateRequired = ref(false);
+
 interface StoredValue<T> {
   instance: string;
-  // An opaque ID representing the app deployment which wrote this cache entry.
-  // We use this so that app updates can invalidate old caches, since the shape
-  // of the data may have changed.
-  version?: string;
   // When the server last refetched this entry, as epoch milliseconds.
   fetched_at?: number;
   value: T;
@@ -182,6 +182,22 @@ const useRemoteDataInner = <T, S>({
       return;
     }
 
+    if (!fetchApiResult.ok && fetchApiResult.code === "outdated") {
+      // This build of the client understands the shape of the data in the
+      // local storage, but will not understand the shape of the data coming
+      // from the API. So, we do not attempt a refetch until we have registered
+      // the new service worker.
+      retryCount = 0;
+      updateRequired.value = true;
+
+      if (result.value.status === "pending") {
+        // Nothing cached to fall back on, so there is nothing to show.
+        result.value = { status: "error", code: "outdated" };
+      }
+
+      return;
+    }
+
     const fetchResult: FetchResult<T> = fetchApiResult.ok
       ? { status: "success", value: fetchApiResult.value }
       : { status: "error", code: fetchApiResult.code };
@@ -239,7 +255,6 @@ const useRemoteDataInner = <T, S>({
 
       const storedValue: StoredValue<S> = {
         instance: instance.value,
-        version: __BUILD_ID,
         fetched_at: Date.now(),
         value: toCache(fetchResult.value),
       };
@@ -279,11 +294,7 @@ const useRemoteDataInner = <T, S>({
 
         const storedValue = getItem<S>(key);
 
-        if (
-          !storedValue ||
-          storedValue.instance !== instance.value ||
-          storedValue.version !== __BUILD_ID
-        ) {
+        if (!storedValue || storedValue.instance !== instance.value) {
           if (shouldFetch()) {
             void reload();
           } else {
@@ -297,8 +308,8 @@ const useRemoteDataInner = <T, S>({
         try {
           value = fromCache(storedValue.value);
         } catch {
-          // The `version` check above *should* catch when the shape of the
-          // data changed. We catch this error just in case.
+          // The current build of the client does not recognize the shape of
+          // the data in the local storage.
           if (shouldFetch()) {
             void reload();
           } else {
@@ -762,6 +773,7 @@ type CombinedDataSource = () => {
   };
   reloadAll: () => Promise<void>;
   invalidate: () => void;
+  updateRequired: Readonly<Ref<boolean>>;
 };
 
 // We fetch all the data for the current route from the server eagerly on
@@ -837,7 +849,6 @@ const useRemoteData: CombinedDataSource = () => {
       const isFresh =
         stored !== undefined &&
         stored.instance === envId.value &&
-        stored.version === __BUILD_ID &&
         now - (stored.fetched_at ?? 0) < maxAge;
 
       if (!isFresh) {
@@ -862,6 +873,7 @@ const useRemoteData: CombinedDataSource = () => {
   return {
     reloadAll: reloadAll,
     invalidate,
+    updateRequired,
     reload: Object.fromEntries(
       Object.entries(dataSourceResponses).map(([key, ds]) => [key, ds.reload]),
     ) as ReturnType<CombinedDataSource>["reload"],
