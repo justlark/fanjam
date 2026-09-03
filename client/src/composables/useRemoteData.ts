@@ -20,6 +20,7 @@ import api, {
   type Event,
   type Info,
   type Page,
+  type Location,
   type Person,
 } from "@/utils/api";
 import { envContext } from "@/context";
@@ -456,6 +457,46 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
   };
 };
 
+interface StoredLocation {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+const locationsRef = ref<FetchResult<Array<Location>>>({ status: "pending" });
+
+const useRemoteLocations: DataSource<Readonly<Ref<Array<DeepReadonly<Location>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { reload, invalidate } = useRemoteDataInner<Array<Location>, Array<StoredLocation>>({
+    key: "locations",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: locationsRef,
+    fetcher: () => api.getLocations(toValue(envId)),
+    toCache: (data) =>
+      data.map((location) => ({
+        id: location.id,
+        name: location.name,
+        description: location.description,
+      })),
+    fromCache: (data) =>
+      data.map((location) => ({
+        id: location.id,
+        name: location.name,
+        description: location.description,
+      })),
+  });
+
+  return {
+    reload,
+    invalidate,
+    status: unwrapFetchStatus(locationsRef),
+    data: unwrapFetchArray(locationsRef),
+  };
+};
+
 interface StoredInfo {
   name?: string;
   description?: string;
@@ -704,6 +745,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
 const dataSources = {
   events: useRemoteEvents,
   people: useRemotePeople,
+  locations: useRemoteLocations,
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
@@ -723,6 +765,7 @@ const dataSources = {
 const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   events: ["schedule", "event"],
   people: ["event"],
+  locations: ["event"],
   info: "global",
   pages: ["info", "page"],
   announcements: "global",

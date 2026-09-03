@@ -14,6 +14,7 @@ defineEmits(["find"]);
 
 const props = defineProps<{
   name: string;
+  icon: string;
   bio?: string;
 }>();
 
@@ -31,16 +32,16 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
   >
     <template #header>
       <div class="flex gap-3 items-center">
-        <SimpleIcon class="text-xl" icon="person-circle" />
+        <SimpleIcon class="text-xl" :icon="props.icon" />
         <span class="text-xl font-bold">{{ props.name }}</span>
       </div>
     </template>
-    <article v-if="props.bio" data-testid="person-bio-body">
+    <article v-if="props.bio" data-testid="bio-body">
       <div v-if="bioHtml" v-html="bioHtml" />
     </article>
     <div
       v-else
-      data-testid="person-bio-missing"
+      data-testid="bio-missing"
       class="text-center text-lg italic text-surface-500 dark:text-surface-400"
     >
       No information available
@@ -52,7 +53,7 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
         label="Find in Schedule"
         size="sm"
         :show-label="true"
-        :button-props="{ 'data-testid': 'person-find-button' }"
+        :button-props="{ 'data-testid': 'bio-find-button' }"
         @click="(event) => $emit('find', event)"
       />
     </template>

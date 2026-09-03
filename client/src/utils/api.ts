@@ -29,6 +29,12 @@ interface RawPerson {
   bio: string | null;
 }
 
+interface RawLocation {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 interface RawInfo {
   name: string | null;
   description: string | null;
@@ -142,6 +148,12 @@ export interface Person {
   id: string;
   name: string;
   bio?: string;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 export interface Event {
@@ -324,6 +336,38 @@ const getPeople = async (envId: string): Promise<ApiResult<Array<Person>>> => {
     ok: true,
     value: people,
     freshness: rawPeople.freshness,
+  };
+};
+
+const getLocations = async (envId: string): Promise<ApiResult<Array<Location>>> => {
+  const response = await safeFetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/locations`,
+  );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawLocations: Envelope<{ locations: Array<RawLocation> }> = await response.json();
+
+  if (!isReadable(rawLocations)) {
+    return { ok: false, code: "outdated" };
+  }
+
+  const locations: Array<Location> = rawLocations.value.locations.map((location) => ({
+    id: location.id,
+    name: location.name,
+    description: location.description ?? undefined,
+  }));
+
+  return {
+    ok: true,
+    value: locations,
+    freshness: rawLocations.freshness,
   };
 };
 
@@ -590,6 +634,7 @@ const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<A
 export default {
   getEvents,
   getPeople,
+  getLocations,
   getInfo,
   getPages,
   getAnnouncements,

@@ -34,7 +34,7 @@ const isStarred = useIsEventStarred(computed(() => event.value.id));
 const isSharedSchedule = useIsSharedSchedule();
 
 const {
-  data: { people },
+  data: { people, locations },
 } = useRemoteData();
 
 const descriptionHtml = computed(() => {
@@ -47,12 +47,20 @@ const sectionHeadingId = useId();
 const fromViewType = ref<"daily" | "all">();
 const shareDialogVisible = ref(false);
 
-const bioDialogVisible = ref(false);
+const personBioDialogVisible = ref(false);
 const currentPersonId = ref<string>();
 const currentPersonName = ref<string>();
 
 const currentPersonBio = computed(
   () => people.value.find((person) => person.id === currentPersonId.value)?.bio,
+);
+
+const locationBioDialogVisible = ref(false);
+const currentLocationId = ref<string>();
+const currentLocationName = ref<string>();
+
+const currentLocationBio = computed(
+  () => locations.value.find((location) => location.id === currentLocationId.value)?.description,
 );
 
 // Do not include the query params or fragment; users likely aren't intending
@@ -163,7 +171,7 @@ onMounted(() => {
                 class="text-link-sm cursor-pointer"
                 data-testid="event-details-person-link"
                 @click="
-                  bioDialogVisible = true;
+                  personBioDialogVisible = true;
                   currentPersonId = person.id;
                   currentPersonName = person.name;
                 "
@@ -179,7 +187,17 @@ onMounted(() => {
             icon-label="Location"
             data-testid="event-details-location"
           >
-            {{ event.location.name }}
+            <button
+              class="text-link-sm cursor-pointer"
+              data-testid="event-details-location-link"
+              @click="
+                locationBioDialogVisible = true;
+                currentLocationId = event.location.id;
+                currentLocationName = event.location.name;
+              "
+            >
+              {{ event.location.name }}
+            </button>
           </EventDetail>
         </dl>
         <div class="lg:hidden flex flex-col gap-1">
@@ -232,14 +250,29 @@ onMounted(() => {
     </div>
     <BioDialog
       v-if="currentPersonName"
-      v-model:visible="bioDialogVisible"
+      v-model:visible="personBioDialogVisible"
       :name="currentPersonName"
+      icon="person-circle"
       :bio="currentPersonBio"
       @find="
         router.push({
           name: 'schedule',
           params: { dayIndex: dayIndexParam },
           query: toFilterQueryParams({ search: currentPersonName }),
+        })
+      "
+    />
+    <BioDialog
+      v-if="currentLocationName"
+      v-model:visible="locationBioDialogVisible"
+      :name="currentLocationName"
+      icon="geo-alt-fill"
+      :bio="currentLocationBio"
+      @find="
+        router.push({
+          name: 'schedule',
+          params: { dayIndex: dayIndexParam },
+          query: toFilterQueryParams({ search: currentLocationName }),
         })
       "
     />
