@@ -729,10 +729,6 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   config: "global",
 };
 
-// A default for how stale a cached endpoint may get before we refetch it, when
-// the environment hasn't set `local_cache_max_age` itself.
-const DEFAULT_LOCAL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
-
 // How many attachments to cache, matching the number the service worker will
 // store.
 const MAX_PREFETCHED_FILES = 20;
@@ -826,7 +822,7 @@ const useRemoteData: CombinedDataSource = () => {
   const localCacheMaxAge = computed(
     () =>
       (configRef.value.status === "success" ? configRef.value.value.localCacheMaxAge : undefined) ??
-      DEFAULT_LOCAL_CACHE_MAX_AGE_MS,
+      (import.meta.env.VITE_DEFAULT_LOCAL_CACHE_MAX_AGE_MS as number),
   );
 
   // The client only fetches the data the current page needs, leaving the rest
