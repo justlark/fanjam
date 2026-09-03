@@ -729,10 +729,6 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   config: "global",
 };
 
-// How many attachments to cache, matching the number the service worker will
-// store.
-const MAX_PREFETCHED_FILES = 20;
-
 // Prioritize top-level files, then page attachments, then announcement
 // attachments until we hit the cap.
 const cachedFileIds = (): Array<string> => {
@@ -754,7 +750,7 @@ const cachedFileIds = (): Array<string> => {
     );
   }
 
-  return [...new Set(ids)].slice(0, MAX_PREFETCHED_FILES);
+  return [...new Set(ids)].slice(0, Number(import.meta.env.VITE_MAX_PREFETCHED_FILES));
 };
 
 type CombinedDataSource = () => {
@@ -822,7 +818,7 @@ const useRemoteData: CombinedDataSource = () => {
   const localCacheMaxAge = computed(
     () =>
       (configRef.value.status === "success" ? configRef.value.value.localCacheMaxAge : undefined) ??
-      (import.meta.env.VITE_DEFAULT_LOCAL_CACHE_MAX_AGE_MS as number),
+      Number(import.meta.env.VITE_DEFAULT_LOCAL_CACHE_MAX_AGE_MS),
   );
 
   // The client only fetches the data the current page needs, leaving the rest
