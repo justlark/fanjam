@@ -38,9 +38,9 @@ test.describe("filtering events", () => {
         {
           id: "1",
           name: "Test Event 1",
-          category: "Category 1",
-          tags: ["Tag 1", "Tag 2"],
-          location: "Apple Room",
+          category: { name: "Category 1" },
+          tags: [{ name: "Tag 1" }, { name: "Tag 2" }],
+          location: { name: "Apple Room" },
           people: [
             { id: "10", name: "Alex" },
             { id: "20", name: "Rajat" },
@@ -51,9 +51,9 @@ test.describe("filtering events", () => {
         {
           id: "2",
           name: "Test Event 2",
-          category: "Category 2",
-          tags: ["Tag 2", "Tag 3"],
-          location: "Orange Room",
+          category: { name: "Category 2" },
+          tags: [{ name: "Tag 2" }, { name: "Tag 3" }],
+          location: { name: "Orange Room" },
           people: [
             { id: "30", name: "Shilpa" },
             { id: "40", name: "Ash" },

@@ -5,7 +5,7 @@ const newRandomId = () => Math.random().toString(10).substring(2, 6);
 export const stub = {};
 export const envId = "playwright";
 
-const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
+const mockApiResponse = async (page: Page, endpoint: string, body: any) => {
   const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
 
   await page.route(url, async (route) => {
@@ -17,17 +17,12 @@ const mockApiResponse = async (page: Page, endpoint: string, body: unknown) => {
   });
 };
 
-// How current the server says the data is. See `Freshness` in the client's
-// `api.ts`: "stale" asks the client to check back, "backoff" tells it not to.
 export type Freshness = "fresh" | "stale" | "backoff";
 
-// The payload shape these mocks speak. The client refuses to read an envelope
-// stamped with anything else, so this has to track `SCHEMA_VERSION` in the
-// client's `api.ts` — a mismatch here makes every endpoint look outdated rather
-// than failing in any one obvious place.
+// This must match the `SCHEMA_VERSION` in the client app.
 const SCHEMA_VERSION = 2;
 
-const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknown) => {
+const mockWrappedApiResponse = async (page: Page, endpoint: string, body: any) => {
   await mockApiResponse(page, endpoint, {
     schema_version: SCHEMA_VERSION,
     freshness: "fresh",
@@ -35,14 +30,13 @@ const mockWrappedApiResponse = async (page: Page, endpoint: string, body: unknow
   });
 };
 
-const mockApiInfo = async (page: Page, info: Record<string, unknown>) => {
+const mockApiInfo = async (page: Page, info: Record<string, any>) => {
   const data = {
-    name: null,
-    description: null,
-    website_url: null,
-    links: [],
-    files: [],
-    ...info,
+    name: info.name ?? null,
+    description: info.description ?? null,
+    website_url: info.website_url ?? null,
+    links: info.links ?? [],
+    files: info.files ?? [],
   };
 
   await mockWrappedApiResponse(page, "/info", data);
@@ -50,44 +44,39 @@ const mockApiInfo = async (page: Page, info: Record<string, unknown>) => {
   return data;
 };
 
-// The API returns an event's location, category and tags as `{ id, name }`
-// objects. Tests name them as plain strings, so mint an ID per distinct name
-// here: the same name always gets the same ID within a response, the way it
-// does upstream, where these are rows in their own tables.
-const newIdMinter = () => {
-  const ids = new Map<string, string>();
-
-  return (name: string): string => {
-    const existing = ids.get(name);
-    if (existing !== undefined) return existing;
-
-    const id = (ids.size + 1).toString();
-    ids.set(name, id);
-    return id;
-  };
-};
-
-const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>) => {
-  const locationId = newIdMinter();
-  const categoryId = newIdMinter();
-  const tagId = newIdMinter();
-
-  const named = (mintId: (name: string) => string, name: unknown) =>
-    typeof name === "string" ? { id: mintId(name), name } : null;
-
+const mockApiEvents = async (page: Page, events: Array<Record<string, any>>) => {
   const data = events.map((event) => ({
-    id: newRandomId(),
-    name: "Test Event",
-    start_time: NOW.toISOString(),
-    summary: null,
-    description: null,
-    end_time: null,
-    people: [],
-    ...event,
-    location: named(locationId, event.location),
-    category: named(categoryId, event.category),
+    id: event.id ?? newRandomId(),
+    name: event.name ?? "Test Event",
+    start_time: event.start_time ?? NOW.toISOString(),
+    summary: event.summary ?? null,
+    description: event.description ?? null,
+    end_time: event.end_time ?? null,
+    people: Array.isArray(event.people)
+      ? event.people.map((person) => ({
+        id: person.id ?? newRandomId(),
+        name: person.name ?? "Test Person",
+        bio: person.bio ?? null,
+      }))
+      : [],
+    location: event.location
+      ? {
+        id: event.location.id ?? newRandomId(),
+        name: event.location.name ?? "Test Location",
+        description: event.location.description ?? null,
+      }
+      : null,
+    category: event.category
+      ? {
+        id: event.category.id ?? newRandomId(),
+        name: event.category.name ?? "Test Category",
+      }
+      : null,
     tags: Array.isArray(event.tags)
-      ? (event.tags as Array<string>).map((tag) => named(tagId, tag))
+      ? event.tags.map((tag) => ({
+        id: tag.id ?? newRandomId(),
+        name: tag.name ?? "Test Tag",
+      }))
       : [],
   }));
 
@@ -98,12 +87,11 @@ const mockApiEvents = async (page: Page, events: Array<Record<string, unknown>>)
   return data;
 };
 
-const mockApiPeople = async (page: Page, people: Array<Record<string, unknown>>) => {
+const mockApiPeople = async (page: Page, people: Array<Record<string, any>>) => {
   const data = people.map((person) => ({
-    id: newRandomId(),
-    name: "Test Person",
-    bio: null,
-    ...person,
+    id: person.id ?? newRandomId(),
+    name: person.name ?? "Test Person",
+    bio: person.bio ?? null,
   }));
 
   await mockWrappedApiResponse(page, "/people", {
@@ -113,13 +101,26 @@ const mockApiPeople = async (page: Page, people: Array<Record<string, unknown>>)
   return data;
 };
 
-const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) => {
+const mockApiLocations = async (page: Page, locations: Array<Record<string, any>>) => {
+  const data = locations.map((location) => ({
+    id: location.id ?? newRandomId(),
+    name: location.name ?? "Test Location",
+    description: location.description ?? null,
+  }));
+
+  await mockWrappedApiResponse(page, "/locations", {
+    locations: data,
+  });
+
+  return data;
+};
+
+const mockApiPages = async (page: Page, pages: Array<Record<string, any>>) => {
   const data = pages.map((page) => ({
-    id: newRandomId(),
-    title: "Test Page",
-    body: "",
-    files: [],
-    ...page,
+    id: page.id ?? newRandomId(),
+    title: page.title ?? "Test Page",
+    body: page.body ?? "",
+    files: page.files ?? [],
   }));
 
   await mockWrappedApiResponse(page, "/pages", {
@@ -129,17 +130,16 @@ const mockApiPages = async (page: Page, pages: Array<Record<string, unknown>>) =
   return data;
 };
 
-const mockApiAnnouncements = async (page: Page, announcements: Array<Record<string, unknown>>) => {
+const mockApiAnnouncements = async (page: Page, announcements: Array<Record<string, any>>) => {
   const now = NOW.toISOString();
 
-  const data = announcements.map((page) => ({
-    id: newRandomId(),
-    title: "Test Announcement",
-    body: "",
-    attachments: [],
-    created_at: now,
-    updated_at: now,
-    ...page,
+  const data = announcements.map((announcement) => ({
+    id: announcement.id ?? newRandomId(),
+    title: announcement.title ?? "Test Announcement",
+    body: announcement.body ?? "",
+    attachments: announcement.attachments ?? [],
+    created_at: announcement.created_at ?? now,
+    updated_at: announcement.updated_at ?? now,
   }));
 
   await mockWrappedApiResponse(page, "/announcements", {
@@ -149,7 +149,7 @@ const mockApiAnnouncements = async (page: Page, announcements: Array<Record<stri
   return data;
 };
 
-const mockApiConfig = async (page: Page, config: Record<string, unknown>) => {
+const mockApiConfig = async (page: Page, config: Record<string, any>) => {
   await mockApiResponse(page, "/config", config);
 
   return config;
@@ -158,17 +158,19 @@ const mockApiConfig = async (page: Page, config: Record<string, unknown>) => {
 export const mockApi = async (
   page: Page,
   data: {
-    info?: Record<string, unknown>;
-    events?: Array<Record<string, unknown>>;
-    people?: Array<Record<string, unknown>>;
-    pages?: Array<Record<string, unknown>>;
-    announcements?: Array<Record<string, unknown>>;
-    config?: Record<string, unknown>;
+    info?: Record<string, any>;
+    events?: Array<Record<string, any>>;
+    people?: Array<Record<string, any>>;
+    locations?: Array<Record<string, any>>;
+    pages?: Array<Record<string, any>>;
+    announcements?: Array<Record<string, any>>;
+    config?: Record<string, any>;
   },
 ) => ({
   info: await mockApiInfo(page, data.info ?? {}),
   events: await mockApiEvents(page, data.events ?? []),
   people: await mockApiPeople(page, data.people ?? []),
+  locations: await mockApiLocations(page, data.locations ?? []),
   pages: await mockApiPages(page, data.pages ?? []),
   announcements: await mockApiAnnouncements(page, data.announcements ?? []),
   config: await mockApiConfig(page, data.config ?? {}),
@@ -258,7 +260,7 @@ export const mockApiOffline = async (page: Page, endpoint?: string) => {
 export const mockWrappedApiResponseSequence = async (
   page: Page,
   endpoint: string,
-  responses: Array<{ freshness: Freshness; body: unknown }>,
+  responses: Array<{ freshness: Freshness; body: any }>,
 ) => {
   let callCount = 0;
   const url = `https://api-test.fanjam.live/apps/*/${endpoint.replace(/^\//, "")}`;
@@ -341,9 +343,7 @@ export const countRequestsTo = (page: Page, endpoint: string): { count: number }
 };
 
 // Boot the SPA in custom-domain mode by intercepting every document request and injecting the
-// `fanjam-env` meta tag the client worker would normally add when serving from a custom
-// hostname. The SPA reads the tag synchronously at module load to pick its routing mode, so the
-// tag must be present in the HTML before any `<script>` runs.
+// meta tag the client worker uses to pass the env ID to the client.
 export const customDomainMode = async (page: Page, env: string = envId) => {
   await page.route("**/*", async (route) => {
     if (route.request().resourceType() !== "document") {

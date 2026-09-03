@@ -65,7 +65,7 @@ test.describe("event details page", () => {
           id: "1",
           name: "Located Event",
           start_time: hoursFromNow(1).toISOString(),
-          location: "Main Hall A",
+          location: { name: "Main Hall A" },
         },
       ],
     });
@@ -131,7 +131,7 @@ test.describe("event details page", () => {
 
     // Opens the bio for the clicked person, cross-referenced by ID.
     await eventPage.personLinks.filter({ hasText: "Alice Smith" }).click();
-    await expect(eventPage.personBio).toHaveText("Alice is a longtime panelist.");
+    await expect(eventPage.bio).toHaveText("Alice is a longtime panelist.");
   });
 
   test("shows a message when a person has no bio", async ({ page, eventPage }) => {
@@ -156,8 +156,203 @@ test.describe("event details page", () => {
     await eventPage.goto("1");
 
     await eventPage.personLinks.filter({ hasText: "Bob Jones" }).click();
-    await expect(eventPage.personBio).not.toBeVisible();
-    await expect(eventPage.persionBioMissingMessage).toHaveText("No information available");
+    await expect(eventPage.bio).not.toBeVisible();
+    await expect(eventPage.bioMissingMessage).toHaveText("No information available");
+  });
+
+  test("shows a location's description in a dialog", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Located Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "1", name: "Main Hall A" },
+        },
+        {
+          id: "2",
+          name: "Other Event",
+          start_time: hoursFromNow(2).toISOString(),
+          location: { id: "2", name: "Side Room B" },
+        },
+      ],
+      locations: [
+        { id: "1", name: "Main Hall A", description: "The big room, past the registration desk." },
+        { id: "2", name: "Side Room B", description: "Upstairs, at the end of the corridor." },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    // Opens the description for this event's location, cross-referenced by ID.
+    await eventPage.locationLink.click();
+    await expect(eventPage.bio).toHaveText("The big room, past the registration desk.");
+  });
+
+  test("shows a message when a location has no description", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Located Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "2", name: "Side Room B" },
+        },
+      ],
+      locations: [
+        { id: "1", name: "Main Hall A", description: "The big room, past the registration desk." },
+        { id: "2", name: "Side Room B", description: null },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.locationLink.click();
+    await expect(eventPage.bio).not.toBeVisible();
+    await expect(eventPage.bioMissingMessage).toHaveText("No information available");
+  });
+
+  // An event carries its location inline, so the link is there to click whether
+  // or not the locations endpoint knows the place. Nothing upstream guarantees
+  // the two agree — a location added between the two responses lands here.
+  test("shows a message when the location is missing from the locations list", async ({
+    page,
+    eventPage,
+  }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Located Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { name: "Main Hall A" },
+        },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.locationLink.click();
+    await expect(eventPage.bioMissingMessage).toHaveText("No information available");
+  });
+
+  test("renders markdown in a location's description", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Located Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "1", name: "Main Hall A" },
+        },
+      ],
+      locations: [
+        {
+          id: "1",
+          name: "Main Hall A",
+          description: "# Getting There\n\nThe **big** room.\n\n- Step-free access\n- Hearing loop",
+        },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.locationLink.click();
+
+    await expect(eventPage.bio.locator("h1")).toHaveText("Getting There");
+    await expect(eventPage.bio.locator("strong")).toHaveText("big");
+    await expect(eventPage.bio.locator("li")).toHaveCount(2);
+  });
+
+  test("labels the location dialog with the location's name", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Located Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "1", name: "Main Hall A" },
+        },
+      ],
+      locations: [{ id: "1", name: "Main Hall A", description: "The big room." }],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.locationLink.click();
+
+    await expect(eventPage.bioDialog).toContainText("Main Hall A");
+    // The dialog is shared with people's bios, and which icon it wears is the
+    // only thing in its header that says which of the two you are looking at.
+    await expect(eventPage.bioDialog.locator("i.bi-geo-alt-fill")).toBeVisible();
+  });
+
+  test("filters the schedule by location from the location dialog", async ({
+    page,
+    eventPage,
+    schedulePage,
+    filterMenu,
+  }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Main Hall Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "1", name: "Main Hall A" },
+        },
+        {
+          id: "2",
+          name: "Side Room Event",
+          start_time: hoursFromNow(2).toISOString(),
+          location: { id: "2", name: "Side Room B" },
+        },
+      ],
+      locations: [
+        { id: "1", name: "Main Hall A", description: "The big room." },
+        { id: "2", name: "Side Room B", description: "Upstairs." },
+      ],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.locationLink.click();
+    await eventPage.bioFindButton.click();
+
+    await expect(schedulePage.events).toHaveCount(1);
+    await expect(schedulePage.events).toHaveText("Main Hall Event");
+
+    await filterMenu.toggleOpen();
+    await expect(filterMenu.searchInput).toHaveValue("Main Hall A");
+  });
+
+  // Both dialogs are the same component driven by two sets of refs, so opening
+  // one after the other is where a mixed-up ref would show itself.
+  test("keeps a person's bio and a location's description apart", async ({ page, eventPage }) => {
+    await mockApi(page, {
+      events: [
+        {
+          id: "1",
+          name: "Panel Event",
+          start_time: hoursFromNow(1).toISOString(),
+          location: { id: "1", name: "Main Hall A" },
+          people: [{ id: "10", name: "Alice Smith" }],
+        },
+      ],
+      people: [{ id: "10", name: "Alice Smith", bio: "Alice is a longtime panelist." }],
+      locations: [{ id: "1", name: "Main Hall A", description: "The big room." }],
+    });
+
+    await eventPage.goto("1");
+
+    await eventPage.personLinks.filter({ hasText: "Alice Smith" }).click();
+    await expect(eventPage.bio).toHaveText("Alice is a longtime panelist.");
+
+    await page.keyboard.press("Escape");
+    await expect(eventPage.bio).not.toBeVisible();
+
+    await eventPage.locationLink.click();
+    await expect(eventPage.bio).toHaveText("The big room.");
   });
 
   test("displays event summary when present", async ({ page, eventPage }) => {
@@ -269,8 +464,8 @@ test.describe("event details page", () => {
           id: "1",
           name: "Tagged Event",
           start_time: hoursFromNow(1).toISOString(),
-          category: "Workshop",
-          tags: ["Beginner", "Interactive"],
+          category: { name: "Workshop" },
+          tags: [{ name: "Beginner" }, { name: "Interactive" }],
         },
       ],
     });
@@ -294,13 +489,13 @@ test.describe("event details page", () => {
           id: "1",
           name: "Workshop Event",
           start_time: hoursFromNow(1).toISOString(),
-          category: "Workshop",
+          category: { name: "Workshop" },
         },
         {
           id: "2",
           name: "Panel Event",
           start_time: hoursFromNow(2).toISOString(),
-          category: "Panel",
+          category: { name: "Panel" },
         },
       ],
     });
@@ -319,15 +514,15 @@ test.describe("event details page", () => {
           id: "1",
           name: "Event with Tag",
           start_time: hoursFromNow(1).toISOString(),
-          category: "Workshop",
-          tags: ["Beginner"],
+          category: { name: "Workshop" },
+          tags: [{ name: "Beginner" }],
         },
         {
           id: "2",
           name: "Event without Tag",
           start_time: hoursFromNow(2).toISOString(),
-          category: "Workshop",
-          tags: ["Advanced"],
+          category: { name: "Workshop" },
+          tags: [{ name: "Advanced" }],
         },
       ],
     });

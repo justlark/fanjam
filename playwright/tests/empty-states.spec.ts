@@ -49,7 +49,7 @@ test.describe("empty states", () => {
           name: "Today Workshop",
           start_time: hoursFromNow(1).toISOString(),
           end_time: hoursFromNow(2).toISOString(),
-          category: "Workshop",
+          category: { name: "Workshop" },
         },
       ],
     });
@@ -74,13 +74,13 @@ test.describe("empty states", () => {
           id: "1",
           name: "Workshop Event",
           start_time: hoursFromNow(1).toISOString(),
-          category: "Workshop",
+          category: { name: "Workshop" },
         },
         {
           id: "2",
           name: "Panel Event",
           start_time: hoursFromNow(2).toISOString(),
-          category: "Panel",
+          category: { name: "Panel" },
         },
       ],
     });
@@ -184,11 +184,7 @@ test.describe("empty states", () => {
     await expect(announcementsPage.link).toHaveCount(0);
   });
 
-  test("clears empty state when search is cleared", async ({
-    page,
-    schedulePage,
-    filterMenu,
-  }) => {
+  test("clears empty state when search is cleared", async ({ page, schedulePage, filterMenu }) => {
     await mockApi(page, {
       events: [
         {
@@ -211,18 +207,14 @@ test.describe("empty states", () => {
     await expect(schedulePage.events).toHaveCount(1);
   });
 
-  test("clears empty state when filter is removed", async ({
-    page,
-    schedulePage,
-    filterMenu,
-  }) => {
+  test("clears empty state when filter is removed", async ({ page, schedulePage, filterMenu }) => {
     await mockApi(page, {
       events: [
         {
           id: "1",
           name: "Event 1",
           start_time: hoursFromNow(1).toISOString(),
-          category: "Workshop",
+          category: { name: "Workshop" },
         },
       ],
     });

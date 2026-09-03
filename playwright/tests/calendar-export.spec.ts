@@ -30,7 +30,7 @@ test.describe("calendar export button", () => {
           name: "Test Event 1",
           start_time: hoursFromNow(1).toISOString(),
           end_time: hoursFromNow(2).toISOString(),
-          location: "Main Stage",
+          location: { name: "Main Stage" },
           summary: "First test event",
         },
         {
@@ -76,7 +76,9 @@ test.describe("calendar export button", () => {
     }
     // Unfold per RFC 5545: long property values are split with CRLF + a
     // leading space/tab and must be rejoined before content assertions.
-    const body = Buffer.concat(chunks).toString("utf-8").replace(/\r?\n[ \t]/g, "");
+    const body = Buffer.concat(chunks)
+      .toString("utf-8")
+      .replace(/\r?\n[ \t]/g, "");
 
     // Both events with end_times are present.
     expect(body).toMatch(/SUMMARY:Test Event 1/);
