@@ -206,6 +206,18 @@ pub struct GetPeopleResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct Location {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetLocationsResponse {
+    pub locations: Vec<Location>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Link {
     pub name: String,
     pub url: String,

@@ -4,7 +4,7 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     api::Alias,
     env::{Config, EnvDomain, EnvId, EnvName, SyncCode},
-    noco::{Announcement, ApiToken, BaseId, Event, File, Info, Page, Person, TableInfo},
+    noco::{Announcement, ApiToken, BaseId, Event, File, Info, Location, Page, Person, TableInfo},
     push::{self, SubscriptionId},
 };
 
@@ -106,6 +106,7 @@ macro_rules! cache_key_fn {
 
 cache_key_fn!(events_cache_key, "events");
 cache_key_fn!(people_cache_key, "people");
+cache_key_fn!(locations_cache_key, "locations");
 cache_key_fn!(info_cache_key, "info");
 cache_key_fn!(pages_cache_key, "pages");
 cache_key_fn!(announcements_cache_key, "announcements");
@@ -402,6 +403,7 @@ macro_rules! put_cache_fn {
 
 put_cache_fn!(put_cached_events, events_cache_key, &[Event]);
 put_cache_fn!(put_cached_people, people_cache_key, &[Person]);
+put_cache_fn!(put_cached_locations, locations_cache_key, &[Location]);
 put_cache_fn!(put_cached_info, info_cache_key, &Info);
 put_cache_fn!(put_cached_pages, pages_cache_key, &[Page]);
 put_cache_fn!(
@@ -424,6 +426,7 @@ macro_rules! get_cache_fn {
 
 get_cache_fn!(get_cached_events, events_cache_key, Vec<Event>);
 get_cache_fn!(get_cached_people, people_cache_key, Vec<Person>);
+get_cache_fn!(get_cached_locations, locations_cache_key, Vec<Location>);
 get_cache_fn!(get_cached_info, info_cache_key, Info);
 get_cache_fn!(get_cached_pages, pages_cache_key, Vec<Page>);
 get_cache_fn!(

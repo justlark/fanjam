@@ -55,6 +55,8 @@ struct LocationResponse {
     pub id: u32,
     #[serde(rename = "Location")]
     pub name: String,
+    #[serde(rename = "Description")]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,6 +212,13 @@ pub struct Person {
     pub id: String,
     pub name: String,
     pub bio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Location {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -374,6 +383,20 @@ pub async fn get_people(client: &Client, table_ids: &TableIds) -> anyhow::Result
             id: r.id.to_string(),
             name: r.name,
             bio: r.bio,
+        })
+        .collect())
+}
+
+#[worker::send]
+pub async fn get_locations(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Location>> {
+    let location_records = list_records::<LocationResponse>(client, &table_ids.locations).await?;
+
+    Ok(location_records
+        .into_iter()
+        .map(|r| Location {
+            id: r.id.to_string(),
+            name: r.name,
+            description: r.description,
         })
         .collect())
 }

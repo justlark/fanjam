@@ -23,10 +23,11 @@ use crate::{
         Announcement, DeleteSubscriptionRequest, Event, EventCategory, EventLocation, EventPerson,
         EventTag, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
         GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
-        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse, GetPagesResponse,
-        GetPeopleResponse, GetScheduleResponse, Link, Page, Person, PostApplyMigrationResponse,
-        PostBackupRequest, PostBaseRequest, PostRestoreBackupKind, PostRestoreBackupRequest,
-        PutAliasRequest, PutLinkResponse, PutScheduleRequest, PutTokenRequest,
+        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse,
+        GetLocationsResponse, GetPagesResponse, GetPeopleResponse, GetScheduleResponse, Link,
+        Location, Page, Person, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
+        PutScheduleRequest, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{self, cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
@@ -107,6 +108,7 @@ pub fn new(state: AppState) -> Router {
         // USER API (UNAUTHENTICATED)
         .route("/apps/{env_id}/events", get(get_events))
         .route("/apps/{env_id}/people", get(get_people))
+        .route("/apps/{env_id}/locations", get(get_locations))
         .route("/apps/{env_id}/info", get(get_info))
         .route("/apps/{env_id}/pages", get(get_pages))
         .route("/apps/{env_id}/announcements", get(get_announcements))
@@ -727,6 +729,37 @@ async fn get_people(
                     id: person.id,
                     name: person.name,
                     bio: person.bio,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_locations(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_locations(cache_uri, |locations| GetLocationsResponse {
+            locations: locations
+                .into_iter()
+                .map(|location| Location {
+                    id: location.id,
+                    name: location.name,
+                    description: location.description,
                 })
                 .collect::<Vec<_>>(),
         })

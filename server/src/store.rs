@@ -598,6 +598,15 @@ impl Store {
     }
 
     get_data! {
+        fn_name: get_locations,
+        type_name: Vec<noco::Location>,
+        get_api_fn: noco::get_locations,
+        get_cached_fn: kv::get_cached_locations,
+        put_cached_fn: kv::put_cached_locations,
+        cache_key: "locations",
+    }
+
+    get_data! {
         fn_name: get_info,
         type_name: noco::Info,
         get_api_fn: noco::get_info,
