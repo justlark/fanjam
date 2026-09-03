@@ -30,6 +30,7 @@ pub async fn list_tables(client: &Client, base_id: &BaseId) -> anyhow::Result<Ve
 
 pub struct TableIds {
     pub events: TableId,
+    pub locations: TableId,
     pub people: TableId,
     pub tags: TableId,
     pub about: TableId,
@@ -53,6 +54,9 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             events: ids
                 .remove("events")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'events' table in cache"))?,
+            locations: ids
+                .remove("locations")
+                .ok_or_else(|| anyhow::anyhow!("Missing 'locations' table in cache"))?,
             people: ids
                 .remove("people")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'people' table in cache"))?,
