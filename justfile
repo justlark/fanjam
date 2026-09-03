@@ -62,18 +62,8 @@ deploy-client stage: (_confirm-stage stage) _install-client
 [working-directory: "./server/"]
 [group("deploy changes")]
 [confirm("Deploy the server now?")]
-deploy-server stage: (_confirm-stage stage) && (_clear-cache-all stage)
+deploy-server stage: (_confirm-stage stage)
   npx wrangler@latest deploy --env {{ stage }}
-
-_clear-cache-all stage:
-  #!/usr/bin/env nu
-
-  let environments = ls ./infra/environments/ | get "name" | each {|path| $path | path basename}
-  let stage_environments = $environments | where {|environment| (open $"./infra/environments/($environment)/env.yaml" | get "stage") == {{ stage }}}
-
-  for environment in $stage_environments {
-    ./tools/clear-cache.nu $environment
-  }
 
 # tail the server logs
 [working-directory: "./server/"]
@@ -220,6 +210,19 @@ get-schema-version env:
 [group("manage environments")]
 clear-cache env: (_confirm-env env)
   ./tools/clear-cache.nu {{ env }}
+
+# clear the server cache for all environments
+[group("manage environments")]
+[confirm("Are you sure? This affects all environments.")]
+clear-cache-all stage:
+  #!/usr/bin/env nu
+
+  let environments = ls ./infra/environments/ | get "name" | each {|path| $path | path basename}
+  let stage_environments = $environments | where {|environment| (open $"./infra/environments/($environment)/env.yaml" | get "stage") == {{ stage }}}
+
+  for environment in $stage_environments {
+    ./tools/clear-cache.nu $environment
+  }
 
 # seed an environment with demo data from a SQL dump
 [group("manage environments")]
