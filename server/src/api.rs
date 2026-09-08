@@ -1,0 +1,322 @@
+use serde::{Deserialize, Serialize};
+
+use crate::noco;
+
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PutLinkResponse {
+    pub dash_url: String,
+    // When no custom domain is configured, this will be the same as `default_app_url`.
+    pub app_url: String,
+    pub default_app_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetLinkResponse {
+    pub dash_url: String,
+    pub app_url: String,
+    pub default_app_url: String,
+    pub local_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetDomainResponse {
+    pub domain: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetDomainEnvResponse {
+    pub env_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAliasResponse {
+    pub env_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Alias {
+    pub alias: String,
+    pub target: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAliasesResponse {
+    pub aliases: Vec<Alias>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PutAliasRequest {
+    pub env_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PutTokenRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostBaseRequest {
+    pub title: String,
+    pub email: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostApplyMigrationResponse {
+    pub old_version: noco::Version,
+    pub new_version: noco::Version,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetCurrentMigrationResponse {
+    pub version: noco::Version,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostBackupKind {
+    Deployment,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostBackupRequest {
+    #[serde(rename = "type")]
+    pub kind: PostBackupKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostRestoreBackupKind {
+    Deletion,
+    Deployment,
+    Migration,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostRestoreBackupRequest {
+    #[serde(rename = "type")]
+    pub kind: PostRestoreBackupKind,
+}
+
+// How current the data in a `DataResponseEnvelope` is, and what the client should do about it.
+//
+// This is the server's classification of the *upstream* condition; the client owns its own retry
+// schedule. We can tell the client whether retrying is worth doing at all, but we can't know how
+// long our own refresh will take, so we don't dictate timing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Freshness {
+    // Up to date. Either served from the edge cache, or fetched directly from NocoDB while
+    // handling this request. No retry needed.
+    Fresh,
+
+    // Served from the persistent cache while a refresh runs against NocoDB. The client should
+    // retry on its own schedule to pick up the fresher data.
+    Stale,
+
+    // Served from the persistent cache, and refreshes are in cooldown after repeated upstream
+    // failures. The client must *not* retry automatically; recovery doesn't depend on it. Once the
+    // cooldown expires, the next organic request repopulates the caches for everyone.
+    Backoff,
+}
+
+// The API schema version.
+//
+// Bump this at the same time as any breaking change in the shape of any (client-facing) API
+// response. Clients compare it against the version they were build against and handle the
+// discrepancy.
+//
+// Every response predating this field is implicitly version 1.
+pub const SCHEMA_VERSION: u32 = 2;
+
+#[derive(Debug, Serialize)]
+pub struct DataResponseEnvelope<T> {
+    pub freshness: Freshness,
+    pub schema_version: u32,
+    pub value: T,
+}
+
+impl<T> DataResponseEnvelope<T> {
+    pub fn new(freshness: Freshness, value: T) -> Self {
+        Self {
+            schema_version: SCHEMA_VERSION,
+            freshness,
+            value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventPerson {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventLocation {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventCategory {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EventTag {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Event {
+    pub id: String,
+    pub name: String,
+    pub summary: Option<String>,
+    pub description: Option<String>,
+    pub start_time: String,
+    pub end_time: Option<String>,
+    pub location: Option<EventLocation>,
+    pub people: Vec<EventPerson>,
+    pub category: Option<EventCategory>,
+    pub tags: Vec<EventTag>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetEventsResponse {
+    pub events: Vec<Event>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Person {
+    pub id: String,
+    pub name: String,
+    pub bio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetPeopleResponse {
+    pub people: Vec<Person>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Location {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetLocationsResponse {
+    pub locations: Vec<Location>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Link {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct File {
+    pub id: String,
+    pub name: String,
+    pub media_type: String,
+    pub signed_url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetInfoResponse {
+    pub env_name: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub website_url: Option<String>,
+    pub links: Vec<Link>,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Announcement {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub attachments: Vec<File>,
+    pub created_at: String,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetAnnouncementsResponse {
+    pub announcements: Vec<Announcement>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetFilesResponse {
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Page {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetPagesResponse {
+    pub pages: Vec<Page>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetConfigResponse {
+    pub app_domain: Option<String>,
+    pub timezone: Option<String>,
+    pub day_cutoff_time: Option<String>,
+    pub local_cache_max_age: Option<u64>,
+    pub hide_announcements: Option<bool>,
+    pub use_feedback: Option<bool>,
+    pub feedback_icon: Option<String>,
+    pub feedback_title: Option<String>,
+    pub feedback_detail: Option<String>,
+    pub feedback_url: Option<String>,
+    pub use_schedule_sharing: Option<bool>,
+    pub use_calendar_export: Option<bool>,
+    pub use_schedule_sync: Option<bool>,
+    pub use_custom_icon: Option<bool>,
+    pub favicon_name: Option<String>,
+    pub opengraph_icon_name: Option<String>,
+    pub opengraph_icon_type: Option<String>,
+    pub opengraph_icon_alt: Option<String>,
+    pub pwa_short_app_name: Option<String>,
+    pub pwa_background_color: Option<String>,
+    pub pwa_icon_any_name: Option<String>,
+    pub pwa_icon_any_type: Option<String>,
+    pub pwa_icon_any_sizes: Option<String>,
+    pub pwa_icon_maskable_name: Option<String>,
+    pub pwa_icon_maskable_type: Option<String>,
+    pub pwa_icon_maskable_sizes: Option<String>,
+    pub use_push_notifications: Option<bool>,
+    pub notifications_icon_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteSubscriptionRequest {
+    pub endpoint: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PutScheduleRequest {
+    pub schedule: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetScheduleResponse {
+    pub schedule: Vec<String>,
+}

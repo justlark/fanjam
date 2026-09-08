@@ -1,0 +1,131 @@
+use std::sync::OnceLock;
+use std::time::Duration;
+
+use worker::Env;
+
+use crate::auth;
+use crate::cf;
+use crate::neon;
+use crate::push;
+
+struct Config {
+    base_domain: String,
+    client_domain: String,
+    api_domain: String,
+    cloudflare_api_token: cf::ApiToken,
+    cloudflare_zone_id: cf::ZoneId,
+    admin_api_token: auth::ApiToken,
+    neon_api_token: neon::ApiToken,
+    neon_org_id: String,
+    neon_default_branch_name: String,
+    noco_default_cdn_cache_ttl_millis: u32,
+    r2_asset_cache_ttl_seconds: u32,
+    // `None` if the VAPID secret for Web Push hasn't been set up. This
+    // isn't a fatal error; it just means push notifications won't work.
+    vapid: Option<push::VapidKey>,
+    noco_webhook_token: Option<auth::ApiToken>,
+}
+
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
+pub fn init(env: &Env) -> anyhow::Result<()> {
+    CONFIG
+        .set(Config {
+            base_domain: env.var("BASE_DOMAIN")?.to_string(),
+            client_domain: env.var("CLIENT_DOMAIN")?.to_string(),
+            api_domain: env.var("API_DOMAIN")?.to_string(),
+            cloudflare_api_token: env.secret("CLOUDFLARE_API_TOKEN")?.to_string().into(),
+            cloudflare_zone_id: env.secret("CLOUDFLARE_ZONE_ID")?.to_string().into(),
+            admin_api_token: env
+                .secret("ADMIN_API_TOKEN")?
+                .to_string()
+                .as_str()
+                .try_into()?,
+            neon_api_token: env.secret("NEON_API_TOKEN")?.to_string().into(),
+            neon_org_id: env.secret("NEON_ORG_ID")?.to_string(),
+            neon_default_branch_name: env.secret("NEON_DEFAULT_BRANCH_NAME")?.to_string(),
+            noco_default_cdn_cache_ttl_millis: env
+                .var("NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS")?
+                .to_string()
+                .parse()?,
+            r2_asset_cache_ttl_seconds: env
+                .var("R2_ASSET_CACHE_TTL_SECONDS")?
+                .to_string()
+                .parse()?,
+            vapid: init_vapid(env),
+            noco_webhook_token: env
+                .secret("NOCO_WEBHOOK_TOKEN")
+                .ok()
+                .and_then(|s| auth::ApiToken::try_from(s.to_string().as_str()).ok()),
+        })
+        .ok();
+
+    Ok(())
+}
+
+fn init_vapid(env: &Env) -> Option<push::VapidKey> {
+    let private_key = env.secret("VAPID_PRIVATE_KEY").ok()?.to_string();
+    if private_key.is_empty() {
+        return None;
+    }
+    let subject = env.var("VAPID_SUBJECT").ok()?.to_string();
+    push::VapidKey::from_base64url(&private_key, subject)
+        .inspect_err(|e| worker::console_warn!("VAPID key not loaded: {e}"))
+        .ok()
+}
+
+fn get_config() -> &'static Config {
+    CONFIG.get().expect("config not initialized")
+}
+
+pub fn base_domain() -> &'static str {
+    get_config().base_domain.as_str()
+}
+
+pub fn client_domain() -> &'static str {
+    get_config().client_domain.as_str()
+}
+
+pub fn api_domain() -> &'static str {
+    get_config().api_domain.as_str()
+}
+
+pub fn vapid_key() -> Option<push::VapidKey> {
+    get_config().vapid.clone()
+}
+
+pub fn noco_webhook_token() -> Option<auth::ApiToken> {
+    get_config().noco_webhook_token.clone()
+}
+
+pub fn cloudflare_api_token() -> cf::ApiToken {
+    get_config().cloudflare_api_token.clone()
+}
+
+pub fn cloudflare_zone_id() -> cf::ZoneId {
+    get_config().cloudflare_zone_id.clone()
+}
+
+pub fn admin_api_token() -> auth::ApiToken {
+    get_config().admin_api_token.clone()
+}
+
+pub fn neon_api_token() -> neon::ApiToken {
+    get_config().neon_api_token.clone()
+}
+
+pub fn neon_org_id() -> String {
+    get_config().neon_org_id.clone()
+}
+
+pub fn neon_default_branch_name() -> neon::BranchName {
+    get_config().neon_default_branch_name.clone().into()
+}
+
+pub fn noco_default_cdn_cache_ttl() -> Duration {
+    Duration::from_millis(get_config().noco_default_cdn_cache_ttl_millis.into())
+}
+
+pub fn r2_asset_cache_ttl() -> Duration {
+    Duration::from_secs(get_config().r2_asset_cache_ttl_seconds.into())
+}

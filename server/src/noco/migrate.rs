@@ -1,0 +1,138 @@
+use worker::console_error;
+
+use crate::config;
+use crate::env::{EnvId, EnvName};
+
+use super::{
+    create_base,
+    migrations::{self, BaseId, Client as NocoClient, MigrationContext, Version},
+};
+use crate::neon::Client as NeonClient;
+use crate::sql::Client as DbClient;
+
+#[derive(Debug)]
+pub struct ExistingMigrationState {
+    pub version: Version,
+    pub base_id: BaseId,
+}
+
+#[derive(Debug)]
+pub struct NewMigrationState {
+    pub title: String,
+    pub initial_user_email: String,
+}
+
+#[derive(Debug)]
+pub enum MigrationState {
+    New(NewMigrationState),
+    Existing(ExistingMigrationState),
+}
+
+impl MigrationState {
+    pub fn new(title: String, initial_user_email: String) -> Self {
+        MigrationState::New(NewMigrationState {
+            title,
+            initial_user_email,
+        })
+    }
+
+    pub fn existing(version: Version, base_id: BaseId) -> Self {
+        MigrationState::Existing(ExistingMigrationState { version, base_id })
+    }
+}
+
+#[derive(Debug)]
+pub struct Migrator<'a> {
+    noco_client: &'a NocoClient,
+    neon_client: &'a NeonClient,
+    db_client: &'a DbClient,
+}
+
+impl<'a> Migrator<'a> {
+    pub fn new(
+        noco_client: &'a NocoClient,
+        neon_client: &'a NeonClient,
+        db_client: &'a DbClient,
+    ) -> Self {
+        Self {
+            noco_client,
+            neon_client,
+            db_client,
+        }
+    }
+
+    #[worker::send]
+    pub async fn migrate(
+        &self,
+        env_name: &EnvName,
+        env_id: Option<EnvId>,
+        state: MigrationState,
+    ) -> anyhow::Result<ExistingMigrationState> {
+        let ctx = MigrationContext {
+            env_id,
+            api_domain: config::api_domain(),
+            noco_webhook_token: config::noco_webhook_token(),
+        };
+
+        let (mut version, base_id) = match state {
+            MigrationState::New(NewMigrationState {
+                title,
+                initial_user_email,
+            }) => {
+                let base_id = self
+                    .neon_client
+                    .with_rollback(env_name, async || {
+                        let base_id =
+                            create_base(self.noco_client, title, initial_user_email).await?;
+                        self.db_client.set_base(&base_id).await?;
+                        Ok(base_id)
+                    })
+                    .await?;
+
+                (migrations::Version::INITIAL, base_id)
+            }
+            MigrationState::Existing(ExistingMigrationState { version, base_id }) => {
+                (version, base_id)
+            }
+        };
+
+        let project_id = self
+            .neon_client
+            .lookup_project(&env_name.clone().into())
+            .await?;
+
+        self.neon_client
+            .create_backup(&project_id, crate::neon::BackupSnapshot::Migration)
+            .await?;
+
+        loop {
+            let is_up_to_date = self
+                .neon_client
+                .with_rollback(env_name, async || {
+                    match migrations::run(self.noco_client, base_id.clone(), version.next(), &ctx)
+                        .await
+                    {
+                        Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
+                        Err(error) => {
+                            console_error!("Migration {} failed. Rolling back.", version.next());
+                            return Err(error);
+                        }
+                        _ => {}
+                    }
+
+                    version = version.next();
+
+                    self.db_client.set_migration(&base_id, &version).await?;
+
+                    Ok(false)
+                })
+                .await?;
+
+            if is_up_to_date {
+                break;
+            }
+        }
+
+        Ok(ExistingMigrationState { base_id, version })
+    }
+}

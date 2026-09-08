@@ -1,0 +1,63 @@
+<script setup lang="ts">
+import { ref, computed } from "vue";
+import ProgressSpinner from "primevue/progressspinner";
+import { useRoute } from "vue-router";
+import useRemoteData from "@/composables/useRemoteData";
+import { getSortedCategories } from "@/utils/tags";
+import useFilterQuery from "@/composables/useFilterQuery";
+import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
+import Divider from "primevue/divider";
+import ScheduleTimeline from "@/components/ScheduleTimeline.vue";
+import MyScheduleBanner from "@/components/MyScheduleBanner.vue";
+import EventDetails from "@/components/EventDetails.vue";
+import ScrollTop from "primevue/scrolltop";
+import ShareViewFooter from "@/components/ShareViewFooter.vue";
+import ScheduleShareOptionsDialog from "@/components/ScheduleShareOptionsDialog.vue";
+
+const route = useRoute();
+const filterCriteria = useFilterQuery();
+const isSharedSchedule = useIsSharedSchedule();
+const {
+  data: { events },
+} = useRemoteData();
+
+const eventId = computed(() => route.params.eventId as string);
+const currentDayIndex = ref<number>();
+const scheduleShareOptionsDialogVisible = ref(false);
+
+const allCategories = computed(() => getSortedCategories(events.value));
+
+const thisEvent = computed(() => events.value.find((event) => event.id === eventId.value));
+</script>
+
+<template>
+  <div class="flex h-full">
+    <div v-if="thisEvent" class="flex w-full">
+      <div class="hidden lg:flex justify-between basis-1/2 grow-0 shrink-0">
+        <div class="grow lg:contain-strict lg:overflow-y-auto">
+          <MyScheduleBanner v-if="filterCriteria.hideNotStarred" />
+          <div class="m-6">
+            <ScheduleTimeline v-model:day="currentDayIndex" />
+            <ScrollTop target="parent" />
+          </div>
+          <footer v-if="isSharedSchedule" class="hidden lg:flex justify-center lg:sticky bottom-0">
+            <ShareViewFooter @click="scheduleShareOptionsDialogVisible = true" />
+          </footer>
+          <ScheduleShareOptionsDialog v-model:visible="scheduleShareOptionsDialogVisible" />
+        </div>
+        <Divider layout="vertical" class="!ms-0" />
+      </div>
+      <div class="flex basis-1/2 grow lg:grow-0 shrink-0">
+        <EventDetails
+          class="grow lg:contain-strict lg:overflow-y-auto"
+          :event="thisEvent"
+          :day="currentDayIndex"
+          :all-categories="allCategories"
+        />
+      </div>
+    </div>
+    <div v-else class="m-auto">
+      <ProgressSpinner />
+    </div>
+  </div>
+</template>

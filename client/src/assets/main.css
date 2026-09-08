@@ -1,0 +1,139 @@
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+@import "@fontsource/fira-sans/latin-400.css";
+@import "@fontsource/fira-sans/latin-500.css";
+@import "@fontsource/fira-sans/latin-600.css";
+@import "@fontsource/fira-sans/latin-700.css";
+@import "@fontsource/fira-sans/latin-400-italic.css";
+@import "@fontsource/fira-sans/latin-700-italic.css";
+
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+
+/*
+Because we build the color classes dynamically, we need to safelist them to
+keep them from being tree-shaken out.
+ */
+@source inline("{hover:,not-hover:,}{dark:,}{!,}{bg,text,outline}-{emerald,green,lime,red,orange,amber,yellow,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose,slate,gray,zinc,neutral,stone}-{50,100,200,300,400,500,600,700,800,900,950}");
+@source inline("{!,}text-{xs,sm,base,lg,xl,2xl,3xl}");
+
+/*
+Re-export Tailwind breakpoints so we can query them from JS.
+*/
+:root {
+  --breakpoint-sm: theme(--breakpoint-sm);
+  --breakpoint-md: theme(--breakpoint-md);
+  --breakpoint-lg: theme(--breakpoint-lg);
+  --breakpoint-xl: theme(--breakpoint-xl);
+  --breakpoint-2xl: theme(--breakpoint-2xl);
+}
+
+@utility fg-color-light {
+  @apply text-surface-800;
+}
+
+@utility fg-color-dark {
+  @apply text-surface-200;
+}
+
+@utility bg-color-light {
+  @apply bg-surface-100;
+}
+
+@utility bg-color-dark {
+  @apply bg-surface-900;
+}
+
+@utility fg-color {
+  @apply fg-color-light dark:fg-color-dark;
+}
+
+@utility bg-color {
+  @apply bg-color-light dark:bg-color-dark;
+}
+
+/* Tailwind doesn't have a utility class for this. */
+@utility contain-strict {
+  contain: strict;
+}
+
+.text-link-sm {
+  @apply text-primary underline underline-offset-2 hover:decoration-2;
+}
+
+.text-link-lg {
+  @apply font-bold text-primary decoration-2 underline underline-offset-2 hover:decoration-3;
+}
+
+.p-toast {
+  max-width: 95svw;
+}
+
+@layer base {
+  :root {
+    font-family: "Fira Sans", sans-serif;
+    @apply fg-color bg-color touch-pan-y;
+  }
+
+  #document p {
+    @apply my-3;
+  }
+
+  #document :is(h1, h2, h3, h4, h5, h6) {
+    @apply font-bold mt-4 mb-1;
+  }
+
+  #document h1 {
+    @apply text-2xl;
+  }
+
+  #document h2 {
+    @apply text-xl;
+  }
+
+  #document h3 {
+    @apply text-lg;
+  }
+
+  /* NocoDB only supports H1-H3. */
+  #document :is(h3, h4, h5, h6) {
+    @apply text-base;
+  }
+
+  #document :is(ul, ol) {
+    @apply pl-4;
+    @apply mb-4;
+  }
+
+  #document ul {
+    @apply list-disc;
+  }
+
+  #document ol {
+    @apply list-decimal;
+  }
+
+  #document blockquote {
+    @apply border-l-4 pl-2.5 my-2 border-surface-200 dark:border-surface-600;
+  }
+
+  #document a {
+    @apply text-primary underline underline-offset-2;
+  }
+
+  #document a:hover {
+    @apply decoration-2;
+  }
+
+  #document :not(pre) > code {
+    @apply bg-surface-200 dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-1.5 py-0.5 rounded;
+  }
+
+  #document pre > code {
+    @apply wrap-anywhere whitespace-pre-wrap;
+  }
+
+  #document pre:has(code) {
+    @apply bg-surface-200 dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-4 py-2 rounded;
+  }
+}

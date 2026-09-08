@@ -1,0 +1,78 @@
+<script setup lang="ts">
+import InputText from "primevue/inputtext";
+import InputGroup from "primevue/inputgroup";
+import InputGroupAddon from "primevue/inputgroupaddon";
+import Button from "primevue/button";
+import QrcodeVue from "qrcode.vue";
+import Dialog from "primevue/dialog";
+import { TOAST_TTL_MEDIUM } from "@/utils/toast";
+import { useToast } from "primevue/usetoast";
+
+const visible = defineModel<boolean>("visible", {
+  type: Boolean,
+  required: true,
+});
+
+const toast = useToast();
+
+const props = defineProps<{
+  title: string;
+  link: string;
+  message: string;
+  toastMessage: string;
+}>();
+
+const copyShareUrl = async () => {
+  await navigator.clipboard.writeText(props.link);
+
+  toast.add({
+    severity: "info",
+    summary: "Link copied",
+    detail: props.toastMessage,
+    life: TOAST_TTL_MEDIUM,
+  });
+};
+</script>
+
+<template>
+  <Dialog
+    class="w-100 m-4"
+    v-model:visible="visible"
+    modal
+    dismissable-mask
+    block-scroll
+    :draggable="false"
+    :header="props.title"
+  >
+    <div>
+      <div class="my-auto mb-6">
+        <div class="rounded-3xl overflow-hidden mx-auto w-fit shadow-md">
+          <QrcodeVue
+            :value="props.link"
+            :margin="3"
+            :size="220"
+            foreground="#18181b"
+            background="#f1f5f9"
+            render-as="svg"
+          />
+        </div>
+      </div>
+      <div class="flex flex-col justify-end">
+        <p data-testid="link-share-dialog-description">
+          {{ props.message }}
+        </p>
+      </div>
+      <InputGroup class="mt-3">
+        <InputGroupAddon>
+          <Button
+            data-testid="link-share-dialog-copy-button"
+            @click="copyShareUrl"
+            label="Copy"
+            icon="bi bi-clipboard"
+          />
+        </InputGroupAddon>
+        <InputText data-testid="link-share-dialog-url" :value="props.link" disabled />
+      </InputGroup>
+    </div>
+  </Dialog>
+</template>

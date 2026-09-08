@@ -1,0 +1,140 @@
+<script setup lang="ts">
+import Card from "primevue/card";
+import Button from "primevue/button";
+
+const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
+</script>
+
+<template>
+  <div class="flex flex-col gap-6 p-6 min-h-screen">
+    <main class="flex flex-col justify-center items-center gap-8">
+      <h1 class="text-8xl text-center mt-8 lg:mt-14 mb-8 font-black">
+        <span class="text-orange-400 dark:text-orange-300">Fan</span
+        ><span class="text-sky-400 dark:text-sky-300">Jam</span>
+      </h1>
+      <div class="text-2xl text-center">
+        <p>FanJam is an event planning app for conventions.</p>
+      </div>
+      <div class="text-lg text-justify max-w-4xl">
+        <p>
+          For small to medium-size cons, FanJam bridges the gap between a single person with a
+          spreadsheet and the kinds of people who can afford enterprise event planning software.
+          Free for small cons.
+        </p>
+      </div>
+      <Card>
+        <template #content>
+          <div class="text-xl text-center">
+            <p>Reach out if you're interested!</p>
+            <p>
+              <a class="text-link-lg" href="mailto:lark@fanjam.live">lark@fanjam.live</a>
+            </p>
+          </div>
+        </template>
+      </Card>
+      <div class="flex flex-wrap gap-8 justify-evenly items-start max-w-full">
+        <Card class="overflow-auto">
+          <template #header>
+            <img
+              class="w-full max-w-200 overflow-auto"
+              alt="Organizer app screenshot"
+              :src="`${staticDomain}/nocodb-demo-screenshot.webp`"
+            />
+          </template>
+          <template #title>For Organizers</template>
+          <template #subtitle>
+            A Google Docs-like spreadsheet app for putting together the con schedule
+          </template>
+          <template #content>
+            <ul class="mb-2 list-disc list-inside">
+              <li>Keep track of who's running what, when, and where.</li>
+              <li>Publish event info, FAQs, policies, maps, socials, flyers, and anything else.</li>
+              <li>
+                <!-- Avoid unnecessary whitespace due to prettier wrapping this. -->
+                {{ "" }}Have as many organizers in the app as you want, with controllable access
+                permissions.
+              </li>
+              <li>Leave comments and notes that only organizers can see.</li>
+              <li>Import your data from another system.</li>
+              <li>Host the app under your own domain.</li>
+            </ul>
+          </template>
+          <template #footer>
+            <div class="flex flex-wrap gap-6 items-center">
+              <Button
+                as="a"
+                label="Open Demo"
+                icon="bi bi-box-arrow-up-right"
+                icon-pos="right"
+                raised
+                target="_blank"
+                href="https://demo.fanjam.live/dashboard/#/base/be0bcc16-fbf9-4156-a19d-43fc20b86f95"
+              />
+              <span class="flex gap-2 text-muted-color">
+                <SimpleIcon icon="info-circle" />
+                <span>Best on desktop</span>
+              </span>
+            </div>
+          </template>
+        </Card>
+        <Card class="max-w-160 overflow-auto">
+          <template #header>
+            <div class="flex">
+              <img
+                class="w-full max-w-80 overflow-auto"
+                alt="Attendee app screenshot"
+                :src="`${staticDomain}/fanjam-schedule-demo-screenshot.webp`"
+              />
+              <img
+                class="w-full max-w-80 overflow-auto"
+                alt="Attendee app screenshot"
+                :src="`${staticDomain}/fanjam-info-demo-screenshot.webp`"
+              />
+            </div>
+          </template>
+          <template #title>For Attendees</template>
+          <template #subtitle>A website and mobile app for viewing the con schedule</template>
+          <template #content>
+            <ul class="mb-2 list-disc list-inside">
+              <li>See the schedule of events.</li>
+              <li>Filter, search, and build your own personal itinerary.</li>
+              <li>
+                <!-- Avoid unnecessary whitespace due to prettier wrapping this. -->
+                {{ "" }}Share your schedule with friends, add it to your calendar, and sync it
+                between devices.
+              </li>
+              <li>See live announcements from the organizers with push notifications.</li>
+              <li>Use the app on the web without installing anything.</li>
+              <li>Works completely offline.</li>
+            </ul>
+          </template>
+          <template #footer>
+            <div class="flex flex-wrap gap-6 items-center">
+              <Button
+                as="a"
+                label="Open Demo"
+                icon="bi bi-box-arrow-up-right"
+                icon-pos="right"
+                raised
+                target="_blank"
+                href="https://fanjam.live/app/demo/"
+              />
+              <span class="flex gap-2 text-muted-color">
+                <SimpleIcon icon="info-circle" />
+                <span>Best on mobile</span>
+              </span>
+            </div>
+          </template>
+        </Card>
+      </div>
+    </main>
+    <footer class="mt-auto flex flex-col items-center gap-1 text-muted-color">
+      <small>
+        <a class="text-link-sm" href="https://github.com/justlark/fanjam" target="_blank">
+          GitHub
+        </a>
+      </small>
+      <small>© 2025-2026 Lark Aster</small>
+    </footer>
+  </div>
+</template>

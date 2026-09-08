@@ -1,0 +1,117 @@
+<script setup lang="ts">
+import { useId, type DeepReadonly } from "vue";
+import Divider from "primevue/divider";
+import { type toFilterQueryParams } from "@/composables/useFilterQuery";
+import { type Event } from "@/utils/api";
+import CategoryLabel from "./CategoryLabel.vue";
+import { RouterLink } from "vue-router";
+import useBreakpoint from "@/composables/useBreakpoint";
+
+const focusedEventId = defineModel<string | undefined>("focused");
+
+export interface DayName {
+  weekday: string;
+  date: string;
+  time: string;
+}
+
+const props = defineProps<{
+  dayName: DayName;
+  events: Array<DeepReadonly<Event>>;
+  isCurrentTimeSlot: boolean;
+  allCategories: Array<string>;
+  viewType: "daily" | "all";
+  starredEvents: ReadonlySet<string>;
+  linkQuery: ReturnType<typeof toFilterQueryParams>;
+}>();
+
+// We do this breakpoint query in JS rather than in CSS so we can conditionally
+// render a DOM node that will appear many times for large event schedules,
+// cutting down on the total DOM size.
+const isDesktop = useBreakpoint("lg");
+
+const sectionHeadingId = useId();
+
+const isStarred = (eventId: string) => props.starredEvents.has(eventId);
+</script>
+
+<template>
+  <section :aria-labelledby="sectionHeadingId">
+    <div class="flex items-center gap-3">
+      <h2 :id="sectionHeadingId" class="text-xl w-full">
+        <span v-if="props.viewType === 'all'" class="flex items-end justify-between">
+          <span
+            :class="['flex flex-col items-start gap-1', { 'font-bold': props.isCurrentTimeSlot }]"
+          >
+            <span>
+              {{ props.dayName.weekday }}
+            </span>
+            <span class="text-sm text-muted-color">
+              {{ props.dayName.date }}
+            </span>
+          </span>
+          <span class="flex gap-3 items-center">
+            <span :class="{ 'font-bold': props.isCurrentTimeSlot }">{{ props.dayName.time }}</span>
+            <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
+          </span>
+        </span>
+        <span v-else-if="props.viewType === 'daily'" class="flex gap-3 items-center">
+          <span :class="{ 'font-bold': props.isCurrentTimeSlot }">
+            {{ props.dayName.time }}
+          </span>
+          <small v-if="props.isCurrentTimeSlot" class="text-muted-color">now</small>
+        </span>
+      </h2>
+    </div>
+    <Divider
+      :class="{
+        '!mt-1': true,
+        'before:!border-primary': props.isCurrentTimeSlot,
+        'before:!border-1': props.isCurrentTimeSlot,
+      }"
+    />
+    <ul class="flex flex-wrap gap-3">
+      <li
+        v-for="event in props.events"
+        :key="event.id"
+        :id="`event-${event.id}`"
+        class="lg:scroll-mt-2"
+      >
+        <RouterLink
+          v-if="isDesktop"
+          :to="{
+            name: 'event',
+            params: { eventId: event.id },
+            query: props.linkQuery,
+            state: { fromViewType: viewType },
+          }"
+          :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
+          data-testid="schedule-event-link"
+        >
+          <CategoryLabel
+            :title="event.name"
+            :icon="isStarred(event.id) ? 'star-fill' : undefined"
+            display="active"
+            :category="event.category?.name"
+            :all-categories="props.allCategories"
+          />
+        </RouterLink>
+        <button
+          v-else
+          @click="focusedEventId = event.id"
+          class="cursor-pointer text-left"
+          :aria-label="isStarred(event.id) ? `Starred: ${event.name}` : event.name"
+          data-testid="schedule-event-link"
+        >
+          <CategoryLabel
+            :title="event.name"
+            :icon="isStarred(event.id) ? 'star-fill' : undefined"
+            display="active"
+            :category="event.category?.name"
+            :all-categories="props.allCategories"
+          />
+        </button>
+      </li>
+    </ul>
+  </section>
+</template>

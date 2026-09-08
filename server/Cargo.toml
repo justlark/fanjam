@@ -1,0 +1,69 @@
+[package]
+name = "sparklefish"
+version = "0.1.0"
+edition = "2024"
+authors = ["Lark Aster <lark@lark.gay>"]
+# If you update this, update the GitHub Actions workflow as well.
+rust-version = "1.95.0"
+
+[package.metadata.release]
+release = false
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.8.0", features = ['http', 'axum', 'tokio-postgres', 'queue'] }
+worker-macros = { version = "0.8.0", features = ['http'] }
+axum = { version = "0.8", default-features = false, features = [
+  "json",
+  "macros",
+] }
+tower-service = "0.3.2"
+console_error_panic_hook = { version = "0.1.1" }
+anyhow = "1.0.98"
+serde = { version = "1.0.219", features = ["derive"] }
+secrecy = "0.10.3"
+serde_json = "1.0.140"
+rand = "0.8"
+getrandom = { version = "0.4.2", features = ["wasm_js"] }
+# We have a dependency in the tree which depends on an older version of
+# `getrandom`, so we need to specify the feature for that version as well.
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+tower-http = { version = "0.6.4", features = ["auth", "cors"] }
+futures = "0.3.31"
+constant_time_eq = "0.5.0"
+base64 = "0.22.1"
+wasm-bindgen = "0.2.122"
+js-sys = "0.3"
+thiserror = "2.0.12"
+blake3 = "1.8.2"
+tokio-postgres = { version = "0.7.13", default-features = false, features = [
+  "js",
+] }
+wasm-bindgen-futures = "0.4.73"
+chrono = "0.4.45"
+serde_json_canonicalizer = "0.3.2"
+pulldown-cmark = { version = "0.13", default-features = false }
+
+# Because there are no crates implementing the Web Push API that compile on
+# `wasm32-unknown-unknown`, we must implement the necessary functionality
+# ourselves from crypto primitives. This is dangerous business, but we accept
+# the risk because FanJam is not sending sensitive information via push
+# notifications; notifications only contain data that is already publicly
+# available via the client app and unauthenticated API endpoints on the server.
+p256 = { version = "0.13.2", default-features = false, features = [
+  "ecdh",
+  "ecdsa",
+  "arithmetic",
+] }
+aes-gcm = { version = "0.10.3", default-features = false, features = [
+  "aes",
+  "alloc",
+] }
+hkdf = { version = "0.13.0", default-features = false }
+sha2 = { version = "0.11.0", default-features = false }

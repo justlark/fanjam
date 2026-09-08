@@ -1,0 +1,90 @@
+name = "sparklefish-server"
+main = "build/worker/shim.mjs"
+account_id = "151bc8670b862fa7d694cf7246a2c0dc"
+compatibility_date = "2025-05-06"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[observability]
+enabled = true
+
+[env.test]
+
+[env.test.vars]
+BASE_DOMAIN = "fanjam.live"
+CLIENT_DOMAIN = "test.fanjam.live"
+API_DOMAIN = "api-test.fanjam.live"
+NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
+R2_ASSET_CACHE_TTL_SECONDS = "300"
+VAPID_PUBLIC_KEY = "BKKC3PSkXbB9mapDXLk0-UgCl8URIAwkLmpxj-W-nkDuRi4RjOgOa56C4USa8UBGyLef3npZH-el-SJWLJBAxR4"
+VAPID_SUBJECT = "mailto:hello@fanjam.live"
+
+[env.test.route]
+pattern = "api-test.fanjam.live"
+custom_domain = true
+
+[[env.test.kv_namespaces]]
+binding = "KV"
+id = "0afa0089d1f14e0c907f68b5dba8db90"
+preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
+[[env.test.r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "sparklefish-assets-test"
+
+[[env.test.queues.producers]]
+binding = "PUSH_QUEUE"
+queue = "sparklefish-push-test"
+
+[[env.test.queues.consumers]]
+queue = "sparklefish-push-test"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "sparklefish-push-dlq-test"
+
+[env.prod]
+
+[env.prod.vars]
+BASE_DOMAIN = "fanjam.live"
+CLIENT_DOMAIN = "fanjam.live"
+API_DOMAIN = "api.fanjam.live"
+# The default cache TTL of the CDN cache used to absorb high load and reduce
+# the load on the NocoDB instance. This is a default which can be overridden on
+# a per-environment basis.
+NOCO_DEFAULT_CDN_CACHE_TTL_MILLIS = "5000"
+# Assets in R2 (such as custom app icons) are cached at the edge.
+R2_ASSET_CACHE_TTL_SECONDS = "300"
+# VAPID identity for push notifications via the Web Push API.
+VAPID_PUBLIC_KEY = "BKKC3PSkXbB9mapDXLk0-UgCl8URIAwkLmpxj-W-nkDuRi4RjOgOa56C4USa8UBGyLef3npZH-el-SJWLJBAxR4"
+VAPID_SUBJECT = "mailto:hello@fanjam.live"
+
+[env.prod.route]
+pattern = "api.fanjam.live"
+custom_domain = true
+
+[[env.prod.kv_namespaces]]
+binding = "KV"
+id = "c36821103a5045fc9de6baad28623928"
+preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
+[[env.prod.r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "sparklefish-assets-prod"
+
+# This queue is used for sending push notifications. When we're dealing with
+# thousands of concurrent users, this approach is necessary to avoid exceeding
+# the worker subrequest limit.
+[[env.prod.queues.producers]]
+binding = "PUSH_QUEUE"
+queue = "sparklefish-push-prod"
+
+# The `max_batch_size` is deliberately 1 because each message already contains
+# a batch of notifications.
+[[env.prod.queues.consumers]]
+queue = "sparklefish-push-prod"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "sparklefish-push-dlq-prod"

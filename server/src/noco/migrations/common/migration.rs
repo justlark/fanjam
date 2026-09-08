@@ -1,0 +1,63 @@
+use std::{fmt, str::FromStr};
+
+use serde::{Deserialize, Serialize};
+
+use crate::auth;
+use crate::env::EnvId;
+use crate::noco::Client;
+
+use super::BaseId;
+
+pub struct MigrationContext {
+    pub env_id: Option<EnvId>,
+    pub api_domain: &'static str,
+    pub noco_webhook_token: Option<auth::ApiToken>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Version(u32);
+
+impl Version {
+    pub const INITIAL: Version = Version(0);
+
+    pub const fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+impl FromStr for Version {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>()
+            .map(Version)
+            .map_err(|_| anyhow::anyhow!("Invalid migration version number string: {}", s))
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<&Version> for u32 {
+    fn from(version: &Version) -> Self {
+        version.0
+    }
+}
+
+impl From<u32> for Version {
+    fn from(value: u32) -> Self {
+        Version(value)
+    }
+}
+
+pub trait Migration<'a> {
+    const INDEX: Version;
+
+    fn new(client: &'a Client, ctx: &'a MigrationContext) -> Self;
+
+    async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()>;
+}

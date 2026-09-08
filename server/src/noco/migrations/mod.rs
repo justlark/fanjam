@@ -1,0 +1,43 @@
+mod common;
+mod n1;
+mod n2;
+mod n3;
+mod n4;
+mod n5;
+mod n6;
+mod n7;
+
+// Each base schema migration lives in its own module with the name `nX`, where `X` is the
+// incrementing migration number.
+
+pub use super::client::Client;
+pub use common::{
+    BaseId, Migration, MigrationContext, TableId, TableIds, TableInfo, Version, list_tables,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    AlreadyUpToDate,
+    Migrated,
+}
+
+// New migrations must be added to the list here to be applied.
+pub async fn run(
+    client: &Client,
+    base_id: BaseId,
+    version: Version,
+    ctx: &MigrationContext,
+) -> anyhow::Result<Outcome> {
+    match version {
+        n1::Migration::INDEX => n1::Migration::new(client, ctx).migrate(base_id).await?,
+        n2::Migration::INDEX => n2::Migration::new(client, ctx).migrate(base_id).await?,
+        n3::Migration::INDEX => n3::Migration::new(client, ctx).migrate(base_id).await?,
+        n4::Migration::INDEX => n4::Migration::new(client, ctx).migrate(base_id).await?,
+        n5::Migration::INDEX => n5::Migration::new(client, ctx).migrate(base_id).await?,
+        n6::Migration::INDEX => n6::Migration::new(client, ctx).migrate(base_id).await?,
+        n7::Migration::INDEX => n7::Migration::new(client, ctx).migrate(base_id).await?,
+        _ => return Ok(Outcome::AlreadyUpToDate),
+    }
+
+    Ok(Outcome::Migrated)
+}

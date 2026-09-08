@@ -1,0 +1,1316 @@
+// Axum trips this lint, which we don't have much control over.
+#![allow(clippy::result_large_err)]
+
+use std::{fmt, sync::Arc, time::Duration};
+
+use axum::{
+    Json, Router,
+    body::Body,
+    extract::{Path, State},
+    http::{self, HeaderValue, StatusCode, Uri, header},
+    middleware,
+    response::{ErrorResponse, IntoResponse, NoContent},
+    routing::{delete, get, post, put},
+};
+use worker::{
+    Bucket, Cache, Context, Queue, console_log, console_warn, kv::KvStore, send::SendWrapper,
+};
+
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    api::{
+        Announcement, DeleteSubscriptionRequest, Event, EventCategory, EventLocation, EventPerson,
+        EventTag, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
+        GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
+        GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse,
+        GetLocationsResponse, GetPagesResponse, GetPeopleResponse, GetScheduleResponse, Link,
+        Location, Page, Person, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
+        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
+        PutScheduleRequest, PutTokenRequest,
+    },
+    auth::{admin_auth_layer, noco_webhook_auth_layer},
+    cache::{self, cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
+    cf, config,
+    cors::cors_layer,
+    env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName, SyncCode},
+    error::Error,
+    http::http_headers_from_object,
+    kv, neon,
+    noco::{self, ApiToken, MigrationState},
+    push, sql,
+    store::{MigrationChange, Store},
+    url,
+};
+
+//
+// There are going to be race conditions inherent to this implementation. Because we have our own
+// state that we're trying to keep in sync with the state of NocoDB, there is no easy way around
+// it. We're not worrying too much about possible race condition here because:
+//
+// 1. It really just applies to the internal admin API, not the client-facing API. These internal
+//    admin API endpoints are not going to be used frequently or by many different people
+//    concurrently.
+// 2. Any inconsistencies that arise, such as from operations failing at critical points, can
+//    probably be resolved manually. These internal admin API endpoints are intended to be called
+//    manually, and functionality is split out into distinct endpoints to provide granular control
+//    over the state of environments.
+//
+
+pub struct AppState {
+    pub kv: KvStore,
+    pub bucket: SendWrapper<Bucket>,
+    pub queue: Queue,
+    pub ctx: Arc<Context>,
+}
+
+impl fmt::Debug for AppState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppState").finish_non_exhaustive()
+    }
+}
+
+pub fn new(state: AppState) -> Router {
+    // This service exposes two APIs: an unauthenticated "user" API for querying data that is used
+    // by the client app, and an authenticated "admin" API that is used to provision and manage
+    // environments.
+    Router::new()
+        // ADMIN API (AUTHENTICATED)
+        .route("/admin/env/{env_name}/links/{env_id}", put(put_link))
+        .route("/admin/env/{env_name}/links", get(get_link))
+        .route("/admin/env/{env_name}/domain/{domain}", put(put_env_domain))
+        .route("/admin/env/{env_name}/domain", get(get_env_domain))
+        .route("/admin/env/{env_name}/domain", delete(delete_env_domain))
+        .route("/admin/env/{env_name}/tokens", put(put_token))
+        .route("/admin/env/{env_name}/bases", post(post_base))
+        .route("/admin/env/{env_name}/bases", delete(delete_base))
+        .route(
+            "/admin/env/{env_name}/migrations/apply",
+            post(post_apply_migration),
+        )
+        .route(
+            "/admin/env/{env_name}/migrations/current",
+            get(get_current_migration),
+        )
+        .route("/admin/env/{env_name}/backups", post(post_backup))
+        .route(
+            "/admin/env/{env_name}/backups/restore",
+            post(post_restore_backup),
+        )
+        .route("/admin/env/{env_name}/cache", delete(delete_cache))
+        .route("/admin/env/{env_name}/config", get(get_admin_config))
+        .route("/admin/env/{env_name}/config", put(put_admin_config))
+        .route("/admin/aliases", get(get_aliases))
+        .route("/admin/aliases/{alias_id}", delete(delete_alias))
+        .route("/admin/aliases/{alias_id}", put(put_alias))
+        .route("/admin/config-spec", get(get_config_spec))
+        .route_layer(admin_auth_layer())
+        // USER API (UNAUTHENTICATED)
+        .route("/apps/{env_id}/events", get(get_events))
+        .route("/apps/{env_id}/people", get(get_people))
+        .route("/apps/{env_id}/locations", get(get_locations))
+        .route("/apps/{env_id}/info", get(get_info))
+        .route("/apps/{env_id}/pages", get(get_pages))
+        .route("/apps/{env_id}/announcements", get(get_announcements))
+        .route("/apps/{env_id}/files", get(get_files))
+        .route("/apps/{env_id}/config", get(get_config))
+        .route("/apps/{env_id}/subscription", post(post_subscription))
+        .route("/apps/{env_id}/subscription", delete(delete_subscription))
+        .route("/apps/{env_id}/schedule/{sync_code}", put(put_schedule))
+        .route("/apps/{env_id}/schedule/{sync_code}", get(get_schedule))
+        .route(
+            "/apps/{env_id}/hooks/announcement-created",
+            post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
+        )
+        .route("/apps/{env_id}/assets/{name}", get(get_asset))
+        .route("/aliases/{env_id}", get(get_alias))
+        .route("/domains/{domain}", get(get_domain_env))
+        .layer(middleware::from_fn(if_none_match_middleware))
+        .layer(cors_layer())
+        .with_state(Arc::new(state))
+}
+
+// Best-effort purge of an environment's edge-cached responses, for use after a write that changes
+// what those responses would contain.
+//
+// Deliberately non-fatal. The write itself has already succeeded, and every cached entry carries a
+// short TTL, so a failed purge costs a few seconds of staleness rather than correctness — whereas
+// failing the request would make config edits look broken. Compare `delete_cache`, where purging
+// *is* the operation and a failure is worth surfacing to the caller.
+async fn purge_env_cache(env_name: &EnvName) {
+    let result = cf::Client::new()
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(env_name),
+        )
+        .await;
+
+    if let Err(err) = result {
+        console_warn!("Failed to purge the edge cache for {}: {}", env_name, err);
+    }
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn put_link(
+    State(state): State<Arc<AppState>>,
+    Path((env_name, new_env_id)): Path<(EnvName, EnvId)>,
+) -> Result<Json<PutLinkResponse>, ErrorResponse> {
+    let current_env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let already_current = current_env_id
+        .as_ref()
+        .is_some_and(|current| current == &new_env_id);
+
+    if !already_current {
+        kv::put_id_env(&state.kv, &new_env_id, &env_name)
+            .await
+            .map_err(Error::Internal)?;
+
+        kv::put_env_id(&state.kv, &env_name, &new_env_id)
+            .await
+            .map_err(Error::Internal)?;
+
+        // The old ID stops resolving, but its cached `/apps/{env_id}/config` entry would keep
+        // answering for the rest of the TTL. Drop it so the switchover is clean.
+        purge_env_cache(&env_name).await;
+    }
+
+    let custom_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
+    let app_url = url::app_url(&new_env_id, custom_domain.as_ref()).map_err(Error::Internal)?;
+    let default_app_url = url::default_app_url(&new_env_id).map_err(Error::Internal)?;
+
+    Ok(Json(PutLinkResponse {
+        dash_url: dash_url.to_string(),
+        app_url: app_url.to_string(),
+        default_app_url: default_app_url.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_aliases(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<GetAliasesResponse>, ErrorResponse> {
+    Ok(Json(GetAliasesResponse {
+        aliases: kv::list_aliases(&state.kv).await.map_err(Error::Internal)?,
+    }))
+}
+
+#[axum::debug_handler]
+async fn delete_alias(
+    State(state): State<Arc<AppState>>,
+    Path(alias_id): Path<EnvId>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::delete_alias_id(&state.kv, &alias_id)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn put_alias(
+    State(state): State<Arc<AppState>>,
+    Path(alias_id): Path<EnvId>,
+    Json(body): Json<PutAliasRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::put_alias_id(&state.kv, &alias_id, &EnvId::from(body.env_id))
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_link(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<GetLinkResponse>, ErrorResponse> {
+    let env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let custom_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let dash_url = url::dash_url(&env_name).map_err(Error::Internal)?;
+    let app_url = url::app_url(&env_id, custom_domain.as_ref()).map_err(Error::Internal)?;
+    let default_app_url = url::default_app_url(&env_id).map_err(Error::Internal)?;
+    let local_url = url::local_url(&env_id).map_err(Error::Internal)?;
+
+    Ok(Json(GetLinkResponse {
+        dash_url: dash_url.to_string(),
+        app_url: app_url.to_string(),
+        default_app_url: default_app_url.to_string(),
+        local_url: local_url.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn put_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path((env_name, domain)): Path<(EnvName, String)>,
+) -> Result<NoContent, ErrorResponse> {
+    let domain = EnvDomain::try_from(domain).map_err(Error::InvalidDomain)?;
+
+    // Refuse to clobber a custom domain that is mapped to a different environment.
+    if let Some(existing_owner) = kv::get_domain_env(&state.kv, &domain)
+        .await
+        .map_err(Error::Internal)?
+        && existing_owner.to_string() != env_name.to_string()
+    {
+        Err(Error::DomainInUse)?;
+    }
+
+    // Remove the old reverse mapping.
+    if let Some(previous_domain) = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        && previous_domain != domain
+    {
+        kv::delete_domain_env(&state.kv, &previous_domain)
+            .await
+            .map_err(Error::Internal)?;
+    }
+
+    kv::put_env_domain(&state.kv, &env_name, &domain)
+        .await
+        .map_err(Error::Internal)?;
+
+    kv::put_domain_env(&state.kv, &domain, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    // Both `/apps/{env_id}/config` (which carries `app_domain`, and so drives the redirect to the
+    // custom domain) and `/domains/{domain}` are edge-cached against this environment's tag.
+    purge_env_cache(&env_name).await;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<GetDomainResponse>, ErrorResponse> {
+    let domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvDomain)?;
+
+    Ok(Json(GetDomainResponse {
+        domain: domain.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn delete_env_domain(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    if let Some(domain) = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+    {
+        kv::delete_domain_env(&state.kv, &domain)
+            .await
+            .map_err(Error::Internal)?;
+    }
+
+    kv::delete_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    purge_env_cache(&env_name).await;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_domain_env(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(domain): Path<String>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    // The client worker resolves the hostname on *every* request it serves under a custom domain —
+    // each JS chunk, stylesheet, font and icon included — so on a cold PWA load this is a dozen
+    // round trips. Caching it at the edge collapses them into one.
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let domain = EnvDomain::try_from(domain).map_err(Error::InvalidDomain)?;
+
+    let env_name = kv::get_domain_env(&state.kv, &domain)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvDomain)?;
+
+    let env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    // One extra KV read, but only on a miss, and it buys the whole TTL's worth of hits. Tagging
+    // the entry with this environment is what lets a domain change purge it.
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let ttl = cache::cache_ttl(&env_config);
+
+    let body = Json(GetDomainEnvResponse {
+        env_id: env_id.to_string(),
+    });
+
+    cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await
+}
+
+#[axum::debug_handler]
+async fn get_alias(
+    State(state): State<Arc<AppState>>,
+    Path(alias_id): Path<EnvId>,
+) -> Result<Json<GetAliasResponse>, ErrorResponse> {
+    let env_id = kv::get_alias_id(&state.kv, &alias_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    Ok(Json(GetAliasResponse {
+        env_id: env_id.to_string(),
+    }))
+}
+
+#[axum::debug_handler]
+async fn put_token(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PutTokenRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::put_api_token(&state.kv, &env_name, ApiToken::from(body.token))
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn post_base(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PostBaseRequest>,
+) -> Result<StatusCode, ErrorResponse> {
+    let api_token = kv::get_api_token(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoApiToken)?;
+
+    let dash_origin = url::dash_origin(&env_name).map_err(Error::Internal)?;
+
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let noco_client = noco::Client::new(dash_origin.clone(), api_token);
+    let neon_client = neon::Client::new();
+    let db_client = sql::Client::connect(
+        &Option::<sql::ConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+    )
+    .await
+    .map_err(Error::Internal)?;
+
+    let existing_base_id = db_client.get_base().await.map_err(Error::Internal)?;
+
+    if let Some(base_id) = existing_base_id {
+        let base_exists_in_noco = noco::check_base_exists(&noco_client, &base_id)
+            .await
+            .map_err(Error::Internal)?;
+
+        if base_exists_in_noco {
+            Err(Error::BaseAlreadyExists)?;
+        } else {
+            // The NocoDB base ID was stored in the config database, but the base no longer exists
+            // in NocoDB. This could happen if the base is deleted manually by the system user (as
+            // opposed to via this admin API), or if the environment was completely destroyed and
+            // recreated.
+            console_log!(
+                "The NocoDB base was deleted externally. Updating the backend state to match."
+            );
+
+            // We cache the base ID in KV.
+            kv::delete_cache(&state.kv, &env_name)
+                .await
+                .map_err(Error::Internal)?;
+
+            db_client
+                .delete_base(&base_id)
+                .await
+                .map_err(Error::Internal)?;
+        }
+    }
+
+    let migration_state = MigrationState::new(body.title, body.email);
+
+    let env_id = kv::get_env_id(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let migrator = noco::Migrator::new(&noco_client, &neon_client, &db_client);
+
+    migrator
+        .migrate(&env_name, env_id, migration_state)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(StatusCode::CREATED)
+}
+
+#[axum::debug_handler]
+async fn delete_base(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    let store = Store::from_env_name(&state, env_name).await?;
+
+    store.delete_base().await?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn post_apply_migration(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<PostApplyMigrationResponse>, ErrorResponse> {
+    let store = Store::from_env_name(&state, env_name).await?;
+
+    let MigrationChange {
+        old_version,
+        new_version,
+    } = store.migrate().await?;
+
+    Ok(Json(PostApplyMigrationResponse {
+        old_version,
+        new_version,
+    }))
+}
+
+#[axum::debug_handler]
+async fn get_current_migration(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<GetCurrentMigrationResponse>, ErrorResponse> {
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let db_client = sql::Client::connect(
+        &Option::<sql::ConnectionConfig>::from(env_config).ok_or(Error::MissingEnvConfig)?,
+    )
+    .await
+    .map_err(Error::Internal)?;
+
+    let version = db_client
+        .get_current_migration()
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(Json(GetCurrentMigrationResponse { version }))
+}
+
+#[axum::debug_handler]
+async fn post_backup(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PostBackupRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let store = Store::from_env_name(&state, env_name).await?;
+
+    store.create_backup(body.kind).await?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn post_restore_backup(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(body): Json<PostRestoreBackupRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let backup_kind = match body.kind {
+        PostRestoreBackupKind::Deletion => neon::BackupKind::Deletion,
+        PostRestoreBackupKind::Deployment => neon::BackupKind::Deployment,
+        PostRestoreBackupKind::Migration => neon::BackupKind::Migration,
+    };
+
+    let neon_client = neon::Client::new();
+
+    neon_client
+        .restore_backup(&env_name.clone().into(), backup_kind)
+        .await
+        .map_err(Error::Internal)?;
+
+    // A Postgres rollback can change which `base_id` is current, so the cached `base_id` and any
+    // data caches derived from it (`tables`, plus the per-endpoint data caches) must be wiped --
+    // otherwise user-facing GETs will read a stale `base_id` from KV and the CDN will keep
+    // serving pre-restore responses for the cache TTL window.
+    kv::delete_cache(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let cloudflare_client = cf::Client::new();
+
+    cloudflare_client
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(&env_name),
+        )
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn delete_cache(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::delete_cache(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let cloudflare_client = cf::Client::new();
+
+    cloudflare_client
+        .purge_cache(
+            &config::cloudflare_zone_id(),
+            &cf::CacheTag::for_env(&env_name),
+        )
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_admin_config(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+) -> Result<Json<Config>, ErrorResponse> {
+    Ok(Json(
+        kv::get_env_config(&state.kv, &env_name)
+            .await
+            .map_err(Error::Internal)?,
+    ))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn put_admin_config(
+    State(state): State<Arc<AppState>>,
+    Path(env_name): Path<EnvName>,
+    Json(config): Json<Config>,
+) -> Result<NoContent, ErrorResponse> {
+    kv::put_env_config(&state.kv, &env_name, &config)
+        .await
+        .map_err(Error::Internal)?;
+
+    // `/apps/{env_id}/config` is edge-cached, so without this the new values wouldn't be visible
+    // until the TTL lapsed.
+    purge_env_cache(&env_name).await;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+async fn get_config_spec() -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(serde_json::from_str::<serde_json::Value>(CONFIG_SPEC)
+        .map(Json)
+        .map_err(anyhow::Error::from)
+        .map_err(Error::Internal)?)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_events(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_events(cache_uri, |events| GetEventsResponse {
+            events: events
+                .into_iter()
+                .map(|event| Event {
+                    id: event.id,
+                    name: event.name,
+                    summary: event.summary,
+                    description: event.description,
+                    start_time: event.start_time,
+                    end_time: event.end_time,
+                    location: event.location.map(|location| EventLocation {
+                        id: location.id,
+                        name: location.name,
+                    }),
+                    people: event
+                        .people
+                        .into_iter()
+                        .map(|person| EventPerson {
+                            id: person.id,
+                            name: person.name,
+                        })
+                        .collect::<Vec<_>>(),
+                    category: event.category.map(|category| EventCategory {
+                        id: category.id,
+                        name: category.name,
+                    }),
+                    tags: event
+                        .tags
+                        .into_iter()
+                        .map(|tag| EventTag {
+                            id: tag.id,
+                            name: tag.name,
+                        })
+                        .collect::<Vec<_>>(),
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_people(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_people(cache_uri, |people| GetPeopleResponse {
+            people: people
+                .into_iter()
+                .map(|person| Person {
+                    id: person.id,
+                    name: person.name,
+                    bio: person.bio,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_locations(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_locations(cache_uri, |locations| GetLocationsResponse {
+            locations: locations
+                .into_iter()
+                .map(|location| Location {
+                    id: location.id,
+                    name: location.name,
+                    description: location.description,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_info(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    };
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+    let env_name = store.env_name().to_string();
+
+    store
+        .get_info(cache_uri, |info| GetInfoResponse {
+            env_name,
+            name: info.about.name.clone(),
+            description: info.about.description.clone(),
+            website_url: info.about.website_url.clone(),
+            links: info
+                .links
+                .into_iter()
+                .map(|link| Link {
+                    name: link.name,
+                    url: link.url,
+                })
+                .collect::<Vec<_>>(),
+            files: info
+                .about
+                .files
+                .into_iter()
+                .map(|file| File {
+                    id: file.id,
+                    name: file.name,
+                    media_type: file.media_type,
+                    signed_url: file.signed_url,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_pages(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_pages(cache_uri, |pages| GetPagesResponse {
+            pages: pages
+                .into_iter()
+                .map(|page| Page {
+                    id: page.id,
+                    title: page.title,
+                    body: page.body,
+                    files: page
+                        .files
+                        .into_iter()
+                        .map(|file| File {
+                            id: file.id,
+                            name: file.name,
+                            media_type: file.media_type,
+                            signed_url: file.signed_url,
+                        })
+                        .collect::<Vec<_>>(),
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_announcements(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_announcements(cache_uri, |announcements| GetAnnouncementsResponse {
+            announcements: announcements
+                .into_iter()
+                .map(|announcement| Announcement {
+                    id: announcement.id,
+                    title: announcement.title,
+                    body: announcement.body,
+                    attachments: announcement
+                        .files
+                        .into_iter()
+                        .map(|file| File {
+                            id: file.id,
+                            name: file.name,
+                            media_type: file.media_type,
+                            signed_url: file.signed_url,
+                        })
+                        .collect::<Vec<_>>(),
+                    created_at: announcement.created_at,
+                    updated_at: announcement.updated_at,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_files(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_files(cache_uri, |files| GetFilesResponse {
+            files: files
+                .into_iter()
+                .map(|file| File {
+                    id: file.id,
+                    name: file.name,
+                    media_type: file.media_type,
+                    signed_url: file.signed_url,
+                })
+                .collect::<Vec<_>>(),
+        })
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_config(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    // This is the hottest endpoint in the API: the client app fetches it on every load, and the
+    // client worker needs it to decide custom-domain redirects and to render page metadata. Left
+    // uncached it costs four KV reads per call, which under a con-opening thundering herd is the
+    // largest avoidable load in the system.
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(response);
+    }
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    let app_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .map(|domain| domain.to_string());
+
+    let ttl = cache::cache_ttl(&config);
+
+    let body = Json(GetConfigResponse {
+        app_domain,
+        timezone: config.timezone,
+        day_cutoff_time: config.day_cutoff_time,
+        local_cache_max_age: config.local_cache_max_age,
+        hide_announcements: config.hide_announcements,
+        use_feedback: config.use_feedback,
+        feedback_icon: config.feedback_icon,
+        feedback_title: config.feedback_title,
+        feedback_detail: config.feedback_detail,
+        feedback_url: config.feedback_url,
+        use_schedule_sharing: config.use_schedule_sharing,
+        use_calendar_export: config.use_calendar_export,
+        use_schedule_sync: config.use_schedule_sync,
+        use_custom_icon: config.use_custom_icon,
+        favicon_name: config.favicon_name,
+        opengraph_icon_name: config.opengraph_icon_name,
+        opengraph_icon_type: config.opengraph_icon_type,
+        opengraph_icon_alt: config.opengraph_icon_alt,
+        pwa_short_app_name: config.pwa_short_app_name,
+        pwa_background_color: config.pwa_background_color,
+        pwa_icon_any_name: config.pwa_icon_any_name,
+        pwa_icon_any_type: config.pwa_icon_any_type,
+        pwa_icon_any_sizes: config.pwa_icon_any_sizes,
+        pwa_icon_maskable_name: config.pwa_icon_maskable_name,
+        pwa_icon_maskable_type: config.pwa_icon_maskable_type,
+        pwa_icon_maskable_sizes: config.pwa_icon_maskable_sizes,
+        use_push_notifications: config.use_push_notifications,
+        notifications_icon_name: config.notifications_icon_name,
+    });
+
+    cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await
+}
+
+// Serve a JSON response and seed the edge cache with it, so subsequent requests within the TTL are
+// answered without re-reading KV. The response handed back to the caller is marked `no-cache` so
+// browsers always revalidate; the copy we store carries the `s-maxage` that actually governs the
+// edge, along with the environment's cache tag so it can be purged on write.
+async fn cached_json_response<T>(
+    state: &Arc<AppState>,
+    cache: Cache,
+    env_name: EnvName,
+    ttl: Duration,
+    cache_uri: Uri,
+    body: Json<T>,
+) -> Result<http::Response<Body>, ErrorResponse>
+where
+    T: Serialize,
+{
+    let mut response = body.into_response();
+
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, no-cache"),
+    );
+
+    let mut worker_response = worker::Response::try_from(response)
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    let response_to_cache = worker_response
+        .cloned()
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    state.ctx.wait_until(async move {
+        put_cdn_cache(&cache, env_name, ttl, cache_uri, response_to_cache).await;
+    });
+
+    Ok(http::Response::from(worker_response))
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn post_subscription(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(subscription): Json<push::Subscription>,
+) -> Result<NoContent, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    kv::put_subscription(&state.kv, &env_name, &subscription)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn delete_subscription(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(body): Json<DeleteSubscriptionRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    // Idempotent: deleting a subscription that isn't present is still a
+    // success — the desired state ("this subscription isn't stored") holds
+    // either way, and the SW reliably retries on transient failures.
+    kv::delete_subscription(
+        &state.kv,
+        &env_name,
+        &push::SubscriptionId::from_endpoint(&body.endpoint),
+    )
+    .await
+    .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+// Generous bounds that any real schedule stays well under, but that stop an anonymous caller from
+// stuffing arbitrarily large blobs into KV.
+const MAX_SCHEDULE_LEN: usize = 2000;
+const MAX_EVENT_ID_LEN: usize = 8;
+
+fn validate_schedule(schedule: &[String]) -> Result<(), Error> {
+    if schedule.len() > MAX_SCHEDULE_LEN || schedule.iter().any(|id| id.len() > MAX_EVENT_ID_LEN) {
+        return Err(Error::InvalidSchedule);
+    }
+
+    Ok(())
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn put_schedule(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, sync_code)): Path<(EnvId, SyncCode)>,
+    Json(body): Json<PutScheduleRequest>,
+) -> Result<NoContent, ErrorResponse> {
+    validate_schedule(&body.schedule)?;
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    kv::put_schedule(&state.kv, &env_name, &sync_code, &body.schedule)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_schedule(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, sync_code)): Path<(EnvId, SyncCode)>,
+) -> Result<Json<GetScheduleResponse>, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let schedule = kv::get_schedule(&state.kv, &env_name, &sync_code)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::ScheduleNotFound)?;
+
+    Ok(Json(GetScheduleResponse { schedule }))
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementWebhook {
+    data: NocoAnnouncementWebhookData,
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementWebhookData {
+    #[serde(default)]
+    rows: Vec<NocoAnnouncementRow>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NocoAnnouncementRow {
+    #[serde(rename = "Title")]
+    title: String,
+    #[serde(rename = "Announcement", default)]
+    body: Option<String>,
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn post_announcement_created(
+    State(state): State<Arc<AppState>>,
+    Path(env_id): Path<EnvId>,
+    Json(webhook): Json<NocoAnnouncementWebhook>,
+) -> Result<NoContent, ErrorResponse> {
+    // The consumer needs this to sign, but there's no point queueing work we know can't be
+    // delivered, so fail loudly here instead.
+    if config::vapid_key().is_none() {
+        return Err(StatusCode::SERVICE_UNAVAILABLE.into());
+    }
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let env_config = kv::get_env_config(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    if !env_config.use_push_notifications.unwrap_or(true) {
+        return Ok(NoContent);
+    }
+
+    let icon = env_config
+        .use_custom_icon
+        .unwrap_or(false)
+        .then_some(env_config.notifications_icon_name)
+        .flatten()
+        .map(|name| {
+            format!(
+                "https://{}/apps/{}/assets/{}",
+                config::api_domain(),
+                env_id,
+                name
+            )
+        });
+
+    let has_custom_domain = kv::get_env_domain(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?
+        .is_some();
+
+    // Re-seed the persistent cache from NocoDB and purge the edge cache for this environment so the
+    // new announcement is available immediately.
+    Store::from_env_id(&state, &env_id)
+        .await?
+        .refresh_announcements_cache()
+        .await?;
+
+    let mut payloads: Vec<String> = Vec::with_capacity(webhook.data.rows.len());
+    for row in &webhook.data.rows {
+        let body = push::markdown_to_plain_text(row.body.as_deref().unwrap_or(""));
+        let payload = push::Payload {
+            title: &row.title,
+            // We send the user to the announcements list page rather than the page for the specific
+            // announcement because the new announcement won't be in their local cache by the time
+            // they get there. However, refreshing the cache ensures the new announcement should
+            // appear quickly.
+            url: if has_custom_domain {
+                "/announcements".into()
+            } else {
+                format!("/app/{}/announcements", env_id)
+            },
+            body,
+            icon: icon.clone(),
+        };
+        payloads.push(serde_json::to_string(&payload).map_err(|e| Error::Internal(e.into()))?);
+    }
+
+    // Listing ids is bounded — one KV `list` per 1,000 subscribers, no per-subscriber read — so
+    // this stays cheap however large the convention is. The actual sending happens in the queue
+    // consumers, which each get their own subrequest budget.
+    let subscription_ids = kv::list_subscription_ids(&state.kv, &env_name)
+        .await
+        .map_err(Error::Internal)?;
+
+    for payload in &payloads {
+        let jobs = push::chunk_jobs(&env_name, payload, subscription_ids.clone());
+
+        // Deliberately not in `wait_until`: enqueueing is fast and bounded, and a fan-out that
+        // silently fails to start is the exact failure this endpoint used to have.
+        push::enqueue_jobs(&state.queue, jobs)
+            .await
+            .map_err(Error::Internal)?;
+    }
+
+    Ok(NoContent)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_asset(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path((env_id, name)): Path<(EnvId, String)>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    if let Some(cached_response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+        return Ok(cached_response);
+    };
+
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    let bucket_key = format!("env/{env_name}/{name}");
+
+    let object = state
+        .bucket
+        .get(&bucket_key)
+        .execute()
+        .await
+        .map_err(|err| Error::Internal(err.into()))?
+        .ok_or(Error::AssetNotFound)?;
+
+    let response_headers = http_headers_from_object(&object).map_err(Error::Internal)?;
+
+    response_headers
+        .set("Cache-Control", "public, no-cache")
+        .map_err(anyhow::Error::from)
+        .map_err(Error::Internal)?;
+
+    // Using `ObjectBody::response_body()` here is important because it offloads streaming the data
+    // to the Workers runtime, which saves us CPU time (and therefore money).
+    let response_body = object
+        .body()
+        .ok_or(Error::AssetNotFound)?
+        .response_body()
+        .map_err(|err| Error::Internal(err.into()))?;
+
+    let response = http::Response::from(
+        worker::Response::from_body(response_body)
+            .map_err(anyhow::Error::from)
+            .map_err(Error::Internal)?
+            .with_headers(response_headers),
+    );
+
+    let mut worker_response = worker::Response::try_from(response)
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    let response_to_cache = worker_response
+        .cloned()
+        .map_err(|err| Error::Internal(anyhow::Error::from(err)))?;
+
+    state.ctx.wait_until(async move {
+        put_cdn_cache(
+            &cache,
+            env_name,
+            config::r2_asset_cache_ttl(),
+            cache_uri,
+            response_to_cache,
+        )
+        .await;
+    });
+
+    Ok(http::Response::from(worker_response))
+}
