@@ -86,7 +86,7 @@ registerRoute(
   ({ request, url }) => request.destination === "document" && url.origin === self.location.origin,
   new NetworkFirst({
     cacheName: APP_SHELL_CACHE_NAME,
-    networkTimeoutSeconds: 3,
+    networkTimeoutSeconds: 2,
     plugins: [
       {
         cacheKeyWillBeUsed: ({ request }) => Promise.resolve(appShellCacheKey(request.url)),
@@ -96,7 +96,15 @@ registerRoute(
         // This is necessary because we changed the format of the cache key at
         // one point, and we need to migrate existing clients to use the new
         // key.
-        handlerDidError: async ({ request }) => {
+        //
+        // This has to hook every cache read, not just `handlerDidError`.
+        // `NetworkFirst` also reads the cache when the network times out, and
+        // on a spotty connection the request hangs rather than failing. If we
+        // only migrated on error, a timeout that missed the new key would
+        // leave the page waiting on the network indefinitely.
+        cachedResponseWillBeUsed: async ({ request, cachedResponse }) => {
+          if (cachedResponse !== undefined) return cachedResponse;
+
           const cache = await caches.open(APP_SHELL_CACHE_NAME);
           const shell = await cache.match(legacyAppShellCacheKey(request.url));
           if (shell === undefined) return undefined;

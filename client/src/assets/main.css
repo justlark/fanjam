@@ -11,6 +11,20 @@
 @import "tailwindcss-primeui";
 
 /*
+Tailwind only applies hover styles when the device reports `(hover: hover)`,
+but some touchscreen devices report that anyway, which causes hover styles to
+"stick" to an element after it's tapped. Also requiring a fine pointer excludes
+those devices.
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
 Because we build the color classes dynamically, we need to safelist them to
 keep them from being tree-shaken out.
  */

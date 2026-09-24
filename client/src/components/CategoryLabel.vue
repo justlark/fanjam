@@ -35,31 +35,33 @@ const bg = (value: number) => newBgColor(props.category ?? props.title, allCateg
 const outline = (value: number) =>
   newOutlineColor(props.category ?? props.title, allCategories.value, value);
 
+// The "hover" display is styled like "inactive", but looks like "active" on
+// hover.
 const categoryStyles = computed(() => [
   `!${textSize.value}`,
   `!${fg(700)}`,
-  `!${bg(100)}`,
+  ...(props.display == "active" ? [`!${bg(100)}`] : []),
   ...(props.display == "hover" || props.display == "inactive"
-    ? ["outline", `!${outline(700)}`, `dark:!${outline(200)}`]
+    ? [
+        "outline",
+        `!${outline(700)}`,
+        `dark:!${outline(200)}`,
+        "!bg-transparent",
+        `dark:!${fg(200)}`,
+      ]
     : []),
-  ...(props.display == "hover" ? ["not-hover:!bg-transparent", `not-hover:dark:!${fg(200)}`] : []),
-  ...(props.display == "inactive" ? ["!bg-transparent", `dark:!${fg(200)}`] : []),
+  ...(props.display == "hover" ? [`hover:!${bg(100)}`, `hover:dark:!${fg(700)}`] : []),
 ]);
 
 const standaloneStyles = computed(() => [
   `!${textSize.value}`,
   "!text-surface-600",
   "dark:!text-surface-300",
-  ...(props.display == "active" || props.display == "hover"
-    ? ["!bg-surface-200", "dark:!bg-surface-700"]
-    : []),
+  ...(props.display == "active" ? ["!bg-surface-200", "dark:!bg-surface-700"] : []),
   ...(props.display == "hover" || props.display == "inactive"
-    ? ["outline", "!outline-surface-400", "dark:!outline-surface-700"]
-    : []),
-  ...(props.display == "hover" ? ["not-hover:!bg-transparent"] : []),
-  ...(props.display == "inactive"
     ? ["outline", "!outline-surface-400", "dark:!outline-surface-700", "!bg-transparent"]
     : []),
+  ...(props.display == "hover" ? ["hover:!bg-surface-200", "hover:dark:!bg-surface-700"] : []),
 ]);
 </script>
 

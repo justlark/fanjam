@@ -20,9 +20,16 @@
     <meta property="twitter:image" content="/icons/icon-padded.png" />
     <meta property="twitter:image:alt" content="A calendar" />
 
-    <!-- Self-hosted privacy-preserving analytics. -->
+    <!--
+      Self-hosted privacy-preserving analytics.
+
+      This must be `async`, not `defer`. Deferred scripts and module scripts
+      execute in document order, so a deferred script here would stop the app
+      bundle from running until it finishes downloading. On a spotty connection
+      that request can hang indefinitely.
+    -->
     <script
-      defer
+      async
       src="/stats.js"
       data-website-id="b0f28bee-56d2-4a2d-a8c9-802c849b87fb"
       data-host-url="https://umami.fanjam.live"
