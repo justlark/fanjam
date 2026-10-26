@@ -3,6 +3,7 @@ mod auth;
 mod cache;
 mod cf;
 mod config;
+mod coordinator;
 mod cors;
 mod env;
 mod error;
@@ -36,6 +37,7 @@ async fn fetch(
         kv: env.kv("KV")?,
         bucket: SendWrapper(env.bucket("ASSETS_BUCKET")?),
         queue: env.queue("PUSH_QUEUE")?,
+        coordinator: env.durable_object("REFRESH_COORDINATOR")?,
         ctx: Arc::new(ctx),
     };
 

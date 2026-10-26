@@ -37,6 +37,16 @@ pub fn app_url(env_id: &EnvId, custom_domain: Option<&EnvDomain>) -> anyhow::Res
     }
 }
 
+// The API endpoint the client app fetches an environment's announcements from. We need this in
+// order to purge this endpoint when push notifications for announcements go out.
+pub fn announcements_api_url(env_id: &EnvId) -> anyhow::Result<Url> {
+    let api_domain = config::api_domain();
+
+    Ok(Url::parse(&format!(
+        "https://{api_domain}/apps/{env_id}/announcements"
+    ))?)
+}
+
 // The URL of a local instance of the client app for testing.
 pub fn local_url(env_id: &EnvId) -> anyhow::Result<Url> {
     Ok(Url::parse(&format!("http://localhost:5173/app/{env_id}"))?)

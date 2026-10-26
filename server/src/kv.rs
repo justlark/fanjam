@@ -413,6 +413,26 @@ put_cache_fn!(
 );
 put_cache_fn!(put_cached_files, files_cache_key, &[File]);
 
+// Read a value from the persistent cache as raw JSON, under a key from one of the `*_cache_key`
+// functions.
+#[worker::send]
+pub async fn get_cached_json(kv: &KvStore, key: &str) -> anyhow::Result<Option<String>> {
+    kv.get(key).text().await.map_err(wrap_kv_err)
+}
+
+// Write a value to the persistent cache that's already been serialized to JSON, under a key from
+// one of the `*_cache_key` functions. Used by the refresh coordinator, which only has the JSON.
+#[worker::send]
+pub async fn put_cached_json(kv: &KvStore, key: &str, json: &str) -> anyhow::Result<()> {
+    kv.put(key, json)
+        .map_err(wrap_kv_err)?
+        .execute()
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
 macro_rules! get_cache_fn {
     ($name:ident, $key_fn:expr, $type:ty) => {
         #[worker::send]

@@ -56,16 +56,42 @@ interface File {
   signed_url: string;
 }
 
+// How long to wait on the API for app metadata before giving up and serving
+// the defaults. The metadata only dresses up the page (title, icons, link
+// previews), so it's never worth holding up a page load for it. This is a
+// budget for the whole request, not for each API call; see `MetadataLoader`.
+const METADATA_TIMEOUT_MS = 1000;
+
+// How long to wait on the API to resolve a custom domain to its environment.
+// Unlike the metadata, there's nothing to fall back on if this fails, so it
+// gets more slack.
+const DOMAIN_LOOKUP_TIMEOUT_MS = 3000;
+
+// Fetch from the API, giving up when `signal` aborts. Resolves to `undefined`
+// rather than throwing if the request fails or is aborted. Aborting also cuts
+// off reading the body, so callers still need to handle that failing.
+const fetchApi = async (url: string, signal: AbortSignal): Promise<Response | undefined> => {
+  try {
+    return await fetch(url, { signal });
+  } catch {
+    return undefined;
+  }
+};
+
 interface AppInfo {
   env_name?: string;
   name?: string;
   description?: string;
 }
 
-const getAppInfo = async (apiDomain: string, envId: string): Promise<AppInfo> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/info`);
+const getAppInfo = async (
+  apiDomain: string,
+  envId: string,
+  signal: AbortSignal,
+): Promise<AppInfo> => {
+  const response = await fetchApi(`https://${apiDomain}/apps/${envId}/info`, signal);
 
-  if (!response.ok) {
+  if (!response?.ok) {
     return {};
   }
 
@@ -109,10 +135,14 @@ interface AppConfig {
   pwa_icon_maskable_sizes?: string;
 }
 
-const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig> => {
-  const response = await fetch(`https://${apiDomain}/apps/${envId}/config`);
+const getAppConfig = async (
+  apiDomain: string,
+  envId: string,
+  signal: AbortSignal,
+): Promise<AppConfig> => {
+  const response = await fetchApi(`https://${apiDomain}/apps/${envId}/config`, signal);
 
-  if (!response.ok) {
+  if (!response?.ok) {
     return {
       use_custom_icon: false,
     };
@@ -128,17 +158,90 @@ const getAppConfig = async (apiDomain: string, envId: string): Promise<AppConfig
   }
 };
 
+// Fetches the app metadata for one request. Each piece is fetched at most
+// once, since the config is needed both for the custom domain redirect and for
+// the page itself. The calls share a single `METADATA_TIMEOUT_MS` deadline,
+// starting from the first one, so a hanging API delays the page by that much in
+// total, rather than once per call.
+interface MetadataLoader {
+  info: () => Promise<AppInfo>;
+  config: () => Promise<AppConfig>;
+}
+
+const createMetadataLoader = (apiDomain: string, envId: string): MetadataLoader => {
+  let deadline: AbortSignal | undefined;
+  let info: Promise<AppInfo> | undefined;
+  let config: Promise<AppConfig> | undefined;
+
+  const signal = () => (deadline ??= AbortSignal.timeout(METADATA_TIMEOUT_MS));
+
+  return {
+    info: () => (info ??= getAppInfo(apiDomain, envId, signal())),
+    config: () => (config ??= getAppConfig(apiDomain, envId, signal())),
+  };
+};
+
+type DomainLookup =
+  | { status: "found"; envId: string }
+  // The API says this hostname isn't mapped to any environment.
+  | { status: "not-found" }
+  // We couldn't find out, because the API failed or timed out.
+  | { status: "unavailable" };
+
 const resolveCustomHostname = async (
   apiDomain: string,
   hostname: string,
-): Promise<string | undefined> => {
-  const response = await fetch(`https://${apiDomain}/domains/${encodeURIComponent(hostname)}`);
-  if (response.ok) {
-    const body = await response.json();
-    return (body as { env_id?: string }).env_id;
+): Promise<DomainLookup> => {
+  const response = await fetchApi(
+    `https://${apiDomain}/domains/${encodeURIComponent(hostname)}`,
+    AbortSignal.timeout(DOMAIN_LOOKUP_TIMEOUT_MS),
+  );
+
+  if (response === undefined) {
+    return { status: "unavailable" };
   }
 
-  return undefined;
+  // Only a definite answer from the API means the domain is unknown. Anything
+  // else, like a 5xx while KV is having a bad day, is transient, and treating
+  // it as unknown would take down every page on the domain.
+  if (response.status === 404 || response.status === 400) {
+    return { status: "not-found" };
+  }
+
+  if (!response.ok) {
+    return { status: "unavailable" };
+  }
+
+  try {
+    const body = await response.json();
+    const envId = (body as { env_id?: string }).env_id;
+    return envId ? { status: "found", envId } : { status: "unavailable" };
+  } catch {
+    return { status: "unavailable" };
+  }
+};
+
+// Resolve a custom domain to its env ID, or produce the response to send if we
+// can't.
+const lookupCustomHostname = async (env: Env, hostname: string): Promise<string | Response> => {
+  const lookup = await resolveCustomHostname(env.API_DOMAIN, hostname);
+
+  switch (lookup.status) {
+    case "found":
+      return lookup.envId;
+    case "not-found":
+      // The request reached the worker on a hostname that isn't the default
+      // and isn't mapped to any env. Return with a 404 Not Found instead of
+      // serving the client app with broken metadata.
+      return new Response("Not Found", { status: 404 });
+    case "unavailable":
+      // The service worker falls back to the cached app shell on a 5xx, so
+      // returning visitors don't see this.
+      return new Response("Service Unavailable", {
+        status: 503,
+        headers: { "Retry-After": "5", "Cache-Control": "no-store" },
+      });
+  }
 };
 
 const fileToResponseHeaders = (file: File): Record<string, string> => ({
@@ -186,6 +289,7 @@ const webManifestResponse = async (
   env: Env,
   envId: string,
   publicPrefix: string,
+  metadata: MetadataLoader,
 ): Promise<Response | undefined> => {
   if (!matchManifestPath(requestUrl.pathname, publicPrefix)) {
     return undefined;
@@ -193,10 +297,7 @@ const webManifestResponse = async (
 
   // These two don't depend on each other, so fetch them concurrently rather
   // than paying two serial round trips on the way to rendering the page.
-  const [appInfo, appConfig] = await Promise.all([
-    getAppInfo(env.API_DOMAIN, envId),
-    getAppConfig(env.API_DOMAIN, envId),
-  ]);
+  const [appInfo, appConfig] = await Promise.all([metadata.info(), metadata.config()]);
 
   const mountUrl = `${requestUrl.origin}${publicPrefix}`;
 
@@ -284,14 +385,12 @@ const injectEnvIdMeta = (envId: string, response: Response): Response => {
 const injectAppMetadata = async (
   env: Env,
   envId: string,
+  metadata: MetadataLoader,
   response: Response,
 ): Promise<Response> => {
   // These two don't depend on each other, so fetch them concurrently rather
   // than paying two serial round trips on the way to rendering the page.
-  const [appInfo, appConfig] = await Promise.all([
-    getAppInfo(env.API_DOMAIN, envId),
-    getAppConfig(env.API_DOMAIN, envId),
-  ]);
+  const [appInfo, appConfig] = await Promise.all([metadata.info(), metadata.config()]);
 
   return (
     new HTMLRewriter()
@@ -463,24 +562,55 @@ export default {
         publicPrefix = `/app/${envId}/`;
       }
     } else {
-      const resolved = await resolveCustomHostname(env.API_DOMAIN, requestUrl.hostname);
-      if (resolved === undefined) {
-        // The request reached the worker on a hostname that isn't the default
-        // and isn't mapped to any env. Return with a 404 Not Found instead of serving
-        // the client app with broken metadata.
-        return new Response("Not Found", { status: 404 });
-      }
-
-      envId = resolved;
       publicPrefix = "/";
+
+      // On a custom domain, only the HTML, attachments and the web manifest
+      // depend on which environment the domain belongs to. Everything else (JS
+      // and CSS chunks, fonts, icons) is the same build for every environment,
+      // so serving it shouldn't wait on the domain lookup, or fail with it.
+      // That matters most while the service worker is installing, when it
+      // fetches every precached asset at once. We resolve the domain here for
+      // attachments and the manifest, and further down once we know the
+      // response is HTML.
+      if (
+        matchFilePath(requestUrl.pathname, publicPrefix) !== undefined ||
+        matchManifestPath(requestUrl.pathname, publicPrefix)
+      ) {
+        const resolved = await lookupCustomHostname(env, requestUrl.hostname);
+        if (resolved instanceof Response) {
+          return resolved;
+        }
+
+        envId = resolved;
+      }
     }
+
+    // The env ID is settled at most once per request, at whichever point we
+    // learn it, so one loader serves the whole request.
+    let metadata: MetadataLoader | undefined;
+    const metadataFor = (envId: string): MetadataLoader =>
+      (metadata ??= createMetadataLoader(env.API_DOMAIN, envId));
 
     // When an environment has a custom domain configured, requests to the
     // default domain should redirect to the custom domain. We send `Cache-Control:
     // no-cache` so that if an environment gets a custom domain added or removed,
     // the change takes effect immediately.
-    if (onDefaultHostname && envId) {
-      const config = await getAppConfig(env.API_DOMAIN, envId);
+    if (onDefaultHostname && envId && publicPrefix) {
+      const loader = metadataFor(envId);
+
+      // If we'll need the info too, for the page or the web manifest, start
+      // fetching it now, so it runs alongside the config rather than after it.
+      // Otherwise, it would only get whatever is left of the shared deadline.
+      const needsInfo =
+        matchManifestPath(requestUrl.pathname, publicPrefix) ||
+        (env.INJECT_METADATA === "true" &&
+          matchFilePath(requestUrl.pathname, publicPrefix) === undefined);
+
+      if (needsInfo) {
+        void loader.info();
+      }
+
+      const config = await loader.config();
 
       if (config.app_domain) {
         const remainingPath = requestUrl.pathname.slice(`/app/${envId}`.length) || "/";
@@ -509,7 +639,13 @@ export default {
 
       // If this is the URL of a web manifest, generate it instead of forwarding
       // the request to the CDN.
-      const webManifest = await webManifestResponse(requestUrl, env, envId, publicPrefix);
+      const webManifest = await webManifestResponse(
+        requestUrl,
+        env,
+        envId,
+        publicPrefix,
+        metadataFor(envId),
+      );
       if (webManifest) {
         return webManifest;
       }
@@ -518,11 +654,20 @@ export default {
     const response = await env.ASSETS.fetch(request);
     let newResponse = cloneResponseWithHeaders(response, {});
 
+    if (!onDefaultHostname && envId === undefined && isHtmlResponse(newResponse)) {
+      const resolved = await lookupCustomHostname(env, requestUrl.hostname);
+      if (resolved instanceof Response) {
+        return resolved;
+      }
+
+      envId = resolved;
+    }
+
     for (const [key, value] of Object.entries(rootHeaders)) {
       newResponse.headers.set(key, value);
     }
 
-    if (envId !== undefined) {
+    if (envId !== undefined || !onDefaultHostname) {
       for (const [key, value] of Object.entries(appHeaders)) {
         newResponse.headers.set(key, value);
       }
@@ -531,7 +676,7 @@ export default {
     // Make sure we only rewrite HTML responses.
     if (envId && publicPrefix && isHtmlResponse(newResponse)) {
       if (env.INJECT_METADATA === "true") {
-        newResponse = await injectAppMetadata(env, envId, newResponse);
+        newResponse = await injectAppMetadata(env, envId, metadataFor(envId), newResponse);
       }
 
       newResponse = injectWebManifestLink(requestUrl, publicPrefix, newResponse);

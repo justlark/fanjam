@@ -10,14 +10,15 @@ use axum::{
     http::{self, Uri},
     response::IntoResponse,
 };
-use futures::future::{Either, select};
+use futures::future::{Either, FutureExt, LocalBoxFuture, select};
 use rand::Rng;
-use serde::Serialize;
+use serde::{Serialize, de::IgnoredAny};
 use worker::kv::KvStore;
-use worker::{Cache, Context, Delay, console_error, console_log, console_warn};
+use worker::{Cache, Context, Delay, ObjectNamespace, console_error, console_log, console_warn};
 
 use crate::api::{DataResponseEnvelope, Freshness, PostBackupKind};
-use crate::cache::{EtagJson, put_cdn_cache};
+use crate::cache::{EtagJson, put_data_cdn_cache};
+use crate::coordinator::{self, Endpoint};
 use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
 use crate::neon::BackupSnapshot;
@@ -30,26 +31,23 @@ use crate::{
     sql::{Client as DbClient, ConnectionConfig as DbConnectionConfig},
 };
 
-/// Per-`(environment, cache key)` bookkeeping for background refreshes of the persistent cache,
-/// scoped to this isolate. It does two jobs:
+/// Per-endpoint bookkeeping for background refreshes, scoped to this isolate and keyed by the edge
+/// cache URL (see `refresh_key`). It does two jobs:
 ///
 /// 1. **Stampede protection.** If a refresh is already in flight for a key, we do not spawn
 ///    another. Otherwise every request arriving in the window after the edge cache expires would
-///    hammer the upstream NocoDB instance.
+///    start one.
 ///
 /// 2. **Backoff.** When a refresh fails, we record a cooldown before another may be attempted,
-///    growing exponentially with consecutive failures. Without this, a fast-failing NocoDB (say,
-///    500s returned in 50ms) gets re-attempted at request arrival rate, and that load is precisely
-///    what stops it from recovering.
+///    growing exponentially with consecutive failures. Without this, a fast-failing upstream gets
+///    re-attempted at request arrival rate.
 ///
-/// This only works **within this isolate**. Under heavy load, Cloudflare may spin up multiple
-/// isolates to handle requests. That may mean a few concurrent refreshes for the same key, or a
-/// freshly-spawned isolate spending one attempt before it learns that upstream is unhealthy, but
-/// for our use-case that's on the order of "a few" and not "a few hundred", which is acceptable.
-///
-/// We actually *do not* want global state across all isolates across all datacenters, because the
-/// CDN cache (what we call the "edge cache" below) is scoped per-datacenter, so each datacenter
-/// needs to refresh independently anyways.
+/// This only works **within this isolate**, and under heavy load, Cloudflare runs a great many of
+/// them. Each one refreshing on its own was enough to knock NocoDB over in load testing, so a
+/// refresh doesn't go to NocoDB directly; it goes to the refresh coordinator (see `coordinator`),
+/// which fetches at most once per TTL for every isolate in every datacenter, and has its own
+/// backoff covering all of them. What's left here limits each isolate to one call to the
+/// coordinator at a time, and backs it off when the coordinator says NocoDB is failing.
 ///
 /// Workers isolates are inherently single-threaded, so the Mutex never actually contends; it's
 /// only needed to satisfy Send/Sync bounds.
@@ -81,7 +79,18 @@ const MAX_BACKOFF: Duration = Duration::from_secs(60);
 // How long a background refresh may run before we abandon it and count it as a failure. Generous,
 // because a NocoDB instance waking from suspend is legitimately slow; the point is only to stop a
 // hung fetch from holding the in-flight guard indefinitely.
-const REFRESH_TIMEOUT: Duration = Duration::from_secs(15);
+//
+// This is a little longer than the coordinator's own timeout on NocoDB, so a slow fetch times out
+// there, where its backoff covers every isolate, rather than here.
+fn refresh_timeout() -> Duration {
+    config::noco_fetch_timeout() + Duration::from_secs(5)
+}
+
+// The key for `REFRESH_STATE`. The edge cache URL pins down both the environment and the endpoint,
+// and unlike the environment name, it's known on an edge cache hit without any KV reads.
+fn refresh_key(uri: &Uri) -> String {
+    uri.to_string()
+}
 
 // What to do about refreshing a given cache key *right now*.
 //
@@ -105,14 +114,14 @@ enum RefreshAction {
 // Wall-clock milliseconds. Not monotonic, but Workers freezes the clock within a request and only
 // advances it after I/O, and every decision point here follows a network await, so it advances
 // when we need it to.
-fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
 // How long to wait before attempting another refresh, after `consecutive_failures` failures in a
 // row. Doubles per failure up to `MAX_BACKOFF`, with equal jitter (half the delay fixed, half
 // random) so isolates that failed at the same moment don't all retry in lockstep.
-fn backoff_delay(consecutive_failures: u32) -> Duration {
+pub(crate) fn backoff_delay(consecutive_failures: u32) -> Duration {
     // Capping the exponent keeps the multiplication well clear of overflow; anything past a few
     // failures is clamped to `MAX_BACKOFF` regardless.
     let exponent = consecutive_failures.saturating_sub(1).min(16);
@@ -204,22 +213,22 @@ fn finish_refresh(key: &str, succeeded: bool) {
     );
 }
 
-// Run an upstream request, giving up after `REFRESH_TIMEOUT`. Dropping the losing future cancels
-// the in-flight `fetch`, and `Delay` cancels its timer when dropped, so neither leaks.
-async fn with_refresh_timeout<F, T>(key: &str, request: F) -> Option<T>
+// Run an upstream request, giving up after `timeout`. Dropping the losing future cancels the
+// in-flight `fetch`, and `Delay` cancels its timer when dropped, so neither leaks.
+pub(crate) async fn with_timeout<F, T>(key: &str, timeout: Duration, request: F) -> Option<T>
 where
     F: Future<Output = Option<T>>,
 {
     let request = pin!(request);
-    let timeout = pin!(Delay::from(REFRESH_TIMEOUT));
+    let delay = pin!(Delay::from(timeout));
 
-    match select(request, timeout).await {
+    match select(request, delay).await {
         Either::Left((value, _)) => value,
         Either::Right(((), _)) => {
             console_warn!(
                 "Refresh for {} timed out after {}s.",
                 key,
-                REFRESH_TIMEOUT.as_secs(),
+                timeout.as_secs()
             );
 
             None
@@ -227,10 +236,88 @@ where
     }
 }
 
+async fn with_refresh_timeout<F, T>(key: &str, request: F) -> Option<T>
+where
+    F: Future<Output = Option<T>>,
+{
+    with_timeout(key, refresh_timeout(), request).await
+}
+
+// Writes freshly fetched data to both the persistent cache and the edge cache.
+pub type CacheWrite = LocalBoxFuture<'static, ()>;
+
+// Run a refresh in the background, write the result to both caches, and record the outcome. Only
+// call this after `try_begin_refresh` returned `RefreshAction::Spawn` for `key`.
+//
+// The in-flight flag stays set until the caches have been written, not just until NocoDB answers.
+// Clearing it any sooner would let a request arriving in between, which still sees the old edge
+// cache entry, spawn a second refresh.
+fn spawn_refresh<T, R>(ctx: &Context, key: String, refresh: R)
+where
+    T: 'static,
+    R: Future<Output = Option<(T, CacheWrite)>> + 'static,
+{
+    ctx.wait_until(async move {
+        let latest = with_refresh_timeout(&key, refresh).await;
+        let succeeded = latest.is_some();
+
+        if let Some((_, write_cache)) = latest {
+            write_cache.await;
+        }
+
+        finish_refresh(&key, succeeded);
+    });
+}
+
+// Called on an edge cache hit that's due for a refresh (see `cache::put_data_cdn_cache`). This
+// starts a background refresh to replace it, subject to the same in-flight guard and backoff as a
+// refresh from the persistent cache, and returns the freshness to mark the hit with, classified
+// the same way too.
+//
+// `refresh` is handed the `Store` for the environment, which we only build once we know a refresh
+// is going ahead. Building it costs several KV reads, and most hits on a due entry arrive while a
+// refresh is already running.
+pub fn refresh_ahead<T, F, R>(
+    state: &Arc<AppState>,
+    env_id: EnvId,
+    uri: Uri,
+    refresh: F,
+) -> Freshness
+where
+    T: 'static,
+    F: FnOnce(&Store, Uri) -> R + 'static,
+    R: Future<Output = Option<(T, CacheWrite)>> + 'static,
+{
+    let key = refresh_key(&uri);
+    let (action, freshness) = try_begin_refresh(&key);
+
+    // This is the hot path, so unlike the persistent-cache path, we don't log when we skip.
+    if action != RefreshAction::Spawn {
+        return freshness;
+    }
+
+    let state_for_refresh = Arc::clone(state);
+
+    let refresh = async move {
+        match Store::from_env_id(&state_for_refresh, &env_id).await {
+            Ok(store) => refresh(&store, uri).await,
+            Err(e) => {
+                console_warn!("Failed setting up refresh for {}: {}", uri, e);
+                None
+            }
+        }
+    };
+
+    spawn_refresh(&state.ctx, key, refresh);
+
+    freshness
+}
+
 pub struct Store {
     noco_client: NocoClient,
     neon_client: NeonClient,
     kv: KvStore,
+    coordinator: ObjectNamespace,
     ctx: Arc<Context>,
     env_name: EnvName,
     base_id: BaseId,
@@ -252,7 +339,7 @@ pub struct MigrationChange {
     pub new_version: noco::Version,
 }
 
-// This macro generates a method on the `Store` for fetching data from NocoDB with caching.
+// This macro generates methods on the `Store` for fetching data from NocoDB with caching.
 //
 // We're using the Cloudflare cache API with a short TTL (configurable per-environment, but likely
 // on the order of seconds) to reduce the load on the upstream NocoDB instance. We'll call this the
@@ -260,14 +347,26 @@ pub struct MigrationChange {
 // once every *n* milliseconds per data center per cache key. This is important, because the NocoDB
 // instance is slower and much more expensive to scale than this worker.
 //
-// Once the edge cache expires, we need to fetch fresh data from NocoDB. However, this runs the
-// risk of a cache stampede, where many requests arriving all at once hammer the upstream NocoDB
-// instance. To remedy this, we have a second cache stored in KV that never expires. We'll call
-// this the "persistent cache". Requests that miss the edge cache will hit the persistent cache
-// instead, which will then kick off a background task (that does not block the request from
-// returning) to update both caches with fresh data from NocoDB. We also implement a locking
-// mechanism to ensure that only one request at a time can trigger this background refresh,
-// otherwise we would have the same cache stampede problem. See `REFRESH_STATE`.
+// Edge cache entries are refreshed *ahead* of expiry. An entry is kept for a grace period past its
+// TTL, and a hit after the TTL is still served, but also kicks off a background refresh (see
+// `cache::put_data_cdn_cache` and `refresh_ahead`). So as long as requests keep coming in, the edge
+// cache never actually expires, and requests never have to wait on NocoDB or go anywhere else.
+// Those hits are marked `Stale` (see below), so the client still checks back for the refreshed
+// data; that retry is just another cheap edge cache hit.
+//
+// When traffic is quiet for long enough that an entry does expire, or after it's purged, we need
+// to fetch fresh data from NocoDB. However, this runs the risk of a cache stampede, where many
+// requests arriving all at once hammer the upstream NocoDB instance. To remedy this, we have a
+// second cache stored in KV that never expires. We'll call this the "persistent cache". Requests
+// that miss the edge cache will hit the persistent cache instead, which will then kick off a
+// background task (that does not block the request from returning) to update both caches with
+// fresh data from NocoDB.
+//
+// Both kinds of background refresh share a locking mechanism to ensure that only one request at a
+// time can trigger them, otherwise we would have the same cache stampede problem. See
+// `REFRESH_STATE`. That only covers one isolate, though, so refreshes don't go to NocoDB directly.
+// They go through the refresh coordinator, which fetches from NocoDB at most once per TTL for
+// everyone, and keeps the persistent cache up to date itself. See `coordinator`.
 //
 // Every response carries a `Freshness` telling the client how current the data is. When we serve
 // out of the persistent cache and NocoDB is healthy, we mark it `Stale`, and the client checks
@@ -282,12 +381,129 @@ pub struct MigrationChange {
 macro_rules! get_data {
     {
         fn_name: $fn_name:ident,
+        refresh_fn_name: $refresh_fn_name:ident,
         type_name: $type_name:ty,
+        endpoint: $endpoint:expr,
         get_api_fn: $get_api_fn:path,
         get_cached_fn: $get_cached_fn:path,
         put_cached_fn: $put_cached_fn:path,
         cache_key: $cache_key:expr,
     } => {
+        // Get the latest data, by way of the refresh coordinator. On success, this resolves to the
+        // response body, along with a future that writes the data to the edge cache; the caller
+        // decides whether to await that or hand it to `Context::wait_until`.
+        //
+        // The returned future owns everything it needs, so it can outlive the request.
+        pub fn $refresh_fn_name<T, F>(
+            &self,
+            uri: Uri,
+            to_body: F,
+        ) -> impl Future<Output = Option<(T, CacheWrite)>> + use<T, F>
+        where
+            T: Serialize + Clone + 'static,
+            F: FnOnce($type_name) -> T + 'static,
+        {
+            let kv = self.kv.clone();
+            let env_name = self.env_name.clone();
+            let noco_client = self.noco_client.clone();
+            let base_id = self.base_id.clone();
+            let coordinator = self.coordinator.clone();
+            let cache_ttl = self.cache_ttl();
+
+            async move {
+                // The coordinator keeps the persistent cache up to date itself. The kill switch
+                // falls back to fetching from NocoDB directly, the way every isolate used to, and
+                // then it's on us to write the persistent cache too.
+                let (value, fetched_at_ms, value_for_kv): ($type_name, i64, Option<$type_name>) =
+                    if config::use_refresh_coordinator() {
+                        let result = coordinator::fetch::<$type_name>(
+                            &coordinator,
+                            &env_name,
+                            &base_id,
+                            $endpoint,
+                            cache_ttl,
+                            false,
+                        )
+                        .await;
+
+                        match result {
+                            Ok(fetched) => (fetched.value, fetched.fetched_at_ms, None),
+                            Err(e) => {
+                                console_warn!(
+                                    "Failed getting {} from the refresh coordinator: {}",
+                                    $cache_key,
+                                    e,
+                                );
+                                return None;
+                            }
+                        }
+                    } else {
+                        let fetched_at_ms = now_ms();
+
+                        let table_ids = match Self::get_table_ids(&kv, &env_name, &noco_client, &base_id).await {
+                            Ok(table_ids) => table_ids,
+                            Err(e) => {
+                                console_warn!("Failed getting table IDs from NocoDB: {}", e);
+                                return None;
+                            }
+                        };
+
+                        match $get_api_fn(&noco_client, &table_ids).await {
+                            Ok(value) => {
+                                let value_for_kv = value.clone();
+                                (value, fetched_at_ms, Some(value_for_kv))
+                            }
+                            Err(e) => {
+                                console_warn!("Failed getting {} from NocoDB: {}", $cache_key, e);
+                                return None;
+                            }
+                        }
+                    };
+
+                let body = to_body(value);
+                let body_for_cache = body.clone();
+
+                let write_cache = async move {
+                    console_log!("Caching latest {} in the edge cache.", $cache_key);
+
+                    if let Some(value) = value_for_kv
+                        && let Err(e) = $put_cached_fn(&kv, &env_name, &value).await
+                    {
+                        console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
+                    }
+
+                    // Responses that hit the edge cache are by definition fresh; this entry is
+                    // only written after a successful refresh. Marking it otherwise would catch
+                    // the client in an infinite retry loop.
+                    //
+                    // Hits past the TTL are the exception, and get re-marked on the way out. See
+                    // `cache::with_freshness`.
+                    let response_for_edge_cache_result = worker::Response::try_from(
+                        EtagJson(DataResponseEnvelope::new(Freshness::Fresh, body_for_cache))
+                        .into_response()
+                    );
+
+                    let response_for_edge_cache = match response_for_edge_cache_result {
+                        Ok(response) => response,
+                        Err(_) => return,
+                    };
+
+                    put_data_cdn_cache(
+                        &Cache::default(),
+                        env_name,
+                        cache_ttl,
+                        fetched_at_ms,
+                        uri,
+                        response_for_edge_cache,
+                    ).await;
+                };
+
+                Some((body, write_cache.boxed_local()))
+            }
+        }
+
+        // Serve data on an edge cache miss: out of the persistent cache if it has anything,
+        // otherwise straight from NocoDB.
         #[worker::send]
         pub async fn $fn_name<T, F>(&self, uri: Uri, to_body: F) -> Result<http::Response<Body>, Error>
         where
@@ -309,93 +525,16 @@ macro_rules! get_data {
                 }
             };
 
-            // Required because `Context::wait_until` requires a static future.
-            let kv_for_upstream = self.kv.clone();
-            let env_name_for_upstream = self.env_name.clone();
-            let noco_client_for_upstream = self.noco_client.clone();
-            let base_id_for_upstream = self.base_id.clone();
-
-            // A request to get the most recent data from NocoDB.
-            let upstream_request = async move {
-                match Self::get_table_ids(&kv_for_upstream, &env_name_for_upstream, &noco_client_for_upstream, &base_id_for_upstream).await {
-                    Ok(table_ids) => {
-                        match $get_api_fn(&noco_client_for_upstream, &table_ids)
-                            .await
-                        {
-                            Ok(value) => Some(value),
-                            Err(e) => {
-                                console_warn!("Failed getting {} from NocoDB: {}", $cache_key, e);
-                                None
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        console_warn!("Failed getting table IDs from NocoDB: {}", e);
-                        None
-                    }
-                }
-            };
-
-            let kv_for_cache = self.kv.clone();
-            let env_name_for_cache = self.env_name.clone();
-            let env_name_for_cdn = self.env_name.clone();
-            let cache_ttl = self.cache_ttl();
-
-            // Refresh both the edge cache and the persistent cache.
-            let put_cache = async move |value: $type_name, body: T| {
-                console_log!("Caching latest {} from NocoDB.", $cache_key);
-
-                if let Err(e) = $put_cached_fn(&kv_for_cache, &env_name_for_cache, &value).await {
-                    console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
-                }
-
-                // Responses that hit the edge cache are by definition fresh; this entry is only
-                // written after a successful refresh. Marking it otherwise would catch the client
-                // in an infinite retry loop.
-                let response_for_edge_cache_result = worker::Response::try_from(
-                    EtagJson(DataResponseEnvelope::new(Freshness::Fresh, body))
-                    .into_response()
-                );
-
-                let response_for_edge_cache = match response_for_edge_cache_result {
-                    Ok(response) => response,
-                    Err(_) => return,
-                };
-
-                put_cdn_cache(
-                    &Cache::default(),
-                    env_name_for_cdn,
-                    cache_ttl,
-                    uri,
-                    response_for_edge_cache,
-                ).await;
-            };
+            let refresh_key = refresh_key(&uri);
 
             match cached_value {
                 Some(cached_value) => {
-                    let to_body_for_cache = to_body.clone();
-                    let body = to_body(cached_value);
-
-                    let refresh_key = format!("{}:{}", self.env_name, $cache_key);
                     let (action, freshness) = try_begin_refresh(&refresh_key);
 
                     match action {
                         RefreshAction::Spawn => {
-                            self.ctx.wait_until(async move {
-                                let latest = with_refresh_timeout(
-                                    &refresh_key,
-                                    upstream_request,
-                                ).await;
-
-                                let succeeded = latest.is_some();
-
-                                if let Some(latest_value) = latest {
-                                    let latest_body = to_body_for_cache(latest_value.clone());
-                                    put_cache(latest_value, latest_body).await;
-                                }
-
-                                finish_refresh(&refresh_key, succeeded);
-                            });
+                            let refresh = self.$refresh_fn_name(uri, to_body.clone());
+                            spawn_refresh(&self.ctx, refresh_key, refresh);
                         }
                         RefreshAction::AlreadyInFlight => {
                             console_log!(
@@ -412,13 +551,14 @@ macro_rules! get_data {
                         }
                     }
 
+                    let body = to_body(cached_value);
+
                     Ok(EtagJson(DataResponseEnvelope::new(freshness, body)).into_response())
                 },
                 None => {
                     // The persistent cache is empty, which should only be the case for new
                     // environments or after the cache is manually cleared. We need to block and
                     // wait for the upstream request, because we have nothing else to serve.
-                    let refresh_key = format!("{}:{}", self.env_name, $cache_key);
 
                     // If upstream is in cooldown, we would only be making the caller wait on a
                     // request we expect to fail. Fail fast instead of piling onto the load that's
@@ -434,20 +574,16 @@ macro_rules! get_data {
                         return Err(Error::NocoUnavailable);
                     }
 
-                    // Deliberately no in-flight guard and no timeout on this path. A legitimate
-                    // cold start — a new environment, or one whose cache was just cleared — has to
-                    // be allowed to block and fetch, however slow NocoDB is to wake up.
-                    let latest = upstream_request.await;
+                    // Deliberately no in-flight guard and no timeout of our own on this path. A
+                    // legitimate cold start — a new environment, or one whose cache was just
+                    // cleared — has to be allowed to block and fetch. Every request here waits on
+                    // the coordinator, which makes them all share one fetch from NocoDB.
+                    let latest = self.$refresh_fn_name(uri, to_body).await;
 
                     finish_refresh(&refresh_key, latest.is_some());
 
-                    if let Some(latest_value) = latest {
-                        let body = to_body(latest_value.clone());
-                        let body_for_cache = body.clone();
-
-                        self.ctx.wait_until(async move {
-                            put_cache(latest_value, body_for_cache).await;
-                        });
+                    if let Some((body, write_cache)) = latest {
+                        self.ctx.wait_until(write_cache);
 
                         // This data came straight from NocoDB, so it's as current as it gets. The
                         // edge cache is populated in the background above, so there's nothing for
@@ -517,6 +653,7 @@ impl Store {
             noco_client,
             neon_client,
             kv,
+            coordinator: state.coordinator.clone(),
             ctx,
             env_name,
             base_id,
@@ -550,7 +687,7 @@ impl Store {
         crate::cache::cache_ttl(&self.env_config)
     }
 
-    async fn get_table_ids(
+    pub(crate) async fn get_table_ids(
         kv: &KvStore,
         env_name: &EnvName,
         noco_client: &NocoClient,
@@ -581,7 +718,9 @@ impl Store {
 
     get_data! {
         fn_name: get_events,
+        refresh_fn_name: refresh_events,
         type_name: Vec<noco::Event>,
+        endpoint: Endpoint::Events,
         get_api_fn: noco::get_events,
         get_cached_fn: kv::get_cached_events,
         put_cached_fn: kv::put_cached_events,
@@ -590,7 +729,9 @@ impl Store {
 
     get_data! {
         fn_name: get_people,
+        refresh_fn_name: refresh_people,
         type_name: Vec<noco::Person>,
+        endpoint: Endpoint::People,
         get_api_fn: noco::get_people,
         get_cached_fn: kv::get_cached_people,
         put_cached_fn: kv::put_cached_people,
@@ -599,7 +740,9 @@ impl Store {
 
     get_data! {
         fn_name: get_locations,
+        refresh_fn_name: refresh_locations,
         type_name: Vec<noco::Location>,
+        endpoint: Endpoint::Locations,
         get_api_fn: noco::get_locations,
         get_cached_fn: kv::get_cached_locations,
         put_cached_fn: kv::put_cached_locations,
@@ -608,7 +751,9 @@ impl Store {
 
     get_data! {
         fn_name: get_info,
+        refresh_fn_name: refresh_info,
         type_name: noco::Info,
+        endpoint: Endpoint::Info,
         get_api_fn: noco::get_info,
         get_cached_fn: kv::get_cached_info,
         put_cached_fn: kv::put_cached_info,
@@ -617,7 +762,9 @@ impl Store {
 
     get_data! {
         fn_name: get_pages,
+        refresh_fn_name: refresh_pages,
         type_name: Vec<noco::Page>,
+        endpoint: Endpoint::Pages,
         get_api_fn: noco::get_pages,
         get_cached_fn: kv::get_cached_pages,
         put_cached_fn: kv::put_cached_pages,
@@ -626,7 +773,9 @@ impl Store {
 
     get_data! {
         fn_name: get_announcements,
+        refresh_fn_name: refresh_announcements,
         type_name: Vec<noco::Announcement>,
+        endpoint: Endpoint::Announcements,
         get_api_fn: noco::get_announcements,
         get_cached_fn: kv::get_cached_announcements,
         put_cached_fn: kv::put_cached_announcements,
@@ -635,7 +784,9 @@ impl Store {
 
     get_data! {
         fn_name: get_files,
+        refresh_fn_name: refresh_files,
         type_name: Vec<noco::File>,
+        endpoint: Endpoint::Files,
         get_api_fn: noco::get_files,
         get_cached_fn: kv::get_cached_files,
         put_cached_fn: kv::put_cached_files,
@@ -645,25 +796,42 @@ impl Store {
     // Refresh the cache specifically with the latest announcements from NocoDB. This is necessary
     // because we send out push notifications for announcements.
     #[worker::send]
-    pub async fn refresh_announcements_cache(&self) -> Result<(), Error> {
-        let table_ids =
-            Self::get_table_ids(&self.kv, &self.env_name, &self.noco_client, &self.base_id).await?;
-
-        let announcements = noco::get_announcements(&self.noco_client, &table_ids)
-            .await
-            .map_err(Error::Internal)?;
-
-        // Refresh the persistent cache.
-        kv::put_cached_announcements(&self.kv, &self.env_name, &announcements)
-            .await
-            .map_err(Error::Internal)?;
-
-        // Purge the edge cache for this environment so incoming requests hit the persistent cache.
-        cf::Client::new()
-            .purge_cache(
-                &config::cloudflare_zone_id(),
-                &cf::CacheTag::for_env(&self.env_name),
+    pub async fn refresh_announcements_cache(&self, env_id: &EnvId) -> Result<(), Error> {
+        if config::use_refresh_coordinator() {
+            // Force a fetch, since the coordinator's latest data may well predate the new
+            // announcement. The coordinator writes the persistent cache before it answers, and we
+            // don't need the data itself.
+            coordinator::fetch::<IgnoredAny>(
+                &self.coordinator,
+                &self.env_name,
+                &self.base_id,
+                Endpoint::Announcements,
+                self.cache_ttl(),
+                true,
             )
+            .await
+            .map_err(Error::Internal)?;
+        } else {
+            let table_ids =
+                Self::get_table_ids(&self.kv, &self.env_name, &self.noco_client, &self.base_id)
+                    .await?;
+
+            let announcements = noco::get_announcements(&self.noco_client, &table_ids)
+                .await
+                .map_err(Error::Internal)?;
+
+            // Refresh the persistent cache.
+            kv::put_cached_announcements(&self.kv, &self.env_name, &announcements)
+                .await
+                .map_err(Error::Internal)?;
+        }
+
+        // Purge the edge cache for the announcements endpoint so incoming requests hit the
+        // persistent cache. We only purge this endpoint--not the whole environment.
+        let announcements_url = url::announcements_api_url(env_id).map_err(Error::Internal)?;
+
+        cf::Client::new()
+            .purge_cache_urls(&config::cloudflare_zone_id(), &[announcements_url])
             .await
             .map_err(Error::Internal)?;
 

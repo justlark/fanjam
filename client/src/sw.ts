@@ -114,6 +114,24 @@ registerRoute(
           return shell;
         },
       },
+      {
+        // `NetworkFirst` only falls back to the cache when the request fails
+        // outright, not when it comes back with an error status. The edge
+        // worker answers with a 503 when it can't resolve a custom domain, and
+        // the cached app shell is a much better answer than that. So we treat
+        // a 5xx as a network failure. If there's no cached shell to fall back
+        // on, we hand back the original response rather than a generic
+        // network error.
+        fetchDidSucceed: ({ response, state }) => {
+          if (response.status >= 500) {
+            if (state) state.serverError = response;
+            throw new Error(`Server responded with ${String(response.status)}`);
+          }
+
+          return Promise.resolve(response);
+        },
+        handlerDidError: ({ state }) => Promise.resolve(state?.serverError as Response | undefined),
+      },
     ],
   }),
 );

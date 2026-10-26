@@ -20,6 +20,9 @@ struct Config {
     neon_default_branch_name: String,
     noco_default_cdn_cache_ttl_millis: u32,
     r2_asset_cache_ttl_seconds: u32,
+    use_refresh_coordinator: bool,
+    refresh_coordinator_location: String,
+    noco_fetch_timeout_seconds: u32,
     // `None` if the VAPID secret for Web Push hasn't been set up. This
     // isn't a fatal error; it just means push notifications won't work.
     vapid: Option<push::VapidKey>,
@@ -29,6 +32,12 @@ struct Config {
 static CONFIG: OnceLock<Config> = OnceLock::new();
 
 pub fn init(env: &Env) -> anyhow::Result<()> {
+    // Building the config requires deriving the VAPID public key, which isn't cheap when it needs
+    // to happen on every request. We only need to build the config once per isolate.
+    if CONFIG.get().is_some() {
+        return Ok(());
+    }
+
     CONFIG
         .set(Config {
             base_domain: env.var("BASE_DOMAIN")?.to_string(),
@@ -50,6 +59,12 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
                 .parse()?,
             r2_asset_cache_ttl_seconds: env
                 .var("R2_ASSET_CACHE_TTL_SECONDS")?
+                .to_string()
+                .parse()?,
+            use_refresh_coordinator: env.var("USE_REFRESH_COORDINATOR")?.to_string().parse()?,
+            refresh_coordinator_location: env.var("REFRESH_COORDINATOR_LOCATION")?.to_string(),
+            noco_fetch_timeout_seconds: env
+                .var("NOCO_FETCH_TIMEOUT_SECONDS")?
                 .to_string()
                 .parse()?,
             vapid: init_vapid(env),
@@ -128,4 +143,16 @@ pub fn noco_default_cdn_cache_ttl() -> Duration {
 
 pub fn r2_asset_cache_ttl() -> Duration {
     Duration::from_secs(get_config().r2_asset_cache_ttl_seconds.into())
+}
+
+pub fn use_refresh_coordinator() -> bool {
+    get_config().use_refresh_coordinator
+}
+
+pub fn refresh_coordinator_location() -> String {
+    get_config().refresh_coordinator_location.clone()
+}
+
+pub fn noco_fetch_timeout() -> Duration {
+    Duration::from_secs(get_config().noco_fetch_timeout_seconds.into())
 }

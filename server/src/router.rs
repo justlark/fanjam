@@ -13,7 +13,8 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use worker::{
-    Bucket, Cache, Context, Queue, console_log, console_warn, kv::KvStore, send::SendWrapper,
+    Bucket, Cache, Context, ObjectNamespace, Queue, console_log, console_warn, kv::KvStore,
+    send::SendWrapper,
 };
 
 use serde::{Deserialize, Serialize};
@@ -30,7 +31,10 @@ use crate::{
         PutScheduleRequest, PutTokenRequest,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
-    cache::{self, cache_key_uri, get_cdn_cache, if_none_match_middleware, put_cdn_cache},
+    cache::{
+        self, cache_key_uri, get_cdn_cache, get_data_cdn_cache, if_none_match_middleware,
+        put_cdn_cache, with_freshness,
+    },
     cf, config,
     cors::cors_layer,
     env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName, SyncCode},
@@ -39,7 +43,7 @@ use crate::{
     kv, neon,
     noco::{self, ApiToken, MigrationState},
     push, sql,
-    store::{MigrationChange, Store},
+    store::{CacheWrite, MigrationChange, Store, refresh_ahead},
     url,
 };
 
@@ -61,6 +65,7 @@ pub struct AppState {
     pub kv: KvStore,
     pub bucket: SendWrapper<Bucket>,
     pub queue: Queue,
+    pub coordinator: ObjectNamespace,
     pub ctx: Arc<Context>,
 }
 
@@ -657,50 +662,60 @@ async fn get_events(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
-        return Ok(response);
+    let to_body = |events: Vec<noco::Event>| GetEventsResponse {
+        events: events
+            .into_iter()
+            .map(|event| Event {
+                id: event.id,
+                name: event.name,
+                summary: event.summary,
+                description: event.description,
+                start_time: event.start_time,
+                end_time: event.end_time,
+                location: event.location.map(|location| EventLocation {
+                    id: location.id,
+                    name: location.name,
+                }),
+                people: event
+                    .people
+                    .into_iter()
+                    .map(|person| EventPerson {
+                        id: person.id,
+                        name: person.name,
+                    })
+                    .collect::<Vec<_>>(),
+                category: event.category.map(|category| EventCategory {
+                    id: category.id,
+                    name: category.name,
+                }),
+                tags: event
+                    .tags
+                    .into_iter()
+                    .map(|tag| EventTag {
+                        id: tag.id,
+                        name: tag.name,
+                    })
+                    .collect::<Vec<_>>(),
+            })
+            .collect::<Vec<_>>(),
     };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_events(uri, to_body),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_events(cache_uri, |events| GetEventsResponse {
-            events: events
-                .into_iter()
-                .map(|event| Event {
-                    id: event.id,
-                    name: event.name,
-                    summary: event.summary,
-                    description: event.description,
-                    start_time: event.start_time,
-                    end_time: event.end_time,
-                    location: event.location.map(|location| EventLocation {
-                        id: location.id,
-                        name: location.name,
-                    }),
-                    people: event
-                        .people
-                        .into_iter()
-                        .map(|person| EventPerson {
-                            id: person.id,
-                            name: person.name,
-                        })
-                        .collect::<Vec<_>>(),
-                    category: event.category.map(|category| EventCategory {
-                        id: category.id,
-                        name: category.name,
-                    }),
-                    tags: event
-                        .tags
-                        .into_iter()
-                        .map(|tag| EventTag {
-                            id: tag.id,
-                            name: tag.name,
-                        })
-                        .collect::<Vec<_>>(),
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_events(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -715,23 +730,33 @@ async fn get_people(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
-        return Ok(response);
+    let to_body = |people: Vec<noco::Person>| GetPeopleResponse {
+        people: people
+            .into_iter()
+            .map(|person| Person {
+                id: person.id,
+                name: person.name,
+                bio: person.bio,
+            })
+            .collect::<Vec<_>>(),
     };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_people(uri, to_body),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_people(cache_uri, |people| GetPeopleResponse {
-            people: people
-                .into_iter()
-                .map(|person| Person {
-                    id: person.id,
-                    name: person.name,
-                    bio: person.bio,
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_people(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -746,23 +771,33 @@ async fn get_locations(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
-        return Ok(response);
+    let to_body = |locations: Vec<noco::Location>| GetLocationsResponse {
+        locations: locations
+            .into_iter()
+            .map(|location| Location {
+                id: location.id,
+                name: location.name,
+                description: location.description,
+            })
+            .collect::<Vec<_>>(),
     };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_locations(uri, to_body),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_locations(cache_uri, |locations| GetLocationsResponse {
-            locations: locations
-                .into_iter()
-                .map(|location| Location {
-                    id: location.id,
-                    name: location.name,
-                    description: location.description,
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_locations(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -777,15 +812,9 @@ async fn get_info(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
-        return Ok(response);
-    };
-
-    let store = Store::from_env_id(&state, &env_id).await?;
-    let env_name = store.env_name().to_string();
-
-    store
-        .get_info(cache_uri, |info| GetInfoResponse {
+    // The response includes the environment name, which we only know once we have a `Store`.
+    let to_body = |env_name: String| {
+        move |info: noco::Info| GetInfoResponse {
             env_name,
             name: info.about.name.clone(),
             description: info.about.description.clone(),
@@ -809,7 +838,26 @@ async fn get_info(
                     signed_url: file.signed_url,
                 })
                 .collect::<Vec<_>>(),
-        })
+        }
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_info(uri, to_body(store.env_name().to_string())),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+    let env_name = store.env_name().to_string();
+
+    store
+        .get_info(cache_uri, to_body(env_name))
         .await
         .map_err(Into::into)
 }
@@ -824,33 +872,43 @@ async fn get_pages(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+    let to_body = |pages: Vec<noco::Page>| GetPagesResponse {
+        pages: pages
+            .into_iter()
+            .map(|page| Page {
+                id: page.id,
+                title: page.title,
+                body: page.body,
+                files: page
+                    .files
+                    .into_iter()
+                    .map(|file| File {
+                        id: file.id,
+                        name: file.name,
+                        media_type: file.media_type,
+                        signed_url: file.signed_url,
+                    })
+                    .collect::<Vec<_>>(),
+            })
+            .collect::<Vec<_>>(),
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_pages(uri, to_body),
+    )
+    .await?
+    {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_pages(cache_uri, |pages| GetPagesResponse {
-            pages: pages
-                .into_iter()
-                .map(|page| Page {
-                    id: page.id,
-                    title: page.title,
-                    body: page.body,
-                    files: page
-                        .files
-                        .into_iter()
-                        .map(|file| File {
-                            id: file.id,
-                            name: file.name,
-                            media_type: file.media_type,
-                            signed_url: file.signed_url,
-                        })
-                        .collect::<Vec<_>>(),
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_pages(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -865,35 +923,45 @@ async fn get_announcements(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+    let to_body = |announcements: Vec<noco::Announcement>| GetAnnouncementsResponse {
+        announcements: announcements
+            .into_iter()
+            .map(|announcement| Announcement {
+                id: announcement.id,
+                title: announcement.title,
+                body: announcement.body,
+                attachments: announcement
+                    .files
+                    .into_iter()
+                    .map(|file| File {
+                        id: file.id,
+                        name: file.name,
+                        media_type: file.media_type,
+                        signed_url: file.signed_url,
+                    })
+                    .collect::<Vec<_>>(),
+                created_at: announcement.created_at,
+                updated_at: announcement.updated_at,
+            })
+            .collect::<Vec<_>>(),
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_announcements(uri, to_body),
+    )
+    .await?
+    {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_announcements(cache_uri, |announcements| GetAnnouncementsResponse {
-            announcements: announcements
-                .into_iter()
-                .map(|announcement| Announcement {
-                    id: announcement.id,
-                    title: announcement.title,
-                    body: announcement.body,
-                    attachments: announcement
-                        .files
-                        .into_iter()
-                        .map(|file| File {
-                            id: file.id,
-                            name: file.name,
-                            media_type: file.media_type,
-                            signed_url: file.signed_url,
-                        })
-                        .collect::<Vec<_>>(),
-                    created_at: announcement.created_at,
-                    updated_at: announcement.updated_at,
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_announcements(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -908,24 +976,34 @@ async fn get_files(
     let cache = Cache::default();
     let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
 
-    if let Some(response) = get_cdn_cache(&cache, cache_uri.clone()).await? {
+    let to_body = |files: Vec<noco::File>| GetFilesResponse {
+        files: files
+            .into_iter()
+            .map(|file| File {
+                id: file.id,
+                name: file.name,
+                media_type: file.media_type,
+                signed_url: file.signed_url,
+            })
+            .collect::<Vec<_>>(),
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_files(uri, to_body),
+    )
+    .await?
+    {
         return Ok(response);
     }
 
     let store = Store::from_env_id(&state, &env_id).await?;
 
     store
-        .get_files(cache_uri, |files| GetFilesResponse {
-            files: files
-                .into_iter()
-                .map(|file| File {
-                    id: file.id,
-                    name: file.name,
-                    media_type: file.media_type,
-                    signed_url: file.signed_url,
-                })
-                .collect::<Vec<_>>(),
-        })
+        .get_files(cache_uri, to_body)
         .await
         .map_err(Into::into)
 }
@@ -996,6 +1074,47 @@ async fn get_config(
     });
 
     cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await
+}
+
+// Serve a data endpoint from the edge cache, if it's there.
+//
+// A hit that's outlived its TTL also starts a background refresh via `refresh`, and goes out marked
+// stale (or backoff) instead of fresh, so the client knows to check back. If re-marking fails, we
+// fall back to the persistent cache rather than serve it marked fresh.
+async fn get_data_from_edge_cache<T, F, R>(
+    state: &Arc<AppState>,
+    cache: &Cache,
+    env_id: &EnvId,
+    cache_uri: &Uri,
+    refresh: F,
+) -> Result<Option<http::Response<Body>>, Error>
+where
+    T: 'static,
+    F: FnOnce(&Store, Uri) -> R + 'static,
+    R: Future<Output = Option<(T, CacheWrite)>> + 'static,
+{
+    let Some(hit) = get_data_cdn_cache(cache, cache_uri.clone()).await? else {
+        return Ok(None);
+    };
+
+    if !hit.refresh_due {
+        return Ok(Some(hit.response));
+    }
+
+    let freshness = refresh_ahead(state, env_id.clone(), cache_uri.clone(), refresh);
+
+    match with_freshness(hit.response, freshness).await {
+        Ok(response) => Ok(Some(response)),
+        Err(err) => {
+            console_warn!(
+                "Failed re-marking edge cache hit for {}. Falling back to the persistent cache: {}",
+                cache_uri,
+                err
+            );
+
+            Ok(None)
+        }
+    }
 }
 
 // Serve a JSON response and seed the edge cache with it, so subsequent requests within the TTL are
@@ -1196,12 +1315,24 @@ async fn post_announcement_created(
         .map_err(Error::Internal)?
         .is_some();
 
-    // Re-seed the persistent cache from NocoDB and purge the edge cache for this environment so the
-    // new announcement is available immediately.
-    Store::from_env_id(&state, &env_id)
-        .await?
-        .refresh_announcements_cache()
-        .await?;
+    // Re-seed the persistent cache from NocoDB and purge the edge cache for the announcements
+    // endpoint so the new announcement is available immediately.
+    //
+    // This is best-effort. If NocoDB is slow or the purge fails, the new announcement still shows
+    // up once the edge cache expires. Failing here would mean the notification is never sent at
+    // all.
+    let refresh_result = match Store::from_env_id(&state, &env_id).await {
+        Ok(store) => store.refresh_announcements_cache(&env_id).await,
+        Err(err) => Err(err),
+    };
+
+    if let Err(err) = refresh_result {
+        console_warn!(
+            "Failed refreshing announcements cache for `{}`. Sending notifications anyway: {}",
+            env_name,
+            err
+        );
+    }
 
     let mut payloads: Vec<String> = Vec::with_capacity(webhook.data.rows.len());
     for row in &webhook.data.rows {

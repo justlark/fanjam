@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
+use worker::Url;
 
 use crate::{config, env::EnvName, http::RequestBuilder};
 
@@ -81,6 +82,21 @@ impl Client {
         )?
         .with_json(&json!({
             "tags": [tag.to_string()]
+        }))?
+        .exec()
+        .await?;
+
+        Ok(())
+    }
+
+    // Purge specific URLs rather than everything carrying a tag.
+    pub async fn purge_cache_urls(&self, zone_id: &ZoneId, urls: &[Url]) -> anyhow::Result<()> {
+        self.build_request(
+            worker::Method::Post,
+            &format!("/zones/{zone_id}/purge_cache"),
+        )?
+        .with_json(&json!({
+            "files": urls.iter().map(Url::as_str).collect::<Vec<_>>()
         }))?
         .exec()
         .await?;

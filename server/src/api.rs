@@ -114,11 +114,11 @@ pub enum Freshness {
     // handling this request. No retry needed.
     Fresh,
 
-    // Served from the persistent cache while a refresh runs against NocoDB. The client should
-    // retry on its own schedule to pick up the fresher data.
+    // Served from the persistent cache, or from an edge cache entry past its TTL, while a refresh
+    // runs against NocoDB. The client should retry on its own schedule to pick up the fresher data.
     Stale,
 
-    // Served from the persistent cache, and refreshes are in cooldown after repeated upstream
+    // Served from a cache, and refreshes are in cooldown after repeated upstream
     // failures. The client must *not* retry automatically; recovery doesn't depend on it. Once the
     // cooldown expires, the next organic request repopulates the caches for everyone.
     Backoff,
