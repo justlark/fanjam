@@ -168,5 +168,10 @@
     "key": "notifications_icon_name",
     "help": "The asset name of the icon to show with push notifications.",
     "sensitive": false
+  },
+  {
+    "key": "use_map_link",
+    "help": "Whether to show a link to a map for each event location in the client app.",
+    "sensitive": false
   }
 ]

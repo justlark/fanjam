@@ -2,13 +2,24 @@ use std::collections::HashMap;
 
 use chrono::DateTime;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use worker::Method;
+use worker::{Method, Url};
 
 use crate::noco::Client;
 
 use super::migrations::{TableId, TableIds};
 
 const PAGE_SIZE: u32 = 100;
+
+// We've configured NocoDB to only allow valid URLs to be entered, but it does not require a scheme.
+// Because the client does expect a scheme, we add one to URLs we get from NocoDB.
+fn require_url_scheme(link: String) -> Option<String> {
+    if Url::parse(&link).is_err() && !link.starts_with("http://") && !link.starts_with("https://") {
+        let url = format!("https://{}", link);
+        Url::parse(&url).map(|url| url.to_string()).ok()
+    } else {
+        Some(link)
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct PageInfo {
@@ -57,6 +68,8 @@ struct LocationResponse {
     pub name: String,
     #[serde(rename = "Description")]
     pub description: Option<String>,
+    #[serde(rename = "Map Link")]
+    pub map_link: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -219,6 +232,7 @@ pub struct Location {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    pub map_link: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -397,6 +411,7 @@ pub async fn get_locations(client: &Client, table_ids: &TableIds) -> anyhow::Res
             id: r.id.to_string(),
             name: r.name,
             description: r.description,
+            map_link: r.map_link.and_then(require_url_scheme),
         })
         .collect())
 }
@@ -409,7 +424,7 @@ pub async fn get_about(client: &Client, table_ids: &TableIds) -> anyhow::Result<
         .map(|r| About {
             name: Some(r.name),
             description: r.description,
-            website_url: r.website_url,
+            website_url: r.website_url.and_then(require_url_scheme),
             files: r
                 .files
                 .unwrap_or_default()
@@ -430,9 +445,11 @@ async fn get_links(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<
 
     Ok(link_records
         .into_iter()
-        .map(|r| Link {
-            name: r.name,
-            url: r.url,
+        .filter_map(|r| {
+            Some(Link {
+                name: r.name,
+                url: require_url_scheme(r.url)?,
+            })
         })
         .collect())
 }

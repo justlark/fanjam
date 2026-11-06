@@ -11,7 +11,8 @@ import { useToast } from "primevue/usetoast";
 import useRemoteData from "@/composables/useRemoteData";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
-import BioDialog from "./BioDialog.vue";
+import PersonDialog from "./PersonDialog.vue";
+import LocationDialog from "./LocationDialog.vue";
 import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
@@ -61,6 +62,9 @@ const currentLocationName = ref<string>();
 
 const currentLocationBio = computed(
   () => locations.value.find((location) => location.id === currentLocationId.value)?.description,
+);
+const currentLocationMapLink = computed(
+  () => locations.value.find((location) => location.id === currentLocationId.value)?.mapLink,
 );
 
 // Do not include the query params or fragment; users likely aren't intending
@@ -248,7 +252,7 @@ onMounted(() => {
         <span>No description</span>
       </div>
     </div>
-    <BioDialog
+    <PersonDialog
       v-if="currentPersonName"
       v-model:visible="personBioDialogVisible"
       :name="currentPersonName"
@@ -262,12 +266,13 @@ onMounted(() => {
         })
       "
     />
-    <BioDialog
+    <LocationDialog
       v-if="currentLocationName"
       v-model:visible="locationBioDialogVisible"
       :name="currentLocationName"
       icon="geo-alt-fill"
       :bio="currentLocationBio"
+      :map-link="currentLocationMapLink"
       @find="
         router.push({
           name: 'schedule',

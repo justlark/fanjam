@@ -33,6 +33,7 @@ interface RawLocation {
   id: string;
   name: string;
   description: string | null;
+  map_link: string | null;
 }
 
 interface RawInfo {
@@ -92,6 +93,7 @@ interface RawConfig {
   use_calendar_export: boolean | null;
   use_schedule_sync: boolean | null;
   use_push_notifications: boolean | null;
+  use_map_link: boolean | null;
 }
 
 // How current the data the server sent us is, and what we should do about it.
@@ -154,6 +156,7 @@ export interface Location {
   id: string;
   name: string;
   description?: string;
+  mapLink?: string;
 }
 
 export interface Event {
@@ -224,6 +227,7 @@ export interface Config {
   useCalendarExport?: boolean;
   useScheduleSync?: boolean;
   usePushNotifications?: boolean;
+  useMapLink?: boolean;
 }
 
 const isOk = (response: Response): boolean => response.ok;
@@ -362,6 +366,7 @@ const getLocations = async (envId: string): Promise<ApiResult<Array<Location>>> 
     id: location.id,
     name: location.name,
     description: location.description ?? undefined,
+    mapLink: location.map_link ?? undefined,
   }));
 
   return {
@@ -520,6 +525,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     useCalendarExport: rawConfig.use_calendar_export ?? undefined,
     useScheduleSync: rawConfig.use_schedule_sync ?? undefined,
     usePushNotifications: rawConfig.use_push_notifications ?? undefined,
+    useMapLink: rawConfig.use_map_link ?? undefined,
   };
 
   return { ok: true, value: config };

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { renderMarkdown } from "@/utils/markdown";
-import IconButton from "./IconButton.vue";
 import SimpleIcon from "./SimpleIcon.vue";
 import Dialog from "primevue/dialog";
 
@@ -9,8 +8,6 @@ const visible = defineModel<boolean>("visible", {
   type: Boolean,
   required: true,
 });
-
-defineEmits(["find"]);
 
 const props = defineProps<{
   name: string;
@@ -47,15 +44,7 @@ const bioHtml = computed(() => (props.bio ? renderMarkdown(props.bio) : undefine
       No information available
     </div>
     <template #footer>
-      <IconButton
-        class="mx-auto"
-        icon="search"
-        label="Find in Schedule"
-        size="sm"
-        :show-label="true"
-        :button-props="{ 'data-testid': 'bio-find-button' }"
-        @click="(event) => $emit('find', event)"
-      />
+      <slot />
     </template>
   </Dialog>
 </template>

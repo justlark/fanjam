@@ -778,6 +778,7 @@ async fn get_locations(
                 id: location.id,
                 name: location.name,
                 description: location.description,
+                map_link: location.map_link,
             })
             .collect::<Vec<_>>(),
     };
@@ -1071,6 +1072,7 @@ async fn get_config(
         pwa_icon_maskable_sizes: config.pwa_icon_maskable_sizes,
         use_push_notifications: config.use_push_notifications,
         notifications_icon_name: config.notifications_icon_name,
+        use_map_link: config.use_map_link,
     });
 
     cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await

@@ -210,6 +210,7 @@ pub struct Location {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    pub map_link: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -304,6 +305,7 @@ pub struct GetConfigResponse {
     pub pwa_icon_maskable_sizes: Option<String>,
     pub use_push_notifications: Option<bool>,
     pub notifications_icon_name: Option<String>,
+    pub use_map_link: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

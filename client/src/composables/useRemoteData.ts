@@ -462,6 +462,7 @@ interface StoredLocation {
   id: string;
   name: string;
   description?: string;
+  map_link?: string;
 }
 
 const locationsRef = shallowRef<FetchResult<Array<Location>>>({ status: "pending" });
@@ -481,12 +482,14 @@ const useRemoteLocations: DataSource<Readonly<Ref<Array<DeepReadonly<Location>>>
         id: location.id,
         name: location.name,
         description: location.description,
+        map_link: location.mapLink,
       })),
     fromCache: (data) =>
       data.map((location) => ({
         id: location.id,
         name: location.name,
         description: location.description,
+        mapLink: location.map_link,
       })),
   });
 
@@ -689,6 +692,7 @@ interface StoredConfig {
   use_calendar_export?: boolean;
   use_schedule_sync?: boolean;
   use_push_notifications?: boolean;
+  use_map_link?: boolean;
 }
 
 const configRef = shallowRef<FetchResult<Config>>({ status: "pending" });
@@ -717,6 +721,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       use_calendar_export: data.useCalendarExport,
       use_schedule_sync: data.useScheduleSync,
       use_push_notifications: data.usePushNotifications,
+      use_map_link: data.useMapLink,
     }),
     fromCache: (data) => ({
       timezone: data.timezone,
@@ -732,6 +737,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       useCalendarExport: data.use_calendar_export,
       useScheduleSync: data.use_schedule_sync,
       usePushNotifications: data.use_push_notifications,
+      useMapLink: data.use_map_link,
     }),
   });
 

@@ -6,6 +6,7 @@ mod n4;
 mod n5;
 mod n6;
 mod n7;
+mod n8;
 
 // Each base schema migration lives in its own module with the name `nX`, where `X` is the
 // incrementing migration number.
@@ -36,6 +37,7 @@ pub async fn run(
         n5::Migration::INDEX => n5::Migration::new(client, ctx).migrate(base_id).await?,
         n6::Migration::INDEX => n6::Migration::new(client, ctx).migrate(base_id).await?,
         n7::Migration::INDEX => n7::Migration::new(client, ctx).migrate(base_id).await?,
+        n8::Migration::INDEX => n8::Migration::new(client, ctx).migrate(base_id).await?,
         _ => return Ok(Outcome::AlreadyUpToDate),
     }
 

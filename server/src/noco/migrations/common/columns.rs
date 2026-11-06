@@ -84,12 +84,20 @@ pub async fn create_columns(
     client: &Client,
     requests: Vec<CreateColumnRequest<'_>>,
 ) -> anyhow::Result<()> {
+    // The v2 API responds with the metadata for the whole table, not just the new column, so we
+    // need to find the new column by its title.
     #[derive(Debug, Deserialize)]
     struct PostColumnResponse {
-        id: ColumnId,
+        columns: Vec<ColumnInfo>,
     }
 
     for request in requests {
+        let title = request
+            .body
+            .get("title")
+            .and_then(|title| title.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Column request is missing a title: {request:?}"))?;
+
         let column_id = client
             .build_request_v2(
                 Method::Post,
@@ -98,20 +106,22 @@ pub async fn create_columns(
             .with_json(&request.body)?
             .fetch::<PostColumnResponse>()
             .await?
+            .columns
+            .into_iter()
+            .find(|col| col.title.as_deref() == Some(title))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Created column `{title}` not found on table `{}`",
+                    request.table_id
+                )
+            })?
             .id;
-
-        let column_name = request
-            .body
-            .as_object()
-            .and_then(|obj| obj.get("title"))
-            .and_then(|title| title.as_str())
-            .unwrap_or("Unknown");
 
         (request.column_ref)(column_id.clone());
 
         console_log!(
             "Created Noco column `{}` with ID `{}` on table `{}`",
-            column_name,
+            title,
             column_id,
             request.table_id,
         );

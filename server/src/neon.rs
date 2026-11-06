@@ -203,6 +203,8 @@ impl Client {
             &format!("/projects/{}/snapshots/{}", project_id.0, snapshot_id.0),
         )?
         .allow_status(StatusCode::BAD_REQUEST)
+        // Neon returns this when the snapshot is still being created. We can delete it next time.
+        .allow_status(StatusCode::LOCKED)
         .exec()
         .await?;
 
