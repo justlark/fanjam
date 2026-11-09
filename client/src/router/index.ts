@@ -3,6 +3,7 @@ import HomeView from "../views/HomeView.vue";
 import { envContext } from "@/context";
 import { maybeCheckForAppUpdate } from "@/utils/appUpdate";
 import { onIdle } from "@/utils/idle";
+import { adoptSyncCode } from "@/composables/useScheduleSync";
 
 // All view routes use stable names so in-app navigation (`router.push({ name: "schedule" })`)
 // works identically on both the default hostname and on custom domains. Only the paths differ:
@@ -68,7 +69,7 @@ const defaultRoutes: Array<RouteRecordRaw> = [
       // the app to show a toast.
       const query: Record<string, string> = {};
       if (typeof to.query.s === "string") {
-        localStorage.setItem(`sync:${to.params.envId as string}`, to.query.s);
+        adoptSyncCode(to.params.envId as string, to.query.s);
         query.synced = "true";
       }
 
@@ -139,7 +140,7 @@ const customRoutes: Array<RouteRecordRaw> = [
       // On a custom domain the env ID isn't in the path; it comes from `envContext`.
       const query: Record<string, string> = {};
       if (envContext.mode === "custom" && typeof to.query.s === "string") {
-        localStorage.setItem(`sync:${envContext.envId}`, to.query.s);
+        adoptSyncCode(envContext.envId, to.query.s);
         query.synced = "true";
       }
 

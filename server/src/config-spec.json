@@ -120,6 +120,11 @@
     "sensitive": false
   },
   {
+    "key": "use_pwa",
+    "help": "Whether the app can be installed as a PWA. When false, the app doesn't serve a web manifest, so browsers won't offer to install it.",
+    "sensitive": false
+  },
+  {
     "key": "pwa_short_app_name",
     "help": "A short name for the app when installed as a PWA.",
     "sensitive": false

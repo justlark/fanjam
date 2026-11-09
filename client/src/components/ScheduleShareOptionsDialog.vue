@@ -6,11 +6,14 @@ import { useToast } from "primevue/usetoast";
 import { useRoute, useRouter } from "vue-router";
 import { TOAST_TTL_LONG } from "@/utils/toast";
 import useStarredEvents from "@/composables/useStarredEvents";
+import useScheduleSync from "@/composables/useScheduleSync";
+import { nextTick } from "vue";
 
 const router = useRouter();
 const toast = useToast();
 const route = useRoute();
 const starredEvents = useStarredEvents();
+const { addStars } = useScheduleSync();
 
 const visible = defineModel<boolean>("visible", {
   type: Boolean,
@@ -41,10 +44,14 @@ const exitSharedSchedule = async () => {
 const addToSchedule = async () => {
   const sharedSchedule = new Set([...starredEvents.value]);
   await clearSharedSchedule();
-  const originalSchedule = new Set([...starredEvents.value]);
 
-  starredEvents.value = sharedSchedule.union(originalSchedule);
-  const eventsAdded = sharedSchedule.difference(originalSchedule);
+  // Leaving share mode switches `starredEvents` back to the user's own stars in a watcher. Wait for
+  // that to land so we merge into their schedule rather than the shared one.
+  await nextTick();
+
+  // Going through sync (rather than assigning `starredEvents` directly) makes sure the merge is
+  // pushed on top of the server's schedule, even if this load hasn't pulled it yet.
+  const eventsAdded = addStars(sharedSchedule);
 
   toast.add({
     severity: "info",

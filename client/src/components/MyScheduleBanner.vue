@@ -16,7 +16,7 @@ import Popover from "primevue/popover";
 const starredEvents = useStarredEvents();
 const envId = useEnvId();
 const appUrl = useAppUrl();
-const { syncLink, syncEmojis, enableSync, stopSync } = useScheduleSync();
+const { syncLink, syncEmojis, revealSync, stopSync } = useScheduleSync();
 const {
   data: { config, events },
 } = useRemoteData();
@@ -61,13 +61,13 @@ const shareOptions = [
 
 const visibleShareOptions = computed(() => shareOptions.filter((option) => option.visible()));
 
-const selectShareOption = async (key: string) => {
+const selectShareOption = (key: string) => {
   if (key === "share") {
     shareDialogVisible.value = true;
   } else if (key === "sync") {
-    // No-op if already syncing; this just reopens the dialog so the link stays reachable for
-    // enrolling another device.
-    await enableSync();
+    // This device's schedule is already being pushed under its sync code, so there's nothing to
+    // wait for: the dialog just shows the link for enrolling another device.
+    revealSync();
     syncDialogVisible.value = true;
   } else if (key === "calendar") {
     downloadCalendar();

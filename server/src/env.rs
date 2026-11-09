@@ -38,9 +38,8 @@ impl fmt::Display for EnvName {
 // A random, client-generated code that identifies a synced schedule. The schedule is stored in KV
 // under this code, and anyone who knows it can read and overwrite the schedule, so it doubles as a
 // bearer secret. We generate it on the client, but validate its shape here because it arrives as
-// untrusted path input.
-pub const SYNC_CODE_LEN: usize = 12;
-
+// untrusted path input. We deliberately don't check its length: the client has changed how long a
+// code it generates, and devices (and shared sync links) still hold codes of the older length.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncCode(String);
 
@@ -48,14 +47,13 @@ impl TryFrom<String> for SyncCode {
     type Error = anyhow::Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.len() == SYNC_CODE_LEN
-            && value
-                .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        if value
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         {
             Ok(Self(value))
         } else {
-            anyhow::bail!("A sync code must be exactly {SYNC_CODE_LEN} characters of [a-z0-9].");
+            anyhow::bail!("A sync code must consist of characters [a-z0-9].");
         }
     }
 }
@@ -157,6 +155,7 @@ pub struct Config {
     pub opengraph_icon_name: Option<String>,
     pub opengraph_icon_type: Option<String>,
     pub opengraph_icon_alt: Option<String>,
+    pub use_pwa: Option<bool>,
     pub pwa_short_app_name: Option<String>,
     pub pwa_background_color: Option<String>,
     pub pwa_icon_any_name: Option<String>,

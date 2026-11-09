@@ -838,8 +838,8 @@ const useRemoteData: CombinedDataSource = () => {
   const scheduleSync = useScheduleSync();
 
   // Refresh only from the API endpoints the current route uses. This is used
-  // by the manual refresh button. When syncing is enabled, we also pull the
-  // latest schedule from the server alongside the rest of the data.
+  // by the manual refresh button. We also pull the device's latest schedule
+  // from the server alongside the rest of the data.
   const reloadAll = async () => {
     // In the background (this is deliberately not awaited), we also refresh
     // the local cache for data not relevant to the current route. This happens
@@ -936,8 +936,8 @@ export const provideRemoteData = () => {
   const remoteData = useRemoteData();
   provide(remoteDataKey, remoteData);
 
-  // Pull the synced schedule once on app load (if syncing is enabled),
-  // mirroring how the rest of the data is fetched eagerly on mount.
+  // Pull the device's synced schedule once on app load (or push it, if it
+  // hasn't reached the server yet), mirroring how the rest of the data is fetched eagerly on mount.
   void useScheduleSync().pullSchedule();
 
   if (appSetupDone) return;

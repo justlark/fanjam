@@ -125,6 +125,7 @@ interface AppConfig {
   opengraph_icon_name?: string;
   opengraph_icon_type?: string;
   opengraph_icon_alt?: string;
+  use_pwa?: boolean;
   pwa_short_app_name?: string;
   pwa_background_color?: string;
   pwa_icon_any_name?: string;
@@ -298,6 +299,16 @@ const webManifestResponse = async (
   // These two don't depend on each other, so fetch them concurrently rather
   // than paying two serial round trips on the way to rendering the page.
   const [appInfo, appConfig] = await Promise.all([metadata.info(), metadata.config()]);
+
+  // Without a manifest, the browser won't offer to install the app. Answer
+  // with a 404 rather than letting the request fall through to the CDN, which
+  // would serve up the app shell instead.
+  if (appConfig.use_pwa === false) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: { "Cache-Control": "no-cache" },
+    });
+  }
 
   const mountUrl = `${requestUrl.origin}${publicPrefix}`;
 
@@ -679,7 +690,10 @@ export default {
         newResponse = await injectAppMetadata(env, envId, metadataFor(envId), newResponse);
       }
 
-      newResponse = injectWebManifestLink(requestUrl, publicPrefix, newResponse);
+      const { use_pwa } = await metadataFor(envId).config();
+      if (use_pwa !== false) {
+        newResponse = injectWebManifestLink(requestUrl, publicPrefix, newResponse);
+      }
 
       if (!onDefaultHostname) {
         newResponse = injectEnvIdMeta(envId, newResponse);

@@ -548,6 +548,19 @@ pub async fn put_subscription(
 }
 
 #[worker::send]
+pub async fn delete_schedule(
+    kv: &KvStore,
+    env_name: &EnvName,
+    sync_code: &SyncCode,
+) -> anyhow::Result<()> {
+    kv.delete(&schedule_key(env_name, sync_code))
+        .await
+        .map_err(wrap_kv_err)?;
+
+    Ok(())
+}
+
+#[worker::send]
 pub async fn delete_subscription(
     kv: &KvStore,
     env_name: &EnvName,

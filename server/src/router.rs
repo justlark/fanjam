@@ -124,6 +124,10 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/schedule/{sync_code}", put(put_schedule))
         .route("/apps/{env_id}/schedule/{sync_code}", get(get_schedule))
         .route(
+            "/apps/{env_id}/schedule/{sync_code}",
+            delete(delete_schedule),
+        )
+        .route(
             "/apps/{env_id}/hooks/announcement-created",
             post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
         )
@@ -1062,6 +1066,7 @@ async fn get_config(
         opengraph_icon_name: config.opengraph_icon_name,
         opengraph_icon_type: config.opengraph_icon_type,
         opengraph_icon_alt: config.opengraph_icon_alt,
+        use_pwa: config.use_pwa,
         pwa_short_app_name: config.pwa_short_app_name,
         pwa_background_color: config.pwa_background_color,
         pwa_icon_any_name: config.pwa_icon_any_name,
@@ -1251,6 +1256,27 @@ async fn get_schedule(
         .ok_or(Error::ScheduleNotFound)?;
 
     Ok(Json(GetScheduleResponse { schedule }))
+}
+
+// Clients call this to discard the schedule stored under a sync code they've abandoned (because
+// they joined another device's sync link), so the stale entry isn't counted alongside the one
+// they're syncing to now. Idempotent: deleting a code that isn't stored is still a success.
+#[axum::debug_handler]
+#[worker::send]
+async fn delete_schedule(
+    State(state): State<Arc<AppState>>,
+    Path((env_id, sync_code)): Path<(EnvId, SyncCode)>,
+) -> Result<NoContent, ErrorResponse> {
+    let env_name = kv::get_id_env(&state.kv, &env_id)
+        .await
+        .map_err(Error::Internal)?
+        .ok_or(Error::NoEnvId)?;
+
+    kv::delete_schedule(&state.kv, &env_name, &sync_code)
+        .await
+        .map_err(Error::Internal)?;
+
+    Ok(NoContent)
 }
 
 #[derive(Debug, Deserialize)]

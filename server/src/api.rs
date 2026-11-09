@@ -295,6 +295,7 @@ pub struct GetConfigResponse {
     pub opengraph_icon_name: Option<String>,
     pub opengraph_icon_type: Option<String>,
     pub opengraph_icon_alt: Option<String>,
+    pub use_pwa: Option<bool>,
     pub pwa_short_app_name: Option<String>,
     pub pwa_background_color: Option<String>,
     pub pwa_icon_any_name: Option<String>,

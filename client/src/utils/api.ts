@@ -637,6 +637,23 @@ const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<A
   return { ok: true, value: body.schedule };
 };
 
+const deleteSchedule = async (envId: string, syncCode: string): Promise<ApiResult<void>> => {
+  const response = await safeFetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
+    { method: "DELETE" },
+  );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  return { ok: true, value: undefined };
+};
+
 export default {
   getEvents,
   getPeople,
@@ -650,4 +667,5 @@ export default {
   deleteSubscription,
   putSchedule,
   getSchedule,
+  deleteSchedule,
 };
