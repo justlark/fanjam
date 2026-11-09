@@ -5,7 +5,7 @@ import Button from "primevue/button";
 import { useToast } from "primevue/usetoast";
 import useEnvId from "@/composables/useEnvId";
 import useRemoteData from "@/composables/useRemoteData";
-import usePushNotifications from "@/composables/usePushNotifications";
+import usePushNotifications, { promptDismissedKey } from "@/composables/usePushNotifications";
 import { TOAST_TTL_LONG } from "@/utils/toast";
 
 // Delay before showing the toast so it doesn't fire as the first thing a
@@ -20,11 +20,15 @@ const {
 } = useRemoteData();
 const { state, requestAndSubscribe } = usePushNotifications();
 
-const dismissedKey = () => `push-prompt-dismissed:${envId.value}`;
+const dismissedKey = () => promptDismissedKey(envId.value);
 
 const isFeatureOn = () =>
   (config.value?.usePushNotifications ?? true) && config.value?.hideAnnouncements !== true;
-const isPromptable = () => state.value === "default" && isFeatureOn();
+// `granted-unsubscribed` covers the case where the user already granted
+// permission for another env on the same origin, but hasn't opted into this
+// one yet. Enabling from there doesn't show a browser permission dialog.
+const isPromptable = () =>
+  (state.value === "default" || state.value === "granted-unsubscribed") && isFeatureOn();
 
 let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -44,7 +48,7 @@ onMounted(() => {
 });
 
 watchEffect(() => {
-  if (state.value !== "default") {
+  if (!isPromptable()) {
     clearTimeout(timer);
     toast.removeGroup("push-prompt");
   }

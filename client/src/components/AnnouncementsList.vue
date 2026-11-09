@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import Button from "primevue/button";
 import { useToast } from "primevue/usetoast";
 import SimpleIcon from "./SimpleIcon.vue";
@@ -19,7 +19,11 @@ const {
 } = useRemoteData();
 
 const unreadAnnouncements = useUnreadAnnouncements();
-const { state: pushState, requestAndSubscribe } = usePushNotifications();
+const {
+  state: pushState,
+  requestAndSubscribe,
+  unsubscribe: unsubscribePush,
+} = usePushNotifications();
 
 const enablePush = async () => {
   const result = await requestAndSubscribe();
@@ -38,6 +42,30 @@ const enablePush = async () => {
     toast.add({
       severity: "error",
       summary: "Could not set up notifications",
+      detail: "Are you offline?",
+      life: TOAST_TTL_LONG,
+    });
+  }
+};
+
+const disablingPush = ref(false);
+
+const disablePush = async () => {
+  disablingPush.value = true;
+  const ok = await unsubscribePush();
+  disablingPush.value = false;
+
+  if (ok) {
+    toast.add({
+      severity: "info",
+      summary: "Notifications disabled",
+      detail: "You won't get updates from this event anymore.",
+      life: TOAST_TTL_LONG,
+    });
+  } else {
+    toast.add({
+      severity: "error",
+      summary: "Could not disable notifications",
       detail: "Are you offline?",
       life: TOAST_TTL_LONG,
     });
@@ -77,6 +105,15 @@ const filteredAnnouncements = computed(() => {
         icon="bi bi-bell"
         label="Enable push notifications"
         @click="enablePush()"
+      />
+      <Button
+        v-else-if="pushState === 'granted-subscribed'"
+        size="small"
+        severity="secondary"
+        icon="bi bi-bell-slash"
+        label="Disable push notifications"
+        :loading="disablingPush"
+        @click="disablePush()"
       />
     </div>
     <div v-if="filteredAnnouncements.length > 0" class="flex flex-col gap-4">
