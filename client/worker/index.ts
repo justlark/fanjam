@@ -313,6 +313,7 @@ const webManifestResponse = async (
   const mountUrl = `${requestUrl.origin}${publicPrefix}`;
 
   const webManifest = {
+    id: mountUrl,
     name: appInfo.name ?? "FanJam",
     short_name: appConfig.pwa_short_app_name ?? appInfo.name ?? "FanJam",
     description: appInfo.description,
