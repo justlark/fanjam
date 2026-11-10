@@ -94,7 +94,7 @@ Re-export Tailwind breakpoints so we can query them from JS.
   }
 
   #document :is(h1, h2, h3, h4, h5, h6) {
-    @apply font-bold mt-4 mb-1;
+    @apply font-bold mt-4 mb-2;
   }
 
   #document h1 {

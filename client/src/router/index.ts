@@ -17,6 +17,11 @@ const defaultRoutes: Array<RouteRecordRaw> = [
     component: HomeView,
   },
   {
+    path: "/docs",
+    name: "docs",
+    component: () => import("../views/DocsView.vue"),
+  },
+  {
     path: "/app/:envId",
     name: "app",
     redirect: { name: "schedule" },
