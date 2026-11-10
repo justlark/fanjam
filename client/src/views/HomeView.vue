@@ -27,7 +27,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           <div class="text-xl text-center">
             <p>Reach out if you're interested!</p>
             <p>
-              <a class="text-link-lg" href="mailto:lark@fanjam.live">lark@fanjam.live</a>
+              <a class="text-link-lg" href="mailto:hello@fanjam.live">hello@fanjam.live</a>
             </p>
           </div>
         </template>
@@ -49,11 +49,12 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             <ul class="mb-2 list-disc list-inside">
               <li>Keep track of who's running what, when, and where.</li>
               <li>Publish event info, FAQs, policies, maps, socials, flyers, and anything else.</li>
+              <li>Updates reach your attendees in seconds.</li>
               <li>
                 {{ "" }}Have as many organizers in the app as you want, with controllable access
                 permissions.
               </li>
-              <li>Leave comments and notes that only organizers can see.</li>
+              <li>Share internal comments and notes with your other organizers.</li>
               <li>Import your data from another system.</li>
               <li>Host the app under your own domain.</li>
             </ul>
