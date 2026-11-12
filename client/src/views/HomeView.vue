@@ -42,20 +42,20 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             />
           </template>
           <template #title>For Organizers</template>
-          <template #subtitle>
-            A Google Docs-like spreadsheet app for putting together the con schedule
-          </template>
+          <template #subtitle>A dashboard for putting together the con schedule</template>
           <template #content>
             <ul class="mb-2 list-disc list-inside">
               <li>Keep track of who's running what, when, and where.</li>
               <li>Publish event info, FAQs, policies, maps, socials, flyers, and anything else.</li>
+              <li>Send out live announcements with push notifications.</li>
               <li>Updates reach your attendees in seconds.</li>
+              <li>Works like a spreadsheet. You already know how to use it.</li>
               <li>
                 {{ "" }}Have as many organizers in the app as you want, with controllable access
-                permissions.
+                permissions. No per-seat pricing.
               </li>
               <li>Share internal comments and notes with your other organizers.</li>
-              <li>Import your data from another system.</li>
+              <li>Import your data from another system. No repetitive data entry.</li>
               <li>Host the app under your own domain.</li>
             </ul>
           </template>
@@ -102,8 +102,8 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
                 {{ "" }}Share your schedule with friends, add it to your calendar, and sync it
                 between devices.
               </li>
-              <li>See live announcements from the organizers with push notifications.</li>
               <li>Fast and responsive. Just try it.</li>
+              <li>Works on desktop and mobile.</li>
               <li>There's no app to install.</li>
               <li>You don't need to make an account.</li>
               <li>We don't collect your data.</li>
