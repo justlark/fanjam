@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import SiteNav from "./SiteNav.vue";
+import AppNav from "./AppNav.vue";
 import { provideRemoteData } from "@/composables/useRemoteData";
 
 provideRemoteData();
 </script>
 
 <template>
-  <SiteNav>
+  <AppNav>
     <slot />
-  </SiteNav>
+  </AppNav>
 </template>

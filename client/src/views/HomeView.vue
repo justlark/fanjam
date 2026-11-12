@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import Card from "primevue/card";
 import Button from "primevue/button";
+import SitePage from "@/components/SitePage.vue";
 
 const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6 min-h-screen">
-    <main class="flex flex-col justify-center items-center gap-8">
+  <SitePage :hide-nav="true">
+    <div class="flex flex-col justify-center items-center gap-8">
       <h1 class="text-8xl text-center mt-8 lg:mt-14 mb-8 font-black">
         <span class="text-orange-400 dark:text-orange-300">Fan</span
         ><span class="text-sky-400 dark:text-sky-300">Jam</span>
@@ -15,11 +16,10 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
       <div class="text-2xl text-center">
         <p>FanJam is an event planning app for conventions.</p>
       </div>
-      <div class="text-lg text-justify max-w-4xl">
+      <div class="text-xl text-justify max-w-4xl">
         <p>
-          For small to medium-size cons, FanJam bridges the gap between a single person with a
-          spreadsheet and the kinds of people who can afford enterprise event planning software.
-          Free for small cons.
+          FanJam bridges the gap between a single person with a spreadsheet and the kinds of people
+          who can afford enterprise event planning software. Free for small nonprofits.
         </p>
       </div>
       <Card>
@@ -129,14 +129,6 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
           </template>
         </Card>
       </div>
-    </main>
-    <footer class="mt-auto flex flex-col items-center gap-1 text-muted-color">
-      <small>
-        <a class="text-link-sm" href="https://github.com/justlark/fanjam" target="_blank">
-          GitHub
-        </a>
-      </small>
-      <small>© 2025-2026 Lark Aster</small>
-    </footer>
-  </div>
+    </div>
+  </SitePage>
 </template>

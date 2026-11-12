@@ -17,6 +17,11 @@ const defaultRoutes: Array<RouteRecordRaw> = [
     component: HomeView,
   },
   {
+    path: "/privacy",
+    name: "privacy",
+    component: () => import("../views/PrivacyView.vue"),
+  },
+  {
     path: "/docs",
     name: "docs",
     component: () => import("../views/DocsView.vue"),
