@@ -103,7 +103,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
                 between devices.
               </li>
               <li>Fast and responsive. Just try it.</li>
-              <li>Works on desktop and mobile.</li>
+              <li>Works on desktop, iOS, and Android.</li>
               <li>There's no app to install.</li>
               <li>You don't need to make an account.</li>
               <li>We don't collect your data.</li>
@@ -111,21 +111,15 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
             </ul>
           </template>
           <template #footer>
-            <div class="flex flex-wrap gap-6 items-center">
-              <Button
-                as="a"
-                label="Open Demo"
-                icon="bi bi-box-arrow-up-right"
-                icon-pos="right"
-                raised
-                target="_blank"
-                href="https://fanjam.live/app/demo/"
-              />
-              <span class="flex gap-2 text-muted-color">
-                <SimpleIcon icon="info-circle" />
-                <span>Best on mobile</span>
-              </span>
-            </div>
+            <Button
+              as="a"
+              label="Open Demo"
+              icon="bi bi-box-arrow-up-right"
+              icon-pos="right"
+              raised
+              target="_blank"
+              href="https://fanjam.live/app/demo/"
+            />
           </template>
         </Card>
       </div>
