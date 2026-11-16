@@ -23,6 +23,8 @@ import api, {
   type Page,
   type Location,
   type Person,
+  type Vendor,
+  type VendorPage,
 } from "@/utils/api";
 import { envContext } from "@/context";
 import useEnvId from "./useEnvId";
@@ -92,7 +94,11 @@ const setResultIfModified = <T>(
 const storageKey = (key: string): string => `store:${key}`;
 
 const setItem = (key: string, value: unknown): void => {
-  localStorage.setItem(storageKey(key), JSON.stringify(value));
+  try {
+    localStorage.setItem(storageKey(key), JSON.stringify(value));
+  } catch (error) {
+    console.error(`Failed to write ${storageKey(key)} to local storage.`, error);
+  }
 };
 
 const getItem = <T>(key: string): StoredValue<T> | undefined => {
@@ -125,6 +131,7 @@ const useRemoteDataInner = <T, S>({
   fromCache: (data: S) => T;
   fetchPolicy: FetchPolicy;
 }): {
+  key: string;
   reload: () => Promise<void>;
   invalidate: () => void;
 } => {
@@ -332,13 +339,15 @@ const useRemoteDataInner = <T, S>({
     );
   });
 
-  return { reload, invalidate };
+  return { key, reload, invalidate };
 };
 
 type DataSource<T> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
+  // The key this data is stored under in the local storage.
+  key: string;
   data: T;
   status: Readonly<Ref<FetchStatus>>;
   reload: () => Promise<void>;
@@ -376,7 +385,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
+  const { key, reload, invalidate } = useRemoteDataInner<Array<Event>, Array<StoredEvent>>({
     key: "events",
     instance: toRef(envId),
     fetchPolicy,
@@ -411,6 +420,7 @@ const useRemoteEvents: DataSource<Readonly<Ref<Array<DeepReadonly<Event>>>>> = (
   });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(eventsRef),
@@ -430,7 +440,7 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
+  const { key, reload, invalidate } = useRemoteDataInner<Array<Person>, Array<StoredPerson>>({
     key: "people",
     instance: toRef(envId),
     fetchPolicy,
@@ -451,6 +461,7 @@ const useRemotePeople: DataSource<Readonly<Ref<Array<DeepReadonly<Person>>>>> = 
   });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(peopleRef),
@@ -471,7 +482,7 @@ const useRemoteLocations: DataSource<Readonly<Ref<Array<DeepReadonly<Location>>>
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Array<Location>, Array<StoredLocation>>({
+  const { key, reload, invalidate } = useRemoteDataInner<Array<Location>, Array<StoredLocation>>({
     key: "locations",
     instance: toRef(envId),
     fetchPolicy,
@@ -494,6 +505,7 @@ const useRemoteLocations: DataSource<Readonly<Ref<Array<DeepReadonly<Location>>>
   });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(locationsRef),
@@ -522,7 +534,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Info, StoredInfo>({
+  const { key, reload, invalidate } = useRemoteDataInner<Info, StoredInfo>({
     key: "info",
     instance: toRef(envId),
     fetchPolicy,
@@ -553,6 +565,7 @@ const useRemoteInfo: DataSource<Readonly<Ref<Info | undefined>>> = (
   });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(infoRef),
@@ -577,7 +590,7 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
+  const { key, reload, invalidate } = useRemoteDataInner<Array<Page>, Array<StoredPage>>({
     key: "pages",
     instance: toRef(envId),
     fetchPolicy,
@@ -608,6 +621,7 @@ const useRemotePages: DataSource<Readonly<Ref<Array<DeepReadonly<Page>>>>> = (
   });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(pagesRef),
@@ -634,47 +648,146 @@ const useRemoteAnnouncements: DataSource<Readonly<Ref<Array<DeepReadonly<Announc
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Array<Announcement>, Array<StoredAnnouncement>>(
-    {
-      key: "announcements",
-      instance: toRef(envId),
-      fetchPolicy,
-      result: announcementsRef,
-      fetcher: () => api.getAnnouncements(toValue(envId)),
-      toCache: (data) =>
-        data.map((announcement) => ({
-          id: announcement.id,
-          title: announcement.title,
-          body: announcement.body,
-          attachments: announcement.attachments.map((attachment) => ({
-            id: attachment.id,
-            name: attachment.name,
-            media_type: attachment.mediaType,
-          })),
-          created_at: announcement.createdAt.toISOString(),
-          updated_at: announcement.updatedAt?.toISOString() ?? null,
+  const { key, reload, invalidate } = useRemoteDataInner<
+    Array<Announcement>,
+    Array<StoredAnnouncement>
+  >({
+    key: "announcements",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: announcementsRef,
+    fetcher: () => api.getAnnouncements(toValue(envId)),
+    toCache: (data) =>
+      data.map((announcement) => ({
+        id: announcement.id,
+        title: announcement.title,
+        body: announcement.body,
+        attachments: announcement.attachments.map((attachment) => ({
+          id: attachment.id,
+          name: attachment.name,
+          media_type: attachment.mediaType,
         })),
-      fromCache: (data) =>
-        data.map((announcement) => ({
-          id: announcement.id,
-          title: announcement.title,
-          body: announcement.body,
-          attachments: announcement.attachments.map((attachment) => ({
-            id: attachment.id,
-            name: attachment.name,
-            mediaType: attachment.media_type,
-          })),
-          createdAt: new Date(announcement.created_at),
-          updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
+        created_at: announcement.createdAt.toISOString(),
+        updated_at: announcement.updatedAt?.toISOString() ?? null,
+      })),
+    fromCache: (data) =>
+      data.map((announcement) => ({
+        id: announcement.id,
+        title: announcement.title,
+        body: announcement.body,
+        attachments: announcement.attachments.map((attachment) => ({
+          id: attachment.id,
+          name: attachment.name,
+          mediaType: attachment.media_type,
         })),
-    },
-  );
+        createdAt: new Date(announcement.created_at),
+        updatedAt: announcement.updated_at ? new Date(announcement.updated_at) : undefined,
+      })),
+  });
 
   return {
+    key,
     reload,
     invalidate,
     status: unwrapFetchStatus(announcementsRef),
     data: unwrapFetchArray(announcementsRef),
+  };
+};
+
+interface StoredVendor {
+  id: string;
+  name: string;
+  summary?: string;
+  description?: string;
+  website_url?: string;
+  page?: {
+    id: string;
+    title: string;
+  };
+}
+
+const vendorsRef = shallowRef<FetchResult<Array<Vendor>>>({ status: "pending" });
+
+const useRemoteVendors: DataSource<Readonly<Ref<Array<DeepReadonly<Vendor>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { key, reload, invalidate } = useRemoteDataInner<Array<Vendor>, Array<StoredVendor>>({
+    key: "vendors",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: vendorsRef,
+    fetcher: () => api.getVendors(toValue(envId)),
+    toCache: (data) =>
+      data.map((vendor) => ({
+        id: vendor.id,
+        name: vendor.name,
+        summary: vendor.summary,
+        description: vendor.description,
+        website_url: vendor.websiteUrl,
+        page: vendor.page,
+      })),
+    fromCache: (data) =>
+      data.map((vendor) => ({
+        id: vendor.id,
+        name: vendor.name,
+        summary: vendor.summary,
+        description: vendor.description,
+        websiteUrl: vendor.website_url,
+        page: vendor.page,
+      })),
+  });
+
+  return {
+    key,
+    reload,
+    invalidate,
+    status: unwrapFetchStatus(vendorsRef),
+    data: unwrapFetchArray(vendorsRef),
+  };
+};
+
+interface StoredVendorPage {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+const vendorPagesRef = shallowRef<FetchResult<Array<VendorPage>>>({ status: "pending" });
+
+const useRemoteVendorPages: DataSource<Readonly<Ref<Array<DeepReadonly<VendorPage>>>>> = (
+  envId: MaybeRefOrGetter<string>,
+  fetchPolicy: FetchPolicy,
+) => {
+  const { key, reload, invalidate } = useRemoteDataInner<
+    Array<VendorPage>,
+    Array<StoredVendorPage>
+  >({
+    key: "vendor-pages",
+    instance: toRef(envId),
+    fetchPolicy,
+    result: vendorPagesRef,
+    fetcher: () => api.getVendorPages(toValue(envId)),
+    toCache: (data) =>
+      data.map((vendorPage) => ({
+        id: vendorPage.id,
+        title: vendorPage.title,
+        description: vendorPage.description,
+      })),
+    fromCache: (data) =>
+      data.map((vendorPage) => ({
+        id: vendorPage.id,
+        title: vendorPage.title,
+        description: vendorPage.description,
+      })),
+  });
+
+  return {
+    key,
+    reload,
+    invalidate,
+    status: unwrapFetchStatus(vendorPagesRef),
+    data: unwrapFetchArray(vendorPagesRef),
   };
 };
 
@@ -693,6 +806,7 @@ interface StoredConfig {
   use_schedule_sync?: boolean;
   use_push_notifications?: boolean;
   use_map_link?: boolean;
+  use_vendor_pages?: boolean;
 }
 
 const configRef = shallowRef<FetchResult<Config>>({ status: "pending" });
@@ -701,7 +815,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
   envId: MaybeRefOrGetter<string>,
   fetchPolicy: FetchPolicy,
 ) => {
-  const { reload, invalidate } = useRemoteDataInner<Config, StoredConfig>({
+  const { key, reload, invalidate } = useRemoteDataInner<Config, StoredConfig>({
     key: "config",
     instance: toRef(envId),
     fetchPolicy,
@@ -722,6 +836,7 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       use_schedule_sync: data.useScheduleSync,
       use_push_notifications: data.usePushNotifications,
       use_map_link: data.useMapLink,
+      use_vendor_pages: data.useVendorPages,
     }),
     fromCache: (data) => ({
       timezone: data.timezone,
@@ -738,10 +853,12 @@ const useRemoteConfig: DataSource<Readonly<Ref<Config | undefined>>> = (
       useScheduleSync: data.use_schedule_sync,
       usePushNotifications: data.use_push_notifications,
       useMapLink: data.use_map_link,
+      useVendorPages: data.use_vendor_pages,
     }),
   });
 
   return {
+    key,
     reload,
     invalidate,
     data: unwrapFetchValue(configRef),
@@ -756,6 +873,8 @@ const dataSources = {
   info: useRemoteInfo,
   pages: useRemotePages,
   announcements: useRemoteAnnouncements,
+  vendors: useRemoteVendors,
+  vendorPages: useRemoteVendorPages,
   config: useRemoteConfig,
 } as const;
 
@@ -769,6 +888,8 @@ const dataSources = {
 // - `announcements` is necessary to keep the unread announcements count up to
 //   date.
 // - `config` is necessary for gating certain features.
+// - `vendorPages` is necessary because each vendor page is listed in the main
+//   menu.
 const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   events: ["schedule", "event"],
   people: ["event"],
@@ -776,6 +897,8 @@ const FETCH_POLICIES: Record<keyof typeof dataSources, FetchPolicy> = {
   info: "global",
   pages: ["info", "page"],
   announcements: "global",
+  vendors: ["vendor-page", "vendor"],
+  vendorPages: "global",
   config: "global",
 };
 
@@ -886,7 +1009,7 @@ const useRemoteData: CombinedDataSource = () => {
       // brought us here, and would otherwise be requested twice.
       if (matchesRoute(FETCH_POLICIES[key as keyof typeof dataSources], routeName())) continue;
 
-      const stored = getItem<unknown>(key);
+      const stored = getItem<unknown>(ds.key);
 
       const isFresh =
         stored !== undefined &&

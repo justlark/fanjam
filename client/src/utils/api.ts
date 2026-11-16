@@ -75,6 +75,24 @@ interface RawAnnouncement {
   updated_at: string | null;
 }
 
+interface RawVendor {
+  id: string;
+  name: string;
+  summary: string | null;
+  description: string | null;
+  website_url: string | null;
+  page: {
+    id: string;
+    title: string;
+  } | null;
+}
+
+interface RawVendorPage {
+  id: string;
+  title: string;
+  description: string | null;
+}
+
 interface RawAlias {
   env_id: string;
 }
@@ -94,6 +112,7 @@ interface RawConfig {
   use_schedule_sync: boolean | null;
   use_push_notifications: boolean | null;
   use_map_link: boolean | null;
+  use_vendor_pages: boolean | null;
 }
 
 // How current the data the server sent us is, and what we should do about it.
@@ -205,6 +224,26 @@ export interface File {
   mediaType: string;
 }
 
+export interface VendorPageRef {
+  id: string;
+  title: string;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  summary?: string;
+  description?: string;
+  websiteUrl?: string;
+  page?: VendorPageRef;
+}
+
+export interface VendorPage {
+  id: string;
+  title: string;
+  description?: string;
+}
+
 export interface Info {
   name?: string;
   description?: string;
@@ -228,6 +267,7 @@ export interface Config {
   useScheduleSync?: boolean;
   usePushNotifications?: boolean;
   useMapLink?: boolean;
+  useVendorPages?: boolean;
 }
 
 const isOk = (response: Response): boolean => response.ok;
@@ -496,6 +536,73 @@ const getAnnouncements = async (envId: string): Promise<ApiResult<Array<Announce
   };
 };
 
+const getVendors = async (envId: string): Promise<ApiResult<Array<Vendor>>> => {
+  const response = await safeFetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/vendors`,
+  );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawVendors: Envelope<{ vendors: Array<RawVendor> }> = await response.json();
+
+  if (!isReadable(rawVendors)) {
+    return { ok: false, code: "outdated" };
+  }
+
+  const vendors: Array<Vendor> = rawVendors.value.vendors.map((vendor) => ({
+    id: vendor.id,
+    name: vendor.name,
+    summary: vendor.summary ?? undefined,
+    description: vendor.description ?? undefined,
+    websiteUrl: vendor.website_url ?? undefined,
+    page: vendor.page ?? undefined,
+  }));
+
+  return {
+    ok: true,
+    value: vendors,
+    freshness: rawVendors.freshness,
+  };
+};
+
+const getVendorPages = async (envId: string): Promise<ApiResult<Array<VendorPage>>> => {
+  const response = await safeFetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/vendor-pages`,
+  );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  const rawVendorPages: Envelope<{ vendor_pages: Array<RawVendorPage> }> = await response.json();
+
+  if (!isReadable(rawVendorPages)) {
+    return { ok: false, code: "outdated" };
+  }
+
+  const vendorPages: Array<VendorPage> = rawVendorPages.value.vendor_pages.map((vendorPage) => ({
+    id: vendorPage.id,
+    title: vendorPage.title,
+    description: vendorPage.description ?? undefined,
+  }));
+
+  return {
+    ok: true,
+    value: vendorPages,
+    freshness: rawVendorPages.freshness,
+  };
+};
+
 const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
   const response = await safeFetch(
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/config`,
@@ -526,6 +633,7 @@ const getConfig = async (envId: string): Promise<ApiResult<Config>> => {
     useScheduleSync: rawConfig.use_schedule_sync ?? undefined,
     usePushNotifications: rawConfig.use_push_notifications ?? undefined,
     useMapLink: rawConfig.use_map_link ?? undefined,
+    useVendorPages: rawConfig.use_vendor_pages ?? undefined,
   };
 
   return { ok: true, value: config };
@@ -661,6 +769,8 @@ export default {
   getInfo,
   getPages,
   getAnnouncements,
+  getVendors,
+  getVendorPages,
   getConfig,
   getAlias,
   postSubscription,

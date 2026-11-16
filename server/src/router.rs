@@ -25,10 +25,11 @@ use crate::{
         EventTag, File, GetAliasResponse, GetAliasesResponse, GetAnnouncementsResponse,
         GetConfigResponse, GetCurrentMigrationResponse, GetDomainEnvResponse, GetDomainResponse,
         GetEventsResponse, GetFilesResponse, GetInfoResponse, GetLinkResponse,
-        GetLocationsResponse, GetPagesResponse, GetPeopleResponse, GetScheduleResponse, Link,
-        Location, Page, Person, PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest,
-        PostRestoreBackupKind, PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse,
-        PutScheduleRequest, PutTokenRequest,
+        GetLocationsResponse, GetPagesResponse, GetPeopleResponse, GetScheduleResponse,
+        GetVendorPagesResponse, GetVendorsResponse, Link, Location, Page, Person,
+        PostApplyMigrationResponse, PostBackupRequest, PostBaseRequest, PostRestoreBackupKind,
+        PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse, PutScheduleRequest,
+        PutTokenRequest, Vendor, VendorPage, VendorPageRef,
     },
     auth::{admin_auth_layer, noco_webhook_auth_layer},
     cache::{
@@ -118,6 +119,8 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/pages", get(get_pages))
         .route("/apps/{env_id}/announcements", get(get_announcements))
         .route("/apps/{env_id}/files", get(get_files))
+        .route("/apps/{env_id}/vendors", get(get_vendors))
+        .route("/apps/{env_id}/vendor-pages", get(get_vendor_pages))
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/subscription", post(post_subscription))
         .route("/apps/{env_id}/subscription", delete(delete_subscription))
@@ -920,6 +923,94 @@ async fn get_pages(
 
 #[axum::debug_handler]
 #[worker::send]
+async fn get_vendors(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    let to_body = |vendors: Vec<noco::Vendor>| GetVendorsResponse {
+        vendors: vendors
+            .into_iter()
+            .map(|vendor| Vendor {
+                id: vendor.id,
+                name: vendor.name,
+                summary: vendor.summary,
+                description: vendor.description,
+                website_url: vendor.website_url,
+                page: vendor.page.map(|page| VendorPageRef {
+                    id: page.id,
+                    title: page.title,
+                }),
+            })
+            .collect::<Vec<_>>(),
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_vendors(uri, to_body),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_vendors(cache_uri, to_body)
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
+async fn get_vendor_pages(
+    State(state): State<Arc<AppState>>,
+    uri: Uri,
+    Path(env_id): Path<EnvId>,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = cache_key_uri(&uri).map_err(Error::Internal)?;
+
+    let to_body = |vendor_pages: Vec<noco::VendorPage>| GetVendorPagesResponse {
+        vendor_pages: vendor_pages
+            .into_iter()
+            .map(|vendor_page| VendorPage {
+                id: vendor_page.id,
+                title: vendor_page.title,
+                description: vendor_page.description,
+            })
+            .collect::<Vec<_>>(),
+    };
+
+    if let Some(response) = get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri| store.refresh_vendor_pages(uri, to_body),
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
+    let store = Store::from_env_id(&state, &env_id).await?;
+
+    store
+        .get_vendor_pages(cache_uri, to_body)
+        .await
+        .map_err(Into::into)
+}
+
+#[axum::debug_handler]
+#[worker::send]
 async fn get_announcements(
     State(state): State<Arc<AppState>>,
     uri: Uri,
@@ -1078,6 +1169,7 @@ async fn get_config(
         use_push_notifications: config.use_push_notifications,
         notifications_icon_name: config.notifications_icon_name,
         use_map_link: config.use_map_link,
+        use_vendor_pages: config.use_vendor_pages,
     });
 
     cached_json_response(&state, cache, env_name, ttl, cache_uri, body).await

@@ -189,6 +189,22 @@ Event 1,My event summary,My event description,2026-01-01T00:00:00Z,2026-01-01T01
           src="https://static.fanjam.live/guide-fanjam-map-link-screenshot.png"
           alt="A screenshot of the FanJam app"
         />
+        <h2>Adding vendors</h2>
+        <p>
+          In the dashboard, you can call out "vendors" which are featured in the app. "Vendors" can
+          be corporate sponsors, artists, dealers, local businesses, or anyone else you want to
+          highlight. Vendors can be split into multiple pages, which each appear in the app's main
+          menu.
+        </p>
+        <img
+          width="40%"
+          src="https://static.fanjam.live/guide-fanjam-vendors-screenshot.png"
+          alt="A screenshot of the FanJam app"
+        />
+        <img
+          src="https://static.fanjam.live/guide-nocodb-vendors-screenshot.png"
+          alt="A screenshot of the FanJam dashboard"
+        />
         <h2>Publishing your con app</h2>
         <p>
           Attendees will find your con's app at <code>https://fanjam.live/app/geekcon</code>,

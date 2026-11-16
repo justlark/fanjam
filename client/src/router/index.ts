@@ -62,6 +62,16 @@ const defaultRoutes: Array<RouteRecordRaw> = [
     component: () => import("../views/PageView.vue"),
   },
   {
+    path: "/app/:envId/groups/:vendorPageId",
+    name: "vendor-page",
+    component: () => import("../views/VendorPageView.vue"),
+  },
+  {
+    path: "/app/:envId/vendors/:vendorId",
+    name: "vendor",
+    component: () => import("../views/VendorView.vue"),
+  },
+  {
     path: "/app/:envId/share",
     name: "share",
     redirect: (to) => ({
@@ -133,6 +143,16 @@ const customRoutes: Array<RouteRecordRaw> = [
     path: "/pages/:pageId",
     name: "page",
     component: () => import("../views/PageView.vue"),
+  },
+  {
+    path: "/groups/:vendorPageId",
+    name: "vendor-page",
+    component: () => import("../views/VendorPageView.vue"),
+  },
+  {
+    path: "/vendors/:vendorId",
+    name: "vendor",
+    component: () => import("../views/VendorView.vue"),
   },
   {
     path: "/share",

@@ -1,12 +1,30 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 import MainMenuItem from "./MainMenuItem.vue";
 import useUnreadAnnouncements from "@/composables/useUnreadAnnouncements";
 import useRemoteData from "@/composables/useRemoteData";
 
+const route = useRoute();
 const unreadAnnouncements = useUnreadAnnouncements();
 const {
-  data: { config, announcements },
+  data: { config, announcements, vendorPages, vendors },
 } = useRemoteData();
+
+const filteredVendorPages = computed(() => {
+  if (config.value?.useVendorPages ?? true) return vendorPages.value;
+
+  return [];
+});
+
+const vendorPageIdIfVendorView = computed(() => {
+  if (route.name === "vendor" && route.params.vendorId) {
+    const vendor = vendors.value.find((v) => v.id === (route.params.vendorId as string));
+    return vendor?.page?.id;
+  }
+
+  return undefined;
+});
 </script>
 
 <template>
@@ -39,6 +57,18 @@ const {
       :to="{ name: 'announcements' }"
       :is-active="(route) => route.name === 'announcement' || route.name === 'announcements'"
       :badge="unreadAnnouncements.size === 0 ? undefined : unreadAnnouncements.size.toString()"
+    />
+    <MainMenuItem
+      v-for="vendorPage in filteredVendorPages"
+      :key="vendorPage.id"
+      icon="bi bi-people"
+      :label="vendorPage.title"
+      :to="{ name: 'vendor-page', params: { vendorPageId: vendorPage.id } }"
+      :is-active="
+        (route) =>
+          (route.name === 'vendor-page' && route.params.vendorPageId === vendorPage.id) ||
+          (route.name === 'vendor' && vendorPageIdIfVendorView === vendorPage.id)
+      "
     />
     <MainMenuItem
       icon="bi bi-info-circle"

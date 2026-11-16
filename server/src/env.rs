@@ -167,6 +167,7 @@ pub struct Config {
     pub use_push_notifications: Option<bool>,
     pub notifications_icon_name: Option<String>,
     pub use_map_link: Option<bool>,
+    pub use_vendor_pages: Option<bool>,
 }
 
 // Documentation and metadata for each config key in the environment-specific configuration. Keep

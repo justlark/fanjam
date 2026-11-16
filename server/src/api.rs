@@ -275,6 +275,39 @@ pub struct GetPagesResponse {
     pub pages: Vec<Page>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct VendorPageRef {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Vendor {
+    pub id: String,
+    pub name: String,
+    pub summary: Option<String>,
+    pub description: Option<String>,
+    pub website_url: Option<String>,
+    pub page: Option<VendorPageRef>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetVendorsResponse {
+    pub vendors: Vec<Vendor>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VendorPage {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetVendorPagesResponse {
+    pub vendor_pages: Vec<VendorPage>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct GetConfigResponse {
     pub app_domain: Option<String>,
@@ -307,6 +340,7 @@ pub struct GetConfigResponse {
     pub use_push_notifications: Option<bool>,
     pub notifications_icon_name: Option<String>,
     pub use_map_link: Option<bool>,
+    pub use_vendor_pages: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

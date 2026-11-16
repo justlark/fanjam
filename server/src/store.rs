@@ -793,6 +793,28 @@ impl Store {
         cache_key: "files",
     }
 
+    get_data! {
+        fn_name: get_vendors,
+        refresh_fn_name: refresh_vendors,
+        type_name: Vec<noco::Vendor>,
+        endpoint: Endpoint::Vendors,
+        get_api_fn: noco::get_vendors,
+        get_cached_fn: kv::get_cached_vendors,
+        put_cached_fn: kv::put_cached_vendors,
+        cache_key: "vendors",
+    }
+
+    get_data! {
+        fn_name: get_vendor_pages,
+        refresh_fn_name: refresh_vendor_pages,
+        type_name: Vec<noco::VendorPage>,
+        endpoint: Endpoint::VendorPages,
+        get_api_fn: noco::get_vendor_pages,
+        get_cached_fn: kv::get_cached_vendor_pages,
+        put_cached_fn: kv::put_cached_vendor_pages,
+        cache_key: "vendor-pages",
+    }
+
     // Refresh the cache specifically with the latest announcements from NocoDB. This is necessary
     // because we send out push notifications for announcements.
     #[worker::send]
@@ -881,6 +903,15 @@ impl Store {
             .migrate(&self.env_name, env_id, migration_state)
             .await
             .map_err(Error::Internal)?;
+
+        // A migration may add or remove tables, so the cached table IDs may be out of date. Some
+        // tables are optional in `TableIds`, so a stale cache wouldn't necessarily fail to parse
+        // and trigger a refetch on its own.
+        if new_version != old_version
+            && let Err(e) = kv::delete_tables(&self.kv, &self.env_name).await
+        {
+            console_warn!("Failed to clear cached table IDs after migration: {}", e);
+        }
 
         Ok(MigrationChange {
             old_version,

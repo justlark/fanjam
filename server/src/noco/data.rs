@@ -196,6 +196,41 @@ struct AnnouncementResponse {
     pub updated_at: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct VendorPageRefResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Page Title")]
+    pub title: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct VendorResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Vendor Name")]
+    pub name: String,
+    #[serde(rename = "Summary")]
+    pub summary: Option<String>,
+    #[serde(rename = "Description")]
+    pub description: Option<String>,
+    #[serde(rename = "Website")]
+    pub website: Option<String>,
+    // The reverse side of the has-many link from the vendor pages table.
+    #[serde(rename = "Vendor Pages", default)]
+    pub page: Option<VendorPageRefResponse>,
+}
+
+#[derive(Debug, Deserialize)]
+struct VendorPageResponse {
+    #[serde(rename = "ID")]
+    pub id: u32,
+    #[serde(rename = "Page Title")]
+    pub title: String,
+    #[serde(rename = "Description")]
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventPerson {
     pub id: String,
@@ -293,6 +328,29 @@ pub struct Announcement {
     pub files: Vec<File>,
     pub created_at: String,
     pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VendorPageRef {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Vendor {
+    pub id: String,
+    pub name: String,
+    pub summary: Option<String>,
+    pub description: Option<String>,
+    pub website_url: Option<String>,
+    pub page: Option<VendorPageRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VendorPage {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
 }
 
 #[worker::send]
@@ -514,6 +572,51 @@ pub async fn get_announcements(
                 .collect(),
             created_at: a.creatd_at,
             updated_at: a.updated_at,
+        })
+        .collect())
+}
+
+#[worker::send]
+pub async fn get_vendors(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Vendor>> {
+    let Some(table_id) = &table_ids.vendors else {
+        return Ok(Vec::new());
+    };
+
+    let vendor_records = list_records::<VendorResponse>(client, table_id).await?;
+
+    Ok(vendor_records
+        .into_iter()
+        .map(|r| Vendor {
+            id: r.id.to_string(),
+            name: r.name,
+            summary: r.summary,
+            description: r.description,
+            website_url: r.website.and_then(require_url_scheme),
+            page: r.page.map(|p| VendorPageRef {
+                id: p.id.to_string(),
+                title: p.title,
+            }),
+        })
+        .collect())
+}
+
+#[worker::send]
+pub async fn get_vendor_pages(
+    client: &Client,
+    table_ids: &TableIds,
+) -> anyhow::Result<Vec<VendorPage>> {
+    let Some(table_id) = &table_ids.vendor_pages else {
+        return Ok(Vec::new());
+    };
+
+    let vendor_page_records = list_records::<VendorPageResponse>(client, table_id).await?;
+
+    Ok(vendor_page_records
+        .into_iter()
+        .map(|r| VendorPage {
+            id: r.id.to_string(),
+            title: r.title,
+            description: r.description,
         })
         .collect())
 }

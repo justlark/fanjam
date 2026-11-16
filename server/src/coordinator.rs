@@ -49,6 +49,8 @@ pub enum Endpoint {
     Pages,
     Announcements,
     Files,
+    Vendors,
+    VendorPages,
 }
 
 impl Endpoint {
@@ -61,6 +63,8 @@ impl Endpoint {
             Self::Pages => "pages",
             Self::Announcements => "announcements",
             Self::Files => "files",
+            Self::Vendors => "vendors",
+            Self::VendorPages => "vendor_pages",
         }
     }
 
@@ -73,6 +77,8 @@ impl Endpoint {
             Self::Pages => kv::pages_cache_key(env_name),
             Self::Announcements => kv::announcements_cache_key(env_name),
             Self::Files => kv::files_cache_key(env_name),
+            Self::Vendors => kv::vendors_cache_key(env_name),
+            Self::VendorPages => kv::vendor_pages_cache_key(env_name),
         }
     }
 }
@@ -185,6 +191,10 @@ async fn fetch_from_noco(
             serde_json::to_string(&noco::get_announcements(&client, &table_ids).await?)?
         }
         Endpoint::Files => serde_json::to_string(&noco::get_files(&client, &table_ids).await?)?,
+        Endpoint::Vendors => serde_json::to_string(&noco::get_vendors(&client, &table_ids).await?)?,
+        Endpoint::VendorPages => {
+            serde_json::to_string(&noco::get_vendor_pages(&client, &table_ids).await?)?
+        }
     })
 }
 

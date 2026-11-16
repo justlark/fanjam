@@ -39,6 +39,10 @@ pub struct TableIds {
     pub files: Option<TableId>,
     pub pages: TableId,
     pub announcements: TableId,
+    // These tables were added in migration n9. They're optional so that environments which haven't
+    // applied that migration yet keep working; they just have no vendors.
+    pub vendors: Option<TableId>,
+    pub vendor_pages: Option<TableId>,
 }
 
 impl TryFrom<Vec<TableInfo>> for TableIds {
@@ -76,6 +80,8 @@ impl TryFrom<Vec<TableInfo>> for TableIds {
             announcements: ids
                 .remove("announcements")
                 .ok_or_else(|| anyhow::anyhow!("Missing 'announcements' table in cache"))?,
+            vendors: ids.remove("vendors"),
+            vendor_pages: ids.remove("vendor_pages"),
         })
     }
 }

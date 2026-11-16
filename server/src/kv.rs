@@ -4,7 +4,10 @@ use worker::kv::{KvError, KvStore};
 use crate::{
     api::Alias,
     env::{Config, EnvDomain, EnvId, EnvName, SyncCode},
-    noco::{Announcement, ApiToken, BaseId, Event, File, Info, Location, Page, Person, TableInfo},
+    noco::{
+        Announcement, ApiToken, BaseId, Event, File, Info, Location, Page, Person, TableInfo,
+        Vendor, VendorPage,
+    },
     push::{self, SubscriptionId},
 };
 
@@ -111,6 +114,8 @@ cache_key_fn!(info_cache_key, "info");
 cache_key_fn!(pages_cache_key, "pages");
 cache_key_fn!(announcements_cache_key, "announcements");
 cache_key_fn!(files_cache_key, "files");
+cache_key_fn!(vendors_cache_key, "vendors");
+cache_key_fn!(vendor_pages_cache_key, "vendor-pages");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -348,7 +353,7 @@ pub async fn get_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<Vec<
 }
 
 #[worker::send]
-async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
+pub async fn delete_tables(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
     kv.delete(&tables_key(env_name))
         .await
         .map_err(wrap_kv_err)?;
@@ -412,6 +417,12 @@ put_cache_fn!(
     &[Announcement]
 );
 put_cache_fn!(put_cached_files, files_cache_key, &[File]);
+put_cache_fn!(put_cached_vendors, vendors_cache_key, &[Vendor]);
+put_cache_fn!(
+    put_cached_vendor_pages,
+    vendor_pages_cache_key,
+    &[VendorPage]
+);
 
 // Read a value from the persistent cache as raw JSON, under a key from one of the `*_cache_key`
 // functions.
@@ -455,6 +466,12 @@ get_cache_fn!(
     Vec<Announcement>
 );
 get_cache_fn!(get_cached_files, files_cache_key, Vec<File>);
+get_cache_fn!(get_cached_vendors, vendors_cache_key, Vec<Vendor>);
+get_cache_fn!(
+    get_cached_vendor_pages,
+    vendor_pages_cache_key,
+    Vec<VendorPage>
+);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {
