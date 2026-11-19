@@ -712,7 +712,7 @@ async fn get_events(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_events(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_events(uri, to_body, known_hash),
     )
     .await?
     {
@@ -753,7 +753,7 @@ async fn get_people(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_people(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_people(uri, to_body, known_hash),
     )
     .await?
     {
@@ -795,7 +795,7 @@ async fn get_locations(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_locations(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_locations(uri, to_body, known_hash),
     )
     .await?
     {
@@ -854,7 +854,9 @@ async fn get_info(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_info(uri, to_body(store.env_name().to_string())),
+        move |store: &Store, uri, known_hash| {
+            store.refresh_info(uri, to_body(store.env_name().to_string()), known_hash)
+        },
     )
     .await?
     {
@@ -906,7 +908,7 @@ async fn get_pages(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_pages(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_pages(uri, to_body, known_hash),
     )
     .await?
     {
@@ -953,7 +955,7 @@ async fn get_vendors(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_vendors(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_vendors(uri, to_body, known_hash),
     )
     .await?
     {
@@ -994,7 +996,7 @@ async fn get_vendor_pages(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_vendor_pages(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_vendor_pages(uri, to_body, known_hash),
     )
     .await?
     {
@@ -1047,7 +1049,7 @@ async fn get_announcements(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_announcements(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_announcements(uri, to_body, known_hash),
     )
     .await?
     {
@@ -1089,7 +1091,7 @@ async fn get_files(
         &cache,
         &env_id,
         &cache_uri,
-        move |store: &Store, uri| store.refresh_files(uri, to_body),
+        move |store: &Store, uri, known_hash| store.refresh_files(uri, to_body, known_hash),
     )
     .await?
     {
@@ -1189,7 +1191,7 @@ async fn get_data_from_edge_cache<T, F, R>(
 ) -> Result<Option<http::Response<Body>>, Error>
 where
     T: 'static,
-    F: FnOnce(&Store, Uri) -> R + 'static,
+    F: FnOnce(&Store, Uri, Option<String>) -> R + 'static,
     R: Future<Output = Option<(T, CacheWrite)>> + 'static,
 {
     let Some(hit) = get_data_cdn_cache(cache, cache_uri.clone()).await? else {
@@ -1200,7 +1202,13 @@ where
         return Ok(Some(hit.response));
     }
 
-    let freshness = refresh_ahead(state, env_id.clone(), cache_uri.clone(), refresh);
+    let freshness = refresh_ahead(
+        state,
+        env_id.clone(),
+        cache_uri.clone(),
+        hit.source_hash,
+        refresh,
+    );
 
     match with_freshness(hit.response, freshness).await {
         Ok(response) => Ok(Some(response)),

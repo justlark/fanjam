@@ -533,13 +533,51 @@ const injectHomeMetadata = (response: Response): Response => {
     .transform(response);
 };
 
+const STATS_SCRIPT_URL = "https://umami.fanjam.live/script.js";
+
+// We can reduce the load on the upstream Umami server considerably by caching
+// its client script. This script only changes when we upgrade Umami, so a long
+// cache TTL is fine.
+const STATS_EDGE_TTL_SECONDS = 60 * 60;
+
+// Serve the Umami tracking script, from the edge cache when we can.
+const statsScriptResponse = async (requestUrl: URL, ctx: ExecutionContext): Promise<Response> => {
+  const cache = caches.default;
+
+  // Normalize the cache key, so a query string can't bypass the cache.
+  const cacheKey = `${requestUrl.origin}/stats.js`;
+
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const upstream = await fetch(STATS_SCRIPT_URL);
+
+  // Don't cache errors; just pass them through as before.
+  if (!upstream.ok) {
+    return upstream;
+  }
+
+  const response = cloneResponseWithHeaders(upstream, {
+    // Browsers get Umami's own caching policy; `s-maxage` sets how long the
+    // edge cache holds it.
+    "Cache-Control": `public, max-age=86400, must-revalidate, s-maxage=${String(STATS_EDGE_TTL_SECONDS)}`,
+  });
+
+  // Don't hold up the response on writing to the cache.
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+
+  return response;
+};
+
 const isHtmlResponse = (response: Response): boolean => {
   const contentType = response.headers.get("Content-Type") ?? "";
   return contentType.toLowerCase().split(";")[0].trim() == "text/html";
 };
 
 export default {
-  async fetch(request: Request, env: Env) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const requestUrl = new URL(request.url);
 
     // uBlock Origin seems to block Umami's tracking script. To work around
@@ -548,7 +586,7 @@ export default {
     // justified. We're deliberately using a self-hosted analytics solution
     // because I care about my users' privacy.
     if (requestUrl.pathname === "/stats.js") {
-      return await fetch("https://umami.fanjam.live/script.js");
+      return await statsScriptResponse(requestUrl, ctx);
     }
 
     // We can short-circuit if the client is requesting the `/version.json`.

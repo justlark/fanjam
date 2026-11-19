@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
-use worker::{Cache, console_error};
+use worker::{Cache, console_error, console_log};
 
 use crate::{
     api::{DataResponseEnvelope, Freshness},
@@ -28,6 +28,14 @@ const REFRESH_AHEAD_GRACE: Duration = Duration::from_secs(30);
 // Set on edge cache entries for data endpoints, holding the time (as epoch milliseconds) at which
 // the entry falls due for a refresh. Internal; stripped before the response is served.
 const REFRESH_AT_HEADER: &str = "X-Sparklefish-Refresh-At";
+
+// Set on edge cache entries for data endpoints, holding the hash of the refresh coordinator
+// snapshot the entry was built from, and the ID of the Worker version that built it. Together,
+// they let a refresh ask the coordinator for just a fetch time when the data hasn't changed, and
+// re-stamp the entry it already has. See `restamp_data_cdn_cache`. Internal; stripped before the
+// response is served.
+const SOURCE_HASH_HEADER: &str = "X-Sparklefish-Source-Hash";
+const VERSION_HEADER: &str = "X-Sparklefish-Version";
 
 // How long responses for an environment stay in the edge cache. Configurable per-environment,
 // falling back to a global default.
@@ -191,6 +199,15 @@ pub struct DataCacheHit {
     // Whether the entry has outlived its TTL. If so, the caller should start a background refresh,
     // and must re-mark the response with `with_freshness` before serving it.
     pub refresh_due: bool,
+
+    // The hash of the coordinator snapshot this entry was built from, if the running version of
+    // the Worker built it. If the coordinator still has the same data, the refresh can re-stamp
+    // this entry instead of fetching the data again.
+    //
+    // `None` for an entry built by any other version, because the same data might not produce
+    // the same response body anymore (say, a deploy added a field or bumped the schema version).
+    // Re-stamping it would keep serving the old body for as long as the data didn't change.
+    pub source_hash: Option<String>,
 }
 
 // Just enough of a `DataResponseEnvelope` to re-mark it, without knowing the type of the value.
@@ -241,9 +258,21 @@ pub async fn get_data_cdn_cache(cache: &Cache, uri: Uri) -> Result<Option<DataCa
     let refresh_due =
         refresh_at.is_some_and(|refresh_at| chrono::Utc::now().timestamp_millis() >= refresh_at);
 
+    let headers = response.headers_mut();
+    let source_hash = headers.remove(SOURCE_HASH_HEADER);
+    let version = headers.remove(VERSION_HEADER);
+
+    let source_hash = match (config::version_id(), version, source_hash) {
+        (Some(current), Some(version), Some(hash)) if version.as_bytes() == current.as_bytes() => {
+            hash.to_str().ok().map(str::to_string)
+        }
+        _ => None,
+    };
+
     Ok(Some(DataCacheHit {
         response,
         refresh_due,
+        source_hash,
     }))
 }
 
@@ -260,11 +289,15 @@ pub async fn get_data_cdn_cache(cache: &Cache, uri: Uri) -> Result<Option<DataCa
 // after we write it. That keeps "this entry is due" in step with "the refresh coordinator's copy
 // is older than the TTL", so a refresh started by a due entry always gets newer data. Otherwise
 // an organizer's edit could take up to twice the TTL to show up.
+//
+// `source_hash` is the hash of the coordinator snapshot the response was built from, if known. See
+// `DataCacheHit::source_hash`.
 pub async fn put_data_cdn_cache(
     cache: &Cache,
     env_name: EnvName,
     ttl: Duration,
     fetched_at_ms: i64,
+    source_hash: Option<&str>,
     uri: Uri,
     mut response: worker::Response,
 ) {
@@ -278,13 +311,99 @@ pub async fn put_data_cdn_cache(
 
     let refresh_at = fetched_at_ms + ttl.as_millis() as i64;
 
-    if let Err(err) = response
-        .headers_mut()
-        .set(REFRESH_AT_HEADER, &refresh_at.to_string())
-    {
+    let result = (|| -> worker::Result<()> {
+        let headers = response.headers_mut();
+
+        headers.set(REFRESH_AT_HEADER, &refresh_at.to_string())?;
+
+        // Don't leave behind a hash from an entry we're re-stamping if we can't vouch for it.
+        match (source_hash, config::version_id()) {
+            (Some(hash), Some(version)) => {
+                headers.set(SOURCE_HASH_HEADER, hash)?;
+                headers.set(VERSION_HEADER, version)?;
+            }
+            _ => {
+                headers.delete(SOURCE_HASH_HEADER)?;
+                headers.delete(VERSION_HEADER)?;
+            }
+        }
+
+        Ok(())
+    })();
+
+    if let Err(err) = result {
         console_error!("Failed to put response in cache: {}", err);
         return;
     }
 
     put_cdn_cache(cache, env_name, retention, uri, response).await;
+}
+
+// Re-stamp an edge cache entry for a data endpoint with a newer fetch time, without changing its
+// body. Used when the refresh coordinator says the data is unchanged since the snapshot the entry
+// was built from (`source_hash`), so that the entry stops being due without fetching and
+// re-serializing data we already have.
+//
+// The entry is read back from the edge cache rather than passed in, so a hit doesn't have to copy
+// its body on the off chance it's needed. We only re-stamp it if it still holds the snapshot we
+// asked about; if another isolate has replaced it in the meantime, or it's expired, we leave it
+// alone. Either way, the next request after it falls due starts another refresh.
+pub async fn restamp_data_cdn_cache(
+    cache: &Cache,
+    env_name: EnvName,
+    ttl: Duration,
+    fetched_at_ms: i64,
+    source_hash: &str,
+    uri: Uri,
+) {
+    // Resolves to the copy to put back, or why we're leaving the entry alone.
+    let result = async {
+        let Some(mut cached) = cache.get(uri.to_string(), false).await? else {
+            return Ok::<_, worker::Error>(Err("it's no longer in the edge cache"));
+        };
+
+        // Check the version too, so that during a gradual deployment we can't take over an entry
+        // another version built and vouch for its body as ours.
+        if cached.headers().get(SOURCE_HASH_HEADER)?.as_deref() != Some(source_hash)
+            || cached.headers().get(VERSION_HEADER)?.as_deref() != config::version_id()
+        {
+            return Ok(Err("it's been replaced since the refresh started"));
+        }
+
+        // Copy the response so that we can change its headers. `Headers::clone` makes an
+        // independent, mutable copy.
+        let headers = cached.headers().clone();
+
+        // Drop anything the cache added on the way out. In particular, an `Age` carried over
+        // into the new entry could count against its `s-maxage`.
+        headers.delete("Age")?;
+        headers.delete("CF-Cache-Status")?;
+
+        let body = cached.bytes().await?;
+
+        Ok(Ok(worker::Response::from_bytes(body)?.with_headers(headers)))
+    }
+    .await;
+
+    match result {
+        Ok(Ok(response)) => {
+            put_data_cdn_cache(
+                cache,
+                env_name,
+                ttl,
+                fetched_at_ms,
+                Some(source_hash),
+                uri.clone(),
+                response,
+            )
+            .await;
+
+            console_log!(
+                "Re-stamped {} in the edge cache; the data is unchanged.",
+                uri
+            );
+        }
+        Ok(Err(reason)) => console_log!("Not re-stamping {}: {}.", uri, reason),
+        Err(err) => console_error!("Failed to re-stamp {} in the edge cache: {}", uri, err),
+    }
 }

@@ -17,8 +17,8 @@ use worker::kv::KvStore;
 use worker::{Cache, Context, Delay, ObjectNamespace, console_error, console_log, console_warn};
 
 use crate::api::{DataResponseEnvelope, Freshness, PostBackupKind};
-use crate::cache::{EtagJson, put_data_cdn_cache};
-use crate::coordinator::{self, Endpoint};
+use crate::cache::{EtagJson, put_data_cdn_cache, restamp_data_cdn_cache};
+use crate::coordinator::{self, Endpoint, Fetched};
 use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
 use crate::neon::BackupSnapshot;
@@ -276,16 +276,19 @@ where
 //
 // `refresh` is handed the `Store` for the environment, which we only build once we know a refresh
 // is going ahead. Building it costs several KV reads, and most hits on a due entry arrive while a
-// refresh is already running.
+// refresh is already running. It's also handed `known_hash`, the hash of the coordinator snapshot
+// the hit was built from (see `cache::DataCacheHit::source_hash`), so that if the data hasn't
+// changed, it can re-stamp the entry rather than fetch the data again.
 pub fn refresh_ahead<T, F, R>(
     state: &Arc<AppState>,
     env_id: EnvId,
     uri: Uri,
+    known_hash: Option<String>,
     refresh: F,
 ) -> Freshness
 where
     T: 'static,
-    F: FnOnce(&Store, Uri) -> R + 'static,
+    F: FnOnce(&Store, Uri, Option<String>) -> R + 'static,
     R: Future<Output = Option<(T, CacheWrite)>> + 'static,
 {
     let key = refresh_key(&uri);
@@ -300,7 +303,7 @@ where
 
     let refresh = async move {
         match Store::from_env_id(&state_for_refresh, &env_id).await {
-            Ok(store) => refresh(&store, uri).await,
+            Ok(store) => refresh(&store, uri, known_hash).await,
             Err(e) => {
                 console_warn!("Failed setting up refresh for {}: {}", uri, e);
                 None
@@ -393,12 +396,17 @@ macro_rules! get_data {
         // response body, along with a future that writes the data to the edge cache; the caller
         // decides whether to await that or hand it to `Context::wait_until`.
         //
+        // If `known_hash` is set (see `refresh_ahead`) and the coordinator's data still has that
+        // hash, there's no body. The future re-stamps the existing edge cache entry instead. With
+        // `known_hash` unset, a successful refresh always has a body.
+        //
         // The returned future owns everything it needs, so it can outlive the request.
         pub fn $refresh_fn_name<T, F>(
             &self,
             uri: Uri,
             to_body: F,
-        ) -> impl Future<Output = Option<(T, CacheWrite)>> + use<T, F>
+            known_hash: Option<String>,
+        ) -> impl Future<Output = Option<(Option<T>, CacheWrite)>> + use<T, F>
         where
             T: Serialize + Clone + 'static,
             F: FnOnce($type_name) -> T + 'static,
@@ -414,7 +422,12 @@ macro_rules! get_data {
                 // The coordinator keeps the persistent cache up to date itself. The kill switch
                 // falls back to fetching from NocoDB directly, the way every isolate used to, and
                 // then it's on us to write the persistent cache too.
-                let (value, fetched_at_ms, value_for_kv): ($type_name, i64, Option<$type_name>) =
+                let (value, fetched_at_ms, value_for_kv, source_hash): (
+                    $type_name,
+                    i64,
+                    Option<$type_name>,
+                    Option<String>,
+                ) =
                     if config::use_refresh_coordinator() {
                         let result = coordinator::fetch::<$type_name>(
                             &coordinator,
@@ -423,11 +436,39 @@ macro_rules! get_data {
                             $endpoint,
                             cache_ttl,
                             false,
+                            known_hash.as_deref(),
                         )
                         .await;
 
                         match result {
-                            Ok(fetched) => (fetched.value, fetched.fetched_at_ms, None),
+                            Ok(Fetched::Value { value, fetched_at_ms, hash }) => {
+                                (value, fetched_at_ms, None, hash)
+                            }
+                            Ok(Fetched::NotModified { fetched_at_ms }) => {
+                                // The coordinator only answers this way when we sent a hash.
+                                let Some(source_hash) = known_hash else {
+                                    console_warn!(
+                                        "The refresh coordinator said {} was unchanged, but we \
+                                         didn't say what we had.",
+                                        $cache_key,
+                                    );
+                                    return None;
+                                };
+
+                                let restamp = async move {
+                                    restamp_data_cdn_cache(
+                                        &Cache::default(),
+                                        env_name,
+                                        cache_ttl,
+                                        fetched_at_ms,
+                                        &source_hash,
+                                        uri,
+                                    )
+                                    .await;
+                                };
+
+                                return Some((None, restamp.boxed_local()));
+                            }
                             Err(e) => {
                                 console_warn!(
                                     "Failed getting {} from the refresh coordinator: {}",
@@ -451,7 +492,7 @@ macro_rules! get_data {
                         match $get_api_fn(&noco_client, &table_ids).await {
                             Ok(value) => {
                                 let value_for_kv = value.clone();
-                                (value, fetched_at_ms, Some(value_for_kv))
+                                (value, fetched_at_ms, Some(value_for_kv), None)
                             }
                             Err(e) => {
                                 console_warn!("Failed getting {} from NocoDB: {}", $cache_key, e);
@@ -493,12 +534,13 @@ macro_rules! get_data {
                         env_name,
                         cache_ttl,
                         fetched_at_ms,
+                        source_hash.as_deref(),
                         uri,
                         response_for_edge_cache,
                     ).await;
                 };
 
-                Some((body, write_cache.boxed_local()))
+                Some((Some(body), write_cache.boxed_local()))
             }
         }
 
@@ -533,7 +575,8 @@ macro_rules! get_data {
 
                     match action {
                         RefreshAction::Spawn => {
-                            let refresh = self.$refresh_fn_name(uri, to_body.clone());
+                            // There's no edge cache entry to re-stamp here, so we need the data.
+                            let refresh = self.$refresh_fn_name(uri, to_body.clone(), None);
                             spawn_refresh(&self.ctx, refresh_key, refresh);
                         }
                         RefreshAction::AlreadyInFlight => {
@@ -578,7 +621,11 @@ macro_rules! get_data {
                     // legitimate cold start — a new environment, or one whose cache was just
                     // cleared — has to be allowed to block and fetch. Every request here waits on
                     // the coordinator, which makes them all share one fetch from NocoDB.
-                    let latest = self.$refresh_fn_name(uri, to_body).await;
+                    // Without a `known_hash`, a successful refresh always has a body.
+                    let latest = self
+                        .$refresh_fn_name(uri, to_body, None)
+                        .await
+                        .and_then(|(body, write_cache)| Some((body?, write_cache)));
 
                     finish_refresh(&refresh_key, latest.is_some());
 
@@ -830,6 +877,7 @@ impl Store {
                 Endpoint::Announcements,
                 self.cache_ttl(),
                 true,
+                None,
             )
             .await
             .map_err(Error::Internal)?;

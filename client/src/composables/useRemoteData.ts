@@ -6,6 +6,7 @@ import {
   toRef,
   provide,
   onMounted,
+  onScopeDispose,
   inject,
   ref,
   shallowRef,
@@ -147,6 +148,9 @@ const useRemoteDataInner = <T, S>({
   let retryCount = 0;
   let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 
+  // Set once the view that owns this data source goes away.
+  let disposed = false;
+
   const cancelRetry = () => {
     if (retryTimeout !== undefined) {
       clearTimeout(retryTimeout);
@@ -154,15 +158,30 @@ const useRemoteDataInner = <T, S>({
     }
   };
 
+  // Every view mounts its own data sources, and the next view refetches on
+  // mount. So once this view is gone, its retries would only duplicate that
+  // fetch, and its retry chain alongside the next view's. Stop them, including
+  // any a fetch still in flight would otherwise schedule when it comes back.
+  onScopeDispose(() => {
+    disposed = true;
+    cancelRetry();
+  });
+
   // Retry with exponential backoff, jittered across half the delay. The jitter
   // matters: clients go stale together, because they go stale when the shared
   // edge cache entry expires. Without jitter they'd all come back in lockstep,
   // and that synchronized burst is what turns a slow upstream into a dead one.
   const scheduleRetry = () => {
-    if (retryCount >= MAX_RETRIES) return;
+    if (disposed || retryCount >= MAX_RETRIES) return;
     const delay = BASE_RETRY_DELAY_MS * Math.pow(2, retryCount);
     const jittered = delay * (0.5 + Math.random() * 0.5);
     retryCount++;
+
+    // Two reloads can overlap (say, the one on mount and one from a push
+    // notification), and if both come back stale, both land here. Replace the
+    // pending timer rather than orphaning it.
+    cancelRetry();
+
     retryTimeout = setTimeout(() => {
       retryTimeout = undefined;
       void reload();
@@ -1055,9 +1074,17 @@ const remoteDataKey = Symbol("data");
 
 let appSetupDone = false;
 
+// The data sources of the view that mounted most recently. Listeners set up
+// once per app load go through this rather than holding on to whichever view
+// happened to be mounted when they were registered. That view's retries stop
+// once it unmounts, so a stale answer to a reload made through it would never
+// be followed up.
+let currentRemoteData: ReturnType<CombinedDataSource> | undefined;
+
 export const provideRemoteData = () => {
   const remoteData = useRemoteData();
   provide(remoteDataKey, remoteData);
+  currentRemoteData = remoteData;
 
   // Pull the device's synced schedule once on app load (or push it, if it
   // hasn't reached the server yet), mirroring how the rest of the data is fetched eagerly on mount.
@@ -1083,7 +1110,7 @@ export const provideRemoteData = () => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.addEventListener("message", (event) => {
       if ((event.data as { type?: string } | undefined)?.type === "announcement") {
-        void remoteData.reload.announcements();
+        void currentRemoteData?.reload.announcements();
       }
     });
   }

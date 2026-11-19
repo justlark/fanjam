@@ -32,6 +32,9 @@ binding = "KV"
 id = "0afa0089d1f14e0c907f68b5dba8db90"
 preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
 
+[env.test.version_metadata]
+binding = "CF_VERSION_METADATA"
+
 [[env.test.durable_objects.bindings]]
 name = "REFRESH_COORDINATOR"
 class_name = "RefreshCoordinator"
@@ -88,6 +91,11 @@ custom_domain = true
 binding = "KV"
 id = "c36821103a5045fc9de6baad28623928"
 preview_id = "0afa0089d1f14e0c907f68b5dba8db90"
+
+# Lets the worker tell which deployment built an edge cache entry, so it never
+# re-stamps a response body built by an older version of the code.
+[env.prod.version_metadata]
+binding = "CF_VERSION_METADATA"
 
 [[env.prod.durable_objects.bindings]]
 name = "REFRESH_COORDINATOR"

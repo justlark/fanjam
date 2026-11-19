@@ -27,6 +27,9 @@ struct Config {
     // isn't a fatal error; it just means push notifications won't work.
     vapid: Option<push::VapidKey>,
     noco_webhook_token: Option<auth::ApiToken>,
+    // The ID of the Worker version that's running. `None` if the version metadata binding isn't
+    // configured, which turns off conditional refreshes (see `cache::put_data_cdn_cache`).
+    version_id: Option<String>,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -72,6 +75,11 @@ pub fn init(env: &Env) -> anyhow::Result<()> {
                 .secret("NOCO_WEBHOOK_TOKEN")
                 .ok()
                 .and_then(|s| auth::ApiToken::try_from(s.to_string().as_str()).ok()),
+            version_id: env
+                .get_binding::<worker::WorkerVersionMetadata>("CF_VERSION_METADATA")
+                .ok()
+                .map(|metadata| metadata.id())
+                .filter(|id| !id.is_empty()),
         })
         .ok();
 
@@ -155,4 +163,8 @@ pub fn refresh_coordinator_location() -> String {
 
 pub fn noco_fetch_timeout() -> Duration {
     Duration::from_secs(get_config().noco_fetch_timeout_seconds.into())
+}
+
+pub fn version_id() -> Option<&'static str> {
+    get_config().version_id.as_deref()
 }

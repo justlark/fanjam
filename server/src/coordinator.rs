@@ -38,6 +38,10 @@ use crate::{config, kv, url};
 // The time (as epoch milliseconds) the data in a response was fetched from NocoDB.
 const FETCHED_AT_HEADER: &str = "X-Fetched-At";
 
+// The hash of the snapshot in a response, which the caller can send back as `known_hash` next
+// time. See `FetchRequest::known_hash`.
+const SNAPSHOT_HASH_HEADER: &str = "X-Snapshot-Hash";
+
 // The data endpoints the coordinator fetches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -99,19 +103,47 @@ struct FetchRequest {
     // Fetch from NocoDB even if the data we have is younger than the TTL. Used when we know it's
     // out of date, like when a new announcement has just been posted.
     force: bool,
+
+    // The hash of the snapshot the caller already has, if any. When the latest snapshot has the
+    // same hash, we answer with a 304 and its fetch time instead of the whole body.
+    //
+    // Every refresh-ahead from every isolate comes through here, and this object handles one
+    // request at a time. Sending the full body back on each of those calls, even though the data
+    // rarely changes, is what makes this object the bottleneck under heavy load.
+    //
+    // Defaulted so that a request from an older deploy of the worker, which doesn't send it, still
+    // parses.
+    #[serde(default)]
+    known_hash: Option<String>,
 }
 
 // What the coordinator hands back to an isolate.
-pub struct Fetched<T> {
-    pub value: T,
+pub enum Fetched<T> {
+    // The latest data.
+    Value {
+        value: T,
 
-    // When the coordinator started the fetch that produced this value, as epoch milliseconds.
-    pub fetched_at_ms: i64,
+        // When the coordinator started the fetch that produced this value, as epoch
+        // milliseconds.
+        fetched_at_ms: i64,
+
+        // The hash of the snapshot this came from, to pass back as `known_hash` next time.
+        hash: Option<String>,
+    },
+
+    // The latest data is the same as what the caller said it has (see `known_hash`), so here's
+    // just its fetch time.
+    NotModified {
+        fetched_at_ms: i64,
+    },
 }
 
 // Get the latest data for an endpoint by way of the coordinator, which only goes to NocoDB if
 // what it has is older than `ttl` (or `force` is set). Fails if the coordinator's fetch failed or
 // it's in backoff after repeated failures.
+//
+// Pass `known_hash` (from an earlier `Fetched::Value`) to get `Fetched::NotModified` back instead
+// of the data, if it hasn't changed.
 pub async fn fetch<T: DeserializeOwned>(
     namespace: &ObjectNamespace,
     env_name: &EnvName,
@@ -119,6 +151,7 @@ pub async fn fetch<T: DeserializeOwned>(
     endpoint: Endpoint,
     ttl: Duration,
     force: bool,
+    known_hash: Option<&str>,
 ) -> anyhow::Result<Fetched<T>> {
     let stub = namespace.get_by_name_with_location_hint(
         &env_name.to_string(),
@@ -131,6 +164,7 @@ pub async fn fetch<T: DeserializeOwned>(
         base_id: base_id.to_string(),
         ttl_ms: ttl.as_millis() as i64,
         force,
+        known_hash: known_hash.map(str::to_string),
     })?;
 
     // The URL is only for the benefit of the logs; the request body says what we want.
@@ -144,11 +178,12 @@ pub async fn fetch<T: DeserializeOwned>(
     )?;
 
     let mut response = stub.fetch_with_request(request).await?;
+    let status = response.status_code();
 
-    if response.status_code() != 200 {
+    if status != 200 && status != 304 {
         return Err(anyhow!(
             "The refresh coordinator responded with {}: {}",
-            response.status_code(),
+            status,
             response.text().await.unwrap_or_default(),
         ));
     }
@@ -159,9 +194,16 @@ pub async fn fetch<T: DeserializeOwned>(
         .and_then(|value| value.parse().ok())
         .context("The refresh coordinator's response has no valid fetch time.")?;
 
-    Ok(Fetched {
+    if status == 304 {
+        return Ok(Fetched::NotModified { fetched_at_ms });
+    }
+
+    let hash = response.headers().get(SNAPSHOT_HASH_HEADER)?;
+
+    Ok(Fetched::Value {
         value: response.json::<T>().await?,
         fetched_at_ms,
+        hash,
     })
 }
 
@@ -534,10 +576,13 @@ impl DurableObject for RefreshCoordinator {
             base_id,
             ttl_ms,
             force,
+            known_hash,
         } = req.json().await?;
 
+        let known_hash = known_hash.as_deref();
+
         let in_flight = match self.inner.decide(endpoint, ttl_ms, force) {
-            Decision::Serve(snapshot) => return snapshot_response(&snapshot),
+            Decision::Serve(snapshot) => return snapshot_response(&snapshot, known_hash),
             Decision::InBackoff { remaining_ms } => {
                 return Response::error(
                     format!(
@@ -566,14 +611,29 @@ impl DurableObject for RefreshCoordinator {
         };
 
         match self.inner.wait_for(endpoint, in_flight).await {
-            Ok(snapshot) => snapshot_response(&snapshot),
+            Ok(snapshot) => snapshot_response(&snapshot, known_hash),
             Err(message) => Response::error(message, 503),
         }
     }
 }
 
-fn snapshot_response(snapshot: &Snapshot) -> worker::Result<Response> {
-    let mut response = Response::ok(snapshot.json.clone())?;
+// Whether the caller already has this snapshot's data, going by the hash it sent.
+fn caller_has_snapshot(snapshot: &Snapshot, known_hash: Option<&str>) -> bool {
+    known_hash.is_some_and(|known_hash| snapshot.hash.to_hex().as_str() == known_hash)
+}
+
+fn snapshot_response(snapshot: &Snapshot, known_hash: Option<&str>) -> worker::Result<Response> {
+    let mut response = if caller_has_snapshot(snapshot, known_hash) {
+        Response::empty()?.with_status(304)
+    } else {
+        let mut response = Response::ok(snapshot.json.clone())?;
+
+        response
+            .headers_mut()
+            .set(SNAPSHOT_HASH_HEADER, snapshot.hash.to_hex().as_str())?;
+
+        response
+    };
 
     response
         .headers_mut()
@@ -748,6 +808,28 @@ mod tests {
             inner.endpoints.borrow()[&Endpoint::Pages].consecutive_failures,
             0
         );
+    }
+
+    #[test]
+    fn caller_has_snapshot_only_when_the_hash_matches() {
+        let latest = snapshot(1, 1_000);
+        let latest_hash = latest.hash.to_hex();
+        let older_hash = snapshot(0, 0).hash.to_hex();
+
+        assert!(caller_has_snapshot(&latest, Some(latest_hash.as_str())));
+        assert!(!caller_has_snapshot(&latest, Some(older_hash.as_str())));
+        assert!(!caller_has_snapshot(&latest, None));
+    }
+
+    #[test]
+    fn fetch_request_without_known_hash_still_parses() {
+        // What a worker deployed before conditional refreshes sends.
+        let request: FetchRequest = serde_json::from_str(
+            r#"{"env_name":"mycon","endpoint":"events","base_id":"b","ttl_ms":5000,"force":false}"#,
+        )
+        .unwrap();
+
+        assert_eq!(request.known_hash, None);
     }
 
     #[test]
