@@ -7,7 +7,7 @@ use crate::noco::{
             self, ColumnIds, CreateColumnRequest, create_columns, delete_columns, delete_tables,
             list_columns, set_nop,
         },
-        n3,
+        n03,
     },
 };
 
@@ -69,7 +69,7 @@ impl<'a> Migration<'a> {
 }
 
 impl<'a> common::Migration<'a> for Migration<'a> {
-    const INDEX: Version = n3::Migration::INDEX.next();
+    const INDEX: Version = n03::Migration::INDEX.next();
 
     fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
         Self { client }

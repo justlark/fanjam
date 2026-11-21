@@ -231,6 +231,14 @@ struct VendorPageResponse {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct PasswordResponse {
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(rename = "Password")]
+    pub password: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventPerson {
     pub id: String,
@@ -351,6 +359,12 @@ pub struct VendorPage {
     pub id: String,
     pub title: String,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Password {
+    pub name: String,
+    pub password: String,
 }
 
 #[worker::send]
@@ -596,6 +610,23 @@ pub async fn get_vendors(client: &Client, table_ids: &TableIds) -> anyhow::Resul
                 id: p.id.to_string(),
                 title: p.title,
             }),
+        })
+        .collect())
+}
+
+#[worker::send]
+pub async fn get_passwords(client: &Client, table_ids: &TableIds) -> anyhow::Result<Vec<Password>> {
+    let Some(table_id) = &table_ids.passwords else {
+        return Ok(Vec::new());
+    };
+
+    let password_records = list_records::<PasswordResponse>(client, table_id).await?;
+
+    Ok(password_records
+        .into_iter()
+        .map(|r| Password {
+            name: r.name,
+            password: r.password,
         })
         .collect())
 }

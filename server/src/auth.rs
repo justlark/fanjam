@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::{
     body::Body,
-    http::{Request, Response, StatusCode, header::AUTHORIZATION},
+    http::{HeaderMap, Request, Response, StatusCode, header::AUTHORIZATION},
     response::IntoResponse,
 };
 use base64::prelude::*;
@@ -40,6 +40,38 @@ impl ExposeSecret<[u8]> for ApiToken {
     }
 }
 
+// Parse a base64-encoded bearer token from the `Authorization` header, if there is a valid one.
+pub fn bearer_token(headers: &HeaderMap) -> Option<ApiToken> {
+    headers
+        .get(AUTHORIZATION)?
+        .to_str()
+        .ok()?
+        .strip_prefix(BEARER_PREFIX)
+        .and_then(|token| ApiToken::try_from(token).ok())
+}
+
+// Check a bearer token against the app passwords configured for an environment. When there are no
+// passwords, the app is open to everyone, so any request (with or without a token) is allowed.
+pub fn token_matches_any<'a>(
+    token: Option<&ApiToken>,
+    passwords: impl IntoIterator<Item = &'a str>,
+) -> bool {
+    let mut passwords = passwords.into_iter().peekable();
+
+    if passwords.peek().is_none() {
+        return true;
+    }
+
+    let Some(token) = token else {
+        return false;
+    };
+
+    // Deliberately check every password rather than stopping at the first match.
+    passwords.fold(false, |matched, password| {
+        constant_time_eq(token.expose_secret(), password.as_bytes()) | matched
+    })
+}
+
 type BoxFutureResponseResult<'a> = BoxFuture<'a, Result<Request<Body>, Response<Body>>>;
 
 pub fn admin_auth_layer<'a>()
@@ -68,20 +100,8 @@ where
             let expected_api_token =
                 expected().ok_or_else(|| StatusCode::SERVICE_UNAVAILABLE.into_response())?;
 
-            let auth_header = req
-                .headers()
-                .get(AUTHORIZATION)
+            let actual_api_token = bearer_token(req.headers())
                 .ok_or_else(|| StatusCode::UNAUTHORIZED.into_response())?;
-
-            let auth_header_value = auth_header
-                .to_str()
-                .map_err(|_| StatusCode::UNAUTHORIZED.into_response())?;
-
-            let actual_api_token = auth_header_value
-                .strip_prefix(BEARER_PREFIX)
-                .map(ApiToken::try_from)
-                .ok_or_else(|| StatusCode::UNAUTHORIZED.into_response())?
-                .map_err(|_| StatusCode::UNAUTHORIZED.into_response())?;
 
             let token_is_valid = constant_time_eq(
                 actual_api_token.0.expose_secret(),
@@ -96,4 +116,54 @@ where
         }
         .boxed()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn token(password: &str) -> ApiToken {
+        ApiToken::from(password.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn no_passwords_allows_everyone() {
+        assert!(token_matches_any(None, []));
+        assert!(token_matches_any(Some(&token("anything")), []));
+    }
+
+    #[test]
+    fn missing_token_is_rejected() {
+        assert!(!token_matches_any(None, ["hunter2"]));
+    }
+
+    #[test]
+    fn any_password_is_accepted() {
+        let passwords = ["hunter2", "correct horse battery staple"];
+        assert!(token_matches_any(Some(&token("hunter2")), passwords));
+        assert!(token_matches_any(
+            Some(&token("correct horse battery staple")),
+            passwords
+        ));
+    }
+
+    #[test]
+    fn wrong_password_is_rejected() {
+        assert!(!token_matches_any(Some(&token("hunter3")), ["hunter2"]));
+        assert!(!token_matches_any(Some(&token("")), ["hunter2"]));
+    }
+
+    #[test]
+    fn parses_base64_bearer_token() {
+        let mut headers = HeaderMap::new();
+        headers.insert(AUTHORIZATION, "Bearer aHVudGVyMg==".parse().unwrap());
+        let parsed = bearer_token(&headers).expect("expected a token");
+        assert_eq!(parsed.expose_secret(), b"hunter2");
+
+        headers.insert(AUTHORIZATION, "Basic aHVudGVyMg==".parse().unwrap());
+        assert!(bearer_token(&headers).is_none());
+
+        headers.insert(AUTHORIZATION, "Bearer not base64!".parse().unwrap());
+        assert!(bearer_token(&headers).is_none());
+    }
 }

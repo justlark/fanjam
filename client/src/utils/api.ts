@@ -1,3 +1,6 @@
+import { encodeBase64 } from "@/utils/encoding";
+import { clearStoredPassword, getStoredPassword, requirePassword } from "@/utils/password";
+
 interface RawEvent {
   id: string;
   name: string;
@@ -283,6 +286,46 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
   }
 };
 
+const withPassword = (init: RequestInit | undefined, password: string | undefined): RequestInit => {
+  if (password === undefined) return init ?? {};
+
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${encodeBase64(password)}`);
+
+  return { ...init, headers };
+};
+
+// Fetch an endpoint that requires the app password, when the environment has
+// one. We only send the `Authorization` header when we have a password stored;
+// see the note below on preflights.
+//
+// When the server rejects the request, we forget the stored password and flag
+// the environment so the user is prompted for it again.
+const protectedFetch = async (
+  envId: string,
+  input: string,
+  init?: RequestInit,
+): Promise<Response | undefined> => {
+  const password = getStoredPassword(envId);
+
+  const response = await safeFetch(input, withPassword(init, password));
+
+  if (response?.status === 401) {
+    // Requests can overlap with the user entering a new password. Only clear
+    // the password this request actually sent, so a late rejection of the old
+    // password doesn't throw away the new one.
+    if (password !== undefined && getStoredPassword(envId) === password) {
+      clearStoredPassword(envId);
+    }
+
+    if (getStoredPassword(envId) === undefined) {
+      requirePassword(envId);
+    }
+  }
+
+  return response;
+};
+
 // The server answers conditional requests with a 304 Not Modified, but we
 // deliberately don't pass `If-None-Match` ourselves. Because the server sends
 // `Cache-Control: no-cache`, the browser will reply with `If-None-Match`
@@ -291,6 +334,10 @@ const safeFetch = async (input: string, init?: RequestInit): Promise<Response | 
 // ignoring the CORS cache and the `Access-Control-Max-Age` the server sends.
 // This is not a problem when we rely on the browser to do the conditional
 // request for us.
+//
+// The same goes for the `Authorization` header, which is why we only send it
+// for password-protected environments. There, the preflight is unavoidable,
+// but the browser caches it for `Access-Control-Max-Age`.
 
 export type ApiResult<T> =
   | {
@@ -313,7 +360,8 @@ export type ApiResult<T> =
 // paginating as the user tabs through the schedule. This is necessary so the
 // app works offline.
 const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/events`,
   );
 
@@ -352,7 +400,8 @@ const getEvents = async (envId: string): Promise<ApiResult<Array<Event>>> => {
 };
 
 const getPeople = async (envId: string): Promise<ApiResult<Array<Person>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/people`,
   );
 
@@ -384,7 +433,8 @@ const getPeople = async (envId: string): Promise<ApiResult<Array<Person>>> => {
 };
 
 const getLocations = async (envId: string): Promise<ApiResult<Array<Location>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/locations`,
   );
 
@@ -417,7 +467,8 @@ const getLocations = async (envId: string): Promise<ApiResult<Array<Location>>> 
 };
 
 const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
   );
 
@@ -458,7 +509,8 @@ const getInfo = async (envId: string): Promise<ApiResult<Info>> => {
 };
 
 const getPages = async (envId: string): Promise<ApiResult<Array<Page>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/pages`,
   );
 
@@ -495,7 +547,8 @@ const getPages = async (envId: string): Promise<ApiResult<Array<Page>>> => {
 };
 
 const getAnnouncements = async (envId: string): Promise<ApiResult<Array<Announcement>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/announcements`,
   );
 
@@ -537,7 +590,8 @@ const getAnnouncements = async (envId: string): Promise<ApiResult<Array<Announce
 };
 
 const getVendors = async (envId: string): Promise<ApiResult<Array<Vendor>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/vendors`,
   );
 
@@ -572,7 +626,8 @@ const getVendors = async (envId: string): Promise<ApiResult<Array<Vendor>>> => {
 };
 
 const getVendorPages = async (envId: string): Promise<ApiResult<Array<VendorPage>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/vendor-pages`,
   );
 
@@ -661,7 +716,8 @@ const postSubscription = async (
   envId: string,
   subscription: PushSubscriptionJSON,
 ): Promise<ApiResult<void>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
     {
       method: "POST",
@@ -682,7 +738,8 @@ const postSubscription = async (
 };
 
 const deleteSubscription = async (envId: string, endpoint: string): Promise<ApiResult<void>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/subscription`,
     {
       method: "DELETE",
@@ -707,7 +764,8 @@ const putSchedule = async (
   syncCode: string,
   schedule: Array<string>,
 ): Promise<ApiResult<void>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
     {
       method: "PUT",
@@ -728,7 +786,8 @@ const putSchedule = async (
 };
 
 const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<Array<string>>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
   );
 
@@ -746,7 +805,8 @@ const getSchedule = async (envId: string, syncCode: string): Promise<ApiResult<A
 };
 
 const deleteSchedule = async (envId: string, syncCode: string): Promise<ApiResult<void>> => {
-  const response = await safeFetch(
+  const response = await protectedFetch(
+    envId,
     `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/schedule/${syncCode}`,
     { method: "DELETE" },
   );
@@ -762,7 +822,26 @@ const deleteSchedule = async (envId: string, syncCode: string): Promise<ApiResul
   return { ok: true, value: undefined };
 };
 
+// Check whether a password the user entered is valid, without storing it.
+const checkPassword = async (envId: string, password: string): Promise<ApiResult<void>> => {
+  const response = await safeFetch(
+    `https://${import.meta.env.VITE_API_HOST as string}/apps/${envId}/info`,
+    withPassword(undefined, password),
+  );
+
+  if (response === undefined) {
+    return { ok: false, code: "offline" };
+  }
+
+  if (!isOk(response)) {
+    return { ok: false, code: response.status };
+  }
+
+  return { ok: true, value: undefined };
+};
+
 export default {
+  checkPassword,
   getEvents,
   getPeople,
   getLocations,

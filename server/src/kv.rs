@@ -5,8 +5,8 @@ use crate::{
     api::Alias,
     env::{Config, EnvDomain, EnvId, EnvName, SyncCode},
     noco::{
-        Announcement, ApiToken, BaseId, Event, File, Info, Location, Page, Person, TableInfo,
-        Vendor, VendorPage,
+        Announcement, ApiToken, BaseId, Event, File, Info, Location, Page, Password, Person,
+        TableInfo, Vendor, VendorPage,
     },
     push::{self, SubscriptionId},
 };
@@ -116,6 +116,7 @@ cache_key_fn!(announcements_cache_key, "announcements");
 cache_key_fn!(files_cache_key, "files");
 cache_key_fn!(vendors_cache_key, "vendors");
 cache_key_fn!(vendor_pages_cache_key, "vendor-pages");
+cache_key_fn!(passwords_cache_key, "passwords");
 
 #[worker::send]
 pub async fn put_id_env(kv: &KvStore, env_id: &EnvId, env_name: &EnvName) -> anyhow::Result<()> {
@@ -423,6 +424,7 @@ put_cache_fn!(
     vendor_pages_cache_key,
     &[VendorPage]
 );
+put_cache_fn!(put_cached_passwords, passwords_cache_key, &[Password]);
 
 // Read a value from the persistent cache as raw JSON, under a key from one of the `*_cache_key`
 // functions.
@@ -472,6 +474,7 @@ get_cache_fn!(
     vendor_pages_cache_key,
     Vec<VendorPage>
 );
+get_cache_fn!(get_cached_passwords, passwords_cache_key, Vec<Password>);
 
 #[worker::send]
 pub async fn delete_cache(kv: &KvStore, env_name: &EnvName) -> anyhow::Result<()> {

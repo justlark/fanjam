@@ -862,6 +862,17 @@ impl Store {
         cache_key: "vendor-pages",
     }
 
+    get_data! {
+        fn_name: get_passwords,
+        refresh_fn_name: refresh_passwords,
+        type_name: Vec<noco::Password>,
+        endpoint: Endpoint::Passwords,
+        get_api_fn: noco::get_passwords,
+        get_cached_fn: kv::get_cached_passwords,
+        put_cached_fn: kv::put_cached_passwords,
+        cache_key: "passwords",
+    }
+
     // Refresh the cache specifically with the latest announcements from NocoDB. This is necessary
     // because we send out push notifications for announcements.
     #[worker::send]

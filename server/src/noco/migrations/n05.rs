@@ -8,7 +8,7 @@ use crate::noco::{
     BaseId, Client, TableIds, Version, list_tables,
     migrations::{
         common::{self, MigrationContext},
-        n4,
+        n04,
     },
 };
 
@@ -125,7 +125,7 @@ impl<'a> Migration<'a> {
 }
 
 impl<'a> common::Migration<'a> for Migration<'a> {
-    const INDEX: Version = n4::Migration::INDEX.next();
+    const INDEX: Version = n04::Migration::INDEX.next();
 
     fn new(client: &'a Client, ctx: &'a MigrationContext) -> Self {
         Self { client, ctx }

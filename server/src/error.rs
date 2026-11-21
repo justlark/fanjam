@@ -48,6 +48,9 @@ pub enum Error {
     #[error("No synced schedule exists for that sync code.")]
     ScheduleNotFound,
 
+    #[error("A valid password is required to access this app.")]
+    Unauthorized,
+
     #[error("Internal server error: {0}")]
     Internal(anyhow::Error),
 }
@@ -69,6 +72,7 @@ impl Error {
             Error::NoEnvDomain => StatusCode::NOT_FOUND,
             Error::InvalidSchedule => StatusCode::BAD_REQUEST,
             Error::ScheduleNotFound => StatusCode::NOT_FOUND,
+            Error::Unauthorized => StatusCode::UNAUTHORIZED,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

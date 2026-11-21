@@ -5,7 +5,7 @@ use crate::noco::migrations::common::TableRequest;
 use super::{
     BaseId, Client, TableId, Version,
     common::{self, CreateColumnRequest, create_columns, create_tables, set_nop, set_ref},
-    n1,
+    n01,
 };
 
 #[derive(Debug, Default)]
@@ -85,7 +85,7 @@ impl Migration<'_> {
 }
 
 impl<'a> common::Migration<'a> for Migration<'a> {
-    const INDEX: Version = n1::Migration::INDEX.next();
+    const INDEX: Version = n01::Migration::INDEX.next();
 
     fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
         Self { client }

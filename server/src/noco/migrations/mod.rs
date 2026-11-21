@@ -1,13 +1,14 @@
 mod common;
-mod n1;
-mod n2;
-mod n3;
-mod n4;
-mod n5;
-mod n6;
-mod n7;
-mod n8;
-mod n9;
+mod n01;
+mod n02;
+mod n03;
+mod n04;
+mod n05;
+mod n06;
+mod n07;
+mod n08;
+mod n09;
+mod n10;
 
 // Each base schema migration lives in its own module with the name `nX`, where `X` is the
 // incrementing migration number.
@@ -31,15 +32,16 @@ pub async fn run(
     ctx: &MigrationContext,
 ) -> anyhow::Result<Outcome> {
     match version {
-        n1::Migration::INDEX => n1::Migration::new(client, ctx).migrate(base_id).await?,
-        n2::Migration::INDEX => n2::Migration::new(client, ctx).migrate(base_id).await?,
-        n3::Migration::INDEX => n3::Migration::new(client, ctx).migrate(base_id).await?,
-        n4::Migration::INDEX => n4::Migration::new(client, ctx).migrate(base_id).await?,
-        n5::Migration::INDEX => n5::Migration::new(client, ctx).migrate(base_id).await?,
-        n6::Migration::INDEX => n6::Migration::new(client, ctx).migrate(base_id).await?,
-        n7::Migration::INDEX => n7::Migration::new(client, ctx).migrate(base_id).await?,
-        n8::Migration::INDEX => n8::Migration::new(client, ctx).migrate(base_id).await?,
-        n9::Migration::INDEX => n9::Migration::new(client, ctx).migrate(base_id).await?,
+        n01::Migration::INDEX => n01::Migration::new(client, ctx).migrate(base_id).await?,
+        n02::Migration::INDEX => n02::Migration::new(client, ctx).migrate(base_id).await?,
+        n03::Migration::INDEX => n03::Migration::new(client, ctx).migrate(base_id).await?,
+        n04::Migration::INDEX => n04::Migration::new(client, ctx).migrate(base_id).await?,
+        n05::Migration::INDEX => n05::Migration::new(client, ctx).migrate(base_id).await?,
+        n06::Migration::INDEX => n06::Migration::new(client, ctx).migrate(base_id).await?,
+        n07::Migration::INDEX => n07::Migration::new(client, ctx).migrate(base_id).await?,
+        n08::Migration::INDEX => n08::Migration::new(client, ctx).migrate(base_id).await?,
+        n09::Migration::INDEX => n09::Migration::new(client, ctx).migrate(base_id).await?,
+        n10::Migration::INDEX => n10::Migration::new(client, ctx).migrate(base_id).await?,
         _ => return Ok(Outcome::AlreadyUpToDate),
     }
 

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use axum::http::{
     Method,
-    header::{CONTENT_TYPE, ETAG, IF_NONE_MATCH},
+    header::{AUTHORIZATION, CONTENT_TYPE, ETAG, IF_NONE_MATCH},
 };
 use tower_http::cors::{Any, CorsLayer};
 
@@ -19,7 +19,7 @@ pub fn cors_layer() -> CorsLayer {
             Method::PATCH,
             Method::DELETE,
         ])
-        .allow_headers([CONTENT_TYPE, IF_NONE_MATCH])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE, IF_NONE_MATCH])
         .expose_headers([ETAG])
         .max_age(PREFLIGHT_MAX_AGE)
         .allow_origin(Any)

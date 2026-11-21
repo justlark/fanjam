@@ -12,6 +12,7 @@ import IconButton from "./IconButton.vue";
 import ShareViewFooter from "./ShareViewFooter.vue";
 import AppUpdater from "./AppUpdater.vue";
 import PushNotificationPrompter from "./PushNotificationPrompter.vue";
+import PasswordDialog from "./PasswordDialog.vue";
 import AppAttribution from "./AppAttribution.vue";
 import FeedbackCallout from "./FeedbackCallout.vue";
 import Toast from "primevue/toast";
@@ -124,7 +125,19 @@ const headerHeadingId = useId();
 <template>
   <div class="flex flex-col h-dvh">
     <div
-      v-if="infoStatus === 'error'"
+      v-if="infoStatus === 'unauthorized'"
+      class="flex flex-col justify-center items-center grow text-center px-6"
+      data-testid="site-nav-locked-state"
+    >
+      <SimpleIcon
+        icon="lock"
+        class="mb-4 text-8xl text-muted-color flex justify-center items-center"
+      />
+      <span class="mb-1 text-2xl text-muted-color">Password required</span>
+      <span class="text-lg text-muted-color">This app is password-protected.</span>
+    </div>
+    <div
+      v-else-if="infoStatus === 'error'"
       class="flex flex-col justify-center items-center grow"
       data-testid="site-nav-error-state"
     >
@@ -239,5 +252,6 @@ const headerHeadingId = useId();
     <Toast position="bottom-center" />
     <AppUpdater />
     <PushNotificationPrompter />
+    <PasswordDialog />
   </div>
 </template>

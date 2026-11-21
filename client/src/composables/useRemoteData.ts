@@ -39,10 +39,10 @@ export type FetchResult<T> =
   | { status: "pending" }
   | { status: "error"; code: number | "offline" | "outdated" };
 
-// The status views switch on. `"offline"` is derived from the error code rather
-// than being its own `FetchResult` variant, so the code stays the single source
-// of truth for why a fetch failed.
-type FetchStatus = FetchResult<unknown>["status"] | "offline";
+// The status views switch on. `"offline"` and `"unauthorized"` are derived from
+// the error code rather than being their own `FetchResult` variants, so the code
+// stays the single source of truth for why a fetch failed.
+type FetchStatus = FetchResult<unknown>["status"] | "offline" | "unauthorized";
 
 // An API endpoint is either refetched on every reload (`"global"`), or only on
 // specific routes.
@@ -73,11 +73,18 @@ const unwrapFetchArray = <T>(
 const unwrapFetchStatus = (
   result: Readonly<Ref<FetchResult<unknown>>>,
 ): Readonly<Ref<FetchStatus>> =>
-  computed(() =>
-    result.value.status === "error" && result.value.code === "offline"
-      ? "offline"
-      : result.value.status,
-  );
+  computed(() => {
+    if (result.value.status !== "error") return result.value.status;
+
+    switch (result.value.code) {
+      case "offline":
+        return "offline";
+      case 401:
+        return "unauthorized";
+      default:
+        return "error";
+    }
+  });
 
 const setResultIfModified = <T>(
   result: Ref<FetchResult<T>>,

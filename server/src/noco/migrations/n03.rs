@@ -8,7 +8,7 @@ use crate::noco::{
 use super::{
     BaseId, Client, Version,
     common::{self, ColumnIds, EditColumnRequest, edit_columns, list_columns},
-    n2,
+    n02,
 };
 
 const DATE_FORMAT: &str = "DD MMM YYYY";
@@ -119,7 +119,7 @@ impl Migration<'_> {
 }
 
 impl<'a> common::Migration<'a> for Migration<'a> {
-    const INDEX: Version = n2::Migration::INDEX.next();
+    const INDEX: Version = n02::Migration::INDEX.next();
 
     fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
         Self { client }

@@ -28,6 +28,13 @@ export const encodeBase64url = (text: string): string => {
   });
 };
 
+// Standard (not URL-safe), padded base64 of the UTF-8 bytes of `text`.
+export const encodeBase64 = (text: string): string => {
+  const bytes = new TextEncoder().encode(text);
+  // @ts-expect-error This browser API is still very new.
+  return bytes.toBase64();
+};
+
 export const decodeBase64url = (encoded: string): string => {
   // @ts-expect-error This browser API is still very new.
   const bytes = Uint8Array.fromBase64(encoded, {

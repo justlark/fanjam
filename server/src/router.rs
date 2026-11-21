@@ -6,9 +6,9 @@ use std::{fmt, sync::Arc, time::Duration};
 use axum::{
     Json, Router,
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Request, State},
     http::{self, HeaderValue, StatusCode, Uri, header},
-    middleware,
+    middleware::{self, Next},
     response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
@@ -31,7 +31,7 @@ use crate::{
         PostRestoreBackupRequest, PutAliasRequest, PutLinkResponse, PutScheduleRequest,
         PutTokenRequest, Vendor, VendorPage, VendorPageRef,
     },
-    auth::{admin_auth_layer, noco_webhook_auth_layer},
+    auth::{self, admin_auth_layer, noco_webhook_auth_layer},
     cache::{
         self, cache_key_uri, get_cdn_cache, get_data_cdn_cache, if_none_match_middleware,
         put_cdn_cache, with_freshness,
@@ -77,9 +77,37 @@ impl fmt::Debug for AppState {
 }
 
 pub fn new(state: AppState) -> Router {
-    // This service exposes two APIs: an unauthenticated "user" API for querying data that is used
-    // by the client app, and an authenticated "admin" API that is used to provision and manage
-    // environments.
+    let state = Arc::new(state);
+
+    // USER API (PASSWORD-PROTECTED)
+    //
+    // These are only password-protected when the environment has at least one app password
+    // configured; otherwise they're open to everyone. This is a separate router so that the
+    // `route_layer` applies to only these routes.
+    let password_protected = Router::new()
+        .route("/apps/{env_id}/events", get(get_events))
+        .route("/apps/{env_id}/people", get(get_people))
+        .route("/apps/{env_id}/locations", get(get_locations))
+        .route("/apps/{env_id}/info", get(get_info))
+        .route("/apps/{env_id}/pages", get(get_pages))
+        .route("/apps/{env_id}/announcements", get(get_announcements))
+        .route("/apps/{env_id}/vendors", get(get_vendors))
+        .route("/apps/{env_id}/vendor-pages", get(get_vendor_pages))
+        .route("/apps/{env_id}/subscription", post(post_subscription))
+        .route("/apps/{env_id}/subscription", delete(delete_subscription))
+        .route("/apps/{env_id}/schedule/{sync_code}", put(put_schedule))
+        .route("/apps/{env_id}/schedule/{sync_code}", get(get_schedule))
+        .route(
+            "/apps/{env_id}/schedule/{sync_code}",
+            delete(delete_schedule),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            require_app_password,
+        ));
+
+    // This service exposes two APIs: a "user" API for querying data that is used by the client
+    // app, and an authenticated "admin" API that is used to provision and manage environments.
     Router::new()
         // ADMIN API (AUTHENTICATED)
         .route("/admin/env/{env_name}/links/{env_id}", put(put_link))
@@ -111,25 +139,17 @@ pub fn new(state: AppState) -> Router {
         .route("/admin/aliases/{alias_id}", put(put_alias))
         .route("/admin/config-spec", get(get_config_spec))
         .route_layer(admin_auth_layer())
+        .merge(password_protected)
         // USER API (UNAUTHENTICATED)
-        .route("/apps/{env_id}/events", get(get_events))
-        .route("/apps/{env_id}/people", get(get_people))
-        .route("/apps/{env_id}/locations", get(get_locations))
-        .route("/apps/{env_id}/info", get(get_info))
-        .route("/apps/{env_id}/pages", get(get_pages))
-        .route("/apps/{env_id}/announcements", get(get_announcements))
-        .route("/apps/{env_id}/files", get(get_files))
-        .route("/apps/{env_id}/vendors", get(get_vendors))
-        .route("/apps/{env_id}/vendor-pages", get(get_vendor_pages))
+        //
+        // The config and assets need to stay public: the client worker needs the config to handle
+        // redirects and render page metadata, and link previews fetch the icons without a password.
+        //
+        // The files list is also public, which is a known gap in password protection. The client
+        // worker serves file uploads by looking up their signed URLs here, on behalf of plain
+        // `<a>` and `<img>` requests that have no way to carry the password.
         .route("/apps/{env_id}/config", get(get_config))
-        .route("/apps/{env_id}/subscription", post(post_subscription))
-        .route("/apps/{env_id}/subscription", delete(delete_subscription))
-        .route("/apps/{env_id}/schedule/{sync_code}", put(put_schedule))
-        .route("/apps/{env_id}/schedule/{sync_code}", get(get_schedule))
-        .route(
-            "/apps/{env_id}/schedule/{sync_code}",
-            delete(delete_schedule),
-        )
+        .route("/apps/{env_id}/files", get(get_files))
         .route(
             "/apps/{env_id}/hooks/announcement-created",
             post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
@@ -139,7 +159,83 @@ pub fn new(state: AppState) -> Router {
         .route("/domains/{domain}", get(get_domain_env))
         .layer(middleware::from_fn(if_none_match_middleware))
         .layer(cors_layer())
-        .with_state(Arc::new(state))
+        .with_state(state)
+}
+
+#[derive(Debug, Deserialize)]
+struct EnvIdParam {
+    env_id: EnvId,
+}
+
+// Just enough of a `DataResponseEnvelope` to read the passwords back out of it.
+#[derive(Deserialize)]
+struct PasswordsEnvelope {
+    value: Vec<String>,
+}
+
+// Require a valid app password on the `Authorization` header, if the environment has any app
+// passwords configured. The bearer token is the password, base64-encoded.
+//
+// We get the list of passwords through the same edge cache, persistent cache, and refresh
+// coordinator as every other data endpoint, so this usually costs an edge cache lookup and never
+// means a round trip to NocoDB per request. Changes to the passwords table take effect within the
+// cache TTL, like any other data. The cache key is an internal URI that no route serves.
+#[worker::send]
+async fn require_app_password(
+    State(state): State<Arc<AppState>>,
+    Path(EnvIdParam { env_id }): Path<EnvIdParam>,
+    request: Request,
+    next: Next,
+) -> Result<http::Response<Body>, ErrorResponse> {
+    let cache = Cache::default();
+    let cache_uri = format!(
+        "https://{}/internal/apps/{}/passwords",
+        config::api_domain(),
+        env_id
+    )
+    .parse::<Uri>()
+    .map_err(|err| Error::Internal(err.into()))?;
+
+    let to_body = |passwords: Vec<noco::Password>| {
+        passwords
+            .into_iter()
+            .map(|password| password.password)
+            .collect::<Vec<_>>()
+    };
+
+    let response = match get_data_from_edge_cache(
+        &state,
+        &cache,
+        &env_id,
+        &cache_uri,
+        move |store: &Store, uri, known_hash| store.refresh_passwords(uri, to_body, known_hash),
+    )
+    .await?
+    {
+        Some(response) => response,
+        None => {
+            Store::from_env_id(&state, &env_id)
+                .await?
+                .get_passwords(cache_uri, to_body)
+                .await?
+        }
+    };
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .map_err(|err| Error::Internal(err.into()))?;
+
+    let passwords = serde_json::from_slice::<PasswordsEnvelope>(&body)
+        .map_err(|err| Error::Internal(err.into()))?
+        .value;
+
+    let token = auth::bearer_token(request.headers());
+
+    if !auth::token_matches_any(token.as_ref(), passwords.iter().map(String::as_str)) {
+        return Err(Error::Unauthorized.into());
+    }
+
+    Ok(next.run(request).await)
 }
 
 // Best-effort purge of an environment's edge-cached responses, for use after a write that changes
