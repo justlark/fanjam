@@ -1,8 +1,7 @@
 use axum::{Json, http::StatusCode, response::ErrorResponse};
 use thiserror::Error;
-use worker::console_error;
 
-use crate::api::ErrorResponse as ApiErrorResponse;
+use crate::{api::ErrorResponse as ApiErrorResponse, log};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -80,7 +79,11 @@ impl Error {
 
 impl From<Error> for ErrorResponse {
     fn from(error: Error) -> Self {
-        console_error!("Error: {}", error);
+        log::error(log::Message {
+            id: "admin-error",
+            env: log::EnvRef::Global,
+            msg: &error.to_string(),
+        });
 
         ErrorResponse::from((
             error.status_code(),

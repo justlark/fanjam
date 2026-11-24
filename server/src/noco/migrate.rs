@@ -1,12 +1,10 @@
-use worker::console_error;
-
-use crate::config;
-use crate::env::{EnvId, EnvName};
-
 use super::{
     create_base,
     migrations::{self, BaseId, Client as NocoClient, MigrationContext, Version},
 };
+use crate::config;
+use crate::env::EnvName;
+use crate::log;
 use crate::neon::Client as NeonClient;
 use crate::sql::Client as DbClient;
 
@@ -65,11 +63,10 @@ impl<'a> Migrator<'a> {
     pub async fn migrate(
         &self,
         env_name: &EnvName,
-        env_id: Option<EnvId>,
         state: MigrationState,
     ) -> anyhow::Result<ExistingMigrationState> {
         let ctx = MigrationContext {
-            env_id,
+            env_name: env_name.clone(),
             api_domain: config::api_domain(),
             noco_webhook_token: config::noco_webhook_token(),
         };
@@ -82,8 +79,13 @@ impl<'a> Migrator<'a> {
                 let base_id = self
                     .neon_client
                     .with_rollback(env_name, async || {
-                        let base_id =
-                            create_base(self.noco_client, title, initial_user_email).await?;
+                        let base_id = create_base(
+                            self.noco_client,
+                            title,
+                            initial_user_email,
+                            env_name.into(),
+                        )
+                        .await?;
                         self.db_client.set_base(&base_id).await?;
                         Ok(base_id)
                     })
@@ -114,7 +116,15 @@ impl<'a> Migrator<'a> {
                     {
                         Ok(migrations::Outcome::AlreadyUpToDate) => return Ok(true),
                         Err(error) => {
-                            console_error!("Migration {} failed. Rolling back.", version.next());
+                            log::error(log::Message {
+                                id: "noco-migration-failed",
+                                env: env_name.into(),
+                                msg: &format!(
+                                    "Migration {} failed. Rolling back: {error}",
+                                    version.next()
+                                ),
+                            });
+
                             return Err(error);
                         }
                         _ => {}

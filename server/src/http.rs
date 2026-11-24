@@ -7,12 +7,9 @@ use std::{
 use axum::http::StatusCode;
 use serde::{Serialize, de::DeserializeOwned};
 use wasm_bindgen::JsValue;
-use worker::{
-    Delay, Fetch, Headers, HttpMetadata, Method, Object, Request, RequestInit, Url, console_log,
-    console_warn,
-};
+use worker::{Delay, Fetch, Headers, HttpMetadata, Method, Object, Request, RequestInit, Url};
 
-use crate::error::Error;
+use crate::{error::Error, log};
 
 #[derive(Debug)]
 struct RetryStrategy {
@@ -151,7 +148,11 @@ impl RequestBuilder {
             Url::parse_with_params(&self.url, &self.params)?
         };
 
-        console_log!("{} {}", self.method, url.as_ref());
+        log::log(log::Message {
+            id: "http-request",
+            env: log::EnvRef::Global,
+            msg: &format!("{} {}", self.method, url.as_ref()),
+        });
 
         let mut retries_remaining = self.retry.as_ref().map(|r| r.max_retries).unwrap_or(0);
 
@@ -195,13 +196,17 @@ impl RequestBuilder {
             let retry_no = retry.max_retries - retries_remaining;
             let backoff = retry.starting_backoff * (2u32.pow(retry_no));
 
-            console_warn!(
-                "Request ({}) failed with {}. Waiting {}ms. Retrying... ({} retries remaining)",
-                url.to_string(),
-                status_code,
-                backoff.as_millis(),
-                retries_remaining
-            );
+            log::warn(log::Message {
+                id: "http-request-retry",
+                env: log::EnvRef::Global,
+                msg: &format!(
+                    "Request ({}) failed with {}. Waiting {}ms. Retrying... ({} retries remaining)",
+                    url,
+                    status_code,
+                    backoff.as_millis(),
+                    retries_remaining
+                ),
+            });
 
             Delay::from(backoff).await;
 

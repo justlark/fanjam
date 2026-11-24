@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
-use worker::{Method, console_log};
+use worker::Method;
 
-use crate::noco::Client;
+use crate::{log, noco::Client};
 
 use super::{BaseId, RefSetter, TableId};
 
@@ -106,6 +106,7 @@ pub async fn create_tables(
     client: &Client,
     base_id: &BaseId,
     requests: Vec<TableRequest<'_>>,
+    env: log::EnvRef<'_>,
 ) -> anyhow::Result<()> {
     #[derive(Debug, Deserialize)]
     struct PostTableResponse {
@@ -127,7 +128,11 @@ pub async fn create_tables(
             .and_then(|title| title.as_str())
             .unwrap_or("Unknown");
 
-        console_log!("Created Noco table `{}` with ID `{}`", table_name, table_id);
+        log::log(log::Message {
+            id: "noco-table-created",
+            env: env.clone(),
+            msg: &format!("Created Noco table `{}` with ID `{}`", table_name, table_id),
+        });
 
         (request.table_ref)(table_id.clone());
     }
@@ -135,14 +140,22 @@ pub async fn create_tables(
     Ok(())
 }
 
-pub async fn delete_tables(client: &Client, table_ids: &[&TableId]) -> anyhow::Result<()> {
+pub async fn delete_tables(
+    client: &Client,
+    table_ids: &[&TableId],
+    env: log::EnvRef<'_>,
+) -> anyhow::Result<()> {
     for table_id in table_ids {
         client
             .build_request_v2(Method::Delete, &format!("/meta/tables/{table_id}"))
             .exec()
             .await?;
 
-        console_log!("Deleted Noco table with ID `{}`", table_id);
+        log::log(log::Message {
+            id: "noco-table-deleted",
+            env: env.clone(),
+            msg: &format!("Deleted Noco table with ID `{}`", table_id),
+        });
     }
 
     Ok(())

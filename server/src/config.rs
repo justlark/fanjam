@@ -5,6 +5,7 @@ use worker::Env;
 
 use crate::auth;
 use crate::cf;
+use crate::log;
 use crate::neon;
 use crate::push;
 
@@ -93,7 +94,13 @@ fn init_vapid(env: &Env) -> Option<push::VapidKey> {
     }
     let subject = env.var("VAPID_SUBJECT").ok()?.to_string();
     push::VapidKey::from_base64url(&private_key, subject)
-        .inspect_err(|e| worker::console_warn!("VAPID key not loaded: {e}"))
+        .inspect_err(|e| {
+            log::warn(log::Message {
+                id: "config-vapid-key-invalid",
+                env: log::EnvRef::Global,
+                msg: &format!("VAPID key is invalid; push notifications are disabled: {e}"),
+            })
+        })
         .ok()
 }
 

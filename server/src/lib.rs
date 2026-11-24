@@ -9,6 +9,7 @@ mod env;
 mod error;
 mod http;
 mod kv;
+mod log;
 mod neon;
 mod noco;
 mod push;
@@ -57,7 +58,11 @@ async fn queue(batch: MessageBatch<push::PushJob>, env: Env, _ctx: Context) -> R
     let Some(vapid) = config::vapid_key() else {
         // Nothing we can do without a signing key, and retrying won't conjure one. Drop the batch
         // rather than looping it through to the dead-letter queue.
-        console_error!("Dropping push jobs: no VAPID key is configured.");
+        log::error(log::Message {
+            id: "push-queue-no-vapid-key",
+            env: log::EnvRef::Global,
+            msg: "Dropping push jobs: no VAPID key is configured.",
+        });
         batch.ack_all();
         return Ok(());
     };

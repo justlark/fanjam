@@ -27,12 +27,13 @@ use worker::kv::KvStore;
 use worker::wasm_bindgen::JsValue;
 use worker::{
     DurableObject, Env, Method, ObjectNamespace, Request, RequestInit, Response, State,
-    console_log, console_warn, durable_object,
+    durable_object,
 };
 
 use crate::env::EnvName;
+use crate::log;
 use crate::noco::{self, BaseId, Client as NocoClient};
-use crate::store::{Store, backoff_delay, now_ms, with_timeout};
+use crate::store::{Store, TimedOut, backoff_delay, now_ms, with_timeout};
 use crate::{config, kv, url};
 
 // The time (as epoch milliseconds) the data in a response was fetched from NocoDB.
@@ -59,7 +60,7 @@ pub enum Endpoint {
 }
 
 impl Endpoint {
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Events => "events",
             Self::People => "people",
@@ -254,7 +255,6 @@ async fn write_kv(
     kv: &KvStore,
     env_name: &EnvName,
     endpoint: Endpoint,
-    key: &str,
     snapshot: &Snapshot,
     changed: bool,
 ) {
@@ -271,7 +271,15 @@ async fn write_kv(
         };
 
     if needs_write && let Err(e) = kv::put_cached_json(kv, &cache_key, &snapshot.json).await {
-        console_warn!("Failed putting {} in KV cache: {}", key, e);
+        log::warn(log::Message {
+            id: "coordinator-persistent-cache-write-failed",
+            env: env_name.into(),
+            msg: &format!(
+                "Coordinator failed putting `{}` in the persistent cache: {}",
+                endpoint.as_str(),
+                e
+            ),
+        })
     }
 }
 
@@ -405,43 +413,84 @@ impl Inner {
         let inner = Rc::clone(self);
 
         let result = async move {
-            let key = format!("{}:{}", env_name, endpoint.as_str());
+            log::log(log::Message {
+                id: "coordinator-fetch-started",
+                env: (&env_name).into(),
+                msg: &format!(
+                    "Fetching `{}` from NocoDB (generation {}).",
+                    endpoint.as_str(),
+                    generation
+                ),
+            });
 
-            console_log!("Fetching {} from NocoDB (generation {}).", key, generation);
+            let timeout = config::noco_fetch_timeout();
 
-            let json = with_timeout(&key, config::noco_fetch_timeout(), async {
-                fetch_from_noco(&kv, &env_name, &base_id, endpoint)
+            let json =
+                match with_timeout(timeout, fetch_from_noco(&kv, &env_name, &base_id, endpoint))
                     .await
-                    .inspect_err(|e| console_warn!("Failed fetching {} from NocoDB: {}", key, e))
-                    .ok()
-            })
-            .await;
+                {
+                    Ok(Ok(json)) => Some(json),
+                    Ok(Err(e)) => {
+                        log::warn(log::Message {
+                            id: "coordinator-fetch-failed",
+                            env: (&env_name).into(),
+                            msg: &format!(
+                                "Failed fetching `{}` from NocoDB: {}",
+                                endpoint.as_str(),
+                                e
+                            ),
+                        });
+
+                        None
+                    }
+                    Err(TimedOut) => {
+                        log::warn(log::Message {
+                            id: "coordinator-fetch-timeout",
+                            env: (&env_name).into(),
+                            msg: &format!(
+                                "Fetching `{}` from NocoDB timed out after {}ms.",
+                                endpoint.as_str(),
+                                timeout.as_millis(),
+                            ),
+                        });
+
+                        None
+                    }
+                };
 
             let (result, outcome) = inner.record(endpoint, generation, started_at_ms, json);
 
             match outcome {
                 Outcome::Updated { changed } => {
                     if let Ok(snapshot) = &result {
-                        write_kv(&kv, &env_name, endpoint, &key, snapshot, changed).await;
+                        write_kv(&kv, &env_name, endpoint, snapshot, changed).await;
                     }
                 }
                 Outcome::Superseded => {
-                    console_log!(
-                        "Dropping {} from generation {}; a newer fetch already finished.",
-                        key,
-                        generation,
-                    );
+                    log::log(log::Message {
+                        id: "coordinator-fetch-superseded",
+                        env: (&env_name).into(),
+                        msg: &format!(
+                            "Dropping `{}` from generation {}; a newer fetch already finished.",
+                            endpoint.as_str(),
+                            generation
+                        ),
+                    });
                 }
                 Outcome::Failed {
                     consecutive_failures,
                     delay,
                 } => {
-                    console_warn!(
-                        "Fetching {} failed ({} consecutive). Backing off for {}ms.",
-                        key,
-                        consecutive_failures,
-                        delay.as_millis(),
-                    );
+                    log::warn(log::Message {
+                        id: "coordinator-fetch-failed",
+                        env: (&env_name).into(),
+                        msg: &format!(
+                            "Fetching `{}` failed ({} consecutive). Backing off for {}ms.",
+                            endpoint.as_str(),
+                            consecutive_failures,
+                            delay.as_millis(),
+                        ),
+                    });
                 }
             }
 
@@ -496,7 +545,7 @@ impl Inner {
 
             return (
                 Err(format!(
-                    "Fetching {} from NocoDB failed.",
+                    "Fetching `{}` from NocoDB failed.",
                     endpoint.as_str()
                 )),
                 Outcome::Failed {
@@ -592,7 +641,7 @@ impl DurableObject for RefreshCoordinator {
             Decision::InBackoff { remaining_ms } => {
                 return Response::error(
                     format!(
-                        "Fetches for {} are in backoff for another {}ms.",
+                        "Fetches for `{}` are in backoff for another {}ms.",
                         endpoint.as_str(),
                         remaining_ms,
                     ),

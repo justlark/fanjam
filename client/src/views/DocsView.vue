@@ -47,10 +47,7 @@ onMounted(() => {
             </span>
             <ul class="flex flex-col gap-2 text-sm">
               <li v-for="entry in tocEntries" :key="entry.id">
-                <a
-                  :href="`#${entry.id}`"
-                  class="hover:text-primary hover:underline underline-offset-2"
-                >
+                <a :href="`#${entry.id}`" class="text-link-sm">
                   {{ entry.title }}
                 </a>
               </li>

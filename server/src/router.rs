@@ -12,10 +12,7 @@ use axum::{
     response::{ErrorResponse, IntoResponse, NoContent},
     routing::{delete, get, post, put},
 };
-use worker::{
-    Bucket, Cache, Context, ObjectNamespace, Queue, console_log, console_warn, kv::KvStore,
-    send::SendWrapper,
-};
+use worker::{Bucket, Cache, Context, ObjectNamespace, Queue, kv::KvStore, send::SendWrapper};
 
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +38,7 @@ use crate::{
     env::{CONFIG_SPEC, Config, EnvDomain, EnvId, EnvName, SyncCode},
     error::Error,
     http::http_headers_from_object,
-    kv, neon,
+    kv, log, neon,
     noco::{self, ApiToken, MigrationState},
     push, sql,
     store::{CacheWrite, MigrationChange, Store, refresh_ahead},
@@ -151,7 +148,7 @@ pub fn new(state: AppState) -> Router {
         .route("/apps/{env_id}/config", get(get_config))
         .route("/apps/{env_id}/files", get(get_files))
         .route(
-            "/apps/{env_id}/hooks/announcement-created",
+            "/env/{env_name}/hooks/announcement-created",
             post(post_announcement_created).route_layer(noco_webhook_auth_layer()),
         )
         .route("/apps/{env_id}/assets/{name}", get(get_asset))
@@ -254,7 +251,11 @@ async fn purge_env_cache(env_name: &EnvName) {
         .await;
 
     if let Err(err) = result {
-        console_warn!("Failed to purge the edge cache for {}: {}", env_name, err);
+        log::warn(log::Message {
+            id: "edge-cache-purge-failed",
+            env: env_name.into(),
+            msg: &format!("Failed to purge the edge cache: {}", err),
+        })
     }
 }
 
@@ -355,6 +356,7 @@ async fn get_link(
     let local_url = url::local_url(&env_id).map_err(Error::Internal)?;
 
     Ok(Json(GetLinkResponse {
+        env_id: env_id.to_string(),
         dash_url: dash_url.to_string(),
         app_url: app_url.to_string(),
         default_app_url: default_app_url.to_string(),
@@ -555,9 +557,11 @@ async fn post_base(
             // in NocoDB. This could happen if the base is deleted manually by the system user (as
             // opposed to via this admin API), or if the environment was completely destroyed and
             // recreated.
-            console_log!(
-                "The NocoDB base was deleted externally. Updating the backend state to match."
-            );
+            log::log(log::Message {
+                id: "noco-base-not-found",
+                env: (&env_name).into(),
+                msg: "The NocoDB base was deleted externally. Updating the backend state to match.",
+            });
 
             // We cache the base ID in KV.
             kv::delete_cache(&state.kv, &env_name)
@@ -573,14 +577,10 @@ async fn post_base(
 
     let migration_state = MigrationState::new(body.title, body.email);
 
-    let env_id = kv::get_env_id(&state.kv, &env_name)
-        .await
-        .map_err(Error::Internal)?;
-
     let migrator = noco::Migrator::new(&noco_client, &neon_client, &db_client);
 
     migrator
-        .migrate(&env_name, env_id, migration_state)
+        .migrate(&env_name, migration_state)
         .await
         .map_err(Error::Internal)?;
 
@@ -1309,11 +1309,14 @@ where
     match with_freshness(hit.response, freshness).await {
         Ok(response) => Ok(Some(response)),
         Err(err) => {
-            console_warn!(
-                "Failed re-marking edge cache hit for {}. Falling back to the persistent cache: {}",
-                cache_uri,
-                err
-            );
+            log::warn(log::Message {
+                id: "edge-cache-mark-freshness-failed",
+                env: env_id.into(),
+                msg: &format!(
+                    "Failed re-marking edge cache hit for `{}`. Falling back to the persistent cache: {}",
+                    cache_uri, err
+                ),
+            });
 
             Ok(None)
         }
@@ -1494,11 +1497,13 @@ struct NocoAnnouncementRow {
     body: Option<String>,
 }
 
+// The NocoDB hook for new announcements calls this. Hooks are keyed by env name rather than env ID,
+// because env IDs change when the app slug does, and the old ID stops resolving. See migration n11.
 #[axum::debug_handler]
 #[worker::send]
 async fn post_announcement_created(
     State(state): State<Arc<AppState>>,
-    Path(env_id): Path<EnvId>,
+    Path(env_name): Path<EnvName>,
     Json(webhook): Json<NocoAnnouncementWebhook>,
 ) -> Result<NoContent, ErrorResponse> {
     // The consumer needs this to sign, but there's no point queueing work we know can't be
@@ -1507,7 +1512,9 @@ async fn post_announcement_created(
         return Err(StatusCode::SERVICE_UNAVAILABLE.into());
     }
 
-    let env_name = kv::get_id_env(&state.kv, &env_id)
+    // The links in the notifications need the current env ID. This also rejects env names that
+    // don't exist, since `get_env_config` below would quietly return the default config for them.
+    let env_id = kv::get_env_id(&state.kv, &env_name)
         .await
         .map_err(Error::Internal)?
         .ok_or(Error::NoEnvId)?;
@@ -1545,17 +1552,20 @@ async fn post_announcement_created(
     // This is best-effort. If NocoDB is slow or the purge fails, the new announcement still shows
     // up once the edge cache expires. Failing here would mean the notification is never sent at
     // all.
-    let refresh_result = match Store::from_env_id(&state, &env_id).await {
+    let refresh_result = match Store::from_env_name(&state, env_name.clone()).await {
         Ok(store) => store.refresh_announcements_cache(&env_id).await,
         Err(err) => Err(err),
     };
 
     if let Err(err) = refresh_result {
-        console_warn!(
-            "Failed refreshing announcements cache for `{}`. Sending notifications anyway: {}",
-            env_name,
-            err
-        );
+        log::warn(log::Message {
+            id: "announcement-cache-refresh-failed",
+            env: (&env_name).into(),
+            msg: &format!(
+                "Failed refreshing announcements cache. Sending notifications anyway: {}",
+                err
+            ),
+        });
     }
 
     let mut payloads: Vec<String> = Vec::with_capacity(webhook.data.rows.len());

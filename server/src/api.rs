@@ -17,6 +17,7 @@ pub struct PutLinkResponse {
 
 #[derive(Debug, Serialize)]
 pub struct GetLinkResponse {
+    pub env_id: String,
     pub dash_url: String,
     pub app_url: String,
     pub default_app_url: String,

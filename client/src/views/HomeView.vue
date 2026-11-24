@@ -103,7 +103,7 @@ const staticDomain = `https://${import.meta.env.VITE_STATIC_HOST as string}`;
                 between devices.
               </li>
               <li>Fast and responsive. Just try it.</li>
-              <li>Works on desktop, iOS, and Android.</li>
+              <li>Works on iOS, Android, and desktop.</li>
               <li>There's no app to install.</li>
               <li>You don't need to make an account.</li>
               <li>We don't collect your data.</li>

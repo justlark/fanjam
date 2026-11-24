@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fmt};
 
 use serde::Deserialize;
-use worker::{Method, console_log};
+use worker::Method;
 
-use crate::noco::Client;
+use crate::{log, noco::Client};
 
 use super::{ColumnId, RefSetter, TableId};
 
@@ -83,6 +83,7 @@ impl fmt::Debug for CreateColumnRequest<'_> {
 pub async fn create_columns(
     client: &Client,
     requests: Vec<CreateColumnRequest<'_>>,
+    env: log::EnvRef<'_>,
 ) -> anyhow::Result<()> {
     // The v2 API responds with the metadata for the whole table, not just the new column, so we
     // need to find the new column by its title.
@@ -119,12 +120,14 @@ pub async fn create_columns(
 
         (request.column_ref)(column_id.clone());
 
-        console_log!(
-            "Created Noco column `{}` with ID `{}` on table `{}`",
-            title,
-            column_id,
-            request.table_id,
-        );
+        log::log(log::Message {
+            id: "noco-column-created",
+            env: env.clone(),
+            msg: &format!(
+                "Created Noco column `{}` with ID `{}` on table `{}`",
+                title, column_id, request.table_id
+            ),
+        });
     }
 
     Ok(())
@@ -139,6 +142,7 @@ pub struct EditColumnRequest<'a> {
 pub async fn edit_columns(
     client: &Client,
     requests: Vec<EditColumnRequest<'_>>,
+    env: log::EnvRef<'_>,
 ) -> anyhow::Result<()> {
     for request in requests {
         client
@@ -150,20 +154,32 @@ pub async fn edit_columns(
             .exec()
             .await?;
 
-        console_log!("Edited Noco column with ID `{}`", request.column_id,);
+        log::log(log::Message {
+            id: "noco-column-edited",
+            env: env.clone(),
+            msg: &format!("Edited Noco column with ID `{}`", request.column_id),
+        });
     }
 
     Ok(())
 }
 
-pub async fn delete_columns(client: &Client, column_ids: &[ColumnId]) -> anyhow::Result<()> {
+pub async fn delete_columns(
+    client: &Client,
+    column_ids: &[ColumnId],
+    env: log::EnvRef<'_>,
+) -> anyhow::Result<()> {
     for column_id in column_ids {
         client
             .build_request_v2(Method::Delete, &format!("/meta/columns/{column_id}"))
             .exec()
             .await?;
 
-        console_log!("Deleted Noco column with ID `{}`", column_id,);
+        log::log(log::Message {
+            id: "noco-column-deleted",
+            env: env.clone(),
+            msg: &format!("Deleted Noco column with ID `{}`", column_id),
+        });
     }
 
     Ok(())

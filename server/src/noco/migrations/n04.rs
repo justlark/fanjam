@@ -13,6 +13,7 @@ use crate::noco::{
 
 pub struct Migration<'a> {
     client: &'a Client,
+    ctx: &'a common::MigrationContext,
 }
 
 impl<'a> Migration<'a> {
@@ -20,7 +21,12 @@ impl<'a> Migration<'a> {
         let people_columns = ColumnIds::from(list_columns(self.client, &table_ids.people).await?);
         let contact_info_column_id = people_columns.find_by_name("contact_info")?;
 
-        delete_columns(self.client, &[contact_info_column_id]).await?;
+        delete_columns(
+            self.client,
+            &[contact_info_column_id],
+            (&self.ctx.env_name).into(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -33,6 +39,7 @@ impl<'a> Migration<'a> {
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("Missing 'files' table in cache."))?
                 .to_owned()],
+            (&self.ctx.env_name).into(),
         )
         .await?;
         Ok(())
@@ -62,7 +69,7 @@ impl<'a> Migration<'a> {
             },
         ];
 
-        create_columns(self.client, requests).await?;
+        create_columns(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(())
     }
@@ -71,8 +78,8 @@ impl<'a> Migration<'a> {
 impl<'a> common::Migration<'a> for Migration<'a> {
     const INDEX: Version = n03::Migration::INDEX.next();
 
-    fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
-        Self { client }
+    fn new(client: &'a Client, ctx: &'a common::MigrationContext) -> Self {
+        Self { client, ctx }
     }
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {

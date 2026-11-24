@@ -3,13 +3,13 @@ use std::{fmt, str::FromStr};
 use serde::{Deserialize, Serialize};
 
 use crate::auth;
-use crate::env::EnvId;
+use crate::env::EnvName;
 use crate::noco::Client;
 
 use super::BaseId;
 
 pub struct MigrationContext {
-    pub env_id: Option<EnvId>,
+    pub env_name: EnvName,
     pub api_domain: &'static str,
     pub noco_webhook_token: Option<auth::ApiToken>,
 }

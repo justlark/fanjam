@@ -52,3 +52,13 @@ impl fmt::Display for ViewId {
         write!(f, "{}", self.0)
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct HookId(String);
+
+impl fmt::Display for HookId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

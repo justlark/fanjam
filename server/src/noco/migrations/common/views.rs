@@ -2,9 +2,9 @@ use std::fmt;
 
 use serde::Deserialize;
 use serde_json::json;
-use worker::{Method, console_log};
+use worker::Method;
 
-use crate::noco::Client;
+use crate::{log, noco::Client};
 
 use super::{RefSetter, TableId, ViewId};
 
@@ -42,7 +42,11 @@ impl fmt::Debug for ViewRequest<'_> {
     }
 }
 
-pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> anyhow::Result<()> {
+pub async fn create_views(
+    client: &Client,
+    requests: Vec<ViewRequest<'_>>,
+    env: log::EnvRef<'_>,
+) -> anyhow::Result<()> {
     #[derive(Debug, Deserialize)]
     struct PostViewResponse {
         id: ViewId,
@@ -70,12 +74,14 @@ pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> an
             .and_then(|title| title.as_str())
             .unwrap_or("Unknown");
 
-        console_log!(
-            "Created Noco view `{}` of type {:?} with ID `{}`",
-            view_name,
-            request.kind,
-            view_id
-        );
+        log::log(log::Message {
+            id: "noco-view-created",
+            env: env.clone(),
+            msg: &format!(
+                "Created Noco view `{}` of type {:?} with ID `{}`",
+                view_name, request.kind, view_id
+            ),
+        });
 
         (request.table_ref)(view_id.clone());
     }
@@ -83,7 +89,11 @@ pub async fn create_views(client: &Client, requests: Vec<ViewRequest<'_>>) -> an
     Ok(())
 }
 
-pub async fn lock_views(client: &Client, views: Vec<ViewId>) -> anyhow::Result<()> {
+pub async fn lock_views(
+    client: &Client,
+    views: Vec<ViewId>,
+    env: log::EnvRef<'_>,
+) -> anyhow::Result<()> {
     for view_id in views {
         client
             .build_request_v2(Method::Patch, &format!("/meta/views/{view_id}"))
@@ -93,7 +103,11 @@ pub async fn lock_views(client: &Client, views: Vec<ViewId>) -> anyhow::Result<(
             .exec()
             .await?;
 
-        console_log!("Locked Noco view with ID `{}`", view_id,);
+        log::log(log::Message {
+            id: "noco-view-locked",
+            env: env.clone(),
+            msg: &format!("Locked Noco view with ID `{}`", view_id),
+        });
     }
 
     Ok(())

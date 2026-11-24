@@ -25,6 +25,7 @@ impl<T> ByTable<T> {
 
 pub struct Migration<'a> {
     client: &'a Client,
+    ctx: &'a common::MigrationContext,
 }
 
 impl Migration<'_> {
@@ -58,7 +59,7 @@ impl Migration<'_> {
             table_ref: set_ref(&mut tables.pages),
         }];
 
-        create_tables(self.client, base_id, requests).await?;
+        create_tables(self.client, base_id, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
@@ -78,7 +79,7 @@ impl Migration<'_> {
             }),
         }];
 
-        create_columns(self.client, requests).await?;
+        create_columns(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(())
     }
@@ -87,8 +88,8 @@ impl Migration<'_> {
 impl<'a> common::Migration<'a> for Migration<'a> {
     const INDEX: Version = n01::Migration::INDEX.next();
 
-    fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
-        Self { client }
+    fn new(client: &'a Client, ctx: &'a common::MigrationContext) -> Self {
+        Self { client, ctx }
     }
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {

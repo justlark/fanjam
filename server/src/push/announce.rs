@@ -11,10 +11,11 @@
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use worker::{Queue, console_warn, kv::KvStore};
+use worker::{Queue, kv::KvStore};
 
 use crate::env::EnvName;
 use crate::kv;
+use crate::log;
 use crate::push::client::{Client, DeliveryOutcome, SubscriptionId};
 
 /// How many subscriptions one queue message covers.
@@ -101,7 +102,12 @@ async fn deliver(
         Ok(None) => return,
         Ok(Some(subscription)) => subscription,
         Err(e) => {
-            console_warn!("Failed reading subscription {}: {e}", id);
+            log::warn(log::Message {
+                id: "push-subscription-read-failed",
+                env: env_name.into(),
+                msg: &format!("Failed reading subscription {id}: {e}"),
+            });
+
             return;
         }
     };
@@ -110,21 +116,32 @@ async fn deliver(
         Ok(DeliveryOutcome::Delivered) => {}
         Ok(DeliveryOutcome::SubscriptionGone) => {
             if let Err(e) = kv::delete_subscription(kv, env_name, id).await {
-                console_warn!("Failed evicting dead subscription {}: {e}", id);
+                log::warn(log::Message {
+                    id: "push-subscription-delete-failed",
+                    env: env_name.into(),
+                    msg: &format!("Failed evicting dead subscription {id}: {e}"),
+                });
             }
         }
         Ok(DeliveryOutcome::OtherStatus(code)) => {
-            console_warn!(
-                "Push service returned {} for endpoint {}",
-                code,
-                subscription.endpoint,
-            );
+            log::warn(log::Message {
+                id: "push-subscription-delivery-failed",
+                env: env_name.into(),
+                msg: &format!(
+                    "Push service returned {code} for subscription {id} at endpoint {}",
+                    subscription.endpoint
+                ),
+            });
         }
         Err(e) => {
-            console_warn!(
-                "Push send failed for endpoint {}: {e}",
-                subscription.endpoint,
-            );
+            log::warn(log::Message {
+                id: "push-subscription-delivery-failed",
+                env: env_name.into(),
+                msg: &format!(
+                    "Push send failed for subscription {id} at endpoint {}: {e}",
+                    subscription.endpoint
+                ),
+            });
         }
     }
 }

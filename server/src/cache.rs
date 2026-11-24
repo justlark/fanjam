@@ -8,13 +8,14 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
-use worker::{Cache, console_error, console_log};
+use worker::Cache;
 
 use crate::{
     api::{DataResponseEnvelope, Freshness},
     config,
     env::{Config, EnvName},
     error::Error,
+    log,
 };
 
 // How long an edge cache entry for a data endpoint is kept past its TTL. Within this window, a hit
@@ -170,6 +171,8 @@ pub async fn put_cdn_cache(
     uri: Uri,
     mut response: worker::Response,
 ) {
+    let env_name_for_tag = env_name.clone();
+
     let result = async move || -> anyhow::Result<()> {
         response.headers_mut().set(
             "Cache-Control",
@@ -180,7 +183,7 @@ pub async fn put_cdn_cache(
         // per-environment basis if necessary.
         response
             .headers_mut()
-            .set("Cache-Tag", &format!("env/{}", env_name))?;
+            .set("Cache-Tag", &format!("env/{}", env_name_for_tag))?;
 
         cache.put(uri.to_string(), response).await?;
 
@@ -188,7 +191,11 @@ pub async fn put_cdn_cache(
     };
 
     if let Err(err) = result().await {
-        console_error!("Failed to put response in cache: {}", err);
+        log::error(log::Message {
+            id: "edge-cache-write-failed",
+            env: (&env_name).into(),
+            msg: &format!("Failed putting response in the edge cache: {}", err),
+        });
     }
 }
 
@@ -332,7 +339,12 @@ pub async fn put_data_cdn_cache(
     })();
 
     if let Err(err) = result {
-        console_error!("Failed to put response in cache: {}", err);
+        log::error(log::Message {
+            id: "edge-cache-write-data-failed",
+            env: (&env_name).into(),
+            msg: &format!("Failed putting data response in the edge cache: {}", err),
+        });
+
         return;
     }
 
@@ -389,7 +401,7 @@ pub async fn restamp_data_cdn_cache(
         Ok(Ok(response)) => {
             put_data_cdn_cache(
                 cache,
-                env_name,
+                env_name.clone(),
                 ttl,
                 fetched_at_ms,
                 Some(source_hash),
@@ -398,12 +410,28 @@ pub async fn restamp_data_cdn_cache(
             )
             .await;
 
-            console_log!(
-                "Re-stamped {} in the edge cache; the data is unchanged.",
-                uri
-            );
+            log::log(log::Message {
+                id: "edge-cache-restamp",
+                env: (&env_name).into(),
+                msg: &format!(
+                    "Re-stamped {} in the edge cache; the data is unchanged.",
+                    uri
+                ),
+            });
         }
-        Ok(Err(reason)) => console_log!("Not re-stamping {}: {}.", uri, reason),
-        Err(err) => console_error!("Failed to re-stamp {} in the edge cache: {}", uri, err),
+        Ok(Err(reason)) => {
+            log::log(log::Message {
+                id: "edge-cache-restamp-skipped",
+                env: (&env_name).into(),
+                msg: &format!("Not re-stamping {} in the edge cache: {}.", uri, reason),
+            });
+        }
+        Err(err) => {
+            log::error(log::Message {
+                id: "edge-cache-restamp-failed",
+                env: (&env_name).into(),
+                msg: &format!("Failed to re-stamp {} in the edge cache: {}", uri, err),
+            });
+        }
     }
 }

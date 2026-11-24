@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use serde_json::json;
-use worker::{Method, console_log};
+use worker::Method;
 
 use crate::noco::Client;
 
@@ -81,6 +81,7 @@ impl<T> ByView<T> {
 
 pub struct Migration<'a> {
     client: &'a Client,
+    ctx: &'a common::MigrationContext,
 }
 
 impl Migration<'_> {
@@ -334,7 +335,7 @@ impl Migration<'_> {
             },
         ];
 
-        create_tables(self.client, base_id, requests).await?;
+        create_tables(self.client, base_id, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(tables.map(|id| id.expect("expected table ID, found none")))
     }
@@ -564,7 +565,7 @@ impl Migration<'_> {
             },
         ];
 
-        create_columns(self.client, requests).await?;
+        create_columns(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(columns.map(|id| id.expect("expected column ID, found none")))
     }
@@ -593,7 +594,7 @@ impl Migration<'_> {
             },
         ];
 
-        create_views(self.client, requests).await?;
+        create_views(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         let views = views.map(|id| id.expect("expected view ID, found none"));
 
@@ -608,8 +609,6 @@ impl Migration<'_> {
             }))?
             .exec()
             .await?;
-
-        console_log!("Updated Noco form view with ID `{}`", views.add_event);
 
         self.client
             .build_request_v2(
@@ -626,14 +625,9 @@ impl Migration<'_> {
             .exec()
             .await?;
 
-        console_log!(
-            "Updated Noco form view with ID `{}`",
-            views.make_announcement
-        );
-
         let views_to_lock = vec![views.add_event.clone(), views.make_announcement.clone()];
 
-        lock_views(self.client, views_to_lock).await?;
+        lock_views(self.client, views_to_lock, (&self.ctx.env_name).into()).await?;
 
         Ok(views)
     }
@@ -642,8 +636,8 @@ impl Migration<'_> {
 impl<'a> common::Migration<'a> for Migration<'a> {
     const INDEX: Version = Version::INITIAL.next();
 
-    fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
-        Self { client }
+    fn new(client: &'a Client, ctx: &'a common::MigrationContext) -> Self {
+        Self { client, ctx }
     }
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {

@@ -13,6 +13,7 @@ use crate::noco::{
 
 pub struct Migration<'a> {
     client: &'a Client,
+    ctx: &'a common::MigrationContext,
 }
 
 impl Migration<'_> {
@@ -48,7 +49,7 @@ impl Migration<'_> {
             },
         ];
 
-        edit_columns(self.client, requests).await?;
+        edit_columns(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(())
     }
@@ -68,7 +69,7 @@ impl Migration<'_> {
             }),
         }];
 
-        create_columns(self.client, requests).await?;
+        create_columns(self.client, requests, (&self.ctx.env_name).into()).await?;
 
         Ok(())
     }
@@ -77,8 +78,8 @@ impl Migration<'_> {
 impl<'a> common::Migration<'a> for Migration<'a> {
     const INDEX: Version = n07::Migration::INDEX.next();
 
-    fn new(client: &'a Client, _ctx: &'a common::MigrationContext) -> Self {
-        Self { client }
+    fn new(client: &'a Client, ctx: &'a common::MigrationContext) -> Self {
+        Self { client, ctx }
     }
 
     async fn migrate(&self, base_id: BaseId) -> anyhow::Result<()> {

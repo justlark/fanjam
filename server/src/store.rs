@@ -14,13 +14,14 @@ use futures::future::{Either, FutureExt, LocalBoxFuture, select};
 use rand::Rng;
 use serde::{Serialize, de::IgnoredAny};
 use worker::kv::KvStore;
-use worker::{Cache, Context, Delay, ObjectNamespace, console_error, console_log, console_warn};
+use worker::{Cache, Context, Delay, ObjectNamespace};
 
 use crate::api::{DataResponseEnvelope, Freshness, PostBackupKind};
 use crate::cache::{EtagJson, put_data_cdn_cache, restamp_data_cdn_cache};
 use crate::coordinator::{self, Endpoint, Fetched};
 use crate::env::{Config, EnvId, EnvName};
 use crate::error::Error;
+use crate::log;
 use crate::neon::BackupSnapshot;
 use crate::noco::{self, BaseId, ExistingMigrationState, MigrationState, TableIds};
 use crate::router::AppState;
@@ -32,7 +33,7 @@ use crate::{
 };
 
 /// Per-endpoint bookkeeping for background refreshes, scoped to this isolate and keyed by the edge
-/// cache URL (see `refresh_key`). It does two jobs:
+/// cache URL. It does two jobs:
 ///
 /// 1. **Stampede protection.** If a refresh is already in flight for a key, we do not spawn
 ///    another. Otherwise every request arriving in the window after the edge cache expires would
@@ -51,10 +52,25 @@ use crate::{
 ///
 /// Workers isolates are inherently single-threaded, so the Mutex never actually contends; it's
 /// only needed to satisfy Send/Sync bounds.
-static REFRESH_STATE: OnceLock<Mutex<HashMap<String, RefreshState>>> = OnceLock::new();
+static REFRESH_STATE: OnceLock<Mutex<HashMap<RefreshStateKey, RefreshState>>> = OnceLock::new();
 
-fn refresh_state() -> &'static Mutex<HashMap<String, RefreshState>> {
+fn refresh_state() -> &'static Mutex<HashMap<RefreshStateKey, RefreshState>> {
     REFRESH_STATE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct RefreshStateKey(Uri);
+
+impl RefreshStateKey {
+    fn new(uri: Uri) -> Self {
+        Self(uri)
+    }
+}
+
+impl fmt::Display for RefreshStateKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -84,12 +100,6 @@ const MAX_BACKOFF: Duration = Duration::from_secs(60);
 // there, where its backoff covers every isolate, rather than here.
 fn refresh_timeout() -> Duration {
     config::noco_fetch_timeout() + Duration::from_secs(5)
-}
-
-// The key for `REFRESH_STATE`. The edge cache URL pins down both the environment and the endpoint,
-// and unlike the environment name, it's known on an edge cache hit without any KV reads.
-fn refresh_key(uri: &Uri) -> String {
-    uri.to_string()
 }
 
 // What to do about refreshing a given cache key *right now*.
@@ -134,9 +144,9 @@ pub(crate) fn backoff_delay(consecutive_failures: u32) -> Duration {
 // Decide whether to spawn a background refresh for `key`, marking it in flight if so, and classify
 // how current the data we're about to serve from the persistent cache is. The caller must call
 // `finish_refresh` when the refresh completes, but only if this returned `RefreshAction::Spawn`.
-fn try_begin_refresh(key: &str) -> (RefreshAction, Freshness) {
+fn try_begin_refresh(key: RefreshStateKey) -> (RefreshAction, Freshness) {
     let mut state = refresh_state().lock().unwrap();
-    let entry = state.entry(key.to_string()).or_default();
+    let entry = state.entry(key).or_default();
 
     // Freshness comes off the failure count, *not* off the action below. Any recorded failure
     // means upstream is unhealthy, and telling the client to check back would only add to the load
@@ -166,7 +176,7 @@ fn try_begin_refresh(key: &str) -> (RefreshAction, Freshness) {
 // How much of the cooldown for `key` is left, if it's currently in one. Used on the blocking path,
 // where there's no cached value to fall back on: if upstream is in cooldown, there's no point
 // making the caller wait on a request we expect to fail.
-fn backoff_remaining_ms(key: &str) -> Option<i64> {
+fn backoff_remaining_ms(key: &RefreshStateKey) -> Option<i64> {
     let state = refresh_state().lock().unwrap();
     let entry = state.get(key)?;
     let remaining_ms = entry.next_attempt_at_ms - now_ms();
@@ -177,9 +187,9 @@ fn backoff_remaining_ms(key: &str) -> Option<i64> {
 // Record the outcome of an upstream fetch, clearing the in-flight flag and either resetting or
 // extending the cooldown. Used by both the background refresh and the blocking cold-cache path;
 // the latter never sets the in-flight flag, but clearing it again is harmless.
-fn finish_refresh(key: &str, succeeded: bool) {
+fn finish_refresh(succeeded: bool, key: &RefreshStateKey, env: log::EnvRef<'_>) {
     let mut state = refresh_state().lock().unwrap();
-    let entry = state.entry(key.to_string()).or_default();
+    let entry = state.entry(key.clone()).or_default();
 
     entry.in_flight = false;
 
@@ -190,11 +200,14 @@ fn finish_refresh(key: &str, succeeded: bool) {
         state.remove(key);
 
         if recovered_from > 0 {
-            console_log!(
-                "Refresh for {} recovered after {} consecutive failures.",
-                key,
-                recovered_from,
-            );
+            log::log(log::Message {
+                id: "refresh-recovered",
+                env,
+                msg: &format!(
+                    "Refresh for `{}` recovered after {} consecutive failures.",
+                    key, recovered_from,
+                ),
+            });
         }
 
         return;
@@ -205,42 +218,65 @@ fn finish_refresh(key: &str, succeeded: bool) {
     let delay = backoff_delay(entry.consecutive_failures);
     entry.next_attempt_at_ms = now_ms() + delay.as_millis() as i64;
 
-    console_warn!(
-        "Refresh for {} failed ({} consecutive). Backing off for {}ms.",
-        key,
-        entry.consecutive_failures,
-        delay.as_millis(),
-    );
+    log::warn(log::Message {
+        id: "refresh-failed",
+        env,
+        msg: &format!(
+            "Refresh for `{}` failed ({} consecutive). Backing off for {}ms.",
+            key,
+            entry.consecutive_failures,
+            delay.as_millis(),
+        ),
+    });
 }
+
+// Returned by `with_timeout` when the request didn't finish in time. Kept distinct from whatever the
+// request itself returns, so callers can tell a timeout apart from a request that failed.
+#[derive(Debug)]
+pub(crate) struct TimedOut;
 
 // Run an upstream request, giving up after `timeout`. Dropping the losing future cancels the
 // in-flight `fetch`, and `Delay` cancels its timer when dropped, so neither leaks.
-pub(crate) async fn with_timeout<F, T>(key: &str, timeout: Duration, request: F) -> Option<T>
+pub(crate) async fn with_timeout<F>(timeout: Duration, request: F) -> Result<F::Output, TimedOut>
 where
-    F: Future<Output = Option<T>>,
+    F: Future,
 {
     let request = pin!(request);
     let delay = pin!(Delay::from(timeout));
 
     match select(request, delay).await {
-        Either::Left((value, _)) => value,
-        Either::Right(((), _)) => {
-            console_warn!(
-                "Refresh for {} timed out after {}s.",
-                key,
-                timeout.as_secs()
-            );
+        Either::Left((value, _)) => Ok(value),
+        Either::Right(((), _)) => Err(TimedOut),
+    }
+}
+
+async fn with_refresh_timeout<F, T>(
+    request: F,
+    key: &RefreshStateKey,
+    env: log::EnvRef<'_>,
+) -> Option<T>
+where
+    F: Future<Output = Option<T>>,
+{
+    let timeout = refresh_timeout();
+
+    match with_timeout(timeout, request).await {
+        // The refresh finished in time. If it failed, it has already logged why.
+        Ok(value) => value,
+        Err(TimedOut) => {
+            log::warn(log::Message {
+                id: "refresh-timeout",
+                env,
+                msg: &format!(
+                    "Refresh for `{}` timed out after {}ms.",
+                    key,
+                    timeout.as_millis(),
+                ),
+            });
 
             None
         }
     }
-}
-
-async fn with_refresh_timeout<F, T>(key: &str, request: F) -> Option<T>
-where
-    F: Future<Output = Option<T>>,
-{
-    with_timeout(key, refresh_timeout(), request).await
 }
 
 // Writes freshly fetched data to both the persistent cache and the edge cache.
@@ -252,20 +288,20 @@ pub type CacheWrite = LocalBoxFuture<'static, ()>;
 // The in-flight flag stays set until the caches have been written, not just until NocoDB answers.
 // Clearing it any sooner would let a request arriving in between, which still sees the old edge
 // cache entry, spawn a second refresh.
-fn spawn_refresh<T, R>(ctx: &Context, key: String, refresh: R)
+fn spawn_refresh<T, R>(ctx: &Context, refresh: R, key: RefreshStateKey, env: log::Env)
 where
     T: 'static,
     R: Future<Output = Option<(T, CacheWrite)>> + 'static,
 {
     ctx.wait_until(async move {
-        let latest = with_refresh_timeout(&key, refresh).await;
+        let latest = with_refresh_timeout(refresh, &key, (&env).into()).await;
         let succeeded = latest.is_some();
 
         if let Some((_, write_cache)) = latest {
             write_cache.await;
         }
 
-        finish_refresh(&key, succeeded);
+        finish_refresh(succeeded, &key, (&env).into());
     });
 }
 
@@ -291,8 +327,8 @@ where
     F: FnOnce(&Store, Uri, Option<String>) -> R + 'static,
     R: Future<Output = Option<(T, CacheWrite)>> + 'static,
 {
-    let key = refresh_key(&uri);
-    let (action, freshness) = try_begin_refresh(&key);
+    let key = RefreshStateKey::new(uri.clone());
+    let (action, freshness) = try_begin_refresh(key.clone());
 
     // This is the hot path, so unlike the persistent-cache path, we don't log when we skip.
     if action != RefreshAction::Spawn {
@@ -301,17 +337,24 @@ where
 
     let state_for_refresh = Arc::clone(state);
 
+    let env_id_for_refresh = env_id.clone();
+
     let refresh = async move {
-        match Store::from_env_id(&state_for_refresh, &env_id).await {
+        match Store::from_env_id(&state_for_refresh, &env_id_for_refresh).await {
             Ok(store) => refresh(&store, uri, known_hash).await,
             Err(e) => {
-                console_warn!("Failed setting up refresh for {}: {}", uri, e);
+                log::warn(log::Message {
+                    id: "refresh-setup-failed",
+                    env: (&env_id_for_refresh).into(),
+                    msg: &format!("Failed setting up refresh for `{}`: {}", uri, e),
+                });
+
                 None
             }
         }
     };
 
-    spawn_refresh(&state.ctx, key, refresh);
+    spawn_refresh(&state.ctx, refresh, key, env_id.into());
 
     freshness
 }
@@ -447,11 +490,15 @@ macro_rules! get_data {
                             Ok(Fetched::NotModified { fetched_at_ms }) => {
                                 // The coordinator only answers this way when we sent a hash.
                                 let Some(source_hash) = known_hash else {
-                                    console_warn!(
-                                        "The refresh coordinator said {} was unchanged, but we \
-                                         didn't say what we had.",
-                                        $cache_key,
-                                    );
+                                    log::warn(log::Message {
+                                        id: "refresh-coordinator-unexpected-not-modified",
+                                        env: (&env_name).into(),
+                                        msg: &format!(
+                                            "The refresh coordinator said `{}` was unchanged, but we didn't send a hash.",
+                                            $cache_key,
+                                        ),
+                                    });
+
                                     return None;
                                 };
 
@@ -470,11 +517,16 @@ macro_rules! get_data {
                                 return Some((None, restamp.boxed_local()));
                             }
                             Err(e) => {
-                                console_warn!(
-                                    "Failed getting {} from the refresh coordinator: {}",
-                                    $cache_key,
-                                    e,
-                                );
+                                log::warn(log::Message {
+                                    id: "refresh-coordinator-failed",
+                                    env: (&env_name).into(),
+                                    msg: &format!(
+                                        "Failed getting `{}` from the refresh coordinator: {}",
+                                        $cache_key,
+                                        e,
+                                    ),
+                                });
+
                                 return None;
                             }
                         }
@@ -484,7 +536,15 @@ macro_rules! get_data {
                         let table_ids = match Self::get_table_ids(&kv, &env_name, &noco_client, &base_id).await {
                             Ok(table_ids) => table_ids,
                             Err(e) => {
-                                console_warn!("Failed getting table IDs from NocoDB: {}", e);
+                                log::warn(log::Message {
+                                    id: "refresh-get-table-ids-failed",
+                                    env: (&env_name).into(),
+                                    msg: &format!(
+                                        "Failed getting table IDs from NocoDB: {}",
+                                        e,
+                                    ),
+                                });
+
                                 return None;
                             }
                         };
@@ -495,7 +555,16 @@ macro_rules! get_data {
                                 (value, fetched_at_ms, Some(value_for_kv), None)
                             }
                             Err(e) => {
-                                console_warn!("Failed getting {} from NocoDB: {}", $cache_key, e);
+                                log::warn(log::Message {
+                                    id: "refresh-get-api-failed",
+                                    env: (&env_name).into(),
+                                    msg: &format!(
+                                        "Failed getting `{}` from NocoDB: {}",
+                                        $cache_key,
+                                        e,
+                                    ),
+                                });
+
                                 return None;
                             }
                         }
@@ -505,12 +574,27 @@ macro_rules! get_data {
                 let body_for_cache = body.clone();
 
                 let write_cache = async move {
-                    console_log!("Caching latest {} in the edge cache.", $cache_key);
+                    log::log(log::Message {
+                        id: "refresh-edge-cache-write",
+                        env: (&env_name).into(),
+                        msg: &format!(
+                            "Writing latest `{}` to the edge cache.",
+                            $cache_key,
+                        ),
+                    });
 
                     if let Some(value) = value_for_kv
                         && let Err(e) = $put_cached_fn(&kv, &env_name, &value).await
                     {
-                        console_warn!("Failed putting {} in KV cache: {}", $cache_key, e);
+                        log::warn(log::Message {
+                            id: "refresh-persistent-cache-write-failed",
+                            env: (&env_name).into(),
+                            msg: &format!(
+                                "Failed putting `{}` in the persistent cache: {}",
+                                $cache_key,
+                                e,
+                            ),
+                        });
                     }
 
                     // Responses that hit the edge cache are by definition fresh; this entry is
@@ -555,42 +639,60 @@ macro_rules! get_data {
 
             let cached_value = match $get_cached_fn(&self.kv, &self.env_name).await {
                 Ok(Some(value)) => {
-                    console_log!("Returning stale {} from cache.", $cache_key);
+                    log::log(log::Message {
+                        id: "persistent-cache-hit",
+                        env: (&self.env_name).into(),
+                        msg: &format!("Returning stale `{}` from the persistent cache.", $cache_key),
+                    });
+
                     Some(value)
                 }
                 Ok(None) => {
                     None
                 }
                 Err(_) => {
-                    console_warn!("Failed getting cached {} from KV.", $cache_key);
+                    log::warn(log::Message {
+                        id: "persistent-cache-read-failed",
+                        env: (&self.env_name).into(),
+                        msg: &format!("Failed getting `{}` from the persistent cache.", $cache_key),
+                    });
+
                     None
                 }
             };
 
-            let refresh_key = refresh_key(&uri);
+            let refresh_key = RefreshStateKey::new(uri.clone());
 
             match cached_value {
                 Some(cached_value) => {
-                    let (action, freshness) = try_begin_refresh(&refresh_key);
+                    let (action, freshness) = try_begin_refresh(refresh_key.clone());
 
                     match action {
                         RefreshAction::Spawn => {
                             // There's no edge cache entry to re-stamp here, so we need the data.
                             let refresh = self.$refresh_fn_name(uri, to_body.clone(), None);
-                            spawn_refresh(&self.ctx, refresh_key, refresh);
+                            spawn_refresh(&self.ctx, refresh, refresh_key, self.env_name.clone().into());
                         }
                         RefreshAction::AlreadyInFlight => {
-                            console_log!(
-                                "Skipping background refresh for {} (already in flight).",
-                                $cache_key,
-                            );
+                            log::log(log::Message {
+                                id: "refresh-already-in-flight",
+                                env: (&self.env_name).into(),
+                                msg: &format!(
+                                    "Skipping background refresh for `{}` (already in flight).",
+                                    $cache_key,
+                                ),
+                            });
                         }
                         RefreshAction::InBackoff { remaining_ms } => {
-                            console_log!(
-                                "Skipping background refresh for {} ({}ms of backoff remaining).",
-                                $cache_key,
-                                remaining_ms,
-                            );
+                            log::log(log::Message {
+                                id: "refresh-in-backoff",
+                                env: (&self.env_name).into(),
+                                msg: &format!(
+                                    "Skipping background refresh for `{}` ({}ms of backoff remaining).",
+                                    $cache_key,
+                                    remaining_ms,
+                                ),
+                            });
                         }
                     }
 
@@ -607,12 +709,15 @@ macro_rules! get_data {
                     // request we expect to fail. Fail fast instead of piling onto the load that's
                     // keeping NocoDB down; the response is a 503 either way.
                     if let Some(remaining_ms) = backoff_remaining_ms(&refresh_key) {
-                        console_warn!(
-                            "Not fetching {} from NocoDB: the persistent cache is empty and \
-                             upstream is in backoff for another {}ms.",
-                            $cache_key,
-                            remaining_ms,
-                        );
+                        log::warn(log::Message {
+                            id: "refresh-blocked-by-backoff",
+                            env: (&self.env_name).into(),
+                            msg: &format!(
+                                "Not fetching `{}` from NocoDB: the persistent cache is empty and upstream is in backoff for another {}ms.",
+                                $cache_key,
+                                remaining_ms,
+                            ),
+                        });
 
                         return Err(Error::NocoUnavailable);
                     }
@@ -627,7 +732,7 @@ macro_rules! get_data {
                         .await
                         .and_then(|(body, write_cache)| Some((body?, write_cache)));
 
-                    finish_refresh(&refresh_key, latest.is_some());
+                    finish_refresh(latest.is_some(), &refresh_key, (&self.env_name).into());
 
                     if let Some((body, write_cache)) = latest {
                         self.ctx.wait_until(write_cache);
@@ -684,7 +789,11 @@ impl Store {
 
                 if let Err(e) = kv::put_base_id(&kv, &env_name, &base_id).await {
                     // This need not be a fatal error.
-                    console_warn!("Failed to cache base_id in KV: {}", e);
+                    log::warn(log::Message {
+                        id: "persistent-cache-write-base-id-failed",
+                        env: (&env_name).into(),
+                        msg: &format!("Failed to put base ID in the persistent cache: {}", e,),
+                    });
                 }
 
                 base_id
@@ -747,7 +856,11 @@ impl Store {
             {
                 Ok(table_ids) => table_ids,
                 Err(e) => {
-                    console_log!("Failed to get table IDs from KV: {}", e);
+                    log::log(log::Message {
+                        id: "persistent-cache-read-table-ids-failed",
+                        env: (env_name).into(),
+                        msg: &format!("Failed to get table IDs from the persistent cache: {}", e,),
+                    });
 
                     let table_ids = noco::list_tables(noco_client, base_id)
                         .await
@@ -949,17 +1062,13 @@ impl Store {
 
         let migration_state = MigrationState::existing(old_version, self.base_id.clone());
 
-        let env_id = kv::get_env_id(&self.kv, &self.env_name)
-            .await
-            .map_err(Error::Internal)?;
-
         let migrator = noco::Migrator::new(&self.noco_client, &self.neon_client, &db_client);
 
         let ExistingMigrationState {
             version: new_version,
             ..
         } = migrator
-            .migrate(&self.env_name, env_id, migration_state)
+            .migrate(&self.env_name, migration_state)
             .await
             .map_err(Error::Internal)?;
 
@@ -969,7 +1078,14 @@ impl Store {
         if new_version != old_version
             && let Err(e) = kv::delete_tables(&self.kv, &self.env_name).await
         {
-            console_warn!("Failed to clear cached table IDs after migration: {}", e);
+            log::warn(log::Message {
+                id: "persistent-cache-clear-table-ids-failed",
+                env: (&self.env_name).into(),
+                msg: &format!(
+                    "Failed to clear table IDs from the persistent cache after migration from {} to {}: {}",
+                    old_version, new_version, e,
+                ),
+            });
         }
 
         Ok(MigrationChange {
@@ -1004,15 +1120,22 @@ impl Store {
         self.neon_client
             .with_rollback(&self.env_name, async || {
                 let result = {
-                    noco::delete_base(&self.noco_client, &self.base_id).await?;
+                    noco::delete_base(&self.noco_client, &self.base_id, (&self.env_name).into())
+                        .await?;
                     db_client.delete_base(&self.base_id).await?;
                     Ok(())
                 };
 
                 match result {
                     Err(e) => {
-                        console_error!("{:?}", e);
-                        console_error!("Failed deleting base. Rolling back.");
+                        log::error(log::Message {
+                            id: "delete-base-failed",
+                            env: (&self.env_name).into(),
+                            msg: &format!(
+                                "Failed deleting base `{}`, rolling back: {:?}",
+                                self.base_id, e
+                            ),
+                        });
                         Err(e)
                     }
                     Ok(_) => Ok(()),
