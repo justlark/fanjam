@@ -414,7 +414,7 @@ pub async fn restamp_data_cdn_cache(
                 id: "edge-cache-restamp",
                 env: (&env_name).into(),
                 msg: &format!(
-                    "Re-stamped {} in the edge cache; the data is unchanged.",
+                    "Re-stamped `{}` in the edge cache; the data is unchanged.",
                     uri
                 ),
             });
@@ -423,14 +423,14 @@ pub async fn restamp_data_cdn_cache(
             log::log(log::Message {
                 id: "edge-cache-restamp-skipped",
                 env: (&env_name).into(),
-                msg: &format!("Not re-stamping {} in the edge cache: {}.", uri, reason),
+                msg: &format!("Not re-stamping `{}` in the edge cache: {}.", uri, reason),
             });
         }
         Err(err) => {
             log::error(log::Message {
                 id: "edge-cache-restamp-failed",
                 env: (&env_name).into(),
-                msg: &format!("Failed to re-stamp {} in the edge cache: {}", uri, err),
+                msg: &format!("Failed to re-stamp `{}` in the edge cache: {}", uri, err),
             });
         }
     }

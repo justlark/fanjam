@@ -4,10 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { localizeTimeSpan } from "@/utils/time";
 import useDatetimeFormats from "@/composables/useDatetimeFormats";
 import useIsEventStarred from "@/composables/useIsEventStarred";
-import useIsSharedSchedule from "@/composables/useIsSharedSchedule";
 import { toFilterQueryParams } from "@/composables/useFilterQuery";
 import { renderMarkdown } from "@/utils/markdown";
-import { useToast } from "primevue/usetoast";
 import useRemoteData from "@/composables/useRemoteData";
 import { type Event } from "@/utils/api";
 import EventDetail from "./EventDetail.vue";
@@ -17,12 +15,10 @@ import IconButton from "./IconButton.vue";
 import Divider from "primevue/divider";
 import TagBar from "./TagBar.vue";
 import LinkShareDialog from "./LinkShareDialog.vue";
-import { TOAST_TTL_LONG } from "@/utils/toast";
 
 const datetimeFormats = useDatetimeFormats();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
 
 const props = defineProps<{
   event: DeepReadonly<Event>;
@@ -32,7 +28,6 @@ const props = defineProps<{
 
 const event = computed(() => props.event);
 const isStarred = useIsEventStarred(computed(() => event.value.id));
-const isSharedSchedule = useIsSharedSchedule();
 
 const {
   data: { people, locations },
@@ -91,18 +86,6 @@ const back = async () => {
 };
 
 const toggleStar = () => {
-  if (isSharedSchedule.value) {
-    toast.add({
-      severity: "warn",
-      summary: "You're viewing someone else's schedule",
-      detail:
-        "To go back to your own schedule and make changes, open the options menu at the bottom of the screen.",
-      life: TOAST_TTL_LONG,
-    });
-
-    return;
-  }
-
   isStarred.value = !isStarred.value;
 };
 

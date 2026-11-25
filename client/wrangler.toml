@@ -10,8 +10,9 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = true
 
+# Observability doesn't add much here, and it's not free.
 [observability]
-enabled = true
+enabled = false
 
 [env.test]
 

@@ -68,6 +68,8 @@ watch(
       detail: "Your schedule will now stay in sync on this device.",
       life: TOAST_TTL_LONG,
     });
+
+    umami.track("accept-sync-schedule");
   },
   { immediate: true },
 );

@@ -3,3 +3,8 @@
 
 // Injected by Vite at build time. `undefined` when the build had no git metadata to read.
 declare const __BUILD_VERSION: string | undefined;
+
+// https://docs.umami.is/docs/tracker-functions
+declare const umami: {
+  track: (event: string, properties?: Record<string, unknown>) => void;
+};

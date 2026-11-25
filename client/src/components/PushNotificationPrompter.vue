@@ -1,5 +1,20 @@
+<script lang="ts">
+import { ref } from "vue";
+
+// Every view wraps itself in `AppRoot`, so this component unmounts and
+// remounts on every navigation. This state lives at module scope so that it
+// outlives any single instance: the prompt is scheduled at most once per page
+// load, and stays visible across navigations until the user acts on it.
+
+// Whether the prompt should currently be on screen.
+const promptVisible = ref(false);
+
+// `undefined` means the prompt hasn't been scheduled yet.
+let timer: ReturnType<typeof setTimeout> | undefined;
+</script>
+
 <script setup lang="ts">
-import { onMounted, watchEffect } from "vue";
+import { onMounted, watch, watchEffect } from "vue";
 import Toast from "primevue/toast";
 import Button from "primevue/button";
 import { useToast } from "primevue/usetoast";
@@ -30,31 +45,54 @@ const isFeatureOn = () =>
 const isPromptable = () =>
   (state.value === "default" || state.value === "granted-unsubscribed") && isFeatureOn();
 
-let timer: ReturnType<typeof setTimeout> | undefined;
+// The toast bus is global, so only the currently mounted instance renders the
+// prompt. Clearing the group first guarantees we never stack duplicates.
+const show = () => {
+  toast.removeGroup("push-prompt");
+  if (!isPromptable()) return;
+
+  toast.add({
+    severity: "secondary",
+    summary: "Get notified when there's a new announcement?",
+    group: "push-prompt",
+  });
+};
+
+// Watchers are stopped on unmount, so only the live instance reacts when the
+// timer fires.
+watch(promptVisible, (visible) => {
+  if (visible) show();
+});
 
 onMounted(() => {
+  // The previous instance's `<Toast>` took its messages with it when it
+  // unmounted, so put the prompt back on this one. This runs in `onMounted`
+  // rather than an immediate watcher so the `<Toast>` is listening first.
+  if (promptVisible.value) {
+    show();
+    return;
+  }
+
+  if (timer !== undefined) return;
   if (!isPromptable()) return;
   if (localStorage.getItem(dismissedKey()) === "true") return;
 
   timer = setTimeout(() => {
-    if (!isPromptable()) return;
-
-    toast.add({
-      severity: "secondary",
-      summary: "Get notified when there's a new announcement?",
-      group: "push-prompt",
-    });
+    promptVisible.value = true;
   }, PROMPT_DELAY_MS);
 });
 
 watchEffect(() => {
   if (!isPromptable()) {
     clearTimeout(timer);
+    timer = undefined;
+    promptVisible.value = false;
     toast.removeGroup("push-prompt");
   }
 });
 
 const enable = async () => {
+  promptVisible.value = false;
   toast.removeGroup("push-prompt");
   const result = await requestAndSubscribe();
 
@@ -66,6 +104,8 @@ const enable = async () => {
       detail: "You'll get updates when there's a new announcement.",
       life: TOAST_TTL_LONG,
     });
+
+    umami.track("enable-push", { source: "prompt" });
   } else if (result === "granted-unsubscribed") {
     // Permission was granted, but we could not send the subscription. This
     // likely means the user is offline.
@@ -79,6 +119,7 @@ const enable = async () => {
 };
 
 const dismiss = () => {
+  promptVisible.value = false;
   toast.removeGroup("push-prompt");
   localStorage.setItem(dismissedKey(), "true");
 

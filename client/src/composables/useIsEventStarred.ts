@@ -1,10 +1,12 @@
 import { computed, type Ref } from "vue";
 import useStarredEvents from "./useStarredEvents";
+import useIsSharedSchedule from "./useIsSharedSchedule.ts";
 import { useToast } from "primevue/usetoast";
-import { TOAST_TTL_SHORT } from "@/utils/toast";
+import { TOAST_TTL_SHORT, TOAST_TTL_LONG } from "@/utils/toast";
 
 const useIsEventStarred = (eventId: Ref<string | undefined>) => {
   const starredEvents = useStarredEvents();
+  const isSharedSchedule = useIsSharedSchedule();
   const toast = useToast();
 
   const addStarToastMessage = {
@@ -21,6 +23,14 @@ const useIsEventStarred = (eventId: Ref<string | undefined>) => {
     life: TOAST_TTL_SHORT,
   } as const;
 
+  const sharedScheduleWarningToastMessage = {
+    severity: "warn",
+    summary: "You're viewing someone else's schedule",
+    detail:
+      "To go back to your own schedule and make changes, open the options menu at the bottom of the screen.",
+    life: TOAST_TTL_LONG,
+  } as const;
+
   return computed({
     get() {
       if (eventId.value === undefined) {
@@ -34,6 +44,11 @@ const useIsEventStarred = (eventId: Ref<string | undefined>) => {
         return;
       }
 
+      if (isSharedSchedule.value) {
+        toast.add(sharedScheduleWarningToastMessage);
+        return;
+      }
+
       toast.remove(addStarToastMessage);
       toast.remove(removeStarToastMessage);
 
@@ -41,12 +56,16 @@ const useIsEventStarred = (eventId: Ref<string | undefined>) => {
       // create a new set.
       if (value) {
         starredEvents.value = new Set([...starredEvents.value, eventId.value]);
+
         toast.add(addStarToastMessage);
+        umami.track("star-event", { event_id: eventId.value });
       } else {
         const newSet = new Set(starredEvents.value);
         newSet.delete(eventId.value);
         starredEvents.value = newSet;
+
         toast.add(removeStarToastMessage);
+        umami.track("unstar-event", { event_id: eventId.value });
       }
     },
   });

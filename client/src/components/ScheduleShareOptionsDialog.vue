@@ -38,6 +38,8 @@ const exitSharedSchedule = async () => {
     life: TOAST_TTL_LONG,
   });
 
+  umami.track("exit-shared-schedule");
+
   visible.value = false;
 };
 
@@ -62,6 +64,8 @@ const addToSchedule = async () => {
         : `This schedule has been merged with yours. Added ${eventsAdded.size.toString()} events.`,
     life: TOAST_TTL_LONG,
   });
+
+  umami.track("merge-shared-schedule");
 
   visible.value = false;
 };

@@ -64,13 +64,16 @@ const visibleShareOptions = computed(() => shareOptions.filter((option) => optio
 const selectShareOption = (key: string) => {
   if (key === "share") {
     shareDialogVisible.value = true;
+    umami.track("initiate-share-schedule");
   } else if (key === "sync") {
     // This device's schedule is already being pushed under its sync code, so there's nothing to
     // wait for: the dialog just shows the link for enrolling another device.
     revealSync();
+    umami.track("initiate-sync-schedule");
     syncDialogVisible.value = true;
   } else if (key === "calendar") {
     downloadCalendar();
+    umami.track("download-calendar");
   }
 };
 

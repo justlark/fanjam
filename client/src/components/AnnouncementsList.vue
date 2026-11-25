@@ -36,6 +36,8 @@ const enablePush = async () => {
       detail: "You'll get updates when there's a new announcement.",
       life: TOAST_TTL_LONG,
     });
+
+    umami.track("enable-push", { source: "button" });
   } else if (result === "granted-unsubscribed") {
     // Permission was granted, but we could not send the subscription. This
     // likely means the user is offline.
@@ -62,6 +64,8 @@ const disablePush = async () => {
       detail: "You won't get updates from this event anymore.",
       life: TOAST_TTL_LONG,
     });
+
+    umami.track("disable-push");
   } else {
     toast.add({
       severity: "error",
