@@ -6,11 +6,12 @@ compatibility_date = "2026-11-25"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
-[observability]
+[observability.logs]
 enabled = true
 
 [observability.traces]
 enabled = true
+head_sampling_rate = 0.05
 
 [env.test]
 
